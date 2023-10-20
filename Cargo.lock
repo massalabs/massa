@@ -3124,6 +3124,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "mockall",
+ "mockall_wrap",
  "serde",
  "tokio",
 ]
@@ -3162,6 +3163,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "mockall",
+ "mockall_wrap",
  "nom",
  "num",
  "parking_lot",
@@ -3500,6 +3502,7 @@ dependencies = [
 [[package]]
 name = "mockall_wrap"
 version = "0.11.2"
+source = "git+https://github.com/AurelienFT/mockall-wrap?rev=18f88253a000df96cf407dfe4b9158c69c0aeb96#18f88253a000df96cf407dfe4b9158c69c0aeb96"
 dependencies = [
  "cfg-if",
  "proc-macro2 1.0.69",

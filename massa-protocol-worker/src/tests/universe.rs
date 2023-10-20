@@ -1,8 +1,8 @@
 use massa_channel::MassaChannel;
 use massa_consensus_exports::{ConsensusController, MockConsensusController};
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
-use massa_pool_exports::{MockPoolController, PoolController};
-use massa_pos_exports::{MockSelectorController, SelectorController};
+use massa_pool_exports::{MockPoolControllerWrapper, PoolController};
+use massa_pos_exports::{MockSelectorControllerWrapper, SelectorController};
 use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
@@ -10,8 +10,9 @@ use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
+use parking_lot::RwLock;
 use peernet::messages::{MessagesHandler as _, MessagesSerializer as _};
-use std::{collections::HashMap, fs::read_to_string};
+use std::{collections::HashMap, fs::read_to_string, sync::Arc};
 
 use crate::{
     connectivity::start_connectivity_thread,
@@ -20,7 +21,10 @@ use crate::{
         block_handler::BlockMessageSerializer,
         endorsement_handler::EndorsementMessageSerializer,
         operation_handler::OperationMessageSerializer,
-        peer_handler::{models::SharedPeerDB, PeerManagementMessageSerializer},
+        peer_handler::{
+            models::{PeerDB, SharedPeerDB},
+            PeerManagementMessageSerializer,
+        },
     },
     manager::ProtocolManagerImpl,
     messages::{Message, MessagesHandler, MessagesSerializer},
@@ -42,11 +46,23 @@ pub struct ProtocolTestUniverse {
 
 pub struct ProtocolForeignControllers {
     pub consensus_controller: Box<MockConsensusController>,
-    pub pool_controller: Box<MockPoolController>,
-    pub selector_controller: Box<MockSelectorController>,
+    pub pool_controller: Box<MockPoolControllerWrapper>,
+    pub selector_controller: Box<MockSelectorControllerWrapper>,
     pub network_controller: Box<MockNetworkController>,
     //TODO: Mock it
     pub peer_db: SharedPeerDB,
+}
+
+impl ProtocolForeignControllers {
+    pub fn new_with_mocks() -> Self {
+        Self {
+            consensus_controller: Box::new(MockConsensusController::new()),
+            pool_controller: Box::new(MockPoolControllerWrapper::new()),
+            selector_controller: Box::new(MockSelectorControllerWrapper::new()),
+            network_controller: Box::new(MockNetworkController::new()),
+            peer_db: Arc::new(RwLock::new(PeerDB::default())),
+        }
+    }
 }
 
 impl TestUniverse for ProtocolTestUniverse {
@@ -68,7 +84,7 @@ impl TestUniverse for ProtocolTestUniverse {
             .unwrap();
         let universe = Self {
             module_controller: protocol_controller,
-            messages_handler: messages_handler,
+            messages_handler,
             peer_db: controllers.peer_db,
             message_serializer: MessagesSerializer::new()
                 .with_block_message_serializer(BlockMessageSerializer::new())

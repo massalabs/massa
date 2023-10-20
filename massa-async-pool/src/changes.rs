@@ -241,7 +241,7 @@ mod tests {
     use super::*;
 
     fn get_message() -> AsyncMessage {
-        let message = AsyncMessage::new(
+        AsyncMessage::new(
             Slot::new(1, 0),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -259,8 +259,7 @@ mod tests {
                 datastore_key: Some(vec![1, 2, 3, 4]),
             }),
             None,
-        );
-        return message;
+        )
     }
 
     #[test]
@@ -311,7 +310,7 @@ mod tests {
         // AsyncPoolChanges, push_add/push_delete/push_activate
 
         let message = get_message();
-        assert_eq!(message.can_be_executed, false);
+        assert!(!message.can_be_executed);
 
         let mut changes = AsyncPoolChanges::default();
 
@@ -327,7 +326,7 @@ mod tests {
         let value = changes.0.get(&message.compute_id()).unwrap();
         match value {
             SetUpdateOrDelete::Set(msg) => {
-                assert_eq!(msg.can_be_executed, true);
+                assert!(msg.can_be_executed);
             }
             _ => {
                 panic!("Unexpect value");

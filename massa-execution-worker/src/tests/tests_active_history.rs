@@ -60,9 +60,7 @@ mod tests {
             events: Default::default(),
         };
 
-        let active_history = ActiveHistory {
-            0: VecDeque::from([exec_output_1]),
-        };
+        let active_history = ActiveHistory(VecDeque::from([exec_output_1]));
 
         assert_eq!(
             active_history.get_adress_deferred_credit_for(&addr1, &slot2),

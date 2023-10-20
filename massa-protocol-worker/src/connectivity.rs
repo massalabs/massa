@@ -33,6 +33,7 @@ use crate::{
         peer_handler::models::PeerMessageTuple,
     },
     wrap_network::NetworkController,
+    wrap_peer_db::PeerDBTrait,
 };
 
 #[derive(Clone)]
@@ -166,7 +167,7 @@ pub(crate) fn start_connectivity_thread(
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller.clone(),
+                pool_controller,
                 channel_blocks.1,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.1.clone(),

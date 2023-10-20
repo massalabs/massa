@@ -9,8 +9,11 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+#[cfg(feature = "testing")]
+use std::sync::{Arc, RwLock};
+
 /// Trait defining a pool controller
-#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
+#[cfg_attr(feature = "testing", mockall_wrap::wrap, mockall::automock)]
 pub trait PoolController: Send + Sync {
     /// Asynchronously add operations to pool. Simply print a warning on failure.
     fn add_operations(&mut self, ops: Storage);
@@ -57,7 +60,7 @@ pub trait PoolController: Send + Sync {
     fn clone_box(&self) -> Box<dyn PoolController>;
 
     /// Get final cs periods (updated regularly from consensus)
-    fn get_final_cs_periods(&self) -> &Vec<u64>;
+    fn get_final_cs_periods(&self) -> Vec<u64>;
 }
 
 /// Allow cloning `Box<dyn PoolController>`

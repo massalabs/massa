@@ -29,6 +29,7 @@ use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
+use crate::wrap_peer_db::PeerDBTrait;
 
 use self::models::{ConnectionMetadata, PeerInfo};
 use self::{
@@ -153,7 +154,7 @@ impl PeerManagementHandler {
                                     let listeners = config.listeners.iter().map(|(addr, ty)| {
                                         (SocketAddr::new(routable_ip, addr.port()), *ty)
                                     }).collect();
-                                    peers.push((peer_id.clone(), listeners));
+                                    peers.push((peer_id, listeners));
                                 }
                                 if let Err(err) = responder.try_send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
@@ -223,11 +224,11 @@ impl PeerManagementHandler {
             let mut message = Vec::new();
             message_serializer
                 .serialize(
-                    &PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone())),
+                    &PeerManagementMessage::NewPeerConnected((*peer_id, listeners.clone())),
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.try_send((peer_id.clone(), message)).unwrap();
+            sender_msg.try_send((*peer_id, message)).unwrap();
         }
 
         Self {
@@ -374,12 +375,9 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         let res = {
             {
                 let mut peer_db_write = self.peer_db.write();
-                peer_db_write
-                    .peers
-                    .entry(peer_id.clone())
-                    .and_modify(|info| {
-                        info.state = PeerState::InHandshake;
-                    });
+                peer_db_write.peers.entry(peer_id).and_modify(|info| {
+                    info.state = PeerState::InHandshake;
+                });
             }
 
             let (received, version) = self
@@ -425,7 +423,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
                     }
                     let message = PeerManagementMessage::NewPeerConnected((
-                        peer_id.clone(),
+                        peer_id,
                         announcement.clone().listeners,
                     ));
                     let mut bytes = Vec::new();
@@ -489,7 +487,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             PeerNetError::HandshakeError
                                 .error("Massa Handshake", Some(format!("Signature error {}", err)))
                         })?;
-                    Ok((peer_id.clone(), Some(announcement)))
+                    Ok((peer_id, Some(announcement)))
                 }
                 1 => {
                     messages_handler.handle(
@@ -499,7 +497,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         )?,
                         &peer_id,
                     )?;
-                    Ok((peer_id.clone(), None))
+                    Ok((peer_id, None))
                 }
                 _ => Err(PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Invalid message id".to_string()))),
@@ -518,7 +516,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         .success();
                     peer_db_write
                         .peers
-                        .entry(peer_id.clone())
+                        .entry(*peer_id)
                         .and_modify(|info| {
                             info.last_announce = Some(announcement.clone());
                             info.state = PeerState::Trusted;

@@ -183,7 +183,7 @@ fn mock_bootstrap_manager(
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    return (
+    (
         start_bootstrap_server(
             listener,
             listener_stopper,
@@ -203,7 +203,7 @@ fn mock_bootstrap_manager(
         )
         .unwrap(),
         server_selector_manager,
-    );
+    )
 }
 
 #[test]
@@ -211,12 +211,12 @@ fn mock_bootstrap_manager(
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr, config.clone());
 
     let conn = TcpStream::connect(addr);
     let mut stream = conn.unwrap();
     let mut buf = Vec::with_capacity(1);
-    stream.read(&mut buf).unwrap();
+    let _ = stream.read(&mut buf).unwrap();
     stream.shutdown(std::net::Shutdown::Both).unwrap();
 
     bs_manager.stop().unwrap();
@@ -377,7 +377,7 @@ fn test_bootstrap_server() {
             .write_batch(batch, Default::default(), Some(next));
 
         let final_state_hash = final_write.db.read().get_xof_db_hash();
-        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
         final_write
             .pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -532,7 +532,7 @@ fn test_bootstrap_server() {
                     .write_batch(batch, Default::default(), Some(next));
 
                 let final_state_hash = final_write.db.read().get_xof_db_hash();
-                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
                 final_write
                     .pos_state
                     .feed_cycle_state_hash(cycle, final_state_hash);
@@ -589,7 +589,7 @@ fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        get_peers(&keypair).0,
+        get_peers(keypair).0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );

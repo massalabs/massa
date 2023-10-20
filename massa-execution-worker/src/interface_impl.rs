@@ -1714,7 +1714,7 @@ mod tests {
         };
 
         let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
-        assert_eq!(is_valid, true);
+        assert!(is_valid);
 
         let mul = interface
             .scalar_mul_native_amount_wasmv1(&amount1, 2)
@@ -1870,8 +1870,7 @@ mod tests {
         let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
         println!(
             "do some compare with time1 = {}, time2 = {}",
-            time1.milliseconds.to_string(),
-            time2.milliseconds.to_string()
+            time1.milliseconds, time2.milliseconds
         );
 
         let cmp_res = interface
@@ -1986,7 +1985,7 @@ fn test_evm_verify() {
     // build the message
     let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
     let to_hash = [prefix.as_bytes(), message_].concat();
-    let full_hash = sha3::Keccak256::digest(&to_hash);
+    let full_hash = sha3::Keccak256::digest(to_hash);
     let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
 
     // parse the signature as being (r, s, v)

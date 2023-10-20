@@ -929,7 +929,7 @@ mod test {
             genesis_timestamp,
         };
 
-        return (final_state_config, ledger_config);
+        (final_state_config, ledger_config)
     }
 
     fn get_final_state() -> FinalState {
@@ -958,7 +958,7 @@ mod test {
         let selector_controller = Box::new(MockSelectorController::new());
         let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
-        let fstate = FinalState::new(
+        FinalState::new(
             db,
             final_state_config,
             Box::new(ledger),
@@ -966,9 +966,7 @@ mod test {
             mip_store,
             false,
         )
-        .expect("Cannot init final state");
-
-        return fstate;
+        .expect("Cannot init final state")
     }
 
     fn get_state_changes() -> StateChanges {
@@ -1017,7 +1015,7 @@ mod test {
         );
         state_changes.pos_changes = pos_changes;
 
-        return state_changes;
+        state_changes
     }
 
     #[test]
@@ -1118,13 +1116,13 @@ mod test {
             Slot::new(last_start_period_2, THREAD_COUNT - 1)
         );
 
-        assert_eq!(fstate2.is_db_valid(), false); // no trail hash
+        assert!(!fstate2.is_db_valid()); // no trail hash
         fstate2.init_execution_trail_hash_to_batch(&mut batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), None);
-        assert_eq!(fstate2.is_db_valid(), true);
+        assert!(fstate2.is_db_valid());
     }
 
     #[test]
@@ -1178,13 +1176,13 @@ mod test {
             Slot::new(last_start_period_2, THREAD_COUNT - 1)
         );
 
-        assert_eq!(fstate2.is_db_valid(), false); // no trail hash
+        assert!(!fstate2.is_db_valid()); // no trail hash
         fstate2.init_execution_trail_hash_to_batch(&mut batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), None);
-        assert_eq!(fstate2.is_db_valid(), true);
+        assert!(fstate2.is_db_valid());
     }
 
     #[test]

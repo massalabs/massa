@@ -40,7 +40,7 @@ fn test_add_operation() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {
@@ -96,7 +96,7 @@ fn test_add_irrelevant_operation() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {
@@ -151,7 +151,7 @@ fn test_pool() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {

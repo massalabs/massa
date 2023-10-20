@@ -94,7 +94,7 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -A clippy::uninlined-format-args
+          args: --no-deps --all-targets
 
   security:
     if: github.ref != 'refs/heads/staging'

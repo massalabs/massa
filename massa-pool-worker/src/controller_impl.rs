@@ -228,8 +228,8 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Get final consensus periods
-    fn get_final_cs_periods(&self) -> &Vec<u64> {
-        &self.last_cs_final_periods
+    fn get_final_cs_periods(&self) -> Vec<u64> {
+        self.last_cs_final_periods.clone()
     }
 }
 

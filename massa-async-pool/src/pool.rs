@@ -1067,7 +1067,7 @@ mod tests {
     }
 
     fn create_message() -> AsyncMessage {
-        let message = AsyncMessage::new(
+        AsyncMessage::new(
             Slot::new(1, 0),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -1085,8 +1085,7 @@ mod tests {
                 datastore_key: Some(vec![1, 2, 3, 4]),
             }),
             None,
-        );
-        return message;
+        )
     }
 
     #[test]
@@ -1118,7 +1117,7 @@ mod tests {
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
 
@@ -1175,7 +1174,7 @@ mod tests {
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1233,7 +1232,7 @@ mod tests {
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);

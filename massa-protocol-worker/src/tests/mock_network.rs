@@ -64,7 +64,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
             .keys()
             .map(|peer_id| {
                 (
-                    peer_id.clone(),
+                    *peer_id,
                     (
                         std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
                         PeerConnectionType::OUT,
@@ -156,12 +156,9 @@ impl MockNetworkController {
             }
         }
         // Otherwise, add to active connections and to peer_db
-        self.connections
-            .write()
-            .connections
-            .insert(peer_id.clone(), sender);
+        self.connections.write().connections.insert(peer_id, sender);
         self.peer_db.write().peers.insert(
-            peer_id.clone(),
+            peer_id,
             PeerInfo {
                 last_announce: None,
                 state: PeerState::Trusted,

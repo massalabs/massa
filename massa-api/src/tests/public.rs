@@ -113,7 +113,7 @@ async fn get_status() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -147,7 +147,7 @@ async fn get_cliques() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -171,7 +171,7 @@ async fn get_operations() {
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl
         .expect_contains_operations()
-        .returning(|ids| ids.into_iter().map(|_id| true).collect());
+        .returning(|ids| ids.iter().map(|_id| true).collect());
 
     let mut exec_ctrl = MockExecutionController::new();
     exec_ctrl
@@ -189,7 +189,7 @@ async fn get_operations() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![vec![
@@ -232,7 +232,7 @@ async fn get_endorsements() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -286,7 +286,7 @@ async fn get_blocks() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -311,7 +311,7 @@ async fn get_blockclique_block_by_slot() {
     let (mut api_public, config) = start_public_api(addr);
 
     let block = create_block(&KeyPair::generate(0).unwrap());
-    let id = block.id.clone();
+    let id = block.id;
 
     api_public.0.storage.store_block(block.clone());
 
@@ -330,7 +330,7 @@ async fn get_blockclique_block_by_slot() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -365,7 +365,7 @@ async fn get_graph_interval() {
         .expect_get_block_graph_status()
         .returning(|_start, _end| {
             let block = create_block(&KeyPair::generate(0).unwrap());
-            let id = block.id.clone();
+            let id = block.id;
 
             let mut active = PreHashMap::with_capacity(1);
             active.insert(
@@ -426,7 +426,7 @@ async fn get_graph_interval() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -474,7 +474,7 @@ async fn send_operations() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let keypair = KeyPair::generate(0).unwrap();
@@ -536,7 +536,7 @@ async fn get_filtered_sc_output_event() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -597,7 +597,7 @@ async fn execute_read_only_bytecode() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -678,7 +678,7 @@ async fn execute_read_only_call() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -743,7 +743,7 @@ async fn get_addresses() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -791,7 +791,7 @@ async fn get_datastore_entries() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -831,7 +831,7 @@ async fn wrong_api() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -1074,7 +1074,7 @@ async fn get_openrpc_spec() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -1100,7 +1100,7 @@ async fn get_openrpc_spec() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];
@@ -1124,19 +1124,19 @@ async fn get_stakers() {
         let mut map = std::collections::BTreeMap::new();
         map.insert(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            5 as u64,
+            5_u64,
         );
         map.insert(
             Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-            10 as u64,
+            10_u64,
         );
         map.insert(
             Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
-            20 as u64,
+            20_u64,
         );
         map.insert(
             Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
-            30 as u64,
+            30_u64,
         );
 
         map
@@ -1152,7 +1152,7 @@ async fn get_stakers() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![];

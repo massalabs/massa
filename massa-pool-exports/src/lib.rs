@@ -14,7 +14,7 @@ pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
 
 #[cfg(feature = "testing")]
-pub use controller_traits::MockPoolController;
+pub use controller_traits::{MockPoolController, MockPoolControllerWrapper};
 
 /// Test utils
 #[cfg(feature = "testing")]

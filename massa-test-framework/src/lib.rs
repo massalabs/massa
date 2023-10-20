@@ -1,4 +1,4 @@
-use std::sync::{Condvar, Mutex};
+use std::sync::{Arc, Condvar, Mutex};
 
 use massa_hash::Hash;
 use massa_models::{
@@ -59,30 +59,42 @@ pub trait TestUniverse {
     }
 }
 
-pub struct Breakpoint {
+pub struct Breakpoint(Arc<BreakpointInner>);
+
+struct BreakpointInner {
     mutex: Mutex<bool>,
     condvar: Condvar,
 }
 
+impl Default for Breakpoint {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Breakpoint {
     pub fn new() -> Self {
-        Self {
+        Self(Arc::new(BreakpointInner {
             mutex: Mutex::new(false),
             condvar: Condvar::new(),
-        }
+        }))
+    }
+
+    pub fn get_trigger_handle(&self) -> Breakpoint {
+        Breakpoint(self.0.clone())
     }
 
     pub fn wait(&self) {
-        let mut started = self.mutex.lock().unwrap();
+        let mut started = self.0.mutex.lock().unwrap();
         while !*started {
-            started = self.condvar.wait(started).unwrap();
+            started = self.0.condvar.wait(started).unwrap();
         }
     }
 
     pub fn trigger(&self) {
-        let mut started = self.mutex.lock().unwrap();
+        let mut started = self.0.mutex.lock().unwrap();
         *started = true;
         // We notify the condvar that the value has changed.
-        self.condvar.notify_one();
+        self.0.condvar.notify_one();
     }
 }

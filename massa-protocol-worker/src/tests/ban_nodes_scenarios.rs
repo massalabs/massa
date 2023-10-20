@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use massa_consensus_exports::MockConsensusController;
@@ -14,11 +13,10 @@ use massa_signature::KeyPair;
 use massa_test_framework::{Breakpoint, TestUniverse};
 use massa_time::MassaTime;
 use mockall::predicate;
-use parking_lot::RwLock;
 
-use crate::handlers::peer_handler::models::{PeerDB, PeerInfo, PeerState};
+use crate::handlers::peer_handler::models::{PeerInfo, PeerState};
 use crate::wrap_network::ActiveConnectionsTrait;
-use crate::wrap_network::{MockActiveConnectionsTraitWrapper, MockNetworkController};
+use crate::wrap_network::MockActiveConnectionsTraitWrapper;
 use crate::{
     handlers::{
         block_handler::{BlockInfoReply, BlockMessage},
@@ -36,7 +34,8 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     protocol_config.thread_count = 2;
     protocol_config.unban_everyone_timer = MassaTime::from_millis(2500);
 
-    let peer_db = Arc::new(RwLock::new(PeerDB::default()));
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    let peer_db = foreign_controllers.peer_db.clone();
 
     let block_creator = KeyPair::generate(0).unwrap();
     let block = ProtocolTestUniverse::create_block(&block_creator);
@@ -56,36 +55,24 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
         );
     }
 
-    let breakpoint = Arc::new(Breakpoint::new());
-    let breakpoint2 = breakpoint.clone();
+    let breakpoint = Breakpoint::new();
+    let breakpoint_trigger_handle = breakpoint.get_trigger_handle();
 
-    let mut consensus_controller = Box::new(MockConsensusController::new());
-    consensus_controller
-        .expect_clone_box()
-        .returning(|| Box::new(MockConsensusController::new()));
-    consensus_controller
+    foreign_controllers
+        .consensus_controller
         .expect_register_block_header()
         .return_once(move |block_id, header| {
             assert_eq!(block_id, block.id);
             assert_eq!(header.id, block.content.header.id);
         });
-    let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller
-        .expect_clone_box()
-        .returning(|| Box::new(MockPoolController::new()));
-    let mut selector_controller = Box::new(MockSelectorController::new());
-    selector_controller
-        .expect_clone_box()
-        .returning(|| Box::new(MockSelectorController::new()));
-    let mut network_controller = Box::new(MockNetworkController::new());
-    let mut ac = MockActiveConnectionsTraitWrapper::new();
-    ac.set_expectations(|active_connections| {
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    shared_active_connections.set_expectations(|active_connections| {
         active_connections
             .expect_get_peers_connected()
             .returning(move || {
                 let mut peers = HashMap::new();
                 peers.insert(
-                    node_a_peer_id.clone(),
+                    node_a_peer_id,
                     (
                         std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
                         PeerConnectionType::OUT,
@@ -99,31 +86,23 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             .expect_get_peer_ids_connected()
             .returning(move || {
                 let mut peers = HashSet::new();
-                peers.insert(node_a_peer_id.clone());
+                peers.insert(node_a_peer_id);
                 peers
             });
 
         active_connections
             .expect_shutdown_connection()
             .times(1)
-            .with(predicate::eq(node_a_peer_id.clone()))
+            .with(predicate::eq(node_a_peer_id))
             .returning(move |_| {
-                breakpoint2.trigger();
+                breakpoint_trigger_handle.trigger();
             });
     });
-    network_controller
+    foreign_controllers
+        .network_controller
         .expect_get_active_connections()
-        .returning(move || Box::new(ac.clone()));
-    let universe = ProtocolTestUniverse::new(
-        ProtocolForeignControllers {
-            consensus_controller,
-            pool_controller,
-            selector_controller,
-            network_controller,
-            peer_db: peer_db.clone(),
-        },
-        protocol_config,
-    );
+        .returning(move || Box::new(shared_active_connections.clone()));
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,

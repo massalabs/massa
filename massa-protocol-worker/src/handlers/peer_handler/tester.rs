@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use crate::{ip::to_canonical, messages::MessagesHandler};
+use crate::{ip::to_canonical, messages::MessagesHandler, wrap_peer_db::PeerDBTrait};
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender, MassaChannel};
 use massa_metrics::MassaMetrics;
 use massa_models::version::VersionDeserializer;
@@ -187,7 +187,7 @@ impl Tester {
                             let mut peer_db_write = peer_db.write();
                             peer_db_write
                                 .peers
-                                .entry(peer_id.clone())
+                                .entry(peer_id)
                                 .and_modify(|info| {
                                     if let Some(last_announce) = &info.last_announce {
                                         if last_announce.timestamp < announcement.timestamp {
@@ -203,7 +203,7 @@ impl Tester {
                                     state: super::PeerState::Trusted,
                                 });
                         }
-                        Ok(peer_id.clone())
+                        Ok(peer_id)
                     }
                     1 => {
                         messages_handler.handle(

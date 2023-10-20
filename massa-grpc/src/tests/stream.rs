@@ -47,7 +47,7 @@ async fn transactions_throughput_stream() {
             );
 
             ExecutionStats {
-                time_window_start: now.clone(),
+                time_window_start: now,
                 time_window_end: futur,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
@@ -74,7 +74,7 @@ async fn transactions_throughput_stream() {
             );
 
             ExecutionStats {
-                time_window_start: now.clone(),
+                time_window_start: now,
                 time_window_end: futur,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
@@ -97,7 +97,7 @@ async fn transactions_throughput_stream() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -129,7 +129,7 @@ async fn transactions_throughput_stream() {
         if count < 2 {
             // firsts messages should be received in less than 1.5 seconds
             assert!(time_to_get_msg < 1.5);
-        } else if count >= 2 && count < 4 {
+        } else if (2..4).contains(&count) {
             // next 2 messages should be received in less than 3.5 seconds and more than 2.5 seconds (filter interval is 3 seconds)
             assert!(time_to_get_msg < 3.5 && time_to_get_msg > 2.5);
         } else {
@@ -166,7 +166,7 @@ async fn new_operations() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -404,7 +404,7 @@ async fn new_blocks() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -660,7 +660,7 @@ async fn new_endorsements() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -870,7 +870,7 @@ async fn new_filled_blocks() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1076,7 +1076,7 @@ async fn new_slot_execution_outputs() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1258,7 +1258,7 @@ async fn send_operations() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1409,7 +1409,7 @@ async fn send_endorsements() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1494,7 +1494,7 @@ async fn send_blocks() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();

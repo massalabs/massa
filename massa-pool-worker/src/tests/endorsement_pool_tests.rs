@@ -13,7 +13,7 @@ fn default_mock_selector(address: Address) -> Box<MockSelectorController> {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_get_selection().returning(move |_| {
             Ok(Selection {
-                producer: address.clone(),
+                producer: address,
                 endorsements: vec![address; 16],
             })
         });
@@ -22,12 +22,12 @@ fn default_mock_selector(address: Address) -> Box<MockSelectorController> {
                 let mut res = BTreeMap::default();
                 let start = slots.start();
                 let end = slots.end();
-                let mut current = start.clone();
+                let mut current = *start;
                 while current <= *end {
                     res.insert(
-                        current.clone(),
+                        current,
                         Selection {
-                            producer: address.clone(),
+                            producer: address,
                             endorsements: vec![address; 16],
                         },
                     );
@@ -39,7 +39,7 @@ fn default_mock_selector(address: Address) -> Box<MockSelectorController> {
     });
     res.expect_get_selection().returning(move |_| {
         Ok(Selection {
-            producer: address.clone(),
+            producer: address,
             endorsements: vec![address; 16],
         })
     });
@@ -51,7 +51,7 @@ fn test_add_endorsements() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = default_mock_selector(address.clone());
+    let selector_controller = default_mock_selector(address);
     pool_test(
         PoolConfig::default(),
         execution_controller,
@@ -84,7 +84,7 @@ fn test_dont_add_endorsements_bad_pos() {
                 let sender_keypair = KeyPair::generate(0).unwrap();
                 let address2 = Address::from_public_key(&sender_keypair.get_public_key());
                 Ok(Selection {
-                    producer: address.clone(),
+                    producer: address,
                     endorsements: vec![address2; 16],
                 })
             });
@@ -93,12 +93,12 @@ fn test_dont_add_endorsements_bad_pos() {
                     let mut res = BTreeMap::default();
                     let start = slots.start();
                     let end = slots.end();
-                    let mut current = start.clone();
+                    let mut current = *start;
                     while current <= *end {
                         res.insert(
-                            current.clone(),
+                            current,
                             Selection {
-                                producer: address.clone(),
+                                producer: address,
                                 endorsements: vec![address; 16],
                             },
                         );
@@ -110,7 +110,7 @@ fn test_dont_add_endorsements_bad_pos() {
         });
         res.expect_get_selection().returning(move |_| {
             Ok(Selection {
-                producer: address.clone(),
+                producer: address,
                 endorsements: vec![address; 16],
             })
         });
@@ -140,7 +140,7 @@ fn test_dont_add_endorsements_outdated() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = default_mock_selector(address.clone());
+    let selector_controller = default_mock_selector(address);
 
     pool_test(
         PoolConfig::default(),
@@ -167,7 +167,7 @@ fn test_dont_add_endorsements_pool_full() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = default_mock_selector(address.clone());
+    let selector_controller = default_mock_selector(address);
     let mut cfg = PoolConfig::default();
     cfg.max_endorsements_pool_size_per_thread = 1;
     pool_test(
@@ -193,7 +193,7 @@ fn test_remove_endorsements_pool_outdated() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = default_mock_selector(address.clone());
+    let selector_controller = default_mock_selector(address);
     pool_test(
         PoolConfig::default(),
         execution_controller,
@@ -210,7 +210,7 @@ fn test_remove_endorsements_pool_outdated() {
             pool.notify_final_cs_periods(&vec![1; THREAD_COUNT as usize]);
             std::thread::sleep(Duration::from_secs(2));
             assert_eq!(
-                pool.contains_endorsements(&vec![endorsements[0].id, endorsements[1].id]),
+                pool.contains_endorsements(&[endorsements[0].id, endorsements[1].id]),
                 vec![false, true]
             );
             assert_eq!(pool.get_endorsement_count(), 1);
@@ -223,7 +223,7 @@ fn test_get_block_endorsements_works() {
     let sender_keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
-    let selector_controller = default_mock_selector(address.clone());
+    let selector_controller = default_mock_selector(address);
 
     pool_test(
         PoolConfig::default(),

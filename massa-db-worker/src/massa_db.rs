@@ -911,13 +911,13 @@ mod test {
 
         // Checks up
         let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
-        let cf_exists_1 = cfs.iter().find(|cf| cf == &"state").is_some();
-        let cf_exists_2 = cfs.iter().find(|cf| cf == &"metadata").is_some();
-        let cf_exists_3 = cfs.iter().find(|cf| cf == &"versioning").is_some();
+        let cf_exists_1 = cfs.iter().any(|cf| &cf == &"state");
+        let cf_exists_2 = cfs.iter().any(|cf| &cf == &"metadata");
+        let cf_exists_3 = cfs.iter().any(|cf| &cf == &"versioning");
         println!("cfs: {:?}", cfs);
-        assert_eq!(cf_exists_1, true);
-        assert_eq!(cf_exists_2, true);
-        assert_eq!(cf_exists_3, true);
+        assert!(cf_exists_1);
+        assert!(cf_exists_2);
+        assert!(cf_exists_3);
         for col in cfs {
             if col == "metadata" {
                 continue;
@@ -1027,9 +1027,9 @@ mod test {
         // Add some datas then remove using prefix
         batch.clear();
         db.read()
-            .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &vec![1]);
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);
         db.read()
-            .put_or_update_entry_value(&mut batch, vec![97, 98, 2], &vec![2]);
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 2], &[2]);
         let v3 = vec![200, 101, 1];
         let k3 = vec![101];
         db.read()
@@ -1039,7 +1039,7 @@ mod test {
             .write_batch(batch.clone(), versioning_batch.clone(), None);
 
         // "ab".as_bytes == [97, 98]
-        db.write().delete_prefix(&"ab", "state", None);
+        db.write().delete_prefix("ab", "state", None);
         assert_eq!(dump_column(db.clone(), "state"), BTreeMap::from([(v3, k3)]))
     }
 

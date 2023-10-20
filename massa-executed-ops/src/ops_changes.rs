@@ -139,7 +139,7 @@ mod test {
 
         let slot_1 = Slot::new(1, 0);
         let op_id_1 = OperationId::new(Hash::compute_from(&[0]));
-        changes.insert(op_id_1.clone(), (true, slot_1));
+        changes.insert(op_id_1, (true, slot_1));
         let slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + 2, 3);
         let op_id_2 = OperationId::new(Hash::compute_from(&[1]));
         changes.insert(op_id_2, (true, slot_2));
