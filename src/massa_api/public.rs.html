@@ -1500,12 +1500,12 @@
         <span class="kw">let </span>consensus_stats_result = <span class="self">self</span>.<span class="number">0</span>.consensus_controller.get_stats();
         <span class="kw">let </span>consensus_stats = <span class="kw">match </span>consensus_stats_result {
             <span class="prelude-val">Ok</span>(consensus_stats) =&gt; consensus_stats,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e.to_string()).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
         <span class="kw">let </span>(network_stats, peers) = <span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.protocol_controller.get_stats() {
             <span class="prelude-val">Ok</span>((stats, peers)) =&gt; (stats, peers),
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ProtocolError(e.to_string()).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ProtocolError(e).into()),
         };
 
         <span class="kw">let </span>pool_stats = (
@@ -1892,7 +1892,7 @@
             .get_block_graph_status(start_slot, end_slot)
         {
             <span class="prelude-val">Ok</span>(graph) =&gt; graph,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e.to_string()).into()),
+            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::ConsensusError(e).into()),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(graph.active_blocks.len());
