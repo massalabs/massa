@@ -35,6 +35,7 @@ crossbeam-channel = {workspace = true, "optional" = true}   # BOM UPGRADE     Re
 massa_pool_exports = {workspace = true, features = ["testing"]}
 massa_pos_exports = {workspace = true, features = ["testing"]}
 massa_protocol_exports = {workspace = true, features = ["testing"]}
+massa_test_framework = {workspace = true}
 mockall = {workspace = true}
 rand = {workspace = true}
 itertools = {workspace = true}

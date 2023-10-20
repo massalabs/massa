@@ -2771,6 +2771,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "mockall",
  "num",

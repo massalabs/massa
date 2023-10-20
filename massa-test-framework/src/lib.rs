@@ -13,7 +13,7 @@ use tracing_subscriber::filter::LevelFilter;
 
 pub trait TestUniverse {
     type ForeignControllers;
-    type Config;
+    type Config: Default;
 
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self;
 
