@@ -3,11 +3,8 @@
 use displaydoc::Display;
 use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 
-// use massa_consensus_exports::error::ConsensusError;
-// use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
-// use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
