@@ -2624,12 +2624,9 @@ version = "0.26.1"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
- "massa_consensus_exports",
- "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
  "massa_models",
- "massa_protocol_exports",
  "massa_signature",
  "massa_time",
  "massa_versioning",

@@ -362,12 +362,12 @@ impl MassaRpcServer for API<Public> {
         let consensus_stats_result = self.0.consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
         let (network_stats, peers) = match self.0.protocol_controller.get_stats() {
             Ok((stats, peers)) => (stats, peers),
-            Err(e) => return Err(ApiError::ProtocolError(e).into()),
+            Err(e) => return Err(ApiError::ProtocolError(e.to_string()).into()),
         };
 
         let pool_stats = (
@@ -754,7 +754,7 @@ impl MassaRpcServer for API<Public> {
             .get_block_graph_status(start_slot, end_slot)
         {
             Ok(graph) => graph,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
         let mut res = Vec::with_capacity(graph.active_blocks.len());
