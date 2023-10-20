@@ -285,8 +285,10 @@ mod tests {
             .0
             .insert(message2.compute_id(), SetUpdateOrDelete::Delete);
 
-        let mut update3 = AsyncMessageUpdate::default();
-        update3.coins = SetOrKeep::Set(Amount::from_str("3").unwrap());
+        let update3 = AsyncMessageUpdate {
+            coins: SetOrKeep::Set(Amount::from_str("3").unwrap()),
+            ..Default::default()
+        };
 
         changes
             .0

@@ -860,7 +860,6 @@ mod test {
         MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
         PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
     };
-    use massa_models::prehash::PreHashMap;
     use massa_pos_exports::MockSelectorController;
     use massa_pos_exports::{PoSChanges, PoSConfig, PosError};
     use massa_time::MassaTime;
@@ -1008,7 +1007,6 @@ mod test {
         state_changes.ledger_changes = ledger_changes;
 
         let mut pos_changes = PoSChanges::default();
-        pos_changes.roll_changes = PreHashMap::default();
         pos_changes.roll_changes.insert(
             Address::from_str("AU12r1iM79EcS3sa4dmtUp28TiaPxK1weQcLsATcFoynPdukjdMqM").unwrap(),
             0,

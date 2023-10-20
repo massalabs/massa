@@ -250,10 +250,10 @@ mod test {
             self.ledger_changes == other.ledger_changes &&
                 self.async_pool_changes == other.async_pool_changes &&
                 // pos_changes
-                self.pos_changes.seed_bits == self.pos_changes.seed_bits &&
-                self.pos_changes.roll_changes == self.pos_changes.roll_changes &&
-                self.pos_changes.production_stats == self.pos_changes.production_stats &&
-                self.pos_changes.deferred_credits.credits == self.pos_changes.deferred_credits.credits &&
+                self.pos_changes.seed_bits == other.pos_changes.seed_bits &&
+                self.pos_changes.roll_changes == other.pos_changes.roll_changes &&
+                self.pos_changes.production_stats == other.pos_changes.production_stats &&
+                self.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &&
                 self.executed_ops_changes == other.executed_ops_changes &&
                 self.executed_denunciations_changes == other.executed_denunciations_changes &&
                 self.execution_trail_hash_change == other.execution_trail_hash_change

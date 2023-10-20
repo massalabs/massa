@@ -1089,7 +1089,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pool_ser_deser_empty<'a>() {
+    fn test_pool_ser_deser_empty() {
         let config = AsyncPoolConfig::default();
         let temp_dir = tempdir().expect("Unable to create a temp folder");
         let db_config = MassaDBConfig {
@@ -1113,7 +1113,7 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message_ids: Vec<&'a AsyncMessageId> = vec![];
+        let message_ids: Vec<&AsyncMessageId> = vec![];
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
@@ -1279,8 +1279,10 @@ mod tests {
 
         let mut batch2 = DBBatch::new();
         pool.delete_entry(&message_id, &mut batch2);
-        let mut message_update = AsyncMessageUpdate::default();
-        message_update.function = SetOrKeep::Set("test0".to_string());
+        let message_update = AsyncMessageUpdate {
+            function: SetOrKeep::Set("test0".to_string()),
+            ..Default::default()
+        };
         pool.update_entry(&message2_id, message_update, &mut batch2);
 
         let versioning_batch2 = DBBatch::new();
