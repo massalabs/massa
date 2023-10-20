@@ -3,11 +3,11 @@
 use displaydoc::Display;
 use jsonrpsee::types::{ErrorObject, ErrorObjectOwned};
 
-use massa_consensus_exports::error::ConsensusError;
-use massa_execution_exports::ExecutionError;
+// use massa_consensus_exports::error::ConsensusError;
+// use massa_execution_exports::ExecutionError;
 use massa_hash::MassaHashError;
 use massa_models::error::ModelsError;
-use massa_protocol_exports::ProtocolError;
+// use massa_protocol_exports::ProtocolError;
 use massa_time::TimeError;
 use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
@@ -23,11 +23,11 @@ pub enum ApiError {
     /// `massa_hash` error: {0}
     MassaHashError(#[from] MassaHashError),
     /// consensus error: {0}
-    ConsensusError(#[from] ConsensusError),
+    ConsensusError(String),
     /// execution error: {0}
-    ExecutionError(#[from] ExecutionError),
+    ExecutionError(String),
     /// Protocol error: {0}
-    ProtocolError(#[from] ProtocolError),
+    ProtocolError(String),
     /// Models error: {0}
     ModelsError(#[from] ModelsError),
     /// Time error: {0}
@@ -48,7 +48,7 @@ pub enum ApiError {
     BadRequest(String),
     /// Internal server error: {0}
     InternalServerError(String),
-    /// Factory error: {0}
+    /// Versioning Factory error: {0}
     FactoryError(#[from] FactoryError),
 }
 

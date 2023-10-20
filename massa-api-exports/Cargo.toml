@@ -19,10 +19,10 @@ massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_models = {workspace = true}
 massa_final_state = {workspace = true}
-massa_consensus_exports = {workspace = true}
+# massa_consensus_exports = {workspace = true}
 massa_hash = {workspace = true}
-massa_protocol_exports = {workspace = true}
-massa_execution_exports = {workspace = true}
+# massa_protocol_exports = {workspace = true}
+# massa_execution_exports = {workspace = true}
 massa_wallet = {workspace = true}
 massa_versioning = {workspace = true}
 

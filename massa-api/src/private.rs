@@ -168,7 +168,7 @@ impl MassaRpcServer for API<Private> {
             .collect();
         protocol_controller
             .ban_peers(peer_ids)
-            .map_err(|e| ApiError::ProtocolError(e).into())
+            .map_err(|e| ApiError::ProtocolError(e.to_string()).into())
     }
 
     async fn node_unban_by_id(&self, ids: Vec<NodeId>) -> RpcResult<()> {
@@ -180,7 +180,7 @@ impl MassaRpcServer for API<Private> {
             .collect();
         protocol_controller
             .unban_peers(peer_ids)
-            .map_err(|e| ApiError::ProtocolError(e).into())
+            .map_err(|e| ApiError::ProtocolError(e.to_string()).into())
     }
 
     async fn node_unban_by_ip(&self, _ips: Vec<IpAddr>) -> RpcResult<()> {
