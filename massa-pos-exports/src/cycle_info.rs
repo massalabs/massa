@@ -503,7 +503,7 @@ mod test {
         );
         cycle_info1.final_state_hash_snapshot = Some(HashXof::from_bytes(&[2u8; 512]));
 
-        return (cycle_info1, addr1, addr2);
+        (cycle_info1, addr1, addr2)
     }
 
     #[test]

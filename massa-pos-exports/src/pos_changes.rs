@@ -234,11 +234,12 @@ mod test {
         let mut def_credits = DeferredCredits::default();
         def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("300.0").unwrap());
 
-        let mut pos_changes = PoSChanges::default();
-        pos_changes.roll_changes = roll_changes;
-        pos_changes.seed_bits = BitVec::from_vec(vec![1, 0, 1, 1]);
-        pos_changes.production_stats = prod_stats;
-        pos_changes.deferred_credits = DeferredCredits::default();
+        let pos_changes = PoSChanges {
+            roll_changes,
+            seed_bits: BitVec::from_vec(vec![1, 0, 1, 1]),
+            production_stats: prod_stats,
+            deferred_credits: DeferredCredits::default(),
+        };
 
         let mut buf = Vec::new();
         let serializer = PoSChangesSerializer::new();
