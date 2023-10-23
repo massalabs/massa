@@ -3585,7 +3585,7 @@
                         }
                     }
 
-                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
                     </span><span class="kw">if </span>m_info.activation_delay &lt; VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = <span class="prelude-val">Some</span>(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -4210,7 +4210,7 @@
         </span><span class="kw">let </span>start = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">1</span>, <span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
         <span class="kw">let </span>timeout = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">7</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
 
-        (
+        <span class="kw">return </span>(
             start,
             timeout,
             MipInfo {
@@ -4221,7 +4221,7 @@
                 timeout,
                 activation_delay: MassaTime::from_millis(<span class="number">20</span>),
             },
-        )
+        );
     }
 
     <span class="attr">#[test]
@@ -4487,7 +4487,7 @@
             timeout: MassaTime::from_millis(<span class="number">5</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
-        <span class="comment">// Another versioning info (from an attacker) for test-exports
+        <span class="comment">// Another versioning info (from an attacker) for testing
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
@@ -4512,11 +4512,11 @@
             history: Default::default(),
         };
         <span class="comment">// At state Defined but no history -&gt; false
-        </span><span class="macro">assert!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_err());
+        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">false</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>vsh = MipState::new(MassaTime::from_millis(<span class="number">1</span>));
         <span class="comment">// At state Defined at time 1 -&gt; true, given vi_1 @ time 1
-        </span><span class="macro">assert!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok());
+        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// At state Defined at time 1 -&gt; false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_consistent_with(&amp;vi_1, MassaTime::from_millis(3)), false);
 
@@ -4530,9 +4530,9 @@
 
         <span class="comment">// At state Started at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::started(Ratio::new_raw(<span class="number">14</span>, <span class="number">100</span>)));
-        <span class="macro">assert!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok());
+        <span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
         <span class="comment">// Now with another versioning info
-        </span><span class="macro">assert!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_2).is_err());
+        </span><span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_2).is_ok(), <span class="bool-val">false</span>);
 
         <span class="comment">// Advance to LockedIn
         </span><span class="kw">let </span>now = MassaTime::from_millis(<span class="number">4</span>);
@@ -4541,7 +4541,7 @@
 
         <span class="comment">// At state LockedIn at time now -&gt; true
         </span><span class="macro">assert_eq!</span>(vsh.state, ComponentState::locked_in(now));
-        <span class="macro">assert!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok());
+        <span class="macro">assert_eq!</span>(vsh.is_consistent_with(<span class="kw-2">&amp;</span>vi_1).is_ok(), <span class="bool-val">true</span>);
 
         <span class="comment">// edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -4673,7 +4673,7 @@
                     ],
                     mip_stats_cfg.clone(),
                 ));
-                <span class="macro">assert!</span>(_store_2_.is_err());
+                <span class="macro">assert_eq!</span>(_store_2_.is_err(), <span class="bool-val">true</span>);
             }
         }
 
@@ -4845,7 +4845,7 @@
         };
 
         <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config));
-        <span class="macro">assert!</span>(mip_store.is_ok());
+        <span class="macro">assert_eq!</span>(mip_store.is_ok(), <span class="bool-val">true</span>);
     }
 
     <span class="attr">#[test]
@@ -5123,7 +5123,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(

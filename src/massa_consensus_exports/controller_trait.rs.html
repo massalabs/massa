@@ -150,7 +150,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 
 <span class="doccomment">/// Interface that communicates with the graph worker thread
-</span><span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
+</span><span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="kw">pub trait </span>ConsensusController: Send + Sync {
     <span class="doccomment">/// Get an export of a part of the graph
     ///

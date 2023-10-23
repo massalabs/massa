@@ -324,7 +324,7 @@
     }
 
     <span class="doccomment">/// Generate a version 0 block id from an hash used only for tests
-    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
     </span><span class="kw">pub fn </span>generate_from_hash(hash: Hash) -&gt; BlockId {
         BlockId::BlockIdV0(BlockIdV0(hash))
     }

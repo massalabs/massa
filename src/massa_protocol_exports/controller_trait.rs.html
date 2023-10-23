@@ -114,7 +114,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
 
-<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
+<span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="kw">pub trait </span>ProtocolController: Send + Sync {
     <span class="doccomment">/// Perform all operations needed to stop the ProtocolController
     /// without dropping it completely yet.

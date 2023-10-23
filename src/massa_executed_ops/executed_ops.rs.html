@@ -748,7 +748,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -761,7 +761,7 @@
 
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span>op_id_1 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">0</span>]));
-        changes.insert(op_id_1, (<span class="bool-val">true</span>, slot_1));
+        changes.insert(op_id_1.clone(), (<span class="bool-val">true</span>, slot_1));
         <span class="kw">let </span>slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + <span class="number">2</span>, <span class="number">3</span>);
         <span class="kw">let </span>op_id_2 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>]));
         changes.insert(op_id_2, (<span class="bool-val">true</span>, slot_2));
@@ -806,13 +806,13 @@
         <span class="kw">let </span>db_a_config = MassaDBConfig {
             path: tempdir_a.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
         };
         <span class="kw">let </span>db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
         };
 
