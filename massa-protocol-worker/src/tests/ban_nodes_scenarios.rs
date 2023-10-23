@@ -46,7 +46,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     {
-        peer_db.write().peers.insert(
+        peer_db.write().get_peers_mut().insert(
             node_a_peer_id,
             PeerInfo {
                 last_announce: None,
@@ -112,12 +112,22 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     );
     breakpoint.wait();
     assert_eq!(
-        peer_db.read().peers.get(&node_a_peer_id).unwrap().state,
+        peer_db
+            .read()
+            .get_peers()
+            .get(&node_a_peer_id)
+            .unwrap()
+            .state,
         PeerState::Banned
     );
     std::thread::sleep(std::time::Duration::from_millis(2700));
     assert_eq!(
-        peer_db.read().peers.get(&node_a_peer_id).unwrap().state,
+        peer_db
+            .read()
+            .get_peers()
+            .get(&node_a_peer_id)
+            .unwrap()
+            .state,
         PeerState::HandshakeFailed
     );
 }

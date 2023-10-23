@@ -150,14 +150,14 @@ impl MockNetworkController {
         let (sender, receiver) = MassaChannel::new("create_fake_connection".to_string(), None);
 
         // Don't fake connect if we are banned
-        if let Some(peer_info) = self.peer_db.read().peers.get(&peer_id) {
+        if let Some(peer_info) = self.peer_db.read().get_peers().get(&peer_id) {
             if peer_info.state == PeerState::Banned {
                 return (peer_id, receiver);
             }
         }
         // Otherwise, add to active connections and to peer_db
         self.connections.write().connections.insert(peer_id, sender);
-        self.peer_db.write().peers.insert(
+        self.peer_db.write().get_peers_mut().insert(
             peer_id,
             PeerInfo {
                 last_announce: None,

@@ -60,7 +60,7 @@ impl ProtocolForeignControllers {
             pool_controller: Box::new(MockPoolControllerWrapper::new()),
             selector_controller: Box::new(MockSelectorControllerWrapper::new()),
             network_controller: Box::new(MockNetworkController::new()),
-            peer_db: Arc::new(RwLock::new(PeerDB::default())),
+            peer_db: Arc::new(RwLock::new(Box::new(PeerDB::default()))),
         }
     }
 }

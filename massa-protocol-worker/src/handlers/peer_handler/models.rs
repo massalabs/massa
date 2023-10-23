@@ -158,7 +158,7 @@ pub struct PeerDB {
     pub peers_in_test: HashSet<SocketAddr>,
 }
 
-pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
+pub type SharedPeerDB = Arc<RwLock<Box<dyn PeerDBTrait>>>;
 
 pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
@@ -281,7 +281,6 @@ impl PeerDBTrait for PeerDB {
     }
 
     fn clone_box(&self) -> Box<dyn PeerDBTrait> {
-        println!("AURELIEN: clone_box");
         Box::new(self.clone())
     }
 
@@ -291,37 +290,104 @@ impl PeerDBTrait for PeerDB {
             .filter(|peer| peer.state == PeerState::Banned)
             .count() as u64
     }
+
+    fn get_known_peer_count(&self) -> u64 {
+        self.peers.len() as u64
+    }
+
+    fn get_peers(&self) -> &HashMap<PeerId, PeerInfo> {
+        &self.peers
+    }
+
+    fn get_peers_mut(&mut self) -> &mut HashMap<PeerId, PeerInfo> {
+        &mut self.peers
+    }
+
+    fn get_connection_metadata_or_default(&self, addr: &SocketAddr) -> ConnectionMetadata {
+        self.try_connect_history
+            .get(addr)
+            .cloned()
+            .unwrap_or(ConnectionMetadata::default())
+    }
+
+    fn set_try_connect_success_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .try_connect();
+    }
+
+    fn set_try_connect_failure_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .failure();
+    }
+
+    fn set_try_connect_test_success_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_success();
+    }
+
+    fn set_try_connect_test_failure_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_failure();
+    }
+
+    fn get_peers_in_test(&self) -> &HashSet<SocketAddr> {
+        &self.peers_in_test
+    }
+
+    fn insert_peer_in_test(&mut self, addr: &SocketAddr) -> bool {
+        self.peers_in_test.insert(*addr)
+    }
+
+    fn remove_peer_in_test(&mut self, addr: &SocketAddr) -> bool {
+        self.peers_in_test.remove(addr)
+    }
+
+    fn insert_tested_address(&mut self, addr: &SocketAddr, time: MassaTime) {
+        self.tested_addresses.insert(*addr, time);
+    }
+
+    fn get_tested_addresses(&self) -> &HashMap<SocketAddr, MassaTime> {
+        &self.tested_addresses
+    }
 }
 
-impl PeerDBTrait for SharedPeerDB {
-    fn ban_peer(&mut self, peer_id: &PeerId) {
-        self.write().ban_peer(peer_id);
-    }
+// impl PeerDBTrait for SharedPeerDB {
+//     fn ban_peer(&mut self, peer_id: &PeerId) {
+//         self.write().ban_peer(peer_id);
+//     }
 
-    fn unban_peer(&mut self, peer_id: &PeerId) {
-        self.write().unban_peer(peer_id);
-    }
+//     fn unban_peer(&mut self, peer_id: &PeerId) {
+//         self.write().unban_peer(peer_id);
+//     }
 
-    fn clone_box(&self) -> Box<dyn PeerDBTrait> {
-        Box::new(self.clone())
-    }
+//     fn clone_box(&self) -> Box<dyn PeerDBTrait> {
+//         Box::new(self.clone())
+//     }
 
-    fn get_oldest_peer(
-        &self,
-        cooldown: Duration,
-        in_test: &HashSet<SocketAddr>,
-    ) -> Option<SocketAddr> {
-        self.read().get_oldest_peer(cooldown, in_test)
-    }
+//     fn get_oldest_peer(
+//         &self,
+//         cooldown: Duration,
+//         in_test: &HashSet<SocketAddr>,
+//     ) -> Option<SocketAddr> {
+//         self.read().get_oldest_peer(cooldown, in_test)
+//     }
 
-    fn get_rand_peers_to_send(
-        &self,
-        nb_peers: usize,
-    ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
-        self.read().get_rand_peers_to_send(nb_peers)
-    }
+//     fn get_rand_peers_to_send(
+//         &self,
+//         nb_peers: usize,
+//     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
+//         self.read().get_rand_peers_to_send(nb_peers)
+//     }
 
-    fn get_banned_peer_count(&self) -> u64 {
-        self.read().get_banned_peer_count()
-    }
-}
+//     fn get_banned_peer_count(&self) -> u64 {
+//         self.read().get_banned_peer_count()
+//     }
+// }

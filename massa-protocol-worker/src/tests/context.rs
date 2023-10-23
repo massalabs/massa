@@ -4,6 +4,7 @@ use crate::{
     connectivity::start_connectivity_thread, create_protocol_controller,
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
+    wrap_peer_db::PeerDBTrait,
 };
 use massa_channel::MassaChannel;
 use massa_consensus_exports::{ConsensusController, MockConsensusController};
@@ -60,7 +61,8 @@ pub fn start_protocol_controller_with_mock_network(
         keypair
     };
     debug!("starting protocol controller with mock network");
-    let peer_db = Arc::new(RwLock::new(PeerDB::default()));
+    let peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
+        Arc::new(RwLock::new(Box::new(PeerDB::default())));
 
     let (sender_operations, receiver_operations) = MassaChannel::new(
         "operations".to_string(),

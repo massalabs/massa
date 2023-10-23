@@ -29,9 +29,8 @@ use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
-use crate::wrap_peer_db::PeerDBTrait;
 
-use self::models::{ConnectionMetadata, PeerInfo};
+use self::models::PeerInfo;
 use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
@@ -180,7 +179,7 @@ impl PeerManagementHandler {
                                 }
                             };
                             // check if peer is banned
-                            if let Some(peer) = peer_db.read().peers.get(&peer_id) {
+                            if let Some(peer) = peer_db.read().get_peers().get(&peer_id) {
                                 if peer.state == PeerState::Banned {
                                     warn!("Banned peer sent us a message: {:?}", peer_id);
                                     continue;
@@ -292,11 +291,7 @@ impl MassaHandshake {
 
     fn handshake_fail(&mut self, addr: &SocketAddr) {
         let mut peer_db_write = self.peer_db.write();
-        peer_db_write
-            .try_connect_history
-            .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
-            .failure();
+        peer_db_write.set_try_connect_failure_or_insert(addr);
     }
 }
 
@@ -365,7 +360,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             })?;
         {
             let peer_db_read = self.peer_db.read();
-            if let Some(info) = peer_db_read.peers.get(&peer_id) {
+            if let Some(info) = peer_db_read.get_peers().get(&peer_id) {
                 if info.state == PeerState::Banned {
                     debug!("Banned peer tried to connect: {:?}", peer_id);
                 }
@@ -375,9 +370,12 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
         let res = {
             {
                 let mut peer_db_write = self.peer_db.write();
-                peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                    info.state = PeerState::InHandshake;
-                });
+                peer_db_write
+                    .get_peers_mut()
+                    .entry(peer_id)
+                    .and_modify(|info| {
+                        info.state = PeerState::InHandshake;
+                    });
             }
 
             let (received, version) = self
@@ -509,13 +507,9 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             match &res {
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
+                    peer_db_write.set_try_connect_success_or_insert(&addr);
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .success();
-                    peer_db_write
-                        .peers
+                        .get_peers_mut()
                         .entry(*peer_id)
                         .and_modify(|info| {
                             info.last_announce = Some(announcement.clone());
@@ -527,30 +521,28 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         });
                 }
                 Ok((_peer_id, None)) => {
-                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                        info.state = PeerState::HandshakeFailed;
-                    });
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .failure();
+                        .get_peers_mut()
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                            info.state = PeerState::HandshakeFailed;
+                        });
+                    peer_db_write.set_try_connect_failure_or_insert(&addr);
                     return Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some("Distant peer don't have slot for us.".to_string()),
                     ));
                 }
                 Err(_) => {
+                    peer_db_write.set_try_connect_failure_or_insert(&addr);
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .failure();
-                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                        info.state = PeerState::HandshakeFailed;
-                    });
+                        .get_peers_mut()
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                            info.state = PeerState::HandshakeFailed;
+                        });
                 }
             }
         }
@@ -634,7 +626,7 @@ mod tests {
     use parking_lot::RwLock;
     use peernet::{peer::InitConnectionHandler, transports::endpoint::Endpoint};
 
-    use crate::{context::Context, messages::MessagesHandler};
+    use crate::{context::Context, messages::MessagesHandler, wrap_peer_db::PeerDBTrait};
 
     use super::models::PeerDB;
 
@@ -644,7 +636,8 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
+            Arc::new(RwLock::new(Box::new(PeerDB::default())));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
@@ -705,7 +698,8 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
+            Arc::new(RwLock::new(Box::new(PeerDB::default())));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
@@ -750,7 +744,8 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
+        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
+            Arc::new(RwLock::new(Box::new(PeerDB::default())));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
