@@ -155,28 +155,6 @@
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
@@ -332,28 +310,6 @@
             <span class="self">self</span>.active_rolls, <span class="self">self</span>.final_rolls, <span class="self">self</span>.candidate_rolls
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
-    }
-}
-
-<span class="doccomment">/// filter used when retrieving address informations
-</span><span class="attr">#[derive(Debug, Deserialize, Clone, Serialize)]
-</span><span class="kw">pub struct </span>AddressFilter {
-    <span class="doccomment">/// Address
-    </span><span class="kw">pub </span>address: Address,
-
-    <span class="doccomment">/// true means final
-    /// false means candidate
-    </span><span class="kw">pub </span>is_final: bool,
-}
-
-<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>AddressFilter {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;Address: {:?}&quot;</span>, <span class="self">self</span>.address)<span class="question-mark">?</span>;
-        <span class="kw">if </span><span class="self">self</span>.is_final {
-            <span class="macro">write!</span>(f, <span class="string">&quot; (Final)&quot;</span>)
-        } <span class="kw">else </span>{
-            <span class="macro">write!</span>(f, <span class="string">&quot; (Candidate)&quot;</span>)
-        }
     }
 }
 </code></pre></div></section></main></body></html>
