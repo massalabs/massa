@@ -20,11 +20,13 @@ use nom::error::{context, ContextError, ParseError};
 use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
-use serde::{ser::SerializeSeq, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::{hash_map, BTreeMap};
 use std::ops::Bound::Included;
 
 /// represents an update to one or more fields of a `LedgerEntry`
+#[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct LedgerEntryUpdate {
     /// change the balance
@@ -32,24 +34,8 @@ pub struct LedgerEntryUpdate {
     /// change the executable bytecode
     pub bytecode: SetOrKeep<Bytecode>,
     /// change datastore entries
-    #[serde(serialize_with = "as_array")]
+    #[serde_as(as = "Vec<(_, _)>")]
     pub datastore: BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
-}
-
-// Serializer for `datastore` field of `LedgerEntryUpdate`
-fn as_array<S>(
-    datastore: &BTreeMap<Vec<u8>, SetOrDelete<Vec<u8>>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let mut seq = serializer.serialize_seq(Some(datastore.len()))?;
-    for (key, value) in datastore {
-        seq.serialize_element(&(&key, &value))?;
-    }
-
-    seq.end()
 }
 
 /// Serializer for `datastore` field of `LedgerEntryUpdate`
