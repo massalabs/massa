@@ -7,8 +7,8 @@ use massa_consensus_exports::MockConsensusController;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_pool_exports::MockPoolController;
 use massa_pos_exports::MockSelectorController;
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
-use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_test_framework::{Breakpoint, TestUniverse};
 use massa_time::MassaTime;
@@ -32,32 +32,68 @@ use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut protocol_config = ProtocolConfig::default();
     protocol_config.thread_count = 2;
-    protocol_config.unban_everyone_timer = MassaTime::from_millis(2500);
+    protocol_config.unban_everyone_timer = MassaTime::from_millis(1000);
 
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    let peer_db = foreign_controllers.peer_db.clone();
 
     let block_creator = KeyPair::generate(0).unwrap();
     let block = ProtocolTestUniverse::create_block(&block_creator);
     let mut block_bad_public_key = block.clone();
     block_bad_public_key.content.header.content_creator_pub_key =
         KeyPair::generate(0).unwrap().get_public_key();
-
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
-    {
-        peer_db.write().get_peers_mut().insert(
-            node_a_peer_id,
-            PeerInfo {
-                last_announce: None,
-                state: PeerState::Trusted,
-            },
-        );
-    }
 
-    let breakpoint = Breakpoint::new();
-    let breakpoint_trigger_handle = breakpoint.get_trigger_handle();
+    let ban_breakpoint = Breakpoint::new();
+    let ban_breakpoint_trigger_handle = ban_breakpoint.get_trigger_handle();
+    let unban_breakpoint = Breakpoint::new();
+    let unban_breakpoint_trigger_handle = unban_breakpoint.get_trigger_handle();
 
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers_mut()
+        .times(1)
+        .returning(move || {
+            let mut peers = HashMap::new();
+            peers.insert(
+                node_a_peer_id,
+                PeerInfo {
+                    last_announce: None,
+                    state: PeerState::Trusted,
+                },
+            );
+            peers
+        });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .returning(move |peer_id| {
+            assert_eq!(peer_id, &node_a_peer_id);
+            ban_breakpoint_trigger_handle.trigger();
+        });
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_unban_peer()
+        .returning(move |peer_id| {
+            assert_eq!(peer_id, &node_a_peer_id);
+            unban_breakpoint_trigger_handle.trigger();
+        });
+    let mut peers = HashMap::new();
+    peers.insert(
+        node_a_peer_id,
+        PeerInfo {
+            last_announce: None,
+            state: PeerState::Banned,
+        },
+    );
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_peers()
+        .return_const(peers);
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -68,40 +104,23 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
     shared_active_connections.set_expectations(|active_connections| {
         active_connections
-            .expect_get_peers_connected()
-            .returning(move || {
-                let mut peers = HashMap::new();
-                peers.insert(
-                    node_a_peer_id,
-                    (
-                        std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
-                        PeerConnectionType::OUT,
-                        None,
-                    ),
-                );
-                peers
-            });
-
-        active_connections
             .expect_get_peer_ids_connected()
             .returning(move || {
                 let mut peers = HashSet::new();
                 peers.insert(node_a_peer_id);
                 peers
             });
-
         active_connections
             .expect_shutdown_connection()
             .times(1)
             .with(predicate::eq(node_a_peer_id))
-            .returning(move |_| {
-                breakpoint_trigger_handle.trigger();
-            });
+            .returning(move |_| {});
     });
     foreign_controllers
         .network_controller
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
+
     let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
@@ -110,26 +129,8 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
             block_bad_public_key.content.header.clone(),
         ))),
     );
-    breakpoint.wait();
-    assert_eq!(
-        peer_db
-            .read()
-            .get_peers()
-            .get(&node_a_peer_id)
-            .unwrap()
-            .state,
-        PeerState::Banned
-    );
-    std::thread::sleep(std::time::Duration::from_millis(2700));
-    assert_eq!(
-        peer_db
-            .read()
-            .get_peers()
-            .get(&node_a_peer_id)
-            .unwrap()
-            .state,
-        PeerState::HandshakeFailed
-    );
+    ban_breakpoint.wait();
+    unban_breakpoint.wait();
 }
 
 #[test]

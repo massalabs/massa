@@ -626,7 +626,7 @@ mod tests {
     use parking_lot::RwLock;
     use peernet::{peer::InitConnectionHandler, transports::endpoint::Endpoint};
 
-    use crate::{context::Context, messages::MessagesHandler, wrap_peer_db::PeerDBTrait};
+    use crate::{context::Context, messages::MessagesHandler};
 
     use super::models::PeerDB;
 
@@ -636,8 +636,7 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
-            Arc::new(RwLock::new(Box::new(PeerDB::default())));
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
@@ -698,8 +697,7 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
-            Arc::new(RwLock::new(Box::new(PeerDB::default())));
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {
@@ -744,8 +742,7 @@ mod tests {
         let (sender_endorsements, _) = MassaChannel::new(String::from("test_endorsements"), None);
         let (sender_operations, _) = MassaChannel::new(String::from("test_operations"), None);
         let (sender_peers, _) = MassaChannel::new(String::from("test_peers"), None);
-        let shared_peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
-            Arc::new(RwLock::new(Box::new(PeerDB::default())));
+        let shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         let mut handshake = super::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         let our_keypair = KeyPair::generate(0).unwrap();
         let messages_handlers = MessagesHandler {

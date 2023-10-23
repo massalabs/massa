@@ -51,7 +51,6 @@ use crate::{
     manager::ProtocolManagerImpl,
     messages::MessagesHandler,
     wrap_network::NetworkControllerImpl,
-    wrap_peer_db::PeerDBTrait,
 };
 
 pub struct ProtocolChannels {
@@ -189,8 +188,7 @@ pub fn start_protocol_controller(
     massa_metrics: MassaMetrics,
 ) -> Result<(Box<dyn ProtocolManager>, KeyPair, NodeId), ProtocolError> {
     debug!("starting protocol controller");
-    let peer_db: Arc<RwLock<Box<dyn PeerDBTrait>>> =
-        Arc::new(RwLock::new(Box::<PeerDB>::default()));
+    let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
     let (sender_operations, receiver_operations) = MassaChannel::new(
         "sender_operations".to_string(),

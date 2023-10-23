@@ -21,14 +21,12 @@ use crate::{
         block_handler::BlockMessageSerializer,
         endorsement_handler::EndorsementMessageSerializer,
         operation_handler::OperationMessageSerializer,
-        peer_handler::{
-            models::{PeerDB, SharedPeerDB},
-            PeerManagementMessageSerializer,
-        },
+        peer_handler::{models::SharedPeerDB, PeerManagementMessageSerializer},
     },
     manager::ProtocolManagerImpl,
     messages::{Message, MessagesHandler, MessagesSerializer},
     wrap_network::{MockNetworkController, NetworkController},
+    wrap_peer_db::MockPeerDBTrait,
 };
 use massa_metrics::MassaMetrics;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
@@ -49,8 +47,7 @@ pub struct ProtocolForeignControllers {
     pub pool_controller: Box<MockPoolControllerWrapper>,
     pub selector_controller: Box<MockSelectorControllerWrapper>,
     pub network_controller: Box<MockNetworkController>,
-    //TODO: Mock it
-    pub peer_db: SharedPeerDB,
+    pub peer_db: Arc<RwLock<MockPeerDBTrait>>,
 }
 
 impl ProtocolForeignControllers {
@@ -60,7 +57,7 @@ impl ProtocolForeignControllers {
             pool_controller: Box::new(MockPoolControllerWrapper::new()),
             selector_controller: Box::new(MockSelectorControllerWrapper::new()),
             network_controller: Box::new(MockNetworkController::new()),
-            peer_db: Arc::new(RwLock::new(Box::new(PeerDB::default()))),
+            peer_db: Arc::new(RwLock::new(MockPeerDBTrait::new())),
         }
     }
 }

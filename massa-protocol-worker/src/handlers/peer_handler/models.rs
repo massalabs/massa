@@ -158,7 +158,7 @@ pub struct PeerDB {
     pub peers_in_test: HashSet<SocketAddr>,
 }
 
-pub type SharedPeerDB = Arc<RwLock<Box<dyn PeerDBTrait>>>;
+pub type SharedPeerDB = Arc<RwLock<dyn PeerDBTrait>>;
 
 pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
