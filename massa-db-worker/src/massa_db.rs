@@ -865,7 +865,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -897,7 +897,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -979,7 +979,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1062,7 +1062,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1109,7 +1109,7 @@ mod test {
             let db_backup_1_config = MassaDBConfig {
                 path: backup_1,
                 max_history_length: 100,
-                max_new_elements: 100,
+                max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
             let mut db_backup_1_opts = MassaDB::default_db_opts();
@@ -1131,7 +1131,7 @@ mod test {
             let db_backup_2_config = MassaDBConfig {
                 path: backup_2,
                 max_history_length: 100,
-                max_new_elements: 100,
+                max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
             let mut db_backup_2_opts = MassaDB::default_db_opts();
@@ -1162,7 +1162,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1207,7 +1207,7 @@ mod test {
             let db_backup_config = MassaDBConfig {
                 path: backup_path.clone(),
                 max_history_length: 100,
-                max_new_elements: 100,
+                max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
             // let db_backup_2_opts = MassaDB::default_db_opts();
@@ -1251,11 +1251,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_new_elements = 100;
+        let max_versioning_elements_size = 100;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements,
+            max_versioning_elements_size,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1343,11 +1343,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_new_elements = 100;
+        let max_versioning_elements_size = 100;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements,
+            max_versioning_elements_size,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1431,11 +1431,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_new_elements = 1;
+        let max_versioning_elements_size = 1;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements,
+            max_versioning_elements_size,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1515,11 +1515,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_new_elements = 2;
+        let max_versioning_elements_size = 2;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements,
+            max_versioning_elements_size,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();

@@ -1797,7 +1797,7 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -2259,7 +2259,7 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -2362,8 +2362,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
             thread_count: 2,
+            max_versioning_elements_size: 100,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>

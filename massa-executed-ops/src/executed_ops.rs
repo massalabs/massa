@@ -282,26 +282,6 @@ mod test {
     use massa_models::prehash::PreHashMap;
     use massa_models::secure_share::Id;
 
-    // initialize the executed ops config
-    let thread_count = 2;
-    let config = ExecutedOpsConfig {
-        thread_count,
-        keep_executed_history_extra_periods: 2,
-    };
-    let tempdir_a = TempDir::new().expect("cannot create temp directory");
-    let tempdir_c = TempDir::new().expect("cannot create temp directory");
-    let db_a_config = MassaDBConfig {
-        path: tempdir_a.path().to_path_buf(),
-        max_history_length: 10,
-        max_versioning_elements_size: 100_000,
-        thread_count,
-    };
-    let db_c_config = MassaDBConfig {
-        path: tempdir_c.path().to_path_buf(),
-        max_history_length: 10,
-        max_versioning_elements_size: 100_000,
-        thread_count,
-    };
     use super::*;
 
     #[test]
@@ -318,7 +298,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db = Arc::new(RwLock::new(
@@ -376,13 +356,13 @@ mod test {
         let db_a_config = MassaDBConfig {
             path: tempdir_a.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count,
         };
         let db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_versioning_elements_size: 100,
             thread_count,
         };
 
