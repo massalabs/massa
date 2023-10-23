@@ -17,7 +17,7 @@ use prometheus::{register_int_gauge, Gauge, Histogram, IntCounter, IntGauge};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
-// #[cfg(not(feature = "testing"))]
+// #[cfg(not(feature = "test-exports"))]
 mod server;
 
 lazy_static! {
@@ -192,7 +192,7 @@ impl MassaMetrics {
                 "consensus thread actual period",
             )
             .expect("Failed to create gauge");
-            #[cfg(not(feature = "testing"))]
+            #[cfg(not(feature = "test-exports"))]
             {
                 let _ = prometheus::register(Box::new(gauge.clone()));
             }
@@ -410,7 +410,7 @@ impl MassaMetrics {
         let mut stopper = MetricsStopper::default();
 
         if enabled {
-            #[cfg(not(feature = "testing"))]
+            #[cfg(not(feature = "test-exports"))]
             {
                 let _ = prometheus::register(Box::new(final_cursor_thread.clone()));
                 let _ = prometheus::register(Box::new(final_cursor_period.clone()));

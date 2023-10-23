@@ -200,7 +200,7 @@ impl FinalState {
             })?;
 
         // This is needed for `test_bootstrap_server` to work
-        if cfg!(feature = "testing") {
+        if cfg!(feature = "test-exports") {
             let mut batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(&mut batch);
             final_state

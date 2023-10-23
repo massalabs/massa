@@ -615,7 +615,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
     }
 }
 
-#[cfg(all(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use std::{collections::HashMap, ops::Deref, sync::Arc};
 

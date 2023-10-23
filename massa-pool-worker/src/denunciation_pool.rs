@@ -44,7 +44,7 @@ impl DenunciationPool {
     }
 
     /// Checks whether an element is stored in the pool - only used in unit tests for now
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     pub fn _contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()

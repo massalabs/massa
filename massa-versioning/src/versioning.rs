@@ -934,7 +934,7 @@ impl MipStoreRaw {
                         }
                     }
 
-                    #[cfg(not(feature = "testing"))]
+                    #[cfg(not(feature = "test-exports"))]
                     if m_info.activation_delay < VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = Some(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -1836,7 +1836,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        // Another versioning info (from an attacker) for testing
+        // Another versioning info (from an attacker) for test-exports
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,

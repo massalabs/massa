@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 sandbox = []
-testing = []
+test-exports = []
 
 [dependencies]
 paginate = {workspace = true}

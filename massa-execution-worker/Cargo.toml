@@ -13,25 +13,25 @@ sandbox = ["massa_async_pool/sandbox"]
 gas_calibration = [
     "massa-sc-runtime/gas_calibration",
     "massa_execution_exports/gas_calibration",
-    "massa_final_state/testing",
+    "massa_final_state/test-exports",
     "massa_pos_worker",
     "massa_ledger_worker",
     "massa_db_worker",
     "tempfile",
 ]
-testing = [
-    "massa_execution_exports/testing",
-    "massa_ledger_exports/testing",
-    "massa_pos_exports/testing",
-    "massa_final_state/testing",
+test-exports = [
+    "massa_execution_exports/test-exports",
+    "massa_ledger_exports/test-exports",
+    "massa_pos_exports/test-exports",
+    "massa_final_state/test-exports",
     "massa-sc-runtime/testing",
-    "massa_wallet/testing",
+    "massa_wallet/test-exports",
     "tempfile",
     "massa_pos_worker",
     "massa_ledger_worker",
-    "massa_metrics/testing",
+    "massa_metrics/test-exports",
     "massa_db_worker",
-    "massa_metrics/testing",
+    "massa_metrics/test-exports",
 ]
 benchmarking = [
     "massa-sc-runtime/gas_calibration",
@@ -85,14 +85,14 @@ massa-proto-rs = { workspace = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }
-massa_execution_exports = { workspace = true, features = ["testing"] }
-massa_final_state = { workspace = true, features = ["testing"] }
-massa_ledger_exports = { workspace = true, features = ["testing"] }
-massa_pos_exports = { workspace = true, features = ["testing"] }
+massa_execution_exports = { workspace = true, features = ["test-exports"] }
+massa_final_state = { workspace = true, features = ["test-exports"] }
+massa_ledger_exports = { workspace = true, features = ["test-exports"] }
+massa_pos_exports = { workspace = true, features = ["test-exports"] }
 massa_pos_worker = { workspace = true }
 massa-sc-runtime = { workspace = true, features = ["testing"] }
-massa_wallet = { workspace = true, features = ["testing"] }
-massa_metrics = { workspace = true, features = ["testing"] }
+massa_wallet = { workspace = true, features = ["test-exports"] }
+massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_db_worker = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 massa_ledger_worker = { workspace = true }

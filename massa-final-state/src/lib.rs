@@ -30,7 +30,7 @@
 //!
 //! ## Test exports
 //!
-//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
 //!
 //! # Network restart documentation
@@ -102,5 +102,5 @@ pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSeri
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

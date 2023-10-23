@@ -12,22 +12,22 @@
 //! The only place where it's safe to use it is in files named `settings.rs`
 //! or `config.rs`
 //!
-//! # Testing or default
+//! # test-exports or default
 //!
 //! You have access to the constants (in test or in normal mode) with the
 //! following imports. When you have a doubt for the import, use the auto
 //! dispatcher `use massa_models::constants::*;`
 //!
 //! ```ignore
-//! // Classic import automatically root to `testings` or `default`
+//! // Classic import automatically root to `test-exportss` or `default`
 //! // depending on the compilation context.
 //! use massa_models::constants::*;
 //!
 //! // Force to import the nominal constants
 //! use massa_models::constants::default::*;
 //!
-//! // Force to import the testings constants
-//! use massa_models::constants::default_testing::*;
+//! // Force to import the test-exportss constants
+//! use massa_models::constants::default_test-exports::*;
 //! ```
 //!
 //! # Note about rooting
@@ -39,10 +39,10 @@
 //! |1|1| 1           | 0
 //! ```
 //!
-//! `#[cfg(any(not(feature = "testing"), feature = "sandbox"))]`
+//! `#[cfg(any(not(feature = "test-exports"), feature = "sandbox"))]`
 //! On `cargo run --release` or `cargo run --features sandbox`
 //!
-//! #`[cfg(all(feature = "testing", not(feature = "sandbox")))]`
+//! #`[cfg(all(feature = "test-exports", not(feature = "sandbox")))]`
 //! On `cargo run` or `cargo test`
 //!
 
@@ -51,12 +51,12 @@
 // We can force the access to one of defined value (test or not)
 // with `use massa_config::exported_constants::CONST_VALUE`
 // Nevertheless the design is more like using `massa_config::CONST_VALUE`
-// and defining in `Cargo.toml` if we are testing or not
+// and defining in `Cargo.toml` if we are test-exports or not
 // ```toml
 // [dependencies]
 //     massa_config = { path = "../massa-config" }
 // [dev-dependencies]
-//     massa_config = { path = "../massa-config", features = ["testing"] }
+//     massa_config = { path = "../massa-config", features = ["test-exports"] }
 // ```
 //
 

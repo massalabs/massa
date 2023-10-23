@@ -37,14 +37,14 @@ pub(crate) struct SpeculativeLedger {
     #[cfg(all(
         not(feature = "gas_calibration"),
         not(feature = "benchmarking"),
-        not(feature = "testing"),
+        not(feature = "test-exports"),
         not(test)
     ))]
     added_changes: LedgerChanges,
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing",
+        feature = "test-exports",
         test
     ))]
     pub added_changes: LedgerChanges,

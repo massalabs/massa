@@ -1171,11 +1171,11 @@ impl TryFrom<(&DenunciationPrecursor, &DenunciationPrecursor)> for Denunciation 
 
 // End Denunciation interest
 
-// testing
+// test-exports
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, feature = "test-exports"))]
 impl Denunciation {
-    /// Used under testing conditions to validate an instance of Self
+    /// Used under test-exports conditions to validate an instance of Self
     pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         if !self.is_valid() {
             return Err(format!("Denunciation is invalid: {:?}", self).into());
@@ -1184,7 +1184,7 @@ impl Denunciation {
     }
 }
 
-// end testing
+// end test-exports
 
 #[cfg(test)]
 mod tests {

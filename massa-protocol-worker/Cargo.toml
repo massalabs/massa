@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_protocol_exports/testing", "tempfile", "massa_pool_exports/testing", "massa_consensus_exports/testing", "massa_metrics/testing", "peernet/testing"]
+test-exports = ["massa_protocol_exports/test-exports", "tempfile", "massa_pool_exports/test-exports", "massa_consensus_exports/test-exports", "massa_metrics/test-exports", "peernet/testing"]
 
 [dependencies]
 tracing = {workspace = true, "features" = ["log"]}   # BOM UPGRADE     Revert to {"version": "0.1", "features": ["log"]} if problem
@@ -42,3 +42,4 @@ massa_test_framework = {workspace = true}
 mockall = {workspace = true}
 mockall_wrap = {workspace = true}
 num = {workspace = true}
+peernet = {workspace = true, features = ["testing"]}

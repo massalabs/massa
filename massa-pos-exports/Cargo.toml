@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["crossbeam-channel", "massa_models/testing", "mockall", "mockall_wrap"]
+test-exports = ["crossbeam-channel", "massa_models/test-exports", "mockall", "mockall_wrap"]
 
 [dependencies]
 bitvec = {workspace = true, "features" = ["serde"]}

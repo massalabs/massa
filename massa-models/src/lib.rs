@@ -66,5 +66,5 @@ pub mod timeslots;
 pub mod version;
 
 /// Test utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

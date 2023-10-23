@@ -4,7 +4,7 @@ version = "0.26.1"
 edition = "2021"
 
 [features]
-testing = []
+test-exports = []
 
 [dependencies]
 jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
@@ -37,7 +37,7 @@ massa_wallet = { workspace = true }
 
 
 [dev-dependencies]
-massa_consensus_exports = { workspace = true, "features" = ["testing"] }
+massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
 tempfile = { workspace = true }
 num = { workspace = true }
 massa_final_state = { workspace = true }

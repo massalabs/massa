@@ -14,8 +14,8 @@ pub use peernet::peer::PeerConnectionType;
 pub use peernet::transports::TransportType;
 pub use settings::{PeerCategoryInfo, ProtocolConfig};
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub use controller_trait::MockProtocolController;

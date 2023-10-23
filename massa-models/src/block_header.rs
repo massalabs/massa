@@ -45,7 +45,7 @@ pub struct BlockHeader {
 }
 
 // TODO: gh-issue #3398
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, feature = "test-exports"))]
 impl BlockHeader {
     /// This is an intentional duplication of invariant checks. In production code,
     /// these checks are dispersed throughout the deserialization process. This test-only function
@@ -120,7 +120,7 @@ impl SecuredHeader {
     }
     // TODO: gh-issue #3398
     #[allow(dead_code)]
-    #[cfg(any(test, feature = "testing"))]
+    #[cfg(any(test, feature = "test-exports"))]
     pub(crate) fn assert_invariants(
         &self,
         thread_count: u8,
@@ -457,7 +457,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             };
 
             // TODO: gh-issue #3398
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-exports"))]
             res.assert_invariants(self.thread_count, self.endorsement_count)
                 .unwrap();
 
@@ -536,7 +536,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         };
 
         // TODO: gh-issue #3398
-        #[cfg(any(test, feature = "testing"))]
+        #[cfg(any(test, feature = "test-exports"))]
         header
             .assert_invariants(self.thread_count, self.endorsement_count)
             .unwrap();
@@ -614,7 +614,7 @@ mod test {
     };
     use massa_signature::{verify_signature_batch, KeyPair};
 
-    // Only for testing purpose
+    // Only for test-exports purpose
     impl PartialEq for BlockHeader {
         fn eq(&self, other: &Self) -> bool {
             self.slot == other.slot

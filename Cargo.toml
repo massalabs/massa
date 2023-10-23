@@ -52,8 +52,8 @@ opt-level = 3 # Speed-up the CI
 
 # # Features
 #
-# * testing: enable some tests specific exports.
-# Usage: add testing = ["massa_crate/testing", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
+# * test-exports: enable some tests specific exports.
+# Usage: add test-exports = ["massa_crate/test-exports", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
 # Do not add as a regular dependency. Never.
 #
 # * sandbox: for testing purpose, genesis timestamps is set as now + 9 seconds.

@@ -32,7 +32,7 @@
 //!
 //! ## Test exports
 //!
-//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
 #![warn(missing_docs)]
@@ -46,5 +46,5 @@ pub use ledger::FinalLedger;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

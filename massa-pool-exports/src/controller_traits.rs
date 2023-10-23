@@ -9,11 +9,11 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 use std::sync::{Arc, RwLock};
 
 /// Trait defining a pool controller
-#[cfg_attr(feature = "testing", mockall_wrap::wrap, mockall::automock)]
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait PoolController: Send + Sync {
     /// Asynchronously add operations to pool. Simply print a warning on failure.
     fn add_operations(&mut self, ops: Storage);
