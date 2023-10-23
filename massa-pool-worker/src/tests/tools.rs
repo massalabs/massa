@@ -16,7 +16,7 @@ use massa_models::{
     secure_share::SecureShareContent,
     slot::Slot,
 };
-use massa_pool_exports::{PoolChannels, PoolConfig, PoolController, PoolManager};
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolController, PoolManager};
 use massa_pos_exports::MockSelectorController as AutoMockSelectorController;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -117,8 +117,10 @@ impl PoolTestBoilerPlate {
             &storage,
             PoolChannels {
                 execution_controller: execution_story,
-                endorsement_sender,
-                operation_sender,
+                broadcasts: PoolBroadcasts {
+                    endorsement_sender,
+                    operation_sender,
+                },
                 selector: selector_story,
             },
             wallet,
@@ -132,10 +134,11 @@ impl PoolTestBoilerPlate {
     }
 }
 
-pub fn operation_pool_test<F>(
+pub fn pool_test<F>(
     cfg: PoolConfig,
     execution_controller: Box<MockExecutionController>,
     selector: Box<AutoMockSelectorController>,
+    staker: Option<(Address, KeyPair)>,
     test: F,
 ) where
     F: FnOnce(Box<dyn PoolController>, Storage),
@@ -147,14 +150,19 @@ pub fn operation_pool_test<F>(
     let address = Address::from_public_key(&keypair.get_public_key());
     let mut addresses = PreHashMap::default();
     addresses.insert(address, keypair);
+    if let Some((address, keypair)) = staker {
+        addresses.insert(address, keypair);
+    }
     let wallet = Arc::new(RwLock::new(create_test_wallet(Some(addresses))));
     let (mut pool_manager, pool_controller) = start_pool_controller(
         cfg,
         &storage,
         PoolChannels {
             execution_controller,
-            endorsement_sender,
-            operation_sender,
+            broadcasts: PoolBroadcasts {
+                endorsement_sender,
+                operation_sender,
+            },
             selector,
         },
         wallet,
@@ -164,13 +172,42 @@ pub fn operation_pool_test<F>(
 }
 
 /// Creates an endorsement for use in pool tests.
-pub fn _create_endorsement(slot: Slot) -> SecureShareEndorsement {
-    let sender_keypair = KeyPair::generate(0).unwrap();
-
+pub fn create_endorsement(
+    sender_keypair: &KeyPair,
+    index: u32,
+    slot: Slot,
+) -> SecureShareEndorsement {
     let content = Endorsement {
         slot,
-        index: 0,
+        index,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blabla".as_bytes())),
     };
     Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
+}
+
+// Create a execution controller that will return the same result for all as it's not always used
+// but as the others pools are running also, we need to return something
+pub fn default_mock_execution_controller() -> Box<MockExecutionController> {
+    let mut res = Box::new(MockExecutionController::new());
+    res.expect_clone_box().returning(|| {
+        let mut story = MockExecutionController::new();
+        story
+            .expect_get_ops_exec_status()
+            .returning(|ops| vec![(None, None); ops.len()]);
+        story
+            .expect_get_final_and_candidate_balance()
+            .returning(|addrs| {
+                vec![
+                    (
+                        // Operations need to be paid for
+                        Some(Amount::const_init(1_000_000_000, 0)),
+                        Some(Amount::const_init(1_000_000_000, 0)),
+                    );
+                    addrs.len()
+                ]
+            });
+
+        Box::new(story)
+    });
+    res
 }

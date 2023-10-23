@@ -9,9 +9,12 @@ mod channels;
 mod config;
 mod controller_traits;
 
-pub use channels::PoolChannels;
+pub use channels::{PoolBroadcasts, PoolChannels};
 pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
+
+#[cfg(feature = "testing")]
+pub use controller_traits::MockPoolController;
 
 /// Test utils
 #[cfg(feature = "testing")]

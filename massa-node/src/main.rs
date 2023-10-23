@@ -24,7 +24,9 @@ use massa_bootstrap::{
 use massa_channel::receiver::MassaReceiver;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
-use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
+use massa_consensus_exports::{
+    ConsensusBroadcasts, ConsensusChannels, ConsensusConfig, ConsensusManager,
+};
 use massa_consensus_worker::start_consensus_worker;
 use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
@@ -77,7 +79,7 @@ use massa_models::config::{
     POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
-use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -154,36 +156,40 @@ async fn launch(
         }
     }
 
-    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    // Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
     #[cfg(not(feature = "bootstrap_server"))]
-    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
-        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
+    {
+        use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+        use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
 
-        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            *GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            panic!(
+        // Simulate downtime
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        #[cfg(not(feature = "bootstrap_server"))]
+        if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+            let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
+            if let Ok(Some(end_period)) =
+                massa_models::timeslots::get_latest_block_slot_at_timestamp(
+                    THREAD_COUNT,
+                    T0,
+                    *GENESIS_TIMESTAMP,
+                    DOWNTIME_END_TIMESTAMP,
+                )
+            {
+                panic!(
                 "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
                 days, hours, mins, secs, end_period.period
             );
-        }
+            }
 
-        panic!(
+            panic!(
             "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
             days, hours, mins, secs,
         );
+        }
     }
-
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -555,9 +561,14 @@ async fn launch(
     };
 
     let pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+        broadcasts: PoolBroadcasts {
+            endorsement_sender: broadcast::channel(
+                pool_config.broadcast_endorsements_channel_capacity,
+            )
             .0,
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
+            operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity)
+                .0,
+        },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
     };
@@ -708,15 +719,17 @@ async fn launch(
         pool_controller: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_controller: protocol_controller.clone(),
-        block_header_sender: broadcast::channel(
-            consensus_config.broadcast_blocks_headers_channel_capacity,
-        )
-        .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
-        filled_block_sender: broadcast::channel(
-            consensus_config.broadcast_filled_blocks_channel_capacity,
-        )
-        .0,
+        broadcasts: ConsensusBroadcasts {
+            block_header_sender: broadcast::channel(
+                consensus_config.broadcast_blocks_headers_channel_capacity,
+            )
+            .0,
+            block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
+            filled_block_sender: broadcast::channel(
+                consensus_config.broadcast_filled_blocks_channel_capacity,
+            )
+            .0,
+        },
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -830,9 +843,9 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
-        consensus_channels.clone(),
+        consensus_channels.broadcasts.clone(),
         execution_controller.clone(),
-        pool_channels.clone(),
+        pool_channels.broadcasts.clone(),
         api_config.clone(),
         *VERSION,
     );
@@ -861,10 +874,10 @@ async fn launch(
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
-            consensus_channels: consensus_channels.clone(),
+            consensus_broadcasts: consensus_channels.broadcasts.clone(),
             execution_controller: execution_controller.clone(),
             execution_channels,
-            pool_channels,
+            pool_broadcasts: pool_channels.broadcasts.clone(),
             pool_controller: pool_controller.clone(),
             protocol_controller: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),

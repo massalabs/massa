@@ -26,6 +26,7 @@ use massa_execution_exports::{
 };
 use massa_models::{
     address::Address,
+    amount::Amount,
     block::{Block, BlockGraphStatus},
     block_id::BlockId,
     clique::Clique,
@@ -133,6 +134,7 @@ impl MassaRpcServer for API<Public> {
             bytecode,
             operation_datastore,
             is_final,
+            fee,
         } in reqs
         {
             let address = if let Some(addr) = address {
@@ -186,6 +188,8 @@ impl MassaRpcServer for API<Public> {
                     operation_datastore: op_datastore,
                 }],
                 is_final,
+                coins: None,
+                fee,
             };
 
             // run
@@ -231,6 +235,8 @@ impl MassaRpcServer for API<Public> {
             parameter,
             caller_address,
             is_final,
+            coins,
+            fee,
         } in reqs
         {
             let caller_address = if let Some(addr) = caller_address {
@@ -269,12 +275,14 @@ impl MassaRpcServer for API<Public> {
                     },
                     ExecutionStackElement {
                         address: target_address,
-                        coins: Default::default(),
+                        coins: coins.unwrap_or(Amount::default()),
                         owned_addresses: vec![target_address],
                         operation_datastore: None, // should always be None
                     },
                 ],
                 is_final,
+                coins,
+                fee,
             };
 
             // run
@@ -329,13 +337,9 @@ impl MassaRpcServer for API<Public> {
 
     /// get status
     async fn get_status(&self) -> RpcResult<NodeStatus> {
-        let execution_controller = self.0.execution_controller.clone();
-        let consensus_controller = self.0.consensus_controller.clone();
         let version = self.0.version;
         let api_settings = self.0.api_settings.clone();
-        let protocol_controller = self.0.protocol_controller.clone();
         let protocol_config = self.0.protocol_config.clone();
-        let pool_command_sender = self.0.pool_command_sender.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
         let now = match MassaTime::now() {
@@ -354,21 +358,21 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let execution_stats = execution_controller.get_stats();
-        let consensus_stats_result = consensus_controller.get_stats();
+        let execution_stats = self.0.execution_controller.get_stats();
+        let consensus_stats_result = self.0.consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
-        let (network_stats, peers) = match protocol_controller.get_stats() {
+        let (network_stats, peers) = match self.0.protocol_controller.get_stats() {
             Ok((stats, peers)) => (stats, peers),
-            Err(e) => return Err(ApiError::ProtocolError(e).into()),
+            Err(e) => return Err(ApiError::ProtocolError(e.to_string()).into()),
         };
 
         let pool_stats = (
-            pool_command_sender.get_operation_count(),
-            pool_command_sender.get_endorsement_count(),
+            self.0.pool_command_sender.get_operation_count(),
+            self.0.pool_command_sender.get_endorsement_count(),
         );
 
         let next_slot_result = last_slot
@@ -443,8 +447,7 @@ impl MassaRpcServer for API<Public> {
 
     /// get cliques
     async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        Ok(consensus_controller.get_cliques())
+        Ok(self.0.consensus_controller.get_cliques())
     }
 
     /// get stakers
@@ -452,7 +455,6 @@ impl MassaRpcServer for API<Public> {
         &self,
         page_request: Option<PageRequest>,
     ) -> RpcResult<PagedVec<(Address, u64)>> {
-        let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
         let now = match MassaTime::now() {
@@ -476,7 +478,9 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let mut staker_vec = execution_controller
+        let mut staker_vec = self
+            .0
+            .execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
@@ -706,8 +710,10 @@ impl MassaRpcServer for API<Public> {
     }
 
     async fn get_blockclique_block_by_slot(&self, slot: Slot) -> RpcResult<Option<Block>> {
-        let consensus_controller = self.0.consensus_controller.clone();
-        let block_id_option = consensus_controller.get_blockclique_block_at_slot(slot);
+        let block_id_option = self
+            .0
+            .consensus_controller
+            .get_blockclique_block_at_slot(slot);
 
         let block_id = match block_id_option {
             Some(id) => id,
@@ -726,7 +732,6 @@ impl MassaRpcServer for API<Public> {
     /// gets an interval of the block graph from consensus, with time filtering
     /// time filtering is done consensus-side to prevent communication overhead
     async fn get_graph_interval(&self, time: TimeInterval) -> RpcResult<Vec<BlockSummary>> {
-        let consensus_controller = self.0.consensus_controller.clone();
         let api_settings = self.0.api_settings.clone();
 
         // filter blocks from graph_export
@@ -743,9 +748,13 @@ impl MassaRpcServer for API<Public> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let graph = match consensus_controller.get_block_graph_status(start_slot, end_slot) {
+        let graph = match self
+            .0
+            .consensus_controller
+            .get_block_graph_status(start_slot, end_slot)
+        {
             Ok(graph) => graph,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
         let mut res = Vec::with_capacity(graph.active_blocks.len());
@@ -786,8 +795,9 @@ impl MassaRpcServer for API<Public> {
         &self,
         entries: Vec<DatastoreEntryInput>,
     ) -> RpcResult<Vec<DatastoreEntryOutput>> {
-        let execution_controller = self.0.execution_controller.clone();
-        Ok(execution_controller
+        Ok(self
+            .0
+            .execution_controller
             .get_final_and_active_data_entry(
                 entries
                     .into_iter()

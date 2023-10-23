@@ -145,7 +145,12 @@ impl EndorsementPool {
 
                 // Broadcast endorsement to active channel subscribers.
                 if self.config.broadcast_enabled {
-                    if let Err(err) = self.channels.endorsement_sender.send(endo.clone()) {
+                    if let Err(err) = self
+                        .channels
+                        .broadcasts
+                        .endorsement_sender
+                        .send(endo.clone())
+                    {
                         trace!(
                             "error, failed to broadcast endorsement {}: {}",
                             endo.id.clone(),

@@ -1,10 +1,10 @@
 use massa_channel::sender::MassaSender;
+use massa_consensus_exports::ConsensusBroadcasts;
 use massa_consensus_exports::{
     block_graph_export::BlockGraphExport, block_status::BlockStatus,
     bootstrapable_graph::BootstrapableGraph, error::ConsensusError,
-    export_active_block::ExportActiveBlock, ConsensusChannels, ConsensusController,
+    export_active_block::ExportActiveBlock, ConsensusController,
 };
-use massa_models::denunciation::DenunciationPrecursor;
 use massa_models::{
     block::{BlockGraphStatus, FilledBlock},
     block_header::BlockHeader,
@@ -34,7 +34,7 @@ use crate::{commands::ConsensusCommand, state::ConsensusState};
 #[derive(Clone)]
 pub struct ConsensusControllerImpl {
     command_sender: MassaSender<ConsensusCommand>,
-    channels: ConsensusChannels,
+    broadcasts: ConsensusBroadcasts,
     shared_state: Arc<RwLock<ConsensusState>>,
     bootstrap_part_size: u64,
     broadcast_enabled: bool,
@@ -43,14 +43,14 @@ pub struct ConsensusControllerImpl {
 impl ConsensusControllerImpl {
     pub fn new(
         command_sender: MassaSender<ConsensusCommand>,
-        channels: ConsensusChannels,
+        broadcasts: ConsensusBroadcasts,
         shared_state: Arc<RwLock<ConsensusState>>,
         bootstrap_part_size: u64,
         broadcast_enabled: bool,
     ) -> Self {
         Self {
             command_sender,
-            channels,
+            broadcasts,
             shared_state,
             bootstrap_part_size,
             broadcast_enabled,
@@ -248,7 +248,7 @@ impl ConsensusController for ConsensusControllerImpl {
                         })
                         .collect();
 
-                if let Err(err) = self.channels.block_sender.send(verifiable_block.clone()) {
+                if let Err(err) = self.broadcasts.block_sender.send(verifiable_block.clone()) {
                     trace!(
                         "error, failed to broadcast block with id {} due to: {}",
                         block_id,
@@ -256,7 +256,7 @@ impl ConsensusController for ConsensusControllerImpl {
                     );
                 }
 
-                if let Err(err) = self.channels.filled_block_sender.send(FilledBlock {
+                if let Err(err) = self.broadcasts.filled_block_sender.send(FilledBlock {
                     header: verifiable_block.content.header.clone(),
                     operations,
                 }) {
@@ -274,13 +274,6 @@ impl ConsensusController for ConsensusControllerImpl {
             };
         }
 
-        if let Some(verifiable_block) = block_storage.read_blocks().get(&block_id) {
-            let de_p = DenunciationPrecursor::from(&verifiable_block.content.header);
-            self.channels
-                .pool_controller
-                .add_denunciation_precursor(de_p);
-        }
-
         if let Err(err) = self
             .command_sender
             .try_send(ConsensusCommand::RegisterBlock(
@@ -296,7 +289,7 @@ impl ConsensusController for ConsensusControllerImpl {
 
     fn register_block_header(&self, block_id: BlockId, header: SecureShare<BlockHeader, BlockId>) {
         if self.broadcast_enabled {
-            if let Err(err) = self.channels.block_header_sender.send(header.clone()) {
+            if let Err(err) = self.broadcasts.block_header_sender.send(header.clone()) {
                 trace!(
                     "error, failed to broadcast block header with block id {}: {}",
                     block_id,
@@ -304,11 +297,6 @@ impl ConsensusController for ConsensusControllerImpl {
                 );
             }
         }
-
-        let de_p = DenunciationPrecursor::from(&header);
-        self.channels
-            .pool_controller
-            .add_denunciation_precursor(de_p);
 
         if let Err(err) = self
             .command_sender

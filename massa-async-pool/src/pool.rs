@@ -1035,3 +1035,374 @@ impl AsyncPool {
         db.delete_key(batch, can_be_executed_key!(serialized_message_id));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_models::config::{
+        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_PARAMETERS_SIZE, THREAD_COUNT,
+    };
+    use massa_models::{address::Address, amount::Amount, slot::Slot};
+
+    use crate::message::AsyncMessageTrigger;
+
+    use massa_db_worker::MassaDB;
+    use parking_lot::RwLock;
+    use tempfile::tempdir;
+
+    use super::*;
+
+    fn dump_column(
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        column: &str,
+    ) -> BTreeMap<Vec<u8>, Vec<u8>> {
+        db.read()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            // .collect::<BTreeMap<Vec<u8>, Vec<u8>>>()
+            .collect()
+    }
+
+    fn create_message() -> AsyncMessage {
+        let message = AsyncMessage::new(
+            Slot::new(1, 0),
+            0,
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            String::from("test"),
+            10000000,
+            Amount::from_str("1").unwrap(),
+            Amount::from_str("1").unwrap(),
+            Slot::new(2, 0),
+            Slot::new(3, 0),
+            vec![1, 2, 3, 4],
+            Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![1, 2, 3, 4]),
+            }),
+            None,
+        );
+        return message;
+    }
+
+    #[test]
+    fn test_pool_ser_deser_empty<'a>() {
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let pool = AsyncPool::new(config, db);
+
+        let mut serialized = Vec::new();
+        let serializer = AsyncPoolSerializer::new();
+        let deserializer = AsyncPoolDeserializer::new(
+            THREAD_COUNT,
+            MAX_ASYNC_POOL_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+        );
+
+        let message_ids: Vec<&'a AsyncMessageId> = vec![];
+        let to_ser_ = pool.fetch_messages(message_ids);
+        let to_ser = to_ser_
+            .iter()
+            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .collect();
+        serializer.serialize(&to_ser, &mut serialized).unwrap();
+
+        let (rest, changes_deser) = deserializer
+            .deserialize::<DeserializeError>(&serialized)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(to_ser, changes_deser);
+    }
+
+    #[test]
+    fn test_pool_ser_deser() {
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let pool = AsyncPool::new(config, db);
+
+        let mut serialized = Vec::new();
+        let serializer = AsyncPoolSerializer::new();
+        let deserializer = AsyncPoolDeserializer::new(
+            THREAD_COUNT,
+            MAX_ASYNC_POOL_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+        );
+
+        let message = create_message();
+        let message_id = message.compute_id();
+        let mut message2 = message.clone();
+        message2.emission_index += 1; // update AsyncMessageId
+        message2.function = "test2".to_string();
+        let message2_id = message2.compute_id();
+        assert_ne!(message_id, message2_id);
+
+        let mut batch = DBBatch::new();
+        pool.put_entry(&message.compute_id(), message.clone(), &mut batch);
+        pool.put_entry(&message2.compute_id(), message2.clone(), &mut batch);
+        let versioning_batch = DBBatch::new();
+        let slot_1 = Slot::new(1, 0);
+        pool.db
+            .write()
+            .write_batch(batch, versioning_batch, Some(slot_1));
+
+        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
+        let to_ser_ = pool.fetch_messages(message_ids);
+        let to_ser = to_ser_
+            .iter()
+            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .collect();
+        serializer.serialize(&to_ser, &mut serialized).unwrap();
+        assert_eq!(to_ser.len(), 2);
+
+        let (rest, changes_deser) = deserializer
+            .deserialize::<DeserializeError>(&serialized)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(to_ser, changes_deser);
+    }
+
+    #[test]
+    fn test_pool_ser_deser_too_high() {
+        // Ser 2 msg but deserializer could only handle 1
+
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let pool = AsyncPool::new(config, db);
+
+        let mut serialized = Vec::new();
+        let serializer = AsyncPoolSerializer::new();
+        let deserializer = AsyncPoolDeserializer::new(
+            THREAD_COUNT,
+            1,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+        );
+
+        let message = create_message();
+        let message_id = message.compute_id();
+        let mut message2 = message.clone();
+        message2.emission_index += 1; // update AsyncMessageId
+        message2.function = "test2".to_string();
+        let message2_id = message2.compute_id();
+        let mut batch = DBBatch::new();
+        pool.put_entry(&message.compute_id(), message.clone(), &mut batch);
+        pool.put_entry(&message2.compute_id(), message2.clone(), &mut batch);
+        let versioning_batch = DBBatch::new();
+        let slot_1 = Slot::new(1, 0);
+        pool.db
+            .write()
+            .write_batch(batch, versioning_batch, Some(slot_1));
+
+        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
+        let to_ser_ = pool.fetch_messages(message_ids);
+        let to_ser = to_ser_
+            .iter()
+            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .collect();
+        serializer.serialize(&to_ser, &mut serialized).unwrap();
+        assert_eq!(to_ser.len(), 2);
+
+        let res = deserializer.deserialize::<DeserializeError>(&serialized);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_pool_entry() {
+        // Test update_entry & delete_entry
+
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let pool = AsyncPool::new(config, db);
+
+        let message = create_message();
+        let message_id = message.compute_id();
+        let mut message2 = message.clone();
+        message2.emission_index += 1; // update AsyncMessageId
+        message2.function = "test2".to_string();
+        let message2_id = message2.compute_id();
+        let mut batch = DBBatch::new();
+        pool.put_entry(&message_id, message.clone(), &mut batch);
+        pool.put_entry(&message2_id, message2.clone(), &mut batch);
+
+        let versioning_batch = DBBatch::new();
+        let slot_1 = Slot::new(1, 0);
+        pool.db
+            .write()
+            .write_batch(batch, versioning_batch, Some(slot_1));
+
+        let content = dump_column(pool.db.clone(), "state");
+        assert_eq!(content.len(), 26); // 2 entries added, splitted in 13 prefix
+
+        let mut batch2 = DBBatch::new();
+        pool.delete_entry(&message_id, &mut batch2);
+        let mut message_update = AsyncMessageUpdate::default();
+        message_update.function = SetOrKeep::Set("test0".to_string());
+        pool.update_entry(&message2_id, message_update, &mut batch2);
+
+        let versioning_batch2 = DBBatch::new();
+        let slot_2 = Slot::new(2, 0);
+        pool.db
+            .write()
+            .write_batch(batch2, versioning_batch2, Some(slot_2));
+
+        let content = dump_column(pool.db.clone(), "state");
+        assert_eq!(content.len(), 13);
+    }
+
+    #[test]
+    fn test_pool_cache_grow() {
+        // Init a pool, add changes and check the internal cache grows accordingly
+        // Reset it and check the cache is empty
+
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let mut pool = AsyncPool::new(config, db);
+
+        assert!(pool.message_info_cache.is_empty());
+
+        let message = create_message();
+        let message_id = message.compute_id();
+
+        let mut changes = AsyncPoolChanges::default();
+        changes
+            .0
+            .insert(message_id, SetUpdateOrDelete::Set(message.clone()));
+
+        const EXPECT_CACHE_COUNT: u64 = 100;
+        for i in 0..EXPECT_CACHE_COUNT {
+            let mut message2 = message.clone();
+            message2.fee = Amount::from_raw(i);
+            assert_ne!(message.compute_id(), message2.compute_id());
+
+            changes
+                .0
+                .insert(message2.compute_id(), SetUpdateOrDelete::Set(message2));
+        }
+
+        let mut batch = DBBatch::new();
+        pool.apply_changes_to_batch(&changes, &mut batch);
+        assert_eq!(pool.message_info_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
+
+        pool.reset();
+        assert!(pool.message_info_cache.is_empty());
+    }
+
+    #[test]
+    fn test_pool_recompute_cache() {
+        // Init a pool, add changes
+        // drop pool
+        // Init another pool (will read db from disk), recompute cache and cmp with original cache
+
+        let config = AsyncPoolConfig::default();
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_new_elements: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
+            db_config.clone(),
+        ))
+            as Box<(dyn MassaDBController + 'static)>));
+        let mut pool = AsyncPool::new(config.clone(), db);
+
+        assert!(pool.message_info_cache.is_empty());
+
+        let message = create_message();
+        let message_id = message.compute_id();
+
+        let mut changes = AsyncPoolChanges::default();
+        changes
+            .0
+            .insert(message_id, SetUpdateOrDelete::Set(message.clone()));
+
+        const EXPECT_CACHE_COUNT: u64 = 100;
+        for i in 0..EXPECT_CACHE_COUNT {
+            let mut message2 = message.clone();
+            message2.fee = Amount::from_raw(i);
+            assert_ne!(message.compute_id(), message2.compute_id());
+
+            changes
+                .0
+                .insert(message2.compute_id(), SetUpdateOrDelete::Set(message2));
+        }
+
+        let mut batch = DBBatch::new();
+        pool.apply_changes_to_batch(&changes, &mut batch);
+        assert_eq!(pool.message_info_cache.len() as u64, EXPECT_CACHE_COUNT + 1);
+
+        let message_info_cache1 = pool.message_info_cache.clone();
+
+        let versioning_batch = DBBatch::new();
+        let slot_1 = Slot::new(1, 0);
+        pool.db
+            .write()
+            .write_batch(batch, versioning_batch, Some(slot_1));
+
+        drop(pool);
+
+        let db2: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+        let mut pool2 = AsyncPool::new(config, db2);
+
+        pool2.recompute_message_info_cache();
+
+        assert_eq!(pool2.message_info_cache, message_info_cache1);
+    }
+}

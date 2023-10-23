@@ -12,6 +12,7 @@ use massa_execution_exports::{
     ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
 use massa_models::config::CompactConfig;
@@ -49,7 +50,7 @@ pub(crate) fn execute_read_only_call(
     };
 
     let mut call_stack = Vec::new();
-
+    let mut coins = None;
     let target = if let Some(call_target) = call.target {
         match call_target {
             read_only_execution_call::Target::BytecodeCall(value) => {
@@ -81,8 +82,8 @@ pub(crate) fn execute_read_only_call(
 
                 ReadOnlyExecutionTarget::BytecodeExecution(value.bytecode)
             }
-            read_only_execution_call::Target::FunctionCall(value) => {
-                let target_address = Address::from_str(&value.target_address)?;
+            read_only_execution_call::Target::FunctionCall(call) => {
+                let target_address = Address::from_str(&call.target_address)?;
                 call_stack.push(ExecutionStackElement {
                     address: caller_address,
                     coins: Default::default(),
@@ -96,10 +97,18 @@ pub(crate) fn execute_read_only_call(
                     operation_datastore: None, // should always be None
                 });
 
+                coins = call
+                    .coins
+                    .map(|native_amount| {
+                        Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                            .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
+                    })
+                    .transpose()?;
+
                 ReadOnlyExecutionTarget::FunctionCall {
-                    target_addr: Address::from_str(&value.target_address)?,
-                    target_func: value.target_function,
-                    parameter: value.parameter,
+                    target_addr: Address::from_str(&call.target_address)?,
+                    target_func: call.target_function,
+                    parameter: call.parameter,
                 }
             }
         }
@@ -114,6 +123,14 @@ pub(crate) fn execute_read_only_call(
         call_stack,
         target,
         is_final: call.is_final,
+        coins,
+        fee: call
+            .fee
+            .map(|native_amount| {
+                Amount::from_mantissa_scale(native_amount.mantissa, native_amount.scale)
+                    .map_err(|_| GrpcError::InvalidArgument("invalid amount".to_string()))
+            })
+            .transpose()?,
     };
 
     let output = grpc
@@ -1088,8 +1105,6 @@ pub(crate) fn search_endorsements(
     // ask pool whether it carries the endorsements
     let in_pool = grpc.pool_controller.contains_endorsements(&e_ids);
 
-    let consensus_controller = grpc.consensus_controller.clone();
-
     // check finality by cross-referencing Consensus and looking for final blocks that contain the endorsement
     let is_final: Vec<bool> = {
         let involved_blocks: Vec<BlockId> = storage_info
@@ -1099,7 +1114,9 @@ pub(crate) fn search_endorsements(
             .cloned()
             .collect();
 
-        let involved_block_statuses = consensus_controller.get_block_statuses(&involved_blocks);
+        let involved_block_statuses = grpc
+            .consensus_controller
+            .get_block_statuses(&involved_blocks);
 
         let block_statuses: PreHashMap<BlockId, BlockGraphStatus> = involved_blocks
             .into_iter()

@@ -98,23 +98,22 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = {git = "https://github.com/massalabs/massa-proto-rs", "rev" = "b45cccca3fb09aa2bbee08aade080127521e39b8"}
-massa-sc-runtime = {git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "4883fe075afca4dd4b7346ed7dff2d506323f9c7"}
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "a2e335b1493d302aa03b87e5fd611a2f2c21afdb" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "04b70f8e2e39363a2cd0018e837b5643e32d09a0" }
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
 transition = { git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
-unsigned-varint = { version = "=0.7", "git" = "https://github.com/cyphar/unsigned-varint.git", "branch" = "nom6-errors" }
-substruct = { git = "https://github.com/sydhds/substruct", branch = "main" }
-machine = { git = "https://github.com/antifuchs/machine", "branch" = "fix-workspace-build" }
+substruct = { git = "https://github.com/massalabs/substruct", "rev" = "2fb3ae0dc9d913a0566ce6415eaa7a7ca1690fe1" }
+machine = { git = "https://github.com/massalabs/machine", "rev" = "1736a01400aac54f69a81002862f8555b08caa9b" }
 aes-gcm = "0.10"
 anyhow = "1.0"
 assert_matches = "1.5"
 async-trait = "0.1"
-is-terminal = "0.4"
 bitvec = "1.0"
 blake3 = "=1.4"
 bs58 = "=0.5"
+clap = { version = "4.4", features = ["derive", "cargo"] }
 config = "0.13"
 console = "0.15"
 criterion = "0.5"
@@ -134,6 +133,7 @@ http = "0.2"
 humantime = "2.1"
 hyper = "0.14"
 ip_rfc = "0.1"
+is-terminal = "0.4"
 itertools = "0.11"
 jsonrpsee = "0.20"
 jsonrpsee-http-client = "0.20"
@@ -148,7 +148,7 @@ num = "=0.4"
 num_enum = "0.7"
 paginate = "1.1"
 parking_lot = "0.12"
-paw = "1.0"
+paste = "1.0"
 pbkdf2 = { version = "=0.12", features = ["simple"] }
 prometheus = "0.13"
 rand = "0.8"
@@ -172,7 +172,6 @@ sha3 = "=0.10"
 socket2 = "0.5"
 stream_limiter = "3.2"
 structopt = "0.3"
-clap = { version = "4.4", features = ["derive", "cargo"] }
 strum = "0.25"
 strum_macros = "0.25"
 tempfile = "3.5"
@@ -189,5 +188,6 @@ tower = "0.4.13"
 tower-http = "0.4.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+unsigned-varint = "0.7"
 variant_count = "1.1"
 walkdir = "2.3"

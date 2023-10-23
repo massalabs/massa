@@ -240,7 +240,7 @@ pub fn start_protocol_controller(
     };
 
     let mut peernet_config = PeerNetConfiguration::default(
-        MassaHandshake::new(peer_db.clone(), config.clone(), message_handlers.clone()),
+        MassaHandshake::new(peer_db.clone(), config.clone()),
         message_handlers.clone(),
         Context {
             our_keypair: keypair.clone(),

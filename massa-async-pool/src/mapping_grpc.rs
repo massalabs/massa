@@ -144,13 +144,15 @@ impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
                     )),
                 }),
             },
-            //TODO remove unwrap
             trigger: match value.trigger {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
-                    change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Set(
-                        value.map(|trigger| trigger.into()).unwrap(),
-                    )),
-                }),
+                SetOrKeep::Set(value) => match value {
+                    None => Some(grpc_model::SetOrKeepAsyncMessageTrigger { change: None }),
+                    Some(trigger) => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
+                        change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Set(
+                            trigger.into(),
+                        )),
+                    }),
+                },
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
                     change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Keep(
                         grpc_model::Empty {},

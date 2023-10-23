@@ -2576,7 +2576,7 @@
                     },
                     "op_exec_status": {
                         "description": "true if the operation execution succeeded, false if failed, None means unknown",
-                        "type" : "boolean"
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -2772,6 +2772,14 @@
                     "is_final": {
                         "description": "Whether to start execution from final or active state",
                         "type": "boolean"
+                    },
+                    "coins": {
+                        "description": "Amount in coins, optional",
+                        "type": "number"
+                    },
+                    "fee": {
+                        "description": "Fee, optional",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -2806,6 +2814,14 @@
                     "caller_address": {
                         "description": "Caller's address, optional",
                         "type": "string"
+                    },
+                    "coins": {
+                        "description": "Amount in coins, optional",
+                        "type": "number"
+                    },
+                    "fee": {
+                        "description": "Fee, optional",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false

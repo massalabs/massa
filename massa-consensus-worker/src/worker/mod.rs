@@ -63,10 +63,11 @@ pub fn start_consensus_worker(
     let bootstrap_part_size = config.bootstrap_part_size;
     let stats_desync_detection_timespan =
         config.t0.checked_mul(config.periods_per_cycle * 2).unwrap();
+    let broadcasts = channels.broadcasts.clone();
     let shared_state = Arc::new(RwLock::new(ConsensusState {
         storage: storage.clone(),
         config: config.clone(),
-        channels: channels.clone(),
+        channels,
         max_cliques: vec![Clique {
             block_ids: PreHashSet::<BlockId>::default(),
             fitness: 0,
@@ -113,7 +114,7 @@ pub fn start_consensus_worker(
 
     let controller = ConsensusControllerImpl::new(
         tx,
-        channels,
+        broadcasts,
         shared_state,
         bootstrap_part_size,
         config.broadcast_enabled,

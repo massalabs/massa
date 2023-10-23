@@ -13,14 +13,14 @@ use massa_api_exports::config::APIConfig;
 use massa_api_exports::error::ApiError;
 use massa_api_exports::page::{PageRequest, PagedVec, PagedVecV2};
 use massa_api_exports::ApiRequest;
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::address::Address;
 use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_models::version::Version;
-use massa_pool_exports::PoolChannels;
+use massa_pool_exports::PoolBroadcasts;
 use massa_time::MassaTime;
 use serde::Serialize;
 use tokio_stream::wrappers::BroadcastStream;
@@ -29,17 +29,17 @@ impl API<ApiV2> {
     /// generate a new massa API
     pub fn new(
         consensus_controller: Box<dyn ConsensusController>,
-        consensus_channels: ConsensusChannels,
+        consensus_broadcasts: ConsensusBroadcasts,
         execution_controller: Box<dyn ExecutionController>,
-        pool_channels: PoolChannels,
+        pool_broadcasts: PoolBroadcasts,
         api_settings: APIConfig,
         version: Version,
     ) -> Self {
         API(ApiV2 {
             consensus_controller,
-            consensus_channels,
+            consensus_broadcasts,
             execution_controller,
-            pool_channels,
+            pool_broadcasts,
             api_settings,
             version,
         })
@@ -64,7 +64,6 @@ impl MassaApiServer for API<ApiV2> {
         &self,
         api_request: Option<ApiRequest>,
     ) -> RpcResult<PagedVecV2<(Address, u64)>> {
-        let execution_controller = self.0.execution_controller.clone();
         let cfg = self.0.api_settings.clone();
 
         let now = match MassaTime::now() {
@@ -88,7 +87,9 @@ impl MassaApiServer for API<ApiV2> {
             Err(e) => return Err(ApiError::ModelsError(e).into()),
         };
 
-        let mut staker_vec = execution_controller
+        let mut staker_vec = self
+            .0
+            .execution_controller
             .get_cycle_active_rolls(curr_cycle)
             .into_iter()
             .collect::<Vec<(Address, u64)>>();
@@ -120,7 +121,7 @@ impl MassaApiServer for API<ApiV2> {
     }
 
     async fn subscribe_new_blocks(&self, pending: PendingSubscriptionSink) -> SubscriptionResult {
-        broadcast_via_ws(self.0.consensus_channels.block_sender.clone(), pending).await
+        broadcast_via_ws(self.0.consensus_broadcasts.block_sender.clone(), pending).await
     }
 
     async fn subscribe_new_blocks_headers(
@@ -128,7 +129,7 @@ impl MassaApiServer for API<ApiV2> {
         pending: PendingSubscriptionSink,
     ) -> SubscriptionResult {
         broadcast_via_ws(
-            self.0.consensus_channels.block_header_sender.clone(),
+            self.0.consensus_broadcasts.block_header_sender.clone(),
             pending,
         )
         .await
@@ -139,7 +140,7 @@ impl MassaApiServer for API<ApiV2> {
         pending: PendingSubscriptionSink,
     ) -> SubscriptionResult {
         broadcast_via_ws(
-            self.0.consensus_channels.filled_block_sender.clone(),
+            self.0.consensus_broadcasts.filled_block_sender.clone(),
             pending,
         )
         .await
@@ -149,7 +150,7 @@ impl MassaApiServer for API<ApiV2> {
         &self,
         pending: PendingSubscriptionSink,
     ) -> SubscriptionResult {
-        broadcast_via_ws(self.0.pool_channels.operation_sender.clone(), pending).await
+        broadcast_via_ws(self.0.pool_broadcasts.operation_sender.clone(), pending).await
     }
 }
 

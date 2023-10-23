@@ -1,14 +1,18 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use massa_consensus_exports::ConsensusConfig;
-use massa_models::{address::Address, block::BlockGraphStatus, block_id::BlockId, slot::Slot};
+use massa_execution_exports::MockExecutionController;
+use massa_models::{
+    address::Address, block::BlockGraphStatus, block_id::BlockId, config::ENDORSEMENT_COUNT,
+    slot::Slot,
+};
+use massa_pool_exports::MockPoolController;
+use massa_pos_exports::{MockSelectorController, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_time::MassaTime;
 
-use super::tools::{
-    consensus_without_pool_test, register_block_and_process_with_tc, TestController,
-};
+use super::tools::{consensus_test, create_block, register_block};
 
 // Always use latest blocks as parents.
 // Blocks should be finalized as expected.
@@ -26,82 +30,104 @@ fn test_fts_latest_blocks_as_parents() {
     };
     let storage = Storage::create_root();
     let staking_address = Address::from_public_key(&staking_key.get_public_key());
-
-    consensus_without_pool_test(
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    let mut pool_controller = Box::new(MockPoolController::new());
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+    consensus_test(
         cfg.clone(),
-        move |protocol_controller,
-              consensus_controller,
-              consensus_event_receiver,
-              selector_controller,
-              selector_receiver| {
+        execution_controller,
+        pool_controller,
+        selector_controller,
+        move |consensus_controller| {
             let genesis = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            let tc = TestController {
-                creator: staking_key,
-                consensus_controller,
-                selector_receiver,
-                storage,
-                staking_address,
-                timeout_ms: 1000,
-            };
-
             // Period 1.
-            let block_1_0 = register_block_and_process_with_tc(
+            let block_1_0 = create_block(
                 Slot::new(1, 0),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_0.clone(), storage.clone());
+            let block_1_1 = create_block(
                 Slot::new(1, 1),
                 vec![block_1_0.id, genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_1.clone(), storage.clone());
+            let block_1_2 = create_block(
                 Slot::new(1, 2),
                 vec![block_1_0.id, block_1_1.id, genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_3 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_2.clone(), storage.clone());
+            let block_1_3 = create_block(
                 Slot::new(1, 3),
                 vec![block_1_0.id, block_1_1.id, block_1_2.id, genesis[3]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_1_3.clone(), storage.clone());
 
             // Period 2.
-            let block_2_0 = register_block_and_process_with_tc(
+            let block_2_0 = create_block(
                 Slot::new(2, 0),
                 vec![block_1_0.id, block_1_1.id, block_1_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
-            let block_2_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_0.clone(), storage.clone());
+            let block_2_1 = create_block(
                 Slot::new(2, 1),
                 vec![block_2_0.id, block_1_1.id, block_1_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
-            let block_2_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_1.clone(), storage.clone());
+            let block_2_2 = create_block(
                 Slot::new(2, 2),
                 vec![block_2_0.id, block_2_1.id, block_1_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
-            let block_2_3 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_2.clone(), storage.clone());
+            let block_2_3 = create_block(
                 Slot::new(2, 3),
                 vec![block_2_0.id, block_2_1.id, block_2_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_2_3.clone(), storage.clone());
 
             // Period 3, thread 0.
-            let block_3_0 = register_block_and_process_with_tc(
+            let block_3_0 = create_block(
                 Slot::new(3, 0),
                 vec![block_2_0.id, block_2_1.id, block_2_2.id, block_2_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_3_0.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(1000));
             // block_1_0 has not been finalized yet.
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -117,15 +143,17 @@ fn test_fts_latest_blocks_as_parents() {
             );
 
             // Period 3, thread 1.
-            let block_3_1 = register_block_and_process_with_tc(
+            let block_3_1 = create_block(
                 Slot::new(3, 1),
                 vec![block_3_0.id, block_2_1.id, block_2_2.id, block_2_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_3_1.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(1000));
             // block_1_0 has been finalized.
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -141,15 +169,17 @@ fn test_fts_latest_blocks_as_parents() {
             );
 
             // Period 3, thread 2.
-            let block_3_2 = register_block_and_process_with_tc(
+            let block_3_2 = create_block(
                 Slot::new(3, 2),
                 vec![block_3_0.id, block_3_1.id, block_2_2.id, block_2_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_3_2.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(1000));
             // block_1_1 has been finalized.
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -165,15 +195,17 @@ fn test_fts_latest_blocks_as_parents() {
             );
 
             // Period 3, thread 3.
-            let _block_3_3 = register_block_and_process_with_tc(
+            let block_3_3 = create_block(
                 Slot::new(3, 3),
                 vec![block_3_0.id, block_3_1.id, block_3_2.id, block_2_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_3_3.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(1000));
             // block_1_2 has been finalized.
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -187,14 +219,6 @@ fn test_fts_latest_blocks_as_parents() {
                 ],
                 "incorrect block statuses"
             );
-
-            (
-                protocol_controller,
-                tc.consensus_controller,
-                consensus_event_receiver,
-                selector_controller,
-                tc.selector_receiver,
-            )
         },
     );
 }
@@ -215,69 +239,90 @@ fn test_fts_multiple_max_cliques_1() {
     };
     let storage = Storage::create_root();
     let staking_address = Address::from_public_key(&staking_key.get_public_key());
-
-    consensus_without_pool_test(
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    let mut pool_controller = Box::new(MockPoolController::new());
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+    consensus_test(
         cfg.clone(),
-        move |protocol_controller,
-              consensus_controller,
-              consensus_event_receiver,
-              selector_controller,
-              selector_receiver| {
+        execution_controller,
+        pool_controller,
+        selector_controller,
+        move |consensus_controller| {
             let genesis = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status")
                 .genesis_blocks;
-
-            let tc = TestController {
-                creator: staking_key,
-                consensus_controller,
-                selector_receiver,
-                storage,
-                staking_address,
-                timeout_ms: 1000,
-            };
+            std::thread::sleep(Duration::from_millis(500));
 
             // Period 1.
-            let block_1_0 = register_block_and_process_with_tc(
+            let block_1_0 = create_block(
                 Slot::new(1, 0),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
-            let block_1_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_0.clone(), storage.clone());
+            let block_1_1 = create_block(
                 Slot::new(1, 1),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
-            let block_1_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_1.clone(), storage.clone());
+            let block_1_2 = create_block(
                 Slot::new(1, 2),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_1_2.clone(), storage.clone());
+            std::thread::sleep(Duration::from_millis(500));
 
             // Period 2.
-            // Thread incompatibilies with every blocks of period 1
-            let block_2_0 = register_block_and_process_with_tc(
+            // Thread incompatibilities with every blocks of period 1
+            let block_2_0 = create_block(
                 Slot::new(2, 0),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
-            let block_2_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_0.clone(), storage.clone());
+            let block_2_1 = create_block(
                 Slot::new(2, 1),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
-            let block_2_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_1.clone(), storage.clone());
+            let block_2_2 = create_block(
                 Slot::new(2, 2),
                 vec![genesis[0], genesis[1], genesis[2]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_2_2.clone(), storage.clone());
+
             // Should have 4 max cliques:
             // [block_1_0, block_1_1, block_1_2]
             // [block_1_1, block_1_2, block_2_0]
             // [block_1_2, block_2_0, block_2_1]
             // [block_2_0, block_2_1, block_2_2]
-            let mut status = tc
-                .consensus_controller
+            std::thread::sleep(Duration::from_millis(500));
+            let mut status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
 
@@ -350,25 +395,27 @@ fn test_fts_multiple_max_cliques_1() {
             // Period 3.
             // Based on the max clique [block_2_0, block_2_1, block_1_2].
             // Later, these blocks will be finalized while block_1_0, block_1_1, and block_2_2 will be discarded
-            let block_3_0 = register_block_and_process_with_tc(
+            let block_3_0 = create_block(
                 Slot::new(3, 0),
                 vec![block_2_0.id, block_2_1.id, block_1_2.id],
-                &tc,
+                &staking_key,
             );
-            let block_3_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_3_0.clone(), storage.clone());
+            let block_3_1 = create_block(
                 Slot::new(3, 1),
                 vec![block_2_0.id, block_2_1.id, block_1_2.id],
-                &tc,
+                &staking_key,
             );
-            let block_3_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_3_1.clone(), storage.clone());
+            let block_3_2 = create_block(
                 Slot::new(3, 2),
                 vec![block_2_0.id, block_2_1.id, block_1_2.id],
-                &tc,
+                &staking_key,
             );
-
+            register_block(&consensus_controller, block_3_2.clone(), storage.clone());
+            std::thread::sleep(Duration::from_millis(500));
             // Should still have 4 max cliques now.
-            status = tc
-                .consensus_controller
+            status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -378,24 +425,28 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             // Period 4, thread 0, 1, and 2.
-            let block_4_0 = register_block_and_process_with_tc(
+            let block_4_0 = create_block(
                 Slot::new(4, 0),
                 vec![block_3_0.id, block_3_1.id, block_3_2.id],
-                &tc,
+                &staking_key,
             );
-            let block_4_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_4_0.clone(), storage.clone());
+            let block_4_1 = create_block(
                 Slot::new(4, 1),
                 vec![block_3_0.id, block_3_1.id, block_3_2.id],
-                &tc,
+                &staking_key,
             );
-            let block_4_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_4_1.clone(), storage.clone());
+            let block_4_2 = create_block(
                 Slot::new(4, 2),
                 vec![block_3_0.id, block_3_1.id, block_3_2.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_4_2.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(500));
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -415,8 +466,7 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             // Should still have 4 max cliques now.
-            status = tc
-                .consensus_controller
+            status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -426,25 +476,28 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             // Period 5.
-            let block_5_0 = register_block_and_process_with_tc(
+            let block_5_0 = create_block(
                 Slot::new(5, 0),
                 vec![block_4_0.id, block_4_1.id, block_4_2.id],
-                &tc,
+                &staking_key,
             );
-
-            let block_5_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_5_0.clone(), storage.clone());
+            let block_5_1 = create_block(
                 Slot::new(5, 1),
                 vec![block_4_0.id, block_4_1.id, block_4_2.id],
-                &tc,
+                &staking_key,
             );
-            let block_5_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_5_1.clone(), storage.clone());
+            let block_5_2 = create_block(
                 Slot::new(5, 2),
                 vec![block_4_0.id, block_4_1.id, block_4_2.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_5_2.clone(), storage.clone());
 
+            std::thread::sleep(Duration::from_millis(500));
             assert_eq!(
-                tc.consensus_controller.get_block_statuses(&[
+                consensus_controller.get_block_statuses(&[
                     block_1_0.id,
                     block_1_1.id,
                     block_1_2.id,
@@ -464,8 +517,7 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             // Should have only one max clique now.
-            status = tc
-                .consensus_controller
+            status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -495,14 +547,6 @@ fn test_fts_multiple_max_cliques_1() {
             );
 
             assert_eq!(found_cliques, expected_cliques, "wrong cliques");
-
-            (
-                protocol_controller,
-                tc.consensus_controller,
-                consensus_event_receiver,
-                selector_controller,
-                tc.selector_receiver,
-            )
         },
     );
 }
@@ -523,72 +567,92 @@ fn test_fts_multiple_max_cliques_2() {
     };
     let storage = Storage::create_root();
     let staking_address = Address::from_public_key(&staking_key.get_public_key());
-
-    consensus_without_pool_test(
+    let mut execution_controller = Box::new(MockExecutionController::new());
+    execution_controller
+        .expect_update_blockclique_status()
+        .returning(|_, _, _| {});
+    let mut pool_controller = Box::new(MockPoolController::new());
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    let mut selector_controller = Box::new(MockSelectorController::new());
+    selector_controller
+        .expect_get_producer()
+        .returning(move |_| Ok(staking_address));
+    selector_controller
+        .expect_get_selection()
+        .returning(move |_| {
+            Ok(Selection {
+                producer: staking_address,
+                endorsements: vec![staking_address; ENDORSEMENT_COUNT as usize],
+            })
+        });
+    consensus_test(
         cfg.clone(),
-        move |protocol_controller,
-              consensus_controller,
-              consensus_event_receiver,
-              selector_controller,
-              selector_receiver| {
+        execution_controller,
+        pool_controller,
+        selector_controller,
+        move |consensus_controller| {
             let genesis = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status")
                 .genesis_blocks;
 
-            let tc = TestController {
-                creator: staking_key,
-                consensus_controller,
-                selector_receiver,
-                storage,
-                staking_address,
-                timeout_ms: 1000,
-            };
-
             // Period 1.
-            let block_1_0 = register_block_and_process_with_tc(
+            let block_1_0 = create_block(
                 Slot::new(1, 0),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_0.clone(), storage.clone());
+            let block_1_1 = create_block(
                 Slot::new(1, 1),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_1.clone(), storage.clone());
+            let block_1_2 = create_block(
                 Slot::new(1, 2),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_1_3 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_1_2.clone(), storage.clone());
+            let block_1_3 = create_block(
                 Slot::new(1, 3),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_1_3.clone(), storage.clone());
 
             // Period 2.
             // Thread incompatibilies with every blocks of period 1
-            let block_2_0 = register_block_and_process_with_tc(
+            let block_2_0 = create_block(
                 Slot::new(2, 0),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_2_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_0.clone(), storage.clone());
+            let block_2_1 = create_block(
                 Slot::new(2, 1),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_2_2 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_1.clone(), storage.clone());
+            let block_2_2 = create_block(
                 Slot::new(2, 2),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
-            let block_2_3 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, block_2_2.clone(), storage.clone());
+            let block_2_3 = create_block(
                 Slot::new(2, 3),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, block_2_3.clone(), storage.clone());
 
             let mut hash_to_slot: HashMap<BlockId, Slot> = vec![
                 (genesis[0], Slot::new(0, 0)),
@@ -612,27 +676,31 @@ fn test_fts_multiple_max_cliques_2() {
             let mut prev_blocks = vec![block_2_0.id, block_2_1.id, block_2_2.id, block_2_3.id];
             for i in 3..=6 {
                 // Max clique 1.
-                let new_block_0 = register_block_and_process_with_tc(
+                let new_block_0 = create_block(
                     Slot::new(i, 0),
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                    &tc,
+                    &staking_key,
                 );
-                let new_block_1 = register_block_and_process_with_tc(
+                register_block(&consensus_controller, new_block_0.clone(), storage.clone());
+                let new_block_1 = create_block(
                     Slot::new(i, 1),
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                    &tc,
+                    &staking_key,
                 );
+                register_block(&consensus_controller, new_block_1.clone(), storage.clone());
                 // Max clique 2.
-                let new_block_2 = register_block_and_process_with_tc(
+                let new_block_2 = create_block(
                     Slot::new(i, 2),
                     vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                    &tc,
+                    &staking_key,
                 );
-                let new_block_3 = register_block_and_process_with_tc(
+                register_block(&consensus_controller, new_block_2.clone(), storage.clone());
+                let new_block_3 = create_block(
                     Slot::new(i, 3),
                     vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                    &tc,
+                    &staking_key,
                 );
+                register_block(&consensus_controller, new_block_3.clone(), storage.clone());
 
                 hash_to_slot.insert(new_block_0.id, Slot::new(i, 0));
                 hash_to_slot.insert(new_block_1.id, Slot::new(i, 1));
@@ -645,11 +713,11 @@ fn test_fts_multiple_max_cliques_2() {
                     new_block_2.id,
                     new_block_3.id,
                 ];
+                std::thread::sleep(Duration::from_millis(1000));
             }
 
             // Should still have 5 max cliques now.
-            let mut status = tc
-                .consensus_controller
+            let mut status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -660,36 +728,40 @@ fn test_fts_multiple_max_cliques_2() {
 
             // Period 7
             // Max clique 1.
-            let new_block_0 = register_block_and_process_with_tc(
+            let new_block_0 = create_block(
                 Slot::new(7, 0),
                 vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
-            let new_block_1 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, new_block_0.clone(), storage.clone());
+            let new_block_1 = create_block(
                 Slot::new(7, 1),
                 vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, new_block_1.clone(), storage.clone());
             // Max clique 2.
-            let new_block_2 = register_block_and_process_with_tc(
+            let new_block_2 = create_block(
                 Slot::new(7, 2),
                 vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                &tc,
+                &staking_key,
             );
-            let new_block_3 = register_block_and_process_with_tc(
+            register_block(&consensus_controller, new_block_2.clone(), storage.clone());
+            let new_block_3 = create_block(
                 Slot::new(7, 3),
                 vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                &tc,
+                &staking_key,
             );
+            register_block(&consensus_controller, new_block_3.clone(), storage.clone());
 
             hash_to_slot.insert(new_block_0.id, Slot::new(7, 0));
             hash_to_slot.insert(new_block_1.id, Slot::new(7, 1));
             hash_to_slot.insert(new_block_2.id, Slot::new(7, 2));
             hash_to_slot.insert(new_block_2.id, Slot::new(7, 3));
 
+            std::thread::sleep(Duration::from_millis(1000));
             // Should still have 2 max cliques now.
-            status = tc
-                .consensus_controller
+            status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -707,27 +779,31 @@ fn test_fts_multiple_max_cliques_2() {
             ];
             for i in 8..=15 {
                 // Max clique 1.
-                let new_block_0 = register_block_and_process_with_tc(
+                let new_block_0 = create_block(
                     Slot::new(i, 0),
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                    &tc,
+                    &staking_key,
                 );
-                let new_block_1 = register_block_and_process_with_tc(
+                register_block(&consensus_controller, new_block_0.clone(), storage.clone());
+                let new_block_1 = create_block(
                     Slot::new(i, 1),
                     vec![prev_blocks[0], prev_blocks[1], block_1_2.id, block_1_3.id],
-                    &tc,
+                    &staking_key,
                 );
+                register_block(&consensus_controller, new_block_1.clone(), storage.clone());
                 // Max clique 2.
-                let new_block_2 = register_block_and_process_with_tc(
+                let new_block_2 = create_block(
                     Slot::new(i, 2),
                     vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                    &tc,
+                    &staking_key,
                 );
-                let new_block_3 = register_block_and_process_with_tc(
+                register_block(&consensus_controller, new_block_2.clone(), storage.clone());
+                let new_block_3 = create_block(
                     Slot::new(i, 3),
                     vec![block_2_0.id, block_2_1.id, prev_blocks[2], prev_blocks[3]],
-                    &tc,
+                    &staking_key,
                 );
+                register_block(&consensus_controller, new_block_3.clone(), storage.clone());
 
                 hash_to_slot.insert(new_block_0.id, Slot::new(i, 0));
                 hash_to_slot.insert(new_block_1.id, Slot::new(i, 1));
@@ -740,11 +816,11 @@ fn test_fts_multiple_max_cliques_2() {
                     new_block_2.id,
                     new_block_3.id,
                 ];
+                std::thread::sleep(Duration::from_millis(1000));
             }
 
             // Should still have 3 max cliques now.
-            status = tc
-                .consensus_controller
+            status = consensus_controller
                 .get_block_graph_status(None, None)
                 .expect("could not get block graph status");
             assert_eq!(
@@ -752,14 +828,6 @@ fn test_fts_multiple_max_cliques_2() {
                 2,
                 "incorrect number of max cliques"
             );
-
-            (
-                protocol_controller,
-                tc.consensus_controller,
-                consensus_event_receiver,
-                selector_controller,
-                tc.selector_receiver,
-            )
         },
     );
 }
