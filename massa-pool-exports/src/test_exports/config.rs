@@ -1,7 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_models::config::{
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_BLOCK_SIZE,
+    BASE_OPERATION_GAS_COST, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, MAX_BLOCK_SIZE,
     MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK,
     OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, ROLL_PRICE, T0, THREAD_COUNT,
 };
@@ -17,6 +17,7 @@ impl Default for PoolConfig {
             max_block_gas: MAX_GAS_PER_BLOCK,
             roll_price: ROLL_PRICE,
             max_block_size: MAX_BLOCK_SIZE,
+            base_operation_gas_cost: BASE_OPERATION_GAS_COST,
             max_operation_pool_size: 32000,
             max_operation_pool_excess_items: 10000,
             max_endorsements_pool_size_per_thread: 1000,

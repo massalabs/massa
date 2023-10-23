@@ -346,9 +346,6 @@ impl ExecutionState {
         // save a snapshot of the context to revert any further changes on error
         let context_snapshot = context.get_snapshot();
 
-        // set the context max gas to match the one defined in the operation
-        context.max_gas = operation.get_gas_usage();
-
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
 
@@ -382,7 +379,7 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.get_gas_usage();
+        let op_gas = operation.get_gas_usage(self.config.base_operation_gas_cost);
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -949,7 +946,6 @@ impl ExecutionState {
         let bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
-            context.max_gas = message.max_gas;
             context.creator_address = None;
             context.creator_min_balance = None;
             context.stack = vec![
@@ -1409,7 +1405,6 @@ impl ExecutionState {
         let execution_context = ExecutionContext::readonly(
             self.config.clone(),
             slot,
-            req.max_gas,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
