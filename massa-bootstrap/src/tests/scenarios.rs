@@ -102,6 +102,7 @@ fn mock_bootstrap_manager(
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
+        max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count: 2,
     };
@@ -237,6 +238,7 @@ fn test_bootstrap_server() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
+        max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count,
     };
@@ -247,6 +249,7 @@ fn test_bootstrap_server() {
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
         max_history_length: 10,
+        max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count,
     };
@@ -631,6 +634,7 @@ fn test_bootstrap_accept_err() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
+        max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count,
     };

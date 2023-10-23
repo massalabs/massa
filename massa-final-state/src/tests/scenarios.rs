@@ -36,6 +36,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
+        max_final_state_elements_size: 100_000,
         max_versioning_elements_size: 100_000,
         thread_count,
     };

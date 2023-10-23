@@ -298,6 +298,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -356,12 +357,14 @@ mod test {
         let db_a_config = MassaDBConfig {
             path: tempdir_a.path().to_path_buf(),
             max_history_length: 10,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count,
         };
         let db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
             max_history_length: 10,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count,
         };

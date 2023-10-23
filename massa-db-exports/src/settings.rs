@@ -7,8 +7,10 @@ pub struct MassaDBConfig {
     pub path: PathBuf,
     /// Change history to keep (indexed by ChangeID)
     pub max_history_length: usize,
-    /// max_new_elements for bootstrap
+    /// max_new_elements for bootstrap in versioning stream batch
     pub max_versioning_elements_size: usize,
+    /// max_new_elements for bootstrap in final_state stream batch
+    pub max_final_state_elements_size: usize,
     /// Thread count for slot serialization
     pub thread_count: u8,
 }

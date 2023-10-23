@@ -6,7 +6,7 @@ use massa_db_exports::{
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
-    config::{MAX_BACKUPS_TO_KEEP, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE},
+    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -179,7 +179,7 @@ where
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                if new_elements_size < MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize {
+                if new_elements_size < self.config.max_final_state_elements_size as usize {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -291,7 +291,7 @@ where
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_versioning_elements_size {
+                if new_elements_size < self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -865,6 +865,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -897,6 +898,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -979,6 +981,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -1062,6 +1065,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -1109,6 +1113,7 @@ mod test {
             let db_backup_1_config = MassaDBConfig {
                 path: backup_1,
                 max_history_length: 100,
+                max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
@@ -1131,6 +1136,7 @@ mod test {
             let db_backup_2_config = MassaDBConfig {
                 path: backup_2,
                 max_history_length: 100,
+                max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
@@ -1162,6 +1168,7 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
+            max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
@@ -1207,6 +1214,7 @@ mod test {
             let db_backup_config = MassaDBConfig {
                 path: backup_path.clone(),
                 max_history_length: 100,
+                max_final_state_elements_size: 100,
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
             };
@@ -1251,11 +1259,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_versioning_elements_size = 100;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_versioning_elements_size,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1343,11 +1351,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_versioning_elements_size = 100;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_versioning_elements_size,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1431,11 +1439,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_versioning_elements_size = 2;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_versioning_elements_size,
+            max_final_state_elements_size: 4,
+            max_versioning_elements_size: 4,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1515,11 +1523,11 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_versioning_elements_size = 2;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_versioning_elements_size,
+            max_final_state_elements_size: 7,
+            max_versioning_elements_size: 7,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
