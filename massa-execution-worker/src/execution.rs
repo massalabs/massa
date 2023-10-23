@@ -347,7 +347,7 @@ impl ExecutionState {
         let context_snapshot = context.get_snapshot();
 
         // set the context max gas to match the one defined in the operation
-        context.max_gas = operation.get_gas_usage();
+        context.max_gas = operation.get_gas_usage(self.config.base_operation_gas_cost);
 
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
@@ -382,7 +382,7 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.get_gas_usage();
+        let op_gas = operation.get_gas_usage(self.config.base_operation_gas_cost);
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),

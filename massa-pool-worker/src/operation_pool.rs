@@ -154,7 +154,7 @@ impl OperationPool {
         let mut removed = PreHashSet::default();
         self.sorted_ops.retain(|op_info| {
             // filter out ops that use too much resources
-            let mut retain = (op_info.max_gas <= self.config.max_block_gas)
+            let mut retain = (op_info.max_gas_usage <= self.config.max_block_gas)
                 && (op_info.size <= self.config.max_block_size as usize);
 
             // filter out ops that are not valid during our PoS draws
@@ -266,7 +266,8 @@ impl OperationPool {
             // gas score:
             //    0% of block gas => score 1
             //    100% of block gas => score 0
-            let gas_score = 1.0 - (op_info.max_gas as f32) / (self.config.max_block_gas as f32);
+            let gas_score =
+                1.0 - (op_info.max_gas_usage as f32) / (self.config.max_block_gas as f32);
 
             // general resource score (mean of gas and size scores)
             let epsilon_resource_factor = 0.0001; // avoids zero score when gas and size are a perfect fit in the block
@@ -431,6 +432,7 @@ impl OperationPool {
                     self.config.operation_validity_periods,
                     self.config.roll_price,
                     self.config.thread_count,
+                    self.config.base_operation_gas_cost,
                 ));
             }
         }
@@ -487,7 +489,7 @@ impl OperationPool {
             }
 
             // exclude ops that require too much gas
-            if op_info.max_gas > remaining_gas {
+            if op_info.max_gas_usage > remaining_gas {
                 continue;
             }
 
@@ -498,7 +500,7 @@ impl OperationPool {
             remaining_space -= op_info.size;
 
             // update remaining block gas
-            remaining_gas -= op_info.max_gas;
+            remaining_gas -= op_info.max_gas_usage;
 
             // update remaining number of operations
             remaining_ops -= 1;

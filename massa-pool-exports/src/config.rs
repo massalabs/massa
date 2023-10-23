@@ -13,6 +13,8 @@ pub struct PoolConfig {
     pub max_block_size: u32,
     /// maximal gas per block
     pub max_block_gas: u64,
+    /// Gas used by a base operation (transaction, roll buy, roll sell)
+    pub base_operation_gas_cost: u64,
     /// cost (in coins) of a single roll
     pub roll_price: Amount,
     /// operation validity periods

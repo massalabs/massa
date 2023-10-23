@@ -35,8 +35,6 @@ use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 use transition::Versioned;
 
-/// Size in bytes of the serialized operation ID
-
 /// Size in bytes of the serialized operation ID prefix
 pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
@@ -972,13 +970,13 @@ impl SecureShareOperation {
     }
 
     /// Get the max amount of gas used by the operation (`max_gas`)
-    pub fn get_gas_usage(&self) -> u64 {
+    pub fn get_gas_usage(&self, gas_usage: u64) -> u64 {
         match &self.content.op {
             OperationType::ExecuteSC { max_gas, .. } => *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
-            OperationType::RollBuy { .. } => 0,
-            OperationType::RollSell { .. } => 0,
-            OperationType::Transaction { .. } => 0,
+            OperationType::RollBuy { .. } => gas_usage,
+            OperationType::RollSell { .. } => gas_usage,
+            OperationType::Transaction { .. } => gas_usage,
         }
     }
 
