@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["CipherError"],"fn":["decrypt","encrypt"],"mod":["constants","decrypt","encrypt","error"],"struct":["CipherData"],"type":["Salt"]};
+window.SIDEBAR_ITEMS = {"enum":["CipherError"],"fn":["decrypt","encrypt"],"mod":["constants","decrypt","encrypt","error","tests"],"struct":["CipherData"],"type":["Salt"]};

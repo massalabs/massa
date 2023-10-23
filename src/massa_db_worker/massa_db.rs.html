@@ -1609,11 +1609,6 @@
 <a href="#1609" id="1609">1609</a>
 <a href="#1610" id="1610">1610</a>
 <a href="#1611" id="1611">1611</a>
-<a href="#1612" id="1612">1612</a>
-<a href="#1613" id="1613">1613</a>
-<a href="#1614" id="1614">1614</a>
-<a href="#1615" id="1615">1615</a>
-<a href="#1616" id="1616">1616</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1622,7 +1617,7 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::{MAX_BACKUPS_TO_KEEP, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE},
+    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -1776,7 +1771,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -1794,8 +1788,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE <span class="kw">as </span>usize {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -1888,7 +1881,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_versioning_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -1906,8 +1898,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_versioning_elements_size {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -2166,7 +2157,6 @@
 
     <span class="kw">pub fn </span>default_db_opts() -&gt; Options {
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
-        db_opts.set_max_open_files(<span class="number">820</span>);
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
         db_opts
@@ -2481,7 +2471,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2513,7 +2503,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2532,13 +2522,13 @@
 
         <span class="comment">// Checks up
         </span><span class="kw">let </span>cfs = rocksdb::DB::list_cf(<span class="kw-2">&amp;</span>db_opts, temp_dir_db.path()).unwrap_or(<span class="macro">vec!</span>[]);
-        <span class="kw">let </span>cf_exists_1 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;state&quot;</span>).is_some();
-        <span class="kw">let </span>cf_exists_2 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;metadata&quot;</span>).is_some();
-        <span class="kw">let </span>cf_exists_3 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;versioning&quot;</span>).is_some();
+        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| cf == <span class="string">&quot;state&quot;</span>);
+        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| cf == <span class="string">&quot;metadata&quot;</span>);
+        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| cf == <span class="string">&quot;versioning&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;cfs: {:?}&quot;</span>, cfs);
-        <span class="macro">assert_eq!</span>(cf_exists_1, <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(cf_exists_2, <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(cf_exists_3, <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(cf_exists_1);
+        <span class="macro">assert!</span>(cf_exists_2);
+        <span class="macro">assert!</span>(cf_exists_3);
         <span class="kw">for </span>col <span class="kw">in </span>cfs {
             <span class="kw">if </span>col == <span class="string">&quot;metadata&quot; </span>{
                 <span class="kw">continue</span>;
@@ -2595,7 +2585,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2648,9 +2638,9 @@
         <span class="comment">// Add some datas then remove using prefix
         </span>batch.clear();
         db.read()
-            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">1</span>]);
+            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">1</span>], <span class="kw-2">&amp;</span>[<span class="number">1</span>]);
         db.read()
-            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">2</span>], <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">2</span>]);
+            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">2</span>], <span class="kw-2">&amp;</span>[<span class="number">2</span>]);
         <span class="kw">let </span>v3 = <span class="macro">vec!</span>[<span class="number">200</span>, <span class="number">101</span>, <span class="number">1</span>];
         <span class="kw">let </span>k3 = <span class="macro">vec!</span>[<span class="number">101</span>];
         db.read()
@@ -2660,7 +2650,7 @@
             .write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">None</span>);
 
         <span class="comment">// &quot;ab&quot;.as_bytes == [97, 98]
-        </span>db.write().delete_prefix(<span class="kw-2">&amp;</span><span class="string">&quot;ab&quot;</span>, <span class="string">&quot;state&quot;</span>, <span class="prelude-val">None</span>);
+        </span>db.write().delete_prefix(<span class="string">&quot;ab&quot;</span>, <span class="string">&quot;state&quot;</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(dump_column(db.clone(), <span class="string">&quot;state&quot;</span>), BTreeMap::from([(v3, k3)]))
     }
 
@@ -2678,7 +2668,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2725,7 +2715,7 @@
             <span class="kw">let </span>db_backup_1_config = MassaDBConfig {
                 path: backup_1,
                 max_history_length: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_1_opts = MassaDB::default_db_opts();
@@ -2747,7 +2737,7 @@
             <span class="kw">let </span>db_backup_2_config = MassaDBConfig {
                 path: backup_2,
                 max_history_length: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_2_opts = MassaDB::default_db_opts();
@@ -2778,7 +2768,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2823,7 +2813,7 @@
             </span><span class="kw">let </span>db_backup_config = MassaDBConfig {
                 path: backup_path.clone(),
                 max_history_length: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="comment">// let db_backup_2_opts = MassaDB::default_db_opts();
@@ -2867,11 +2857,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>max_versioning_elements_size = <span class="number">100</span>;
+        </span><span class="kw">let </span>max_new_elements = <span class="number">100</span>;
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2959,11 +2949,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>max_versioning_elements_size = <span class="number">100</span>;
+        </span><span class="kw">let </span>max_new_elements = <span class="number">100</span>;
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3047,11 +3037,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;temp_dir_db: {:?}&quot;</span>, temp_dir_db);
-        <span class="kw">let </span>max_versioning_elements_size = <span class="number">1</span>;
+        <span class="kw">let </span>max_new_elements = <span class="number">1</span>;
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3131,11 +3121,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>max_versioning_elements_size = <span class="number">2</span>;
+        </span><span class="kw">let </span>max_new_elements = <span class="number">2</span>;
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();

@@ -554,7 +554,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -578,8 +578,8 @@
             index: ENDORSEMENT_COUNT - <span class="number">1</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>changes = ExecutedDenunciationsChanges::new();
-        changes.insert(de_idx_1.clone());
-        changes.insert(de_idx_2.clone());
+        changes.insert(de_idx_1);
+        changes.insert(de_idx_2);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         exec_de.apply_changes_to_batch(changes, slot_2, <span class="kw-2">&amp;mut </span>batch);
         exec_de

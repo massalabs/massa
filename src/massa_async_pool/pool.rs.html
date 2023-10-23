@@ -1406,6 +1406,7 @@
 <a href="#1406" id="1406">1406</a>
 <a href="#1407" id="1407">1407</a>
 <a href="#1408" id="1408">1408</a>
+<a href="#1409" id="1409">1409</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -2475,7 +2476,7 @@
     }
 
     <span class="kw">fn </span>create_message() -&gt; AsyncMessage {
-        <span class="kw">let </span>message = AsyncMessage::new(
+        AsyncMessage::new(
             Slot::new(<span class="number">1</span>, <span class="number">0</span>),
             <span class="number">0</span>,
             Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
@@ -2493,18 +2494,17 @@
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]),
             }),
             <span class="prelude-val">None</span>,
-        );
-        <span class="kw">return </span>message;
+        )
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_pool_ser_deser_empty&lt;<span class="lifetime">&#39;a</span>&gt;() {
+    </span><span class="kw">fn </span>test_pool_ser_deser_empty() {
         <span class="kw">let </span>config = AsyncPoolConfig::default();
         <span class="kw">let </span>temp_dir = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -2522,11 +2522,11 @@
             MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
         );
 
-        <span class="kw">let </span>message_ids: Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>AsyncMessageId&gt; = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>message_ids: Vec&lt;<span class="kw-2">&amp;</span>AsyncMessageId&gt; = <span class="macro">vec!</span>[];
         <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((<span class="kw-2">*</span>k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
 
@@ -2544,7 +2544,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -2583,7 +2583,7 @@
         <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((<span class="kw-2">*</span>k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
         <span class="macro">assert_eq!</span>(to_ser.len(), <span class="number">2</span>);
@@ -2604,7 +2604,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -2641,7 +2641,7 @@
         <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((<span class="kw-2">*</span>k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
         <span class="macro">assert_eq!</span>(to_ser.len(), <span class="number">2</span>);
@@ -2659,7 +2659,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -2688,8 +2688,10 @@
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch2 = DBBatch::new();
         pool.delete_entry(<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;mut </span>batch2);
-        <span class="kw">let </span><span class="kw-2">mut </span>message_update = AsyncMessageUpdate::default();
-        message_update.function = SetOrKeep::Set(<span class="string">&quot;test0&quot;</span>.to_string());
+        <span class="kw">let </span>message_update = AsyncMessageUpdate {
+            function: SetOrKeep::Set(<span class="string">&quot;test0&quot;</span>.to_string()),
+            ..Default::default()
+        };
         pool.update_entry(<span class="kw-2">&amp;</span>message2_id, message_update, <span class="kw-2">&amp;mut </span>batch2);
 
         <span class="kw">let </span>versioning_batch2 = DBBatch::new();
@@ -2712,7 +2714,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -2760,7 +2762,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(

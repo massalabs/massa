@@ -2086,7 +2086,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_advance_ser_der() {
-        <span class="kw">let </span>now = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">05</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
+        <span class="kw">let </span>now = MassaTime::from_utc_ymd_hms(<span class="number">2017</span>, <span class="number">5</span>, <span class="number">11</span>, <span class="number">11</span>, <span class="number">33</span>, <span class="number">44</span>).unwrap();
 
         <span class="kw">let </span>adv_lw = AdvanceLW {
             threshold: Default::default(),
@@ -2258,7 +2258,7 @@
 
         <span class="comment">// Cannot use update_with ou try_from here as the names are not uniques
         </span><span class="kw">let </span>store_raw = MipStoreRaw {
-            store: BTreeMap::from_iter(store_raw_.into_iter()),
+            store: BTreeMap::from_iter(store_raw_),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: <span class="number">10</span>,
                 warn_announced_version_ratio: Ratio::new(<span class="number">30</span>, <span class="number">100</span>),
