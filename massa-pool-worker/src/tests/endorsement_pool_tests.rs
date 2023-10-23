@@ -58,9 +58,10 @@ fn test_add_endorsements() {
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 3)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 3)),
+            ];
             storage.store_endorsements(endorsements);
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
@@ -123,9 +124,10 @@ fn test_dont_add_endorsements_bad_pos() {
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 3)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 3)),
+            ];
             storage.store_endorsements(endorsements);
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
@@ -148,9 +150,10 @@ fn test_dont_add_endorsements_outdated() {
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 3)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 3)),
+            ];
             storage.store_endorsements(endorsements);
             // Increase the final cs period so that our endorsements should be refused
             pool.notify_final_cs_periods(&vec![1; THREAD_COUNT as usize]);
@@ -168,17 +171,20 @@ fn test_dont_add_endorsements_pool_full() {
     let address = Address::from_public_key(&sender_keypair.get_public_key());
     let execution_controller = default_mock_execution_controller();
     let selector_controller = default_mock_selector(address);
-    let mut cfg = PoolConfig::default();
-    cfg.max_endorsements_pool_size_per_thread = 1;
+    let cfg = PoolConfig {
+        max_endorsements_pool_size_per_thread: 1,
+        ..Default::default()
+    };
     pool_test(
         cfg,
         execution_controller,
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(2, 2)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(2, 2)),
+            ];
             storage.store_endorsements(endorsements);
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
@@ -200,9 +206,10 @@ fn test_remove_endorsements_pool_outdated() {
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(2, 2)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(2, 2)),
+            ];
             storage.store_endorsements(endorsements.clone());
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
@@ -231,9 +238,10 @@ fn test_get_block_endorsements_works() {
         selector_controller,
         Some((address, sender_keypair.clone())),
         |mut pool, mut storage| {
-            let mut endorsements = Vec::new();
-            endorsements.push(create_endorsement(&sender_keypair, 0, Slot::new(1, 2)));
-            endorsements.push(create_endorsement(&sender_keypair, 1, Slot::new(1, 2)));
+            let endorsements = vec![
+                create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
+                create_endorsement(&sender_keypair, 0, Slot::new(2, 2)),
+            ];
             storage.store_endorsements(endorsements.clone());
             pool.add_endorsements(storage.clone());
             // Allow some time for the pool to add the endorsements
