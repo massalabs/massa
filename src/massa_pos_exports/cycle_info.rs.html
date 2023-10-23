@@ -1071,7 +1071,7 @@
         );
         cycle_info1.final_state_hash_snapshot = <span class="prelude-val">Some</span>(HashXof::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">2u8</span>; <span class="number">512</span>]));
 
-        <span class="kw">return </span>(cycle_info1, addr1, addr2);
+        (cycle_info1, addr1, addr2)
     }
 
     <span class="attr">#[test]
