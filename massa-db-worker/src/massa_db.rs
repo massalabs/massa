@@ -1431,7 +1431,7 @@ mod test {
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         println!("temp_dir_db: {:?}", temp_dir_db);
-        let max_versioning_elements_size = 1;
+        let max_versioning_elements_size = 2;
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
