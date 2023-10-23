@@ -27,9 +27,11 @@ fn test_full_ask_block_workflow() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
 
     let block_creator = KeyPair::generate(0).unwrap();
     let op_1 = tools::create_operation_with_expire_period(&block_creator, 5);
@@ -174,9 +176,11 @@ fn test_empty_block() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
 
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
@@ -274,9 +278,11 @@ fn test_dont_want_it_anymore() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     //2. Create a block coming from node a.
     let op_1 = tools::create_operation_with_expire_period(&block_creator, 5);
@@ -380,9 +386,11 @@ fn test_no_one_has_it() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -450,9 +458,11 @@ fn test_multiple_blocks_without_a_priori() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block_1 = tools::create_block(&block_creator);
     let block_2 = tools::create_block(&block_creator);
@@ -542,9 +552,11 @@ fn test_protocol_sends_blocks_when_asked_for() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -627,9 +639,11 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
     let mut consensus_controller = Box::new(MockConsensusController::new());

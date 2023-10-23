@@ -109,6 +109,7 @@ impl ProtocolTestUniverse {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn start_protocol_controller_with_mock_network(
     config: ProtocolConfig,
     selector_controller: Box<dyn SelectorController>,

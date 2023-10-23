@@ -30,9 +30,11 @@ use super::{context::protocol_test, tools::assert_hash_asked_to_node};
 
 #[test]
 fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.unban_everyone_timer = MassaTime::from_millis(1000);
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        unban_everyone_timer: MassaTime::from_millis(1000),
+        ..Default::default()
+    };
 
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
@@ -141,9 +143,11 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
         .expect_clone_box()
@@ -201,9 +205,11 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
 
     let block_creator = KeyPair::generate(0).unwrap();
     let operation_1 = tools::create_operation_with_expire_period(&block_creator, 1);
@@ -305,9 +311,11 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -393,9 +401,11 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let block = tools::create_block(&block_creator);
     let mut consensus_controller = Box::new(MockConsensusController::new());

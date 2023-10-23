@@ -31,6 +31,12 @@ pub struct MockActiveConnections {
     pub connections: HashMap<PeerId, MassaSender<Message>>,
 }
 
+impl Default for MockActiveConnections {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockActiveConnections {
     pub fn new() -> Self {
         Self {

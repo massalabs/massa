@@ -22,9 +22,11 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let op_1 = tools::create_operation_with_expire_period(&block_creator, 5);
     let op_2 = tools::create_operation_with_expire_period(&block_creator, 5);

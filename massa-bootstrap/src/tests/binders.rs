@@ -587,7 +587,7 @@ fn test_client_drip_feed() {
                 // give a message size that we can drip-feed
                 client_clone.write_all(&[0, 0, 0, 120]).unwrap();
                 for i in 0..120 {
-                    client_clone.write(&[i]).unwrap();
+                    client_clone.write_all(&[i]).unwrap();
                     client_clone.flush().unwrap();
                     std::thread::sleep(Duration::from_millis(10));
                 }
