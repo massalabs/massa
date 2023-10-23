@@ -577,10 +577,10 @@
             <span class="self">self</span>.ledger_changes == other.ledger_changes &amp;&amp;
                 <span class="self">self</span>.async_pool_changes == other.async_pool_changes &amp;&amp;
                 <span class="comment">// pos_changes
-                </span><span class="self">self</span>.pos_changes.seed_bits == <span class="self">self</span>.pos_changes.seed_bits &amp;&amp;
-                <span class="self">self</span>.pos_changes.roll_changes == <span class="self">self</span>.pos_changes.roll_changes &amp;&amp;
-                <span class="self">self</span>.pos_changes.production_stats == <span class="self">self</span>.pos_changes.production_stats &amp;&amp;
-                <span class="self">self</span>.pos_changes.deferred_credits.credits == <span class="self">self</span>.pos_changes.deferred_credits.credits &amp;&amp;
+                </span><span class="self">self</span>.pos_changes.seed_bits == other.pos_changes.seed_bits &amp;&amp;
+                <span class="self">self</span>.pos_changes.roll_changes == other.pos_changes.roll_changes &amp;&amp;
+                <span class="self">self</span>.pos_changes.production_stats == other.pos_changes.production_stats &amp;&amp;
+                <span class="self">self</span>.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &amp;&amp;
                 <span class="self">self</span>.executed_ops_changes == other.executed_ops_changes &amp;&amp;
                 <span class="self">self</span>.executed_denunciations_changes == other.executed_denunciations_changes &amp;&amp;
                 <span class="self">self</span>.execution_trail_hash_change == other.execution_trail_hash_change

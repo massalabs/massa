@@ -107,7 +107,7 @@
     ) {
         <span class="kw">let </span>known_endorsements = <span class="self">self
             </span>.endorsements_known_by_peer
-            .entry(peer_id.clone())
+            .entry(<span class="kw-2">*</span>peer_id)
             .or_insert_with(|| LruMap::new(ByLength::new(<span class="self">self</span>.max_known_endorsements_by_peer)));
         <span class="kw">for </span>endorsement <span class="kw">in </span>endorsements {
             known_endorsements.insert(<span class="kw-2">*</span>endorsement, ());
@@ -127,7 +127,7 @@
 
         <span class="comment">// Add new connected peers to cache
         </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-            <span class="kw">match </span><span class="self">self</span>.endorsements_known_by_peer.entry(peer_id.clone()) {
+            <span class="kw">match </span><span class="self">self</span>.endorsements_known_by_peer.entry(<span class="kw-2">*</span>peer_id) {
                 std::collections::hash_map::Entry::Occupied(<span class="kw">_</span>) =&gt; {}
                 std::collections::hash_map::Entry::Vacant(entry) =&gt; {
                     entry.insert(LruMap::new(ByLength::new(
