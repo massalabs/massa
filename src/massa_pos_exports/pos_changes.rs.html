@@ -255,7 +255,6 @@
 <a href="#255" id="255">255</a>
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     DeferredCredits, DeferredCreditsDeserializer, DeferredCreditsSerializer, ProductionStats,
     ProductionStatsDeserializer, ProductionStatsSerializer, RollsDeserializer,
@@ -492,12 +491,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>def_credits = DeferredCredits::default();
         def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">0</span>), addr1, Amount::from_str(<span class="string">&quot;300.0&quot;</span>).unwrap());
 
-        <span class="kw">let </span>pos_changes = PoSChanges {
-            roll_changes,
-            seed_bits: BitVec::from_vec(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>]),
-            production_stats: prod_stats,
-            deferred_credits: DeferredCredits::default(),
-        };
+        <span class="kw">let </span><span class="kw-2">mut </span>pos_changes = PoSChanges::default();
+        pos_changes.roll_changes = roll_changes;
+        pos_changes.seed_bits = BitVec::from_vec(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">1</span>]);
+        pos_changes.production_stats = prod_stats;
+        pos_changes.deferred_credits = DeferredCredits::default();
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
         <span class="kw">let </span>serializer = PoSChangesSerializer::new();

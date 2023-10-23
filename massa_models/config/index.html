@@ -8,28 +8,28 @@ be used as it as a constant. When you need one of these values, you better
 use the <code>cfg</code> parameter in your worker.</p>
 <p>The only place where it’s safe to use it is in files named <code>settings.rs</code>
 or <code>config.rs</code></p>
-<h2 id="test-exports-or-default"><a href="#test-exports-or-default">test-exports or default</a></h2>
+<h2 id="testing-or-default"><a href="#testing-or-default">Testing or default</a></h2>
 <p>You have access to the constants (in test or in normal mode) with the
 following imports. When you have a doubt for the import, use the auto
 dispatcher <code>use massa_models::constants::*;</code></p>
 
-<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="comment">// Classic import automatically root to `test-exportss` or `default`
+<div class="example-wrap ignore"><a href="#" class="tooltip" title="This example is not tested">ⓘ</a><pre class="rust rust-example-rendered"><code><span class="comment">// Classic import automatically root to `testings` or `default`
 // depending on the compilation context.
 </span><span class="kw">use </span>massa_models::constants::<span class="kw-2">*</span>;
 
 <span class="comment">// Force to import the nominal constants
 </span><span class="kw">use </span>massa_models::constants::default::<span class="kw-2">*</span>;
 
-<span class="comment">// Force to import the test-exportss constants
-</span><span class="kw">use </span>massa_models::constants::default_test-exports::<span class="kw-2">*</span>;</code></pre></div>
+<span class="comment">// Force to import the testings constants
+</span><span class="kw">use </span>massa_models::constants::default_testing::<span class="kw-2">*</span>;</code></pre></div>
 <h2 id="note-about-rooting"><a href="#note-about-rooting">Note about rooting</a></h2><div class="example-wrap"><pre class="language-md"><code>|T|S| not(T) or S | T and not(S)
 |0|0| 1           | 0
 |1|0| 0           | 1
 |0|1| 1           | 0
 |1|1| 1           | 0
 </code></pre></div>
-<p><code>#[cfg(any(not(feature = &quot;test-exports&quot;), feature = &quot;sandbox&quot;))]</code>
+<p><code>#[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]</code>
 On <code>cargo run --release</code> or <code>cargo run --features sandbox</code></p>
-<p>#<code>[cfg(all(feature = &quot;test-exports&quot;, not(feature = &quot;sandbox&quot;)))]</code>
+<p>#<code>[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]</code>
 On <code>cargo run</code> or <code>cargo test</code></p>
 </div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2><ul class="item-table"><li><div class="item-name"><code>pub use <a class="mod" href="constants/index.html" title="mod massa_models::config::constants">constants</a>::*;</code></div></li></ul><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="compact_config/index.html" title="mod massa_models::config::compact_config">compact_config</a><span title="Restricted Visibility">&nbsp;🔒</span> </div></li><li><div class="item-name"><a class="mod" href="constants/index.html" title="mod massa_models::config::constants">constants</a></div><div class="desc docblock-short">DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES</div></li><li><div class="item-name"><a class="mod" href="massa_settings/index.html" title="mod massa_models::config::massa_settings">massa_settings</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">Build a settings for an object that implement <code>massa_settings</code></div></li></ul><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.CompactConfig.html" title="struct massa_models::config::CompactConfig">CompactConfig</a></div><div class="desc docblock-short">Compact representation of key values of consensus algorithm used in API</div></li></ul><h2 id="functions" class="small-section-header"><a href="#functions">Functions</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.build_massa_settings.html" title="fn massa_models::config::build_massa_settings">build_massa_settings</a></div><div class="desc docblock-short">Merge the settings</div></li></ul></section></div></main></body></html>

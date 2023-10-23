@@ -150,7 +150,7 @@
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::collections::HashMap;
 
-<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
+<span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="doccomment">/// interface that communicates with the execution worker thread
 </span><span class="kw">pub trait </span>ExecutionController: Send + Sync {
     <span class="doccomment">/// Updates blockclique status by signaling newly finalized blocks and the latest blockclique.

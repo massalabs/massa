@@ -645,13 +645,13 @@
             .chain(
                 initial_peers_infos
                     .iter()
-                    .map(|(peer_id, data)| (<span class="kw-2">*</span>peer_id, data.listeners.clone())),
+                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
             )
             .collect()
     } <span class="kw">else </span>{
         initial_peers_infos
             .iter()
-            .map(|(peer_id, data)| (<span class="kw-2">*</span>peer_id, data.listeners.clone()))
+            .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone()))
             .collect()
     };
 

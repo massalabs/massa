@@ -246,7 +246,7 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 <span class="kw">use </span>massa_pos_exports::{PosError, PosResult, Selection, SelectorController, SelectorManager};
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
 <span class="kw">use </span>std::sync::mpsc::SyncSender;
 <span class="kw">use </span>tracing::{info, warn};
@@ -433,7 +433,7 @@
     <span class="doccomment">/// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
     </span><span class="kw">fn </span>get_entire_selection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VecDeque&lt;(u64, HashMap&lt;Slot, Selection&gt;)&gt; {
         <span class="kw">let </span>(<span class="kw">_</span>, lock) = <span class="kw-2">&amp;*</span><span class="self">self</span>.cache;
         <span class="kw">let </span>cache_guard = lock.read();

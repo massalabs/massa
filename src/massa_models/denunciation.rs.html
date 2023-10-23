@@ -2655,11 +2655,11 @@
 
 <span class="comment">// End Denunciation interest
 
-// test-exports
+// testing
 
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
 </span><span class="kw">impl </span>Denunciation {
-    <span class="doccomment">/// Used under test-exports conditions to validate an instance of Self
+    <span class="doccomment">/// Used under testing conditions to validate an instance of Self
     </span><span class="kw">pub fn </span>check_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.is_valid() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Denunciation is invalid: {:?}&quot;</span>, <span class="self">self</span>).into());
@@ -2668,7 +2668,7 @@
     }
 }
 
-<span class="comment">// end test-exports
+<span class="comment">// end testing
 
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
