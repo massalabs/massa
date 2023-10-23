@@ -215,7 +215,7 @@ fn test_bootstrap_whitelist() {
 
     let conn = TcpStream::connect(addr);
     let mut stream = conn.unwrap();
-    let mut buf = vec![0; 1];
+    let mut buf = vec![0; 0];
     stream.read_exact(&mut buf).unwrap();
     stream.shutdown(std::net::Shutdown::Both).unwrap();
 
