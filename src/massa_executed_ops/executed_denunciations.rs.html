@@ -578,8 +578,8 @@
             index: ENDORSEMENT_COUNT - <span class="number">1</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>changes = ExecutedDenunciationsChanges::new();
-        changes.insert(de_idx_1.clone());
-        changes.insert(de_idx_2.clone());
+        changes.insert(de_idx_1);
+        changes.insert(de_idx_2);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         exec_de.apply_changes_to_batch(changes, slot_2, <span class="kw-2">&amp;mut </span>batch);
         exec_de
