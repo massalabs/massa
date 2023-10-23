@@ -69,6 +69,7 @@ fn test_full_ask_block_workflow() {
         pool_controller.expect_add_operations().returning(|_| {});
         pool_controller
     });
+    pool_controller.expect_add_operations().returning(|_| {});
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
         .expect_clone_box()

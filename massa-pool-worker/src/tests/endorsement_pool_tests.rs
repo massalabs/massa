@@ -240,7 +240,7 @@ fn test_get_block_endorsements_works() {
         |mut pool, mut storage| {
             let endorsements = vec![
                 create_endorsement(&sender_keypair, 0, Slot::new(1, 2)),
-                create_endorsement(&sender_keypair, 0, Slot::new(2, 2)),
+                create_endorsement(&sender_keypair, 1, Slot::new(1, 2)),
             ];
             storage.store_endorsements(endorsements.clone());
             pool.add_endorsements(storage.clone());
