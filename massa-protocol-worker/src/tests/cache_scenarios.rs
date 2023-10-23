@@ -69,18 +69,17 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
         },
     );
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_add_operations()
-            .return_once(move |storage_ops| {
-                let op_ids = storage_ops.get_op_refs();
-                assert_eq!(op_ids.len(), 2);
-                assert!(op_ids.contains(&op_1.id));
-                assert!(op_ids.contains(&op_2.id));
-            });
-        pool_controller
-    });
+    pool_controller
+        .expect_clone_box()
+        .returning(move || Box::new(MockPoolController::new()));
+    pool_controller
+        .expect_add_operations()
+        .return_once(move |storage_ops| {
+            let op_ids = storage_ops.get_op_refs();
+            assert_eq!(op_ids.len(), 2);
+            assert!(op_ids.contains(&op_1.id));
+            assert!(op_ids.contains(&op_2.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
         .expect_clone_box()

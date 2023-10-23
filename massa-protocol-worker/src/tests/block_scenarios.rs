@@ -64,11 +64,9 @@ fn test_full_ask_block_workflow() {
         },
     );
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(|| {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller.expect_add_operations().returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
     pool_controller.expect_add_operations().returning(|_| {});
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
@@ -205,11 +203,10 @@ fn test_empty_block() {
         },
     );
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(|| {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller.expect_add_operations().returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
+    pool_controller.expect_add_operations().returning(|_| {});
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
         .expect_clone_box()

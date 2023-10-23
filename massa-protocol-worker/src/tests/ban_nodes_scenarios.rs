@@ -78,6 +78,21 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     foreign_controllers
         .peer_db
         .write()
+        .expect_get_peers_in_test()
+        .return_const(HashSet::default());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_oldest_peer()
+        .return_const(None);
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_get_rand_peers_to_send()
+        .return_const(vec![]);
+    foreign_controllers
+        .peer_db
+        .write()
         .expect_unban_peer()
         .returning(move |peer_id| {
             assert_eq!(peer_id, &node_a_peer_id);

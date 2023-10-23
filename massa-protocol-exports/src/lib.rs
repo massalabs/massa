@@ -14,7 +14,7 @@ pub use peernet::peer::PeerConnectionType;
 pub use peernet::transports::TransportType;
 pub use settings::{PeerCategoryInfo, ProtocolConfig};
 
-#[cfg(feature = "test-exports")]
+#[cfg(any(test, feature = "test-exports"))]
 pub mod test_exports;
 
 #[cfg(feature = "test-exports")]

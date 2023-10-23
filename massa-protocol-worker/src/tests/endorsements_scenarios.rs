@@ -52,6 +52,13 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -120,6 +127,13 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -188,6 +202,13 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -292,6 +313,13 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());

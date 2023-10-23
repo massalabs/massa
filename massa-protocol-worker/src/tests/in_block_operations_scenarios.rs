@@ -63,18 +63,17 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
         },
     );
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_add_operations()
-            .returning(move |storage_ops| {
-                let storage_ops = storage_ops.get_op_refs();
-                assert_eq!(storage_ops.len(), 2);
-                assert!(storage_ops.contains(&op_1.id));
-                assert!(storage_ops.contains(&op_2.id));
-            });
-        pool_controller
-    });
+    pool_controller
+        .expect_clone_box()
+        .returning(move || Box::new(MockPoolController::new()));
+    pool_controller
+        .expect_add_operations()
+        .returning(move |storage_ops| {
+            let storage_ops = storage_ops.get_op_refs();
+            assert_eq!(storage_ops.len(), 2);
+            assert!(storage_ops.contains(&op_1.id));
+            assert!(storage_ops.contains(&op_2.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller
         .expect_clone_box()
