@@ -934,7 +934,7 @@ impl MipStoreRaw {
                         }
                     }
 
-                    #[cfg(not(feature = "test-exports"))]
+                    #[cfg(not(any(test, feature = "test-exports")))]
                     if m_info.activation_delay < VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = Some(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
