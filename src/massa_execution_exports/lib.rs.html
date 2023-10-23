@@ -112,7 +112,7 @@
 //!
 //! ## Test exports
 //!
-//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
 </span><span class="attr">#![warn(missing_docs)]
@@ -127,7 +127,7 @@
 <span class="kw">mod </span>types;
 
 <span class="kw">pub use </span>channels::ExecutionChannels;
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
 </span><span class="kw">pub use </span>controller_traits::MockExecutionController;
 <span class="kw">pub use </span>controller_traits::{ExecutionController, ExecutionManager};
 <span class="kw">pub use </span>error::{ExecutionError, ExecutionQueryError};
@@ -142,6 +142,6 @@
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 
-<span class="attr">#[cfg(any(feature = <span class="string">&quot;testing&quot;</span>, feature = <span class="string">&quot;gas_calibration&quot;</span>))]
+<span class="attr">#[cfg(any(feature = <span class="string">&quot;test-exports&quot;</span>, feature = <span class="string">&quot;gas_calibration&quot;</span>))]
 </span><span class="kw">pub mod </span>test_exports;
 </code></pre></div></section></main></body></html>

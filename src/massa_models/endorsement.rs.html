@@ -862,10 +862,10 @@
     </span><span class="kw">pub </span>endorsed_block: BlockId,
 }
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
+<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
 </span><span class="kw">impl </span>SecureShareEndorsement {
     <span class="comment">// TODO: gh-issue #3398
-    </span><span class="doccomment">/// Used under testing conditions to validate an instance of Self
+    </span><span class="doccomment">/// Used under test-exports conditions to validate an instance of Self
     </span><span class="kw">pub fn </span>check_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.verify_signature() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());

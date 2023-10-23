@@ -453,7 +453,7 @@
     }
 
     <span class="doccomment">/// Checks whether an element is stored in the pool - only used in unit tests for now
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
     </span><span class="kw">pub fn </span>_contains(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool {
         <span class="self">self</span>.denunciations_cache
             .iter()

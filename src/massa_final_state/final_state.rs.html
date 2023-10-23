@@ -1438,7 +1438,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// This is needed for `test_bootstrap_server` to work
-        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;testing&quot;</span>) {
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;test-exports&quot;</span>) {
             <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
             final_state

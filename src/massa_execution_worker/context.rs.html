@@ -1182,14 +1182,14 @@
     </span><span class="attr">#[cfg(all(
         not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
         not(feature = <span class="string">&quot;benchmarking&quot;</span>),
-        not(feature = <span class="string">&quot;testing&quot;</span>),
+        not(feature = <span class="string">&quot;test-exports&quot;</span>),
         not(test)
     ))]
     </span>speculative_ledger: SpeculativeLedger,
     <span class="attr">#[cfg(any(
         feature = <span class="string">&quot;gas_calibration&quot;</span>,
         feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;testing&quot;</span>,
+        feature = <span class="string">&quot;test-exports&quot;</span>,
         test
     ))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,

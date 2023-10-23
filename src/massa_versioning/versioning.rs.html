@@ -3585,7 +3585,7 @@
                         }
                     }
 
-                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
+                    <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
                     </span><span class="kw">if </span>m_info.activation_delay &lt; VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = <span class="prelude-val">Some</span>(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -4487,7 +4487,7 @@
             timeout: MassaTime::from_millis(<span class="number">5</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
-        <span class="comment">// Another versioning info (from an attacker) for testing
+        <span class="comment">// Another versioning info (from an attacker) for test-exports
         </span><span class="kw">let </span>vi_2 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">2</span>,
