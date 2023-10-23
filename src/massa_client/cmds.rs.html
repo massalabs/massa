@@ -2610,7 +2610,7 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">5 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">4 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2648,7 +2648,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">8 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">6 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
