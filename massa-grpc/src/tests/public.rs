@@ -377,8 +377,8 @@ async fn execute_read_only_call() {
             target_address: "toto".to_string(),
             target_function: "function".to_string(),
             parameter: vec![],
+            coins: None,
         })),
-        coins: None,
         fee: None,
     };
 
@@ -395,6 +395,7 @@ async fn execute_read_only_call() {
         target_address: "AS12cx6BJHSrBPPSE86E6LYgYS44dvXoHW77cdPbTT8H41wm6xGN5".to_string(),
         target_function: "function".to_string(),
         parameter: vec![],
+        coins: None,
     }));
 
     let call = public_client

@@ -5,6 +5,7 @@
 //! the future cycles
 
 #![warn(missing_docs)]
+#![warn(unused_imports)]
 
 mod config;
 mod controller_traits;
