@@ -325,6 +325,72 @@
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -485,7 +551,7 @@
     </span><span class="kw">pub </span>peers_in_test: HashSet&lt;SocketAddr&gt;,
 }
 
-<span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;PeerDB&gt;&gt;;
+<span class="kw">pub type </span>SharedPeerDB = Arc&lt;RwLock&lt;<span class="kw">dyn </span>PeerDBTrait&gt;&gt;;
 
 <span class="kw">pub type </span>PeerMessageTuple = (PeerId, Vec&lt;u8&gt;);
 
@@ -608,7 +674,6 @@
     }
 
     <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PeerDBTrait&gt; {
-        <span class="macro">println!</span>(<span class="string">&quot;AURELIEN: clone_box&quot;</span>);
         Box::new(<span class="self">self</span>.clone())
     }
 
@@ -618,38 +683,105 @@
             .filter(|peer| peer.state == PeerState::Banned)
             .count() <span class="kw">as </span>u64
     }
+
+    <span class="kw">fn </span>get_known_peer_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.peers.len() <span class="kw">as </span>u64
+    }
+
+    <span class="kw">fn </span>get_peers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;PeerId, PeerInfo&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.peers
+    }
+
+    <span class="kw">fn </span>get_peers_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HashMap&lt;PeerId, PeerInfo&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.peers
+    }
+
+    <span class="kw">fn </span>get_connection_metadata_or_default(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; ConnectionMetadata {
+        <span class="self">self</span>.try_connect_history
+            .get(addr)
+            .cloned()
+            .unwrap_or(ConnectionMetadata::default())
+    }
+
+    <span class="kw">fn </span>set_try_connect_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+        <span class="self">self</span>.try_connect_history
+            .entry(<span class="kw-2">*</span>addr)
+            .or_insert(ConnectionMetadata::default())
+            .try_connect();
+    }
+
+    <span class="kw">fn </span>set_try_connect_failure_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+        <span class="self">self</span>.try_connect_history
+            .entry(<span class="kw-2">*</span>addr)
+            .or_insert(ConnectionMetadata::default())
+            .failure();
+    }
+
+    <span class="kw">fn </span>set_try_connect_test_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+        <span class="self">self</span>.try_connect_history
+            .entry(<span class="kw-2">*</span>addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_success();
+    }
+
+    <span class="kw">fn </span>set_try_connect_test_failure_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
+        <span class="self">self</span>.try_connect_history
+            .entry(<span class="kw-2">*</span>addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_failure();
+    }
+
+    <span class="kw">fn </span>get_peers_in_test(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashSet&lt;SocketAddr&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.peers_in_test
+    }
+
+    <span class="kw">fn </span>insert_peer_in_test(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; bool {
+        <span class="self">self</span>.peers_in_test.insert(<span class="kw-2">*</span>addr)
+    }
+
+    <span class="kw">fn </span>remove_peer_in_test(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; bool {
+        <span class="self">self</span>.peers_in_test.remove(addr)
+    }
+
+    <span class="kw">fn </span>insert_tested_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr, time: MassaTime) {
+        <span class="self">self</span>.tested_addresses.insert(<span class="kw-2">*</span>addr, time);
+    }
+
+    <span class="kw">fn </span>get_tested_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HashMap&lt;SocketAddr, MassaTime&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.tested_addresses
+    }
 }
 
-<span class="kw">impl </span>PeerDBTrait <span class="kw">for </span>SharedPeerDB {
-    <span class="kw">fn </span>ban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
-        <span class="self">self</span>.write().ban_peer(peer_id);
-    }
+<span class="comment">// impl PeerDBTrait for SharedPeerDB {
+//     fn ban_peer(&amp;mut self, peer_id: &amp;PeerId) {
+//         self.write().ban_peer(peer_id);
+//     }
 
-    <span class="kw">fn </span>unban_peer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) {
-        <span class="self">self</span>.write().unban_peer(peer_id);
-    }
+//     fn unban_peer(&amp;mut self, peer_id: &amp;PeerId) {
+//         self.write().unban_peer(peer_id);
+//     }
 
-    <span class="kw">fn </span>clone_box(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>PeerDBTrait&gt; {
-        Box::new(<span class="self">self</span>.clone())
-    }
+//     fn clone_box(&amp;self) -&gt; Box&lt;dyn PeerDBTrait&gt; {
+//         Box::new(self.clone())
+//     }
 
-    <span class="kw">fn </span>get_oldest_peer(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cooldown: Duration,
-        in_test: <span class="kw-2">&amp;</span>HashSet&lt;SocketAddr&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;SocketAddr&gt; {
-        <span class="self">self</span>.read().get_oldest_peer(cooldown, in_test)
-    }
+//     fn get_oldest_peer(
+//         &amp;self,
+//         cooldown: Duration,
+//         in_test: &amp;HashSet&lt;SocketAddr&gt;,
+//     ) -&gt; Option&lt;SocketAddr&gt; {
+//         self.read().get_oldest_peer(cooldown, in_test)
+//     }
 
-    <span class="kw">fn </span>get_rand_peers_to_send(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        nb_peers: usize,
-    ) -&gt; Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt; {
-        <span class="self">self</span>.read().get_rand_peers_to_send(nb_peers)
-    }
+//     fn get_rand_peers_to_send(
+//         &amp;self,
+//         nb_peers: usize,
+//     ) -&gt; Vec&lt;(PeerId, HashMap&lt;SocketAddr, TransportType&gt;)&gt; {
+//         self.read().get_rand_peers_to_send(nb_peers)
+//     }
 
-    <span class="kw">fn </span>get_banned_peer_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="self">self</span>.read().get_banned_peer_count()
-    }
-}
-</code></pre></div></section></main></body></html>
+//     fn get_banned_peer_count(&amp;self) -&gt; u64 {
+//         self.read().get_banned_peer_count()
+//     }
+// }
+</span></code></pre></div></section></main></body></html>

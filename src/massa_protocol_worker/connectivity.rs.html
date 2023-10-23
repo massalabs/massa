@@ -418,15 +418,6 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>ip_rfc::global;
@@ -447,7 +438,7 @@
 <span class="kw">use </span>std::{thread::JoinHandle, time::Duration};
 <span class="kw">use </span>tracing::{debug, warn};
 
-<span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
+<span class="kw">use </span><span class="kw">crate</span>::handlers::peer_handler::models::ConnectionMetadata;
 <span class="kw">use crate</span>::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
     ip::to_canonical,
@@ -462,7 +453,6 @@
         peer_handler::models::PeerMessageTuple,
     },
     wrap_network::NetworkController,
-    wrap_peer_db::PeerDBTrait,
 };
 
 <span class="attr">#[derive(Clone)]
@@ -645,7 +635,7 @@
                                 <span class="kw">let </span>out_connection_count = network_controller.get_active_connections().get_nb_out_connections() <span class="kw">as </span>u64;
                                 <span class="kw">let </span>(banned_peer_count, known_peer_count) = {
                                     <span class="kw">let </span>peer_db_read = peer_db.read();
-                                    (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() <span class="kw">as </span>u64)
+                                    (peer_db_read.get_banned_peer_count(), peer_db_read.get_known_peer_count())
                                 };
                                 <span class="kw">let </span>stats = NetworkStats {
                                     active_node_count,
@@ -673,7 +663,7 @@
                         <span class="kw">let </span>peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
                         <span class="kw">let </span>peer_db_read = peer_db.read();
-                        massa_metrics.set_known_peers(peer_db_read.peers.len());
+                        massa_metrics.set_known_peers(peer_db_read.get_known_peer_count() <span class="kw">as </span>usize);
                         massa_metrics.set_banned_peers(peer_db_read.get_banned_peer_count() <span class="kw">as </span>usize);
                     },
                     recv(tick_try_connect) -&gt; <span class="kw">_ </span>=&gt; {
@@ -691,7 +681,7 @@
                         </span><span class="kw">let </span><span class="kw-2">mut </span>addresses_can_connect  = Vec::new();
                         {
                             <span class="kw">let </span>peer_db_read = peer_db.read();
-                            <span class="kw">for </span>(peer_id, peer_info) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_read.peers {
+                            <span class="kw">for </span>(peer_id, peer_info) <span class="kw">in </span>peer_db_read.get_peers() {
 
                                 <span class="comment">// If peer already connected, decrement the slots for the given category, or default category if none
                                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = peers_connected.get(peer_id) {
@@ -739,7 +729,7 @@
                                                 <span class="kw">continue</span>;
                                             }
 
-                                            <span class="kw">let </span>connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
+                                            <span class="kw">let </span>connection_metadata = peer_db_read.get_connection_metadata_or_default(addr);
 
                                             <span class="comment">// check if the peer last connect attempt has not been too recent
                                             </span><span class="kw">if let </span>ConnectionMetadata { last_try_connect: <span class="prelude-val">Some</span>(lt), .. } = connection_metadata {
@@ -813,9 +803,9 @@
                     recv(tick_unban_everyone) -&gt; <span class="kw">_ </span>=&gt; {
                         <span class="macro">debug!</span>(<span class="string">&quot;Periodic unban of every peer&quot;</span>);
                         <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-                        <span class="kw">for </span>(peer_id, peer_status) <span class="kw">in </span><span class="kw-2">&amp;</span>peer_db_write.peers.clone() {
+                        <span class="kw">for </span>(peer_id, peer_status) <span class="kw">in </span>peer_db_write.get_peers().clone() {
                             <span class="kw">if </span>peer_status.state == PeerState::Banned {
-                                peer_db_write.unban_peer(peer_id);
+                                peer_db_write.unban_peer(<span class="kw-2">&amp;</span>peer_id);
                             }
                         }
                     }
@@ -832,7 +822,7 @@
 </span><span class="kw">fn </span>try_connect_peer(
     addr: SocketAddr,
     network_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>NetworkController&gt;,
-    peer_db: <span class="kw-2">&amp;</span>Arc&lt;RwLock&lt;PeerDB&gt;&gt;,
+    peer_db: <span class="kw-2">&amp;</span>SharedPeerDB,
     config: <span class="kw-2">&amp;</span>ProtocolConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
     <span class="macro">debug!</span>(<span class="string">&quot;Trying to connect to addr {}&quot;</span>, addr);
@@ -840,18 +830,10 @@
     <span class="kw">let </span>conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
         <span class="kw">let </span><span class="kw-2">mut </span>peer_db_write = peer_db.write();
-        peer_db_write
-            .try_connect_history
-            .entry(addr)
-            .or_insert(ConnectionMetadata::default())
-            .try_connect();
+        peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
         <span class="kw">if let </span><span class="prelude-val">Err</span>(<span class="kw-2">ref </span>err) = conn_res {
             <span class="macro">debug!</span>(<span class="string">&quot;Failed to connect to peer {:?}: {:?}&quot;</span>, addr, err);
-            peer_db_write
-                .try_connect_history
-                .entry(addr)
-                .or_insert(ConnectionMetadata::default())
-                .failure();
+            peer_db_write.set_try_connect_failure_or_insert(<span class="kw-2">&amp;</span>addr);
         }
     }
     conn_res
