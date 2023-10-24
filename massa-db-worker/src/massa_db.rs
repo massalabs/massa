@@ -1375,8 +1375,7 @@ mod test {
         let batch_1 = DBBatch::from([(batch_key_1, Some(batch_value_1))]);
         let batch_v_key_1 = vec![10, 20, 30];
         let batch_v_value_1 = vec![127, 128, 254, 255];
-        let versioning_batch_1 =
-            DBBatch::from([(batch_v_key_1.clone(), Some(batch_v_value_1))]);
+        let versioning_batch_1 = DBBatch::from([(batch_v_key_1.clone(), Some(batch_v_value_1))]);
         let slot_1 = Slot::new(1, 0);
         let mut guard = db.write();
         guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));

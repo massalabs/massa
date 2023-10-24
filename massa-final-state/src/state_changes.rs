@@ -279,10 +279,9 @@ mod test {
             None,
         );
         let mut async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes.0.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message),
-        );
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
         let amount = Amount::from_str("1").unwrap();

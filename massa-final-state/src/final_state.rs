@@ -953,8 +953,8 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let selector_controller = Box::new(MockSelectorController::new());
         let ledger = FinalLedger::new(ledger_config, db.clone());
@@ -990,10 +990,9 @@ mod test {
             None,
         );
         let mut async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes.0.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message),
-        );
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
         let amount = Amount::from_str("1").unwrap();
@@ -1098,8 +1097,8 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2;
         let fstate2_ = FinalState::new_derived_from_snapshot(
@@ -1158,8 +1157,8 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2 + (PERIODS_PER_CYCLE * 2);
         let fstate2_ = FinalState::new_derived_from_snapshot(
