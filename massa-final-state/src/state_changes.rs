@@ -281,7 +281,7 @@ mod test {
         let mut async_pool_changes = AsyncPoolChanges::default();
         async_pool_changes.0.insert(
             message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
+            SetUpdateOrDelete::Set(message),
         );
         state_changes.async_pool_changes = async_pool_changes;
 

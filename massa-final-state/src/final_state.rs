@@ -929,7 +929,7 @@ mod test {
             genesis_timestamp,
         };
 
-        return (final_state_config, ledger_config);
+        (final_state_config, ledger_config)
     }
 
     fn get_final_state() -> FinalState {
@@ -953,11 +953,11 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+        let mip_store = MipStore::try_from(([], mip_stats_config))
             .expect("Cannot create an empty MIP store");
 
         let selector_controller = Box::new(MockSelectorController::new());
-        let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
+        let ledger = FinalLedger::new(ledger_config, db.clone());
 
         let fstate = FinalState::new(
             db,
@@ -969,7 +969,7 @@ mod test {
         )
         .expect("Cannot init final state");
 
-        return fstate;
+        fstate
     }
 
     fn get_state_changes() -> StateChanges {
@@ -992,7 +992,7 @@ mod test {
         let mut async_pool_changes = AsyncPoolChanges::default();
         async_pool_changes.0.insert(
             message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
+            SetUpdateOrDelete::Set(message),
         );
         state_changes.async_pool_changes = async_pool_changes;
 
@@ -1018,7 +1018,7 @@ mod test {
         );
         state_changes.pos_changes = pos_changes;
 
-        return state_changes;
+        state_changes
     }
 
     #[test]
@@ -1098,7 +1098,7 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+        let mip_store = MipStore::try_from(([], mip_stats_config))
             .expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2;
@@ -1107,7 +1107,7 @@ mod test {
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store.clone(),
+            mip_store,
             last_start_period_2,
         );
 
@@ -1119,13 +1119,13 @@ mod test {
             Slot::new(last_start_period_2, THREAD_COUNT - 1)
         );
 
-        assert_eq!(fstate2.is_db_valid(), false); // no trail hash
+        assert!(!fstate2.is_db_valid()); // no trail hash
         fstate2.init_execution_trail_hash_to_batch(&mut batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), None);
-        assert_eq!(fstate2.is_db_valid(), true);
+        assert!(fstate2.is_db_valid());
     }
 
     #[test]
@@ -1158,7 +1158,7 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+        let mip_store = MipStore::try_from(([], mip_stats_config))
             .expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2 + (PERIODS_PER_CYCLE * 2);
@@ -1167,7 +1167,7 @@ mod test {
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store.clone(),
+            mip_store,
             last_start_period_2,
         );
 
@@ -1179,13 +1179,13 @@ mod test {
             Slot::new(last_start_period_2, THREAD_COUNT - 1)
         );
 
-        assert_eq!(fstate2.is_db_valid(), false); // no trail hash
+        assert!(!fstate2.is_db_valid()); // no trail hash
         fstate2.init_execution_trail_hash_to_batch(&mut batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), None);
-        assert_eq!(fstate2.is_db_valid(), true);
+        assert!(fstate2.is_db_valid());
     }
 
     #[test]

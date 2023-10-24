@@ -1874,7 +1874,7 @@ mod tests {
         let selector_controller = Box::new(MockSelectorController::new());
 
         let mut pos_state_2 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_2.path().to_path_buf(),
             selector_controller,
@@ -1914,7 +1914,7 @@ mod tests {
         let cycle_info_0 = CycleInfo::new(
             0,
             Default::default(),
-            roll_counts_c0.clone(),
+            roll_counts_c0,
             Default::default(),
             Default::default(),
         );
@@ -1925,17 +1925,17 @@ mod tests {
         };
         let cycle_info_2 = CycleInfo {
             cycle: 2,
-            roll_counts: roll_counts_c2.clone(),
+            roll_counts: roll_counts_c2,
             ..cycle_info_0.clone()
         };
         let cycle_info_3 = CycleInfo {
             cycle: 3,
-            roll_counts: roll_counts_c3.clone(),
+            roll_counts: roll_counts_c3,
             ..cycle_info_0.clone()
         };
         let cycle_info_4 = CycleInfo {
             cycle: 4,
-            roll_counts: roll_counts_c4.clone(),
+            roll_counts: roll_counts_c4,
             ..cycle_info_0.clone()
         };
 
@@ -2284,7 +2284,7 @@ mod tests {
 
         let init_seed = "";
         let mut pos_state_0 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_0.path().to_path_buf(),
             selector_controller,
@@ -2392,7 +2392,7 @@ mod tests {
 
         let init_seed = "";
         let mut pos_state_0 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_0.path().to_path_buf(),
             selector_controller,
