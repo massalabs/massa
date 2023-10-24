@@ -151,6 +151,8 @@
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file is responsible for clique computation
@@ -288,15 +290,17 @@
         <span class="kw">for </span>clique <span class="kw">in </span>max_cliques {
             <span class="comment">// Check that all pairs of vertices in the clique are compatible
             </span><span class="kw">for </span>(v1, v2) <span class="kw">in </span>clique.iter().tuple_combinations() {
-                <span class="kw">if </span>gi_head[v1].contains(v2) || gi_head[v2].contains(v1) {
+                <span class="kw">if </span>gi_head[<span class="kw-2">&amp;</span>v1].contains(<span class="kw-2">&amp;</span>v2) || gi_head[<span class="kw-2">&amp;</span>v2].contains(<span class="kw-2">&amp;</span>v1) {
                     <span class="macro">panic!</span>(<span class="string">&quot;incompatible vertices found within the same clique&quot;</span>);
                 }
             }
 
             <span class="comment">// Check that the clique is maximal
             </span><span class="kw">for </span>v <span class="kw">in </span>gi_head.keys() {
-                <span class="kw">if </span>!clique.contains(v) &amp;&amp; clique.iter().all(|c| !gi_head[v].contains(c)) {
-                    <span class="macro">panic!</span>(<span class="string">&quot;a clique is non-maximal&quot;</span>);
+                <span class="kw">if </span>!clique.contains(v) {
+                    <span class="kw">if </span>clique.iter().all(|c| !gi_head[<span class="kw-2">&amp;</span>v].contains(<span class="kw-2">&amp;</span>c)) {
+                        <span class="macro">panic!</span>(<span class="string">&quot;a clique is non-maximal&quot;</span>);
+                    }
                 }
             }
         }

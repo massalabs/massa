@@ -2541,9 +2541,9 @@
 
         <span class="comment">// Checks up
         </span><span class="kw">let </span>cfs = rocksdb::DB::list_cf(<span class="kw-2">&amp;</span>db_opts, temp_dir_db.path()).unwrap_or(<span class="macro">vec!</span>[]);
-        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| cf == <span class="string">&quot;state&quot;</span>);
-        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| cf == <span class="string">&quot;metadata&quot;</span>);
-        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| cf == <span class="string">&quot;versioning&quot;</span>);
+        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;state&quot;</span>);
+        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;metadata&quot;</span>);
+        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;versioning&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;cfs: {:?}&quot;</span>, cfs);
         <span class="macro">assert!</span>(cf_exists_1);
         <span class="macro">assert!</span>(cf_exists_2);
