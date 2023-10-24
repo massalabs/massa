@@ -656,8 +656,6 @@
 <a href="#656" id="656">656</a>
 <a href="#657" id="657">657</a>
 <a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -697,16 +695,14 @@
     </span><span class="attr">#[cfg(all(
         not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
         not(feature = <span class="string">&quot;benchmarking&quot;</span>),
-        not(feature = <span class="string">&quot;test-exports&quot;</span>),
-        not(test)
+        not(feature = <span class="string">&quot;testing&quot;</span>)
     ))]
     </span>added_changes: LedgerChanges,
     <span class="attr">#[cfg(any(
         feature = <span class="string">&quot;gas_calibration&quot;</span>,
         feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;test-exports&quot;</span>,
-        test
-    ))]
+        feature = <span class="string">&quot;testing&quot;
+    </span>))]
     </span><span class="kw">pub </span>added_changes: LedgerChanges,
 
     <span class="doccomment">/// max datastore key length

@@ -781,7 +781,7 @@
 <span class="kw">use </span>tokio::sync::oneshot::Sender;
 <span class="kw">use </span>tracing::warn;
 
-<span class="comment">// #[cfg(not(feature = &quot;test-exports&quot;))]
+<span class="comment">// #[cfg(not(feature = &quot;testing&quot;))]
 </span><span class="kw">mod </span>server;
 
 <span class="macro">lazy_static! </span>{
@@ -956,7 +956,7 @@
                 <span class="string">&quot;consensus thread actual period&quot;</span>,
             )
             .expect(<span class="string">&quot;Failed to create gauge&quot;</span>);
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
             </span>{
                 <span class="kw">let _ </span>= prometheus::register(Box::new(gauge.clone()));
             }
@@ -1174,7 +1174,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;testing&quot;</span>))]
             </span>{
                 <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_thread.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_period.clone()));

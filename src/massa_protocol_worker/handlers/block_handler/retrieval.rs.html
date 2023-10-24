@@ -1450,14 +1450,14 @@
                             }
                             <span class="kw">match </span>message {
                                 BlockMessage::DataRequest{block_id, block_info} =&gt; {
-                                    <span class="self">self</span>.on_ask_for_block_info_received(peer_id, block_id, block_info);
+                                    <span class="self">self</span>.on_ask_for_block_info_received(peer_id.clone(), block_id, block_info);
                                 }
                                 BlockMessage::DataResponse{block_id, block_info} =&gt; {
-                                   <span class="self">self</span>.on_block_info_received(peer_id, block_id, block_info);
+                                   <span class="self">self</span>.on_block_info_received(peer_id.clone(), block_id, block_info);
                                    <span class="self">self</span>.update_block_retrieval();
                                 }
                                 BlockMessage::Header(header) =&gt; {
-                                    <span class="self">self</span>.on_block_header_received(peer_id, header);
+                                    <span class="self">self</span>.on_block_header_received(peer_id.clone(), header);
                                     <span class="self">self</span>.update_block_retrieval();
                                 }
                             }
@@ -1732,7 +1732,7 @@
                     <span class="string">&quot;peer {} sent us critically incorrect header: {}&quot;</span>,
                     <span class="kw-2">&amp;</span>from_peer_id, err
                 );
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id.clone()]) {
                     <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, <span class="kw-2">&amp;</span>from_peer_id, err);
                 }
                 <span class="kw">return</span>;
@@ -1988,7 +1988,7 @@
             <span class="kw">let </span>cache_read = <span class="self">self</span>.cache.read();
             <span class="kw">for </span>(peer_id, peer_known_blocks) <span class="kw">in </span>cache_read.blocks_known_by_peer.iter() {
                 <span class="kw">if </span>peer_known_blocks.peek(block_id).is_some() {
-                    peers_to_ban.push(<span class="kw-2">*</span>peer_id);
+                    peers_to_ban.push(peer_id.clone());
                 }
             }
         }
@@ -2064,7 +2064,7 @@
             != computed_operations_hash
         {
             <span class="macro">warn!</span>(<span class="string">&quot;Peer id {} sent us a operation list for block id {} but the hash in the header doesn&#39;t match.&quot;</span>, from_peer_id, block_id);
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id.clone()]) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, from_peer_id, err);
             }
             <span class="kw">return</span>;
@@ -2189,7 +2189,7 @@
                 <span class="string">&quot;Peer id {} sent us operations for block id {} but they failed validity checks: {}&quot;</span>,
                 from_peer_id, block_id, err
             );
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id.clone()]) {
                 <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, from_peer_id, err);
             }
             <span class="kw">return</span>;
@@ -2277,7 +2277,7 @@
 
                     <span class="comment">// mark this peer as loaded with an angoing ask
                     </span>peer_loads
-                        .entry(<span class="kw-2">*</span>peer_id)
+                        .entry(peer_id.clone())
                         .and_modify(|v| <span class="kw-2">*</span>v += <span class="number">1</span>)
                         .or_insert(<span class="number">1</span>);
 
@@ -2320,7 +2320,7 @@
                                 </span><span class="prelude-val">Some</span>(-(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64)), <span class="comment">// the older the info the better
                                 </span>peer_load,                 <span class="comment">// the lower the load the better
                                 </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                </span><span class="kw-2">*</span>peer_id,
+                                </span>peer_id.clone(),
                             ))
                         }
                         <span class="prelude-val">None </span>=&gt; {
@@ -2330,7 +2330,7 @@
                                 </span><span class="prelude-val">None</span>,                      <span class="comment">// N/A
                                 </span>peer_load,                 <span class="comment">// the lower the load the better
                                 </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                </span><span class="kw-2">*</span>peer_id,
+                                </span>peer_id.clone(),
                             ))
                         }
                         <span class="prelude-val">Some</span>((<span class="bool-val">true</span>, info_t)) =&gt; {
@@ -2340,7 +2340,7 @@
                                 </span><span class="prelude-val">Some</span>(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64), <span class="comment">// the newer the info the better
                                 </span>peer_load,                 <span class="comment">// the lower the load the better
                                 </span>thread_rng().gen::&lt;u64&gt;(), <span class="comment">// random tie breaker,
-                                </span><span class="kw-2">*</span>peer_id,
+                                </span>peer_id.clone(),
                             ))
                         }
                     }
@@ -2398,7 +2398,7 @@
 
                     // Update the asked_blocks list
                     </span><span class="self">self</span>.asked_blocks
-                        .entry(peer_id)
+                        .entry(peer_id.clone())
                         .or_insert_with(Default::default)
                         .insert(block_id, now);
 

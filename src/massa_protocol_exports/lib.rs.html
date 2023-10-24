@@ -35,9 +35,9 @@
 <span class="kw">pub use </span>peernet::transports::TransportType;
 <span class="kw">pub use </span>settings::{PeerCategoryInfo, ProtocolConfig};
 
-<span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">pub mod </span>test_exports;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">pub use </span>controller_trait::MockProtocolController;
 </code></pre></div></section></main></body></html>

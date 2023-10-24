@@ -83,22 +83,22 @@
 //! The only place where it&#39;s safe to use it is in files named `settings.rs`
 //! or `config.rs`
 //!
-//! # test-exports or default
+//! # Testing or default
 //!
 //! You have access to the constants (in test or in normal mode) with the
 //! following imports. When you have a doubt for the import, use the auto
 //! dispatcher `use massa_models::constants::*;`
 //!
 //! ```ignore
-//! // Classic import automatically root to `test-exportss` or `default`
+//! // Classic import automatically root to `testings` or `default`
 //! // depending on the compilation context.
 //! use massa_models::constants::*;
 //!
 //! // Force to import the nominal constants
 //! use massa_models::constants::default::*;
 //!
-//! // Force to import the test-exportss constants
-//! use massa_models::constants::default_test-exports::*;
+//! // Force to import the testings constants
+//! use massa_models::constants::default_testing::*;
 //! ```
 //!
 //! # Note about rooting
@@ -110,10 +110,10 @@
 //! |1|1| 1           | 0
 //! ```
 //!
-//! `#[cfg(any(not(feature = &quot;test-exports&quot;), feature = &quot;sandbox&quot;))]`
+//! `#[cfg(any(not(feature = &quot;testing&quot;), feature = &quot;sandbox&quot;))]`
 //! On `cargo run --release` or `cargo run --features sandbox`
 //!
-//! #`[cfg(all(feature = &quot;test-exports&quot;, not(feature = &quot;sandbox&quot;)))]`
+//! #`[cfg(all(feature = &quot;testing&quot;, not(feature = &quot;sandbox&quot;)))]`
 //! On `cargo run` or `cargo test`
 //!
 
@@ -122,12 +122,12 @@
 // We can force the access to one of defined value (test or not)
 // with `use massa_config::exported_constants::CONST_VALUE`
 // Nevertheless the design is more like using `massa_config::CONST_VALUE`
-// and defining in `Cargo.toml` if we are test-exports or not
+// and defining in `Cargo.toml` if we are testing or not
 // ```toml
 // [dependencies]
 //     massa_config = { path = &quot;../massa-config&quot; }
 // [dev-dependencies]
-//     massa_config = { path = &quot;../massa-config&quot;, features = [&quot;test-exports&quot;] }
+//     massa_config = { path = &quot;../massa-config&quot;, features = [&quot;testing&quot;] }
 // ```
 //
 

@@ -306,6 +306,7 @@
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -554,7 +555,8 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
