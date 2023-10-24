@@ -11,7 +11,7 @@ massa_api_exports = { workspace = true }
 massa_channel = { workspace = true, optional = true}
 massa_consensus_exports = { workspace = true }
 massa_execution_exports = { workspace = true }
-massa_grpc = { workspace = true, "features" = ["testing"], optional = true}
+massa_grpc = { workspace = true, "features" = ["test-exports"], optional = true}
 massa_hash = { workspace = true }
 massa_models = { workspace = true }
 massa_pool_exports = { workspace = true }
