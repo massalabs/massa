@@ -2171,7 +2171,7 @@
             genesis_timestamp,
         };
 
-        (final_state_config, ledger_config)
+        <span class="kw">return </span>(final_state_config, ledger_config);
     }
 
     <span class="kw">fn </span>get_final_state() -&gt; FinalState {
@@ -2183,8 +2183,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -2195,11 +2194,11 @@
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
-        <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+        <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+            .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
 
         <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
-        <span class="kw">let </span>ledger = FinalLedger::new(ledger_config, db.clone());
+        <span class="kw">let </span>ledger = FinalLedger::new(ledger_config.clone(), db.clone());
 
         <span class="kw">let </span>fstate = FinalState::new(
             db,
@@ -2211,7 +2210,7 @@
         )
         .expect(<span class="string">&quot;Cannot init final state&quot;</span>);
 
-        fstate
+        <span class="kw">return </span>fstate;
     }
 
     <span class="kw">fn </span>get_state_changes() -&gt; StateChanges {
@@ -2232,9 +2231,10 @@
             <span class="prelude-val">None</span>,
         );
         <span class="kw">let </span><span class="kw-2">mut </span>async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes
-            .<span class="number">0
-            </span>.insert(message.compute_id(), SetUpdateOrDelete::Set(message));
+        async_pool_changes.<span class="number">0</span>.insert(
+            message.compute_id(),
+            SetUpdateOrDelete::Set(message.clone()),
+        );
         state_changes.async_pool_changes = async_pool_changes;
 
         <span class="kw">let </span>amount = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
@@ -2259,7 +2259,7 @@
         );
         state_changes.pos_changes = pos_changes;
 
-        state_changes
+        <span class="kw">return </span>state_changes;
     }
 
     <span class="attr">#[test]
@@ -2339,8 +2339,8 @@
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
-        <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+        <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+            .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
 
         <span class="kw">let </span>last_start_period_2 = <span class="number">2</span>;
         <span class="kw">let </span>fstate2_ = FinalState::new_derived_from_snapshot(
@@ -2348,7 +2348,7 @@
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store,
+            mip_store.clone(),
             last_start_period_2,
         );
 
@@ -2360,13 +2360,13 @@
             Slot::new(last_start_period_2, THREAD_COUNT - <span class="number">1</span>)
         );
 
-        <span class="macro">assert!</span>(!fstate2.is_db_valid()); <span class="comment">// no trail hash
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">false</span>); <span class="comment">// no trail hash
         </span>fstate2.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(fstate2.is_db_valid());
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">true</span>);
     }
 
     <span class="attr">#[test]
@@ -2399,8 +2399,8 @@
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
-        <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+        <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config.clone()))
+            .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
 
         <span class="kw">let </span>last_start_period_2 = <span class="number">2 </span>+ (PERIODS_PER_CYCLE * <span class="number">2</span>);
         <span class="kw">let </span>fstate2_ = FinalState::new_derived_from_snapshot(
@@ -2408,7 +2408,7 @@
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store,
+            mip_store.clone(),
             last_start_period_2,
         );
 
@@ -2420,13 +2420,13 @@
             Slot::new(last_start_period_2, THREAD_COUNT - <span class="number">1</span>)
         );
 
-        <span class="macro">assert!</span>(!fstate2.is_db_valid()); <span class="comment">// no trail hash
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">false</span>); <span class="comment">// no trail hash
         </span>fstate2.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
         fstate2
             .db
             .write()
             .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
-        <span class="macro">assert!</span>(fstate2.is_db_valid());
+        <span class="macro">assert_eq!</span>(fstate2.is_db_valid(), <span class="bool-val">true</span>);
     }
 
     <span class="attr">#[test]

@@ -1871,6 +1871,26 @@
 <a href="#1871" id="1871">1871</a>
 <a href="#1872" id="1872">1872</a>
 <a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1914,6 +1934,7 @@
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::SelectorController;
 <span class="kw">use </span>massa_sc_runtime::{Interface, Response, VMError};
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
@@ -2220,7 +2241,7 @@
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
 
         <span class="comment">// set the context max gas to match the one defined in the operation
-        </span>context.max_gas = operation.get_gas_usage();
+        </span>context.max_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
 
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
@@ -2255,7 +2276,7 @@
         }
 
         <span class="comment">// check remaining block gas
-        </span><span class="kw">let </span>op_gas = operation.get_gas_usage();
+        </span><span class="kw">let </span>op_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
         <span class="kw">let </span>new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 <span class="string">&quot;not enough remaining block gas to execute operation&quot;</span>.to_string(),
@@ -2934,6 +2955,7 @@
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     ) -&gt; ExecutionOutput {
+        <span class="kw">let </span>start_time = MassaTime::now();
         <span class="comment">// Create a new execution context for the whole active slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
             <span class="self">self</span>.config.clone(),
@@ -2997,7 +3019,11 @@
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             };
 
-            <span class="macro">debug!</span>(<span class="string">&quot;executing {} operations at slot {}&quot;</span>, operations.len(), slot);
+            <span class="macro">info!</span>(
+                <span class="string">&quot;##gas: executing {} operations at slot {}&quot;</span>,
+                operations.len(),
+                slot
+            );
 
             <span class="comment">// gather all available endorsement creators and target blocks
             </span><span class="kw">let </span>endorsement_creators: Vec&lt;Address&gt; = stored_block
@@ -3134,6 +3160,20 @@
                     err
                 );
             }
+        }
+
+        <span class="kw">let </span>end_time = MassaTime::now();
+        <span class="kw">match </span>(start_time, end_time) {
+            (<span class="prelude-val">Ok</span>(start), <span class="prelude-val">Ok</span>(end)) =&gt; {
+                <span class="kw">let </span>duration = end.to_duration() - start.to_duration();
+                <span class="macro">info!</span>(<span class="string">&quot;##gas Slot execution took {} ms&quot;</span>, duration.as_millis());
+            }
+            (<span class="prelude-val">Err</span>(e), <span class="prelude-val">Ok</span>(<span class="kw">_</span>)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;##gas Slot execution start time error: {}&quot;</span>, e),
+            (<span class="prelude-val">Ok</span>(<span class="kw">_</span>), <span class="prelude-val">Err</span>(e)) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;##gas Slot execution end time error: {}&quot;</span>, e),
+            (<span class="prelude-val">Err</span>(e1), <span class="prelude-val">Err</span>(e2)) =&gt; <span class="macro">warn!</span>(
+                <span class="string">&quot;##gas Slot execution start time error: {}, end time error: {}&quot;</span>,
+                e1, e2
+            ),
         }
 
         <span class="comment">// Return the execution output

@@ -1609,18 +1609,6 @@
 <a href="#1609" id="1609">1609</a>
 <a href="#1610" id="1610">1610</a>
 <a href="#1611" id="1611">1611</a>
-<a href="#1612" id="1612">1612</a>
-<a href="#1613" id="1613">1613</a>
-<a href="#1614" id="1614">1614</a>
-<a href="#1615" id="1615">1615</a>
-<a href="#1616" id="1616">1616</a>
-<a href="#1617" id="1617">1617</a>
-<a href="#1618" id="1618">1618</a>
-<a href="#1619" id="1619">1619</a>
-<a href="#1620" id="1620">1620</a>
-<a href="#1621" id="1621">1621</a>
-<a href="#1622" id="1622">1622</a>
-<a href="#1623" id="1623">1623</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1783,7 +1771,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -1801,8 +1788,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_final_state_elements_size {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -1895,7 +1881,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>new_elements = BTreeMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>new_elements_size = <span class="number">0</span>;
 
         <span class="kw">if </span>!last_versioning_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -1913,8 +1898,7 @@
             };
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_final_state_elements_size {
+                <span class="kw">if </span>new_elements.len() &lt; <span class="self">self</span>.config.max_new_elements {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -2173,7 +2157,6 @@
 
     <span class="kw">pub fn </span>default_db_opts() -&gt; Options {
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
-        db_opts.set_max_open_files(<span class="number">820</span>);
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
         db_opts
@@ -2488,8 +2471,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2521,8 +2503,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2541,13 +2522,13 @@
 
         <span class="comment">// Checks up
         </span><span class="kw">let </span>cfs = rocksdb::DB::list_cf(<span class="kw-2">&amp;</span>db_opts, temp_dir_db.path()).unwrap_or(<span class="macro">vec!</span>[]);
-        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;state&quot;</span>);
-        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;metadata&quot;</span>);
-        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| <span class="kw-2">&amp;</span>cf == <span class="kw-2">&amp;</span><span class="string">&quot;versioning&quot;</span>);
+        <span class="kw">let </span>cf_exists_1 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;state&quot;</span>).is_some();
+        <span class="kw">let </span>cf_exists_2 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;metadata&quot;</span>).is_some();
+        <span class="kw">let </span>cf_exists_3 = cfs.iter().find(|cf| cf == <span class="kw-2">&amp;</span><span class="string">&quot;versioning&quot;</span>).is_some();
         <span class="macro">println!</span>(<span class="string">&quot;cfs: {:?}&quot;</span>, cfs);
-        <span class="macro">assert!</span>(cf_exists_1);
-        <span class="macro">assert!</span>(cf_exists_2);
-        <span class="macro">assert!</span>(cf_exists_3);
+        <span class="macro">assert_eq!</span>(cf_exists_1, <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(cf_exists_2, <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(cf_exists_3, <span class="bool-val">true</span>);
         <span class="kw">for </span>col <span class="kw">in </span>cfs {
             <span class="kw">if </span>col == <span class="string">&quot;metadata&quot; </span>{
                 <span class="kw">continue</span>;
@@ -2560,11 +2541,11 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         <span class="kw">let </span>b_key1 = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
         <span class="kw">let </span>b_value1 = <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>];
-        batch.insert(b_key1.clone(), <span class="prelude-val">Some</span>(b_value1));
+        batch.insert(b_key1.clone(), <span class="prelude-val">Some</span>(b_value1.clone()));
         <span class="kw">let </span><span class="kw-2">mut </span>versioning_batch = BTreeMap::default();
         <span class="kw">let </span>vb_key1 = <span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>];
         <span class="kw">let </span>vb_value1 = <span class="macro">vec!</span>[<span class="number">40</span>, <span class="number">50</span>, <span class="number">60</span>];
-        versioning_batch.insert(vb_key1.clone(), <span class="prelude-val">Some</span>(vb_value1));
+        versioning_batch.insert(vb_key1.clone(), <span class="prelude-val">Some</span>(vb_value1.clone()));
 
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
         guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">None</span>);
@@ -2578,9 +2559,9 @@
         <span class="comment">// Remove data
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch_2 = DBBatch::new();
-        batch_2.insert(b_key1, <span class="prelude-val">None</span>);
+        batch_2.insert(b_key1.clone(), <span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>versioning_batch_2 = BTreeMap::default();
-        versioning_batch_2.insert(vb_key1, <span class="prelude-val">None</span>);
+        versioning_batch_2.insert(vb_key1.clone(), <span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
         guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">None</span>);
         drop(guard);
@@ -2604,8 +2585,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2644,10 +2624,10 @@
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch_2 = DBBatch::new();
         <span class="comment">// batch_2.insert(b_key1.clone(), None);
-        </span>db.read().delete_key(<span class="kw-2">&amp;mut </span>batch_2, b_key1);
+        </span>db.read().delete_key(<span class="kw-2">&amp;mut </span>batch_2, b_key1.clone());
         <span class="kw">let </span>versioning_batch_2 = BTreeMap::default();
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_2.clone(), versioning_batch_2, <span class="prelude-val">None</span>);
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">None</span>);
         drop(guard);
 
         <span class="comment">// assert!(dump_column(db_.clone(), &quot;state&quot;).is_empty());
@@ -2658,19 +2638,19 @@
         <span class="comment">// Add some datas then remove using prefix
         </span>batch.clear();
         db.read()
-            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">1</span>], <span class="kw-2">&amp;</span>[<span class="number">1</span>]);
+            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">1</span>]);
         db.read()
-            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">2</span>], <span class="kw-2">&amp;</span>[<span class="number">2</span>]);
+            .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, <span class="macro">vec!</span>[<span class="number">97</span>, <span class="number">98</span>, <span class="number">2</span>], <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">2</span>]);
         <span class="kw">let </span>v3 = <span class="macro">vec!</span>[<span class="number">200</span>, <span class="number">101</span>, <span class="number">1</span>];
         <span class="kw">let </span>k3 = <span class="macro">vec!</span>[<span class="number">101</span>];
         db.read()
             .put_or_update_entry_value(<span class="kw-2">&amp;mut </span>batch, v3.clone(), <span class="kw-2">&amp;</span>k3);
 
         db.write()
-            .write_batch(batch.clone(), versioning_batch, <span class="prelude-val">None</span>);
+            .write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">None</span>);
 
         <span class="comment">// &quot;ab&quot;.as_bytes == [97, 98]
-        </span>db.write().delete_prefix(<span class="string">&quot;ab&quot;</span>, <span class="string">&quot;state&quot;</span>, <span class="prelude-val">None</span>);
+        </span>db.write().delete_prefix(<span class="kw-2">&amp;</span><span class="string">&quot;ab&quot;</span>, <span class="string">&quot;state&quot;</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(dump_column(db.clone(), <span class="string">&quot;state&quot;</span>), BTreeMap::from([(v3, k3)]))
     }
 
@@ -2688,8 +2668,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2706,7 +2685,7 @@
         <span class="kw">let </span>versioning_batch = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">128</span>, <span class="number">254</span>, <span class="number">255</span>]))]);
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Keep hash so we can compare with db backup
@@ -2722,7 +2701,7 @@
         <span class="kw">let </span>versioning_batch = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">12</span>, <span class="number">23</span>, <span class="number">34</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">254</span>, <span class="number">253</span>]))]);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_2));
+        guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">Some</span>(slot_2));
         drop(guard);
 
         <span class="kw">let </span>hash_2 = db.read().get_xof_db_hash();
@@ -2736,8 +2715,7 @@
             <span class="kw">let </span>db_backup_1_config = MassaDBConfig {
                 path: backup_1,
                 max_history_length: <span class="number">100</span>,
-                max_final_state_elements_size: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_1_opts = MassaDB::default_db_opts();
@@ -2759,8 +2737,7 @@
             <span class="kw">let </span>db_backup_2_config = MassaDBConfig {
                 path: backup_2,
                 max_history_length: <span class="number">100</span>,
-                max_final_state_elements_size: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_2_opts = MassaDB::default_db_opts();
@@ -2791,8 +2768,7 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2800,7 +2776,7 @@
         </span>db_opts.set_paranoid_checks(<span class="bool-val">true</span>);
 
         <span class="kw">let </span>db = Arc::new(RwLock::new(Box::new(
-            MassaDB::new_with_options(db_config, db_opts.clone()).unwrap(),
+            MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap(),
         )
             <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;));
 
@@ -2837,8 +2813,7 @@
             </span><span class="kw">let </span>db_backup_config = MassaDBConfig {
                 path: backup_path.clone(),
                 max_history_length: <span class="number">100</span>,
-                max_final_state_elements_size: <span class="number">100</span>,
-                max_versioning_elements_size: <span class="number">100</span>,
+                max_new_elements: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
             };
             <span class="comment">// let db_backup_2_opts = MassaDB::default_db_opts();
@@ -2882,11 +2857,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>db_config = MassaDBConfig {
+        </span><span class="kw">let </span>max_new_elements = <span class="number">100</span>;
+        <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2901,11 +2876,11 @@
         <span class="comment">// Add data (at slot 1)
         </span><span class="kw">let </span>batch_key_1 = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
         <span class="kw">let </span>batch_value_1 = <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>];
-        <span class="kw">let </span>batch = DBBatch::from([(batch_key_1.clone(), <span class="prelude-val">Some</span>(batch_value_1))]);
+        <span class="kw">let </span>batch = DBBatch::from([(batch_key_1.clone(), <span class="prelude-val">Some</span>(batch_value_1.clone()))]);
         <span class="kw">let </span>versioning_batch = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">128</span>, <span class="number">254</span>, <span class="number">255</span>]))]);
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Add data 2 (at slot 2)
@@ -2915,7 +2890,7 @@
         <span class="kw">let </span>versioning_batch = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">12</span>, <span class="number">23</span>, <span class="number">34</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">254</span>, <span class="number">253</span>]))]);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_2));
+        guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">Some</span>(slot_2));
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Started
@@ -2974,11 +2949,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>db_config = MassaDBConfig {
+        </span><span class="kw">let </span>max_new_elements = <span class="number">100</span>;
+        <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -2995,26 +2970,27 @@
         // Add data
         </span><span class="kw">let </span>batch_key_1 = <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>];
         <span class="kw">let </span>batch_value_1 = <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>];
-        <span class="kw">let </span>batch_1 = DBBatch::from([(batch_key_1, <span class="prelude-val">Some</span>(batch_value_1))]);
+        <span class="kw">let </span>batch_1 = DBBatch::from([(batch_key_1.clone(), <span class="prelude-val">Some</span>(batch_value_1.clone()))]);
         <span class="kw">let </span>batch_v_key_1 = <span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>];
         <span class="kw">let </span>batch_v_value_1 = <span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">128</span>, <span class="number">254</span>, <span class="number">255</span>];
-        <span class="kw">let </span>versioning_batch_1 = DBBatch::from([(batch_v_key_1.clone(), <span class="prelude-val">Some</span>(batch_v_value_1))]);
+        <span class="kw">let </span>versioning_batch_1 =
+            DBBatch::from([(batch_v_key_1.clone(), <span class="prelude-val">Some</span>(batch_v_value_1.clone()))]);
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_1, versioning_batch_1, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Add data
         </span><span class="kw">let </span>batch_key_2 = <span class="macro">vec!</span>[<span class="number">11</span>, <span class="number">22</span>, <span class="number">33</span>];
         <span class="kw">let </span>batch_value_2 = <span class="macro">vec!</span>[<span class="number">44</span>, <span class="number">55</span>, <span class="number">66</span>];
-        <span class="kw">let </span>batch_2 = DBBatch::from([(batch_key_2, <span class="prelude-val">Some</span>(batch_value_2))]);
+        <span class="kw">let </span>batch_2 = DBBatch::from([(batch_key_2.clone(), <span class="prelude-val">Some</span>(batch_value_2.clone()))]);
         <span class="kw">let </span>batch_v_key_2 = <span class="macro">vec!</span>[<span class="number">12</span>, <span class="number">23</span>, <span class="number">34</span>];
         <span class="kw">let </span>batch_v_value_2 = <span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">254</span>, <span class="number">253</span>];
         <span class="kw">let </span>versioning_batch_2 =
             DBBatch::from([(batch_v_key_2.clone(), <span class="prelude-val">Some</span>(batch_v_value_2.clone()))]);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_2, versioning_batch_2, <span class="prelude-val">Some</span>(slot_2));
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">Some</span>(slot_2));
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Started
@@ -3061,11 +3037,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;temp_dir_db: {:?}&quot;</span>, temp_dir_db);
+        <span class="kw">let </span>max_new_elements = <span class="number">1</span>;
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">4</span>,
-            max_versioning_elements_size: <span class="number">4</span>,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3085,7 +3061,7 @@
             DBBatch::from([(<span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">128</span>, <span class="number">254</span>, <span class="number">255</span>]))]);
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_1, versioning_batch_1, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Add data 2 (at slot 1)
@@ -3095,7 +3071,7 @@
         <span class="kw">let </span>versioning_batch_2 = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">12</span>, <span class="number">23</span>, <span class="number">34</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">254</span>, <span class="number">253</span>]))]);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_2, versioning_batch_2, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Started
@@ -3104,7 +3080,7 @@
         <span class="kw">let </span>stream_batch = stream_batch_.unwrap();
         <span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
-            BTreeMap::from([(batch_key_1.clone(), batch_value_1)])
+            BTreeMap::from([(batch_key_1.clone(), batch_value_1.clone())])
         );
         <span class="macro">assert_eq!</span>(stream_batch.updates_on_previous_elements, BTreeMap::new());
         <span class="macro">assert_eq!</span>(stream_batch.change_id, slot_1);
@@ -3114,7 +3090,7 @@
         <span class="kw">let </span>batch_1b = DBBatch::from([(batch_key_1.clone(), <span class="prelude-val">Some</span>(batch_value_1b.clone()))]);
         <span class="kw">let </span>versioning_batch_1b = DBBatch::new();
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_1b, versioning_batch_1b, <span class="prelude-val">Some</span>(slot_2));
+        guard.write_batch(batch_1b.clone(), versioning_batch_1b.clone(), <span class="prelude-val">Some</span>(slot_2));
         drop(guard);
 
         <span class="kw">let </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt; = StreamingStep::Ongoing(batch_key_1.clone());
@@ -3145,11 +3121,11 @@
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
-        </span><span class="kw">let </span>db_config = MassaDBConfig {
+        </span><span class="kw">let </span>max_new_elements = <span class="number">2</span>;
+        <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">7</span>,
-            max_versioning_elements_size: <span class="number">7</span>,
+            max_new_elements,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3169,7 +3145,7 @@
             DBBatch::from([(<span class="macro">vec!</span>[<span class="number">10</span>, <span class="number">20</span>, <span class="number">30</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">128</span>, <span class="number">254</span>, <span class="number">255</span>]))]);
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_1, versioning_batch_1, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch_1.clone(), versioning_batch_1.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Add data 2 (at slot 1)
@@ -3179,7 +3155,7 @@
         <span class="kw">let </span>versioning_batch_2 = DBBatch::from([(<span class="macro">vec!</span>[<span class="number">12</span>, <span class="number">23</span>, <span class="number">34</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">254</span>, <span class="number">253</span>]))]);
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_2, versioning_batch_2, <span class="prelude-val">Some</span>(slot_1));
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">Some</span>(slot_1));
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Started
@@ -3189,8 +3165,8 @@
         <span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
             BTreeMap::from([
-                (batch_key_1, batch_value_1),
-                (batch_key_2.clone(), batch_value_2)
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2.clone())
             ])
         );
         <span class="macro">assert_eq!</span>(stream_batch.updates_on_previous_elements, BTreeMap::new());
@@ -3201,7 +3177,7 @@
         <span class="kw">let </span>batch_2b = DBBatch::from([(batch_key_2.clone(), <span class="prelude-val">Some</span>(batch_value_2b.clone()))]);
         <span class="kw">let </span>versioning_batch_2b = DBBatch::new();
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_2b, versioning_batch_2b, <span class="prelude-val">Some</span>(slot_2));
+        guard.write_batch(batch_2b.clone(), versioning_batch_2b.clone(), <span class="prelude-val">Some</span>(slot_2));
         drop(guard);
 
         <span class="comment">// Add data (at slot 3)
@@ -3211,7 +3187,7 @@
         <span class="kw">let </span>versioning_batch_3 = DBBatch::new();
         <span class="kw">let </span>slot_3 = Slot::new(<span class="number">3</span>, <span class="number">0</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>guard = db.write();
-        guard.write_batch(batch_3, versioning_batch_3, <span class="prelude-val">Some</span>(slot_3));
+        guard.write_batch(batch_3.clone(), versioning_batch_3.clone(), <span class="prelude-val">Some</span>(slot_3));
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Finished
