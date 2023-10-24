@@ -206,6 +206,8 @@ fn mock_bootstrap_manager(
     )
 }
 
+// TODO: Fix when test re-writing
+#[allow(clippy::read_zero_byte_vec)]
 #[test]
 #[serial]
 fn test_bootstrap_whitelist() {

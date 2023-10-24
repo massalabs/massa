@@ -358,36 +358,3 @@ impl PeerDBTrait for PeerDB {
         &self.tested_addresses
     }
 }
-
-// impl PeerDBTrait for SharedPeerDB {
-//     fn ban_peer(&mut self, peer_id: &PeerId) {
-//         self.write().ban_peer(peer_id);
-//     }
-
-//     fn unban_peer(&mut self, peer_id: &PeerId) {
-//         self.write().unban_peer(peer_id);
-//     }
-
-//     fn clone_box(&self) -> Box<dyn PeerDBTrait> {
-//         Box::new(self.clone())
-//     }
-
-//     fn get_oldest_peer(
-//         &self,
-//         cooldown: Duration,
-//         in_test: &HashSet<SocketAddr>,
-//     ) -> Option<SocketAddr> {
-//         self.read().get_oldest_peer(cooldown, in_test)
-//     }
-
-//     fn get_rand_peers_to_send(
-//         &self,
-//         nb_peers: usize,
-//     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
-//         self.read().get_rand_peers_to_send(nb_peers)
-//     }
-
-//     fn get_banned_peer_count(&self) -> u64 {
-//         self.read().get_banned_peer_count()
-//     }
-// }
