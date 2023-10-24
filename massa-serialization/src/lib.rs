@@ -657,7 +657,7 @@ mod tests {
         assert!(result.is_ok());
         let (rest, value) = result.unwrap();
         assert!(rest.is_empty());
-        assert_eq!(value, true);
+        assert!(value);
     }
 
     #[test]
