@@ -614,7 +614,7 @@ mod test {
     };
     use massa_signature::{verify_signature_batch, KeyPair};
 
-    // Only for test-exports purpose
+    // Only for testing purpose
     impl PartialEq for BlockHeader {
         fn eq(&self, other: &Self) -> bool {
             self.slot == other.slot

@@ -236,7 +236,7 @@ pub struct Endorsement {
 #[cfg(any(test, feature = "test-exports"))]
 impl SecureShareEndorsement {
     // TODO: gh-issue #3398
-    /// Used under test-exports conditions to validate an instance of Self
+    /// Used under testing conditions to validate an instance of Self
     pub fn check_invariants(&self) -> Result<(), Box<dyn std::error::Error>> {
         if let Err(e) = self.verify_signature() {
             return Err(e.into());

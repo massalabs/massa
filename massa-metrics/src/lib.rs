@@ -17,7 +17,6 @@ use prometheus::{register_int_gauge, Gauge, Histogram, IntCounter, IntGauge};
 use tokio::sync::oneshot::Sender;
 use tracing::warn;
 
-// #[cfg(not(feature = "test-exports"))]
 mod server;
 
 lazy_static! {

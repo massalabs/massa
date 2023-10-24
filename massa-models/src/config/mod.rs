@@ -19,14 +19,14 @@
 //! dispatcher `use massa_models::constants::*;`
 //!
 //! ```ignore
-//! // Classic import automatically root to `test-exportss` or `default`
+//! // Classic import automatically root to `test-exports` or `default`
 //! // depending on the compilation context.
 //! use massa_models::constants::*;
 //!
 //! // Force to import the nominal constants
 //! use massa_models::constants::default::*;
 //!
-//! // Force to import the test-exportss constants
+//! // Force to import the test-exports constants
 //! use massa_models::constants::default_test-exports::*;
 //! ```
 //!

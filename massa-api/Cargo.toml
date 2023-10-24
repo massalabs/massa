@@ -37,6 +37,7 @@ massa_wallet = { workspace = true }
 
 
 [dev-dependencies]
+jsonrpsee = { workspace = true, "features" = ["full"] }
 massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
 tempfile = { workspace = true }
 num = { workspace = true }
