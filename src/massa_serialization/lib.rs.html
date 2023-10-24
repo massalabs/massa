@@ -1382,7 +1382,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="macro">assert!</span>(result.is_ok());
         <span class="kw">let </span>(rest, value) = result.unwrap();
         <span class="macro">assert!</span>(rest.is_empty());
-        <span class="macro">assert_eq!</span>(value, <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(value);
     }
 
     <span class="attr">#[test]
