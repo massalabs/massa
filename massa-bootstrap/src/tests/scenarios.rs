@@ -206,8 +206,6 @@ fn mock_bootstrap_manager(
     )
 }
 
-// TODO: Fix when test re-writing
-#[allow(clippy::read_zero_byte_vec)]
 #[test]
 #[serial]
 fn test_bootstrap_whitelist() {
@@ -217,7 +215,7 @@ fn test_bootstrap_whitelist() {
 
     let conn = TcpStream::connect(addr);
     let mut stream = conn.unwrap();
-    let mut buf = Vec::new();
+    let mut buf = vec![0; 0];
     stream.read_exact(&mut buf).unwrap();
     stream.shutdown(std::net::Shutdown::Both).unwrap();
 
