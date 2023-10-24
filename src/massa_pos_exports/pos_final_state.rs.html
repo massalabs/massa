@@ -2434,12 +2434,6 @@
 <a href="#2434" id="2434">2434</a>
 <a href="#2435" id="2435">2435</a>
 <a href="#2436" id="2436">2436</a>
-<a href="#2437" id="2437">2437</a>
-<a href="#2438" id="2438">2438</a>
-<a href="#2439" id="2439">2439</a>
-<a href="#2440" id="2440">2440</a>
-<a href="#2441" id="2441">2441</a>
-<a href="#2442" id="2442">2442</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -4014,8 +4008,8 @@
     </span>}
 }
 
-<span class="doccomment">/// Helpers for testing
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+<span class="doccomment">/// Helpers for test-exports
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
 </span><span class="kw">impl </span>PoSFinalState {
     <span class="doccomment">/// Queries all the deferred credits in the database
     </span><span class="kw">pub fn </span>get_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DeferredCredits {
@@ -4123,8 +4117,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100_000</span>,
-            max_versioning_elements_size: <span class="number">100_000</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -4240,8 +4233,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -4316,7 +4308,7 @@
         <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
 
         <span class="kw">let </span><span class="kw-2">mut </span>pos_state_2 = PoSFinalState::new(
-            pos_config,
+            pos_config.clone(),
             init_seed,
             <span class="kw-2">&amp;</span>initial_rolls_file_2.path().to_path_buf(),
             selector_controller,
@@ -4356,7 +4348,7 @@
         <span class="kw">let </span>cycle_info_0 = CycleInfo::new(
             <span class="number">0</span>,
             Default::default(),
-            roll_counts_c0,
+            roll_counts_c0.clone(),
             Default::default(),
             Default::default(),
         );
@@ -4367,17 +4359,17 @@
         };
         <span class="kw">let </span>cycle_info_2 = CycleInfo {
             cycle: <span class="number">2</span>,
-            roll_counts: roll_counts_c2,
+            roll_counts: roll_counts_c2.clone(),
             ..cycle_info_0.clone()
         };
         <span class="kw">let </span>cycle_info_3 = CycleInfo {
             cycle: <span class="number">3</span>,
-            roll_counts: roll_counts_c3,
+            roll_counts: roll_counts_c3.clone(),
             ..cycle_info_0.clone()
         };
         <span class="kw">let </span>cycle_info_4 = CycleInfo {
             cycle: <span class="number">4</span>,
-            roll_counts: roll_counts_c4,
+            roll_counts: roll_counts_c4.clone(),
             ..cycle_info_0.clone()
         };
 
@@ -4432,8 +4424,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100_000</span>,
-            max_versioning_elements_size: <span class="number">100_000</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -4531,8 +4522,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100_000</span>,
-            max_versioning_elements_size: <span class="number">100_000</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -4705,8 +4695,7 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -4726,7 +4715,7 @@
 
         <span class="kw">let </span>init_seed = <span class="string">&quot;&quot;</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>pos_state_0 = PoSFinalState::new(
-            pos_config,
+            pos_config.clone(),
             init_seed,
             <span class="kw-2">&amp;</span>initial_rolls_file_0.path().to_path_buf(),
             selector_controller,
@@ -4809,9 +4798,8 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
+            max_new_elements: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
-            max_final_state_elements_size: <span class="number">100</span>,
-            max_versioning_elements_size: <span class="number">100</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
@@ -4834,7 +4822,7 @@
 
         <span class="kw">let </span>init_seed = <span class="string">&quot;&quot;</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>pos_state_0 = PoSFinalState::new(
-            pos_config,
+            pos_config.clone(),
             init_seed,
             <span class="kw-2">&amp;</span>initial_rolls_file_0.path().to_path_buf(),
             selector_controller,

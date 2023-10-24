@@ -352,7 +352,7 @@
     ///
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
     </span><span class="kw">fn </span>get_every_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::collections::BTreeMap&lt;Address, Amount&gt; {
         <span class="self">self</span>.sorted_ledger.get_every_address()
     }
@@ -363,7 +363,7 @@
     ///
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
     </span><span class="kw">fn </span>get_entire_datastore(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
         <span class="self">self</span>.sorted_ledger.get_entire_datastore(addr)
     }

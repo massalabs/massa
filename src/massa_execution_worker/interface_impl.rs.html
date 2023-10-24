@@ -2015,6 +2015,8 @@
 <a href="#2015" id="2015">2015</a>
 <a href="#2016" id="2016">2016</a>
 <a href="#2017" id="2017">2017</a>
+<a href="#2018" id="2018">2018</a>
+<a href="#2019" id="2019">2019</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2047,8 +2049,9 @@
 <span class="attr">#[cfg(any(
     feature = <span class="string">&quot;gas_calibration&quot;</span>,
     feature = <span class="string">&quot;benchmarking&quot;</span>,
-    feature = <span class="string">&quot;testing&quot;
-</span>))]
+    feature = <span class="string">&quot;test-exports&quot;</span>,
+    test
+))]
 </span><span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rand::Rng;
@@ -2062,8 +2065,9 @@
 <span class="attr">#[cfg(any(
     feature = <span class="string">&quot;gas_calibration&quot;</span>,
     feature = <span class="string">&quot;benchmarking&quot;</span>,
-    feature = <span class="string">&quot;testing&quot;
-</span>))]
+    feature = <span class="string">&quot;test-exports&quot;</span>,
+    test
+))]
 </span><span class="kw">use </span>massa_models::datastore::Datastore;
 
 <span class="doccomment">/// helper for locking the context mutex
@@ -2095,8 +2099,9 @@
     <span class="attr">#[cfg(any(
         feature = <span class="string">&quot;gas_calibration&quot;</span>,
         feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;testing&quot;
-    </span>))]
+        feature = <span class="string">&quot;test-exports&quot;</span>,
+        test
+    ))]
     </span><span class="doccomment">/// Used to create an default interface to run SC in a test environment
     </span><span class="kw">pub fn </span>new_default(
         sender_addr: Address,
@@ -3728,7 +3733,7 @@
         };
 
         <span class="kw">let </span>is_valid = interface.check_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount4).unwrap();
-        <span class="macro">assert_eq!</span>(is_valid, <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(is_valid);
 
         <span class="kw">let </span>mul = interface
             .scalar_mul_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="number">2</span>)
@@ -3884,8 +3889,7 @@
         <span class="kw">let </span>time2 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_str(<span class="string">&quot;2&quot;</span>).unwrap());
         <span class="macro">println!</span>(
             <span class="string">&quot;do some compare with time1 = {}, time2 = {}&quot;</span>,
-            time1.milliseconds.to_string(),
-            time2.milliseconds.to_string()
+            time1.milliseconds, time2.milliseconds
         );
 
         <span class="kw">let </span>cmp_res = interface
@@ -4000,7 +4004,7 @@
     <span class="comment">// build the message
     </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">&quot;\x19Ethereum Signed Message:\n{}&quot;</span>, message_.len());
     <span class="kw">let </span>to_hash = [prefix.as_bytes(), message_].concat();
-    <span class="kw">let </span>full_hash = sha3::Keccak256::digest(<span class="kw-2">&amp;</span>to_hash);
+    <span class="kw">let </span>full_hash = sha3::Keccak256::digest(to_hash);
     <span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>full_hash).unwrap();
 
     <span class="comment">// parse the signature as being (r, s, v)

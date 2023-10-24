@@ -1450,9 +1450,6 @@
 <a href="#1450" id="1450">1450</a>
 <a href="#1451" id="1451">1451</a>
 <a href="#1452" id="1452">1452</a>
-<a href="#1453" id="1453">1453</a>
-<a href="#1454" id="1454">1454</a>
-<a href="#1455" id="1455">1455</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1528,10 +1525,9 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
+    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
@@ -1726,8 +1722,7 @@
     <span class="kw">let </span>db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
-        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS <span class="kw">as </span>usize,
         thread_count: THREAD_COUNT,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -1837,8 +1832,7 @@
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
