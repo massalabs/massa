@@ -13,7 +13,7 @@ use jsonrpsee::{
     rpc_params,
 };
 use massa_api_exports::{
-    address::AddressInfo,
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
@@ -30,12 +30,14 @@ use massa_pos_exports::MockSelectorController;
 
 use crate::{tests::mock::start_public_api, RpcServer};
 use massa_execution_exports::{
-    ExecutionAddressInfo, MockExecutionController, ReadOnlyExecutionOutput,
+    ExecutionAddressInfo, ExecutionQueryResponse, ExecutionQueryResponseItem,
+    MockExecutionController, ReadOnlyExecutionOutput,
 };
 use massa_models::{
     address::Address,
     amount::Amount,
     block::{Block, BlockGraphStatus},
+    bytecode::Bytecode,
     clique::Clique,
     endorsement::EndorsementId,
     execution::EventFilter,
@@ -763,6 +765,60 @@ async fn get_addresses() {
     .unwrap()]];
     let response: Vec<AddressInfo> = client
         .request("get_addresses", params.clone())
+        .await
+        .unwrap();
+
+    assert!(response.len() == 1);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
+async fn get_addresses_bytecode() {
+    let addr: SocketAddr = "[::]:5019".parse().unwrap();
+    let (mut api_public, config) = start_public_api(addr);
+
+    let mut exec_ctrl: MockExecutionController = MockExecutionController::new();
+    exec_ctrl.expect_query_state().returning(|_| {
+        let res = ExecutionQueryResponse {
+            responses: vec![Ok(ExecutionQueryResponseItem::Bytecode(Bytecode(
+                "massa".as_bytes().to_vec(),
+            )))],
+            candidate_cursor: massa_models::slot::Slot::new(1, 2),
+            final_cursor: Slot::new(1, 7),
+            final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
+        };
+
+        res
+    });
+
+    api_public.0.execution_controller = Box::new(exec_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').into_iter().last().unwrap()
+        ))
+        .unwrap();
+
+    let params = rpc_params![];
+    let response: Result<Vec<Vec<u8>>, Error> = client
+        .request("get_addresses_bytecode", params.clone())
+        .await;
+    assert!(response.unwrap_err().to_string().contains("Invalid params"));
+
+    let params = rpc_params![vec![AddressFilter {
+        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+            .unwrap(),
+        is_final: true
+    }]];
+    let response: Vec<Vec<u8>> = client
+        .request("get_addresses_bytecode", params.clone())
         .await
         .unwrap();
 
