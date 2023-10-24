@@ -105,7 +105,7 @@
     </span><span class="kw">pub fn </span>insert_peer_known_ops(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId, ops: <span class="kw-2">&amp;</span>[OperationPrefixId]) {
         <span class="kw">let </span>known_ops = <span class="self">self
             </span>.ops_known_by_peer
-            .entry(peer_id.clone())
+            .entry(<span class="kw-2">*</span>peer_id)
             .or_insert_with(|| LruMap::new(ByLength::new(<span class="self">self</span>.max_known_ops_by_peer)));
         <span class="kw">for </span>op <span class="kw">in </span>ops {
             known_ops.insert(<span class="kw-2">*</span>op, ());
@@ -127,7 +127,7 @@
 
         <span class="comment">// Add new connected peers to cache
         </span><span class="kw">for </span>peer_id <span class="kw">in </span>peers_connected {
-            <span class="kw">match </span><span class="self">self</span>.ops_known_by_peer.entry(peer_id.clone()) {
+            <span class="kw">match </span><span class="self">self</span>.ops_known_by_peer.entry(<span class="kw-2">*</span>peer_id) {
                 std::collections::hash_map::Entry::Occupied(<span class="kw">_</span>) =&gt; {}
                 std::collections::hash_map::Entry::Vacant(entry) =&gt; {
                     entry.insert(LruMap::new(ByLength::new(<span class="self">self</span>.max_known_ops_by_peer)));
