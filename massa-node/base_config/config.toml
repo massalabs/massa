@@ -367,7 +367,7 @@
     # [optional] port on which to listen for incoming bootstrap requests. You may need to change this to "0.0.0.0:port" if IPv6 is disabled system-wide.
     bind = "[::]:31245"
     # timeout to establish a bootstrap connection
-    connect_timeout = 300000 # 5 mins
+    connect_timeout = 15000
     # timeout for providing the bootstrap to a connection
     bootstrap_timeout = 86400000    # 1 day
     # delay in milliseconds to wait between consecutive bootstrap attempts
