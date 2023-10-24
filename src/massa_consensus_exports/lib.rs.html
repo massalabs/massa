@@ -41,11 +41,11 @@
 <span class="kw">pub use </span>controller_trait::{ConsensusController, ConsensusManager};
 <span class="kw">pub use </span>settings::ConsensusConfig;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">pub use </span>controller_trait::MockConsensusController;
 
 <span class="doccomment">/// Test utils
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="doccomment">/// Exports related to tests as Mocks and configurations
 </span><span class="kw">pub mod </span>test_exports;
 </code></pre></div></section></main></body></html>
