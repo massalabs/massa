@@ -679,6 +679,7 @@
 <a href="#679" id="679">679</a>
 <a href="#680" id="680">680</a>
 <a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1160,7 +1161,7 @@
     ///
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
     </span><span class="kw">pub fn </span>get_every_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; std::collections::BTreeMap&lt;Address, massa_models::amount::Amount&gt; {
@@ -1195,7 +1196,7 @@
     ///
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
-    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;testing&quot;</span>))]
     </span><span class="kw">pub fn </span>get_entire_datastore(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
@@ -1279,7 +1280,8 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100_000</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">32</span>,
         };
 

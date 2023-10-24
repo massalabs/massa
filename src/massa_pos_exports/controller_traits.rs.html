@@ -88,9 +88,6 @@
 <a href="#88" id="88">88</a>
 <a href="#89" id="89">89</a>
 <a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting
@@ -102,7 +99,7 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
 </span><span class="kw">use </span>std::collections::{HashMap, VecDeque};
 
 <span class="doccomment">/// Selections of endorsements and producer
@@ -114,10 +111,7 @@
     </span><span class="kw">pub </span>producer: Address,
 }
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
-</span><span class="kw">use </span>std::sync::Arc;
-
-<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall_wrap::wrap, mockall::automock)]
+<span class="attr">#[cfg_attr(any(test, feature = <span class="string">&quot;testing&quot;</span>), mockall::automock)]
 </span><span class="doccomment">/// interface that communicates with the selector worker thread
 </span><span class="kw">pub trait </span>SelectorController: Send + Sync {
     <span class="doccomment">/// Waits for draws to reach at least a given cycle number.
@@ -162,7 +156,7 @@
     <span class="doccomment">/// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
-    </span><span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;testing&quot;</span>)]
     </span><span class="kw">fn </span>get_entire_selection(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VecDeque&lt;(u64, HashMap&lt;Slot, Selection&gt;)&gt; {
         <span class="macro">unimplemented!</span>(<span class="string">&quot;mock implementation only&quot;</span>)
     }

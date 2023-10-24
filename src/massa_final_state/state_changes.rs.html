@@ -324,7 +324,6 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -577,10 +576,10 @@
             <span class="self">self</span>.ledger_changes == other.ledger_changes &amp;&amp;
                 <span class="self">self</span>.async_pool_changes == other.async_pool_changes &amp;&amp;
                 <span class="comment">// pos_changes
-                </span><span class="self">self</span>.pos_changes.seed_bits == other.pos_changes.seed_bits &amp;&amp;
-                <span class="self">self</span>.pos_changes.roll_changes == other.pos_changes.roll_changes &amp;&amp;
-                <span class="self">self</span>.pos_changes.production_stats == other.pos_changes.production_stats &amp;&amp;
-                <span class="self">self</span>.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &amp;&amp;
+                </span><span class="self">self</span>.pos_changes.seed_bits == <span class="self">self</span>.pos_changes.seed_bits &amp;&amp;
+                <span class="self">self</span>.pos_changes.roll_changes == <span class="self">self</span>.pos_changes.roll_changes &amp;&amp;
+                <span class="self">self</span>.pos_changes.production_stats == <span class="self">self</span>.pos_changes.production_stats &amp;&amp;
+                <span class="self">self</span>.pos_changes.deferred_credits.credits == <span class="self">self</span>.pos_changes.deferred_credits.credits &amp;&amp;
                 <span class="self">self</span>.executed_ops_changes == other.executed_ops_changes &amp;&amp;
                 <span class="self">self</span>.executed_denunciations_changes == other.executed_denunciations_changes &amp;&amp;
                 <span class="self">self</span>.execution_trail_hash_change == other.execution_trail_hash_change
@@ -606,10 +605,9 @@
             <span class="prelude-val">None</span>,
         );
         <span class="kw">let </span><span class="kw-2">mut </span>async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes.<span class="number">0</span>.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
-        );
+        async_pool_changes
+            .<span class="number">0
+            </span>.insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
         <span class="kw">let </span>amount = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
