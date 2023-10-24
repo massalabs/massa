@@ -779,18 +779,16 @@ async fn get_addresses_bytecode() {
     let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl: MockExecutionController = MockExecutionController::new();
-    exec_ctrl.expect_query_state().returning(|_| {
-        let res = ExecutionQueryResponse {
+    exec_ctrl
+        .expect_query_state()
+        .returning(|_| ExecutionQueryResponse {
             responses: vec![Ok(ExecutionQueryResponseItem::Bytecode(Bytecode(
                 "massa".as_bytes().to_vec(),
             )))],
             candidate_cursor: massa_models::slot::Slot::new(1, 2),
             final_cursor: Slot::new(1, 7),
             final_state_fingerprint: massa_hash::Hash::compute_from(&Vec::new()),
-        };
-
-        res
-    });
+        });
 
     api_public.0.execution_controller = Box::new(exec_ctrl);
 
@@ -802,7 +800,7 @@ async fn get_addresses_bytecode() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 

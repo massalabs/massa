@@ -486,7 +486,7 @@ fn pubkey_ordering() {
 
     let mut map = BTreeSet::new();
     // map.extend(v1);
-    map.extend(v0.clone());
+    map.extend(v0);
     // assert_eq!(map.first(), v0.first())
 }
 

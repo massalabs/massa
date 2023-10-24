@@ -1095,7 +1095,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1135,7 +1136,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1195,7 +1197,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1250,7 +1253,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1305,7 +1309,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1353,7 +1358,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(

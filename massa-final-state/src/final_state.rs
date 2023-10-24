@@ -940,7 +940,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db = Arc::new(RwLock::new(
@@ -951,11 +952,11 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let selector_controller = Box::new(MockSelectorController::new());
-        let ledger = FinalLedger::new(ledger_config.clone(), db.clone());
+        let ledger = FinalLedger::new(ledger_config, db.clone());
 
         FinalState::new(
             db,
@@ -986,10 +987,9 @@ mod test {
             None,
         );
         let mut async_pool_changes = AsyncPoolChanges::default();
-        async_pool_changes.0.insert(
-            message.compute_id(),
-            SetUpdateOrDelete::Set(message.clone()),
-        );
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
         let amount = Amount::from_str("1").unwrap();
@@ -1093,8 +1093,8 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2;
         let fstate2_ = FinalState::new_derived_from_snapshot(
@@ -1102,7 +1102,7 @@ mod test {
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store.clone(),
+            mip_store,
             last_start_period_2,
         );
 
@@ -1153,8 +1153,8 @@ mod test {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100), // In config.toml,
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config.clone()))
-            .expect("Cannot create an empty MIP store");
+        let mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
 
         let last_start_period_2 = 2 + (PERIODS_PER_CYCLE * 2);
         let fstate2_ = FinalState::new_derived_from_snapshot(
@@ -1162,7 +1162,7 @@ mod test {
             config_2,
             Box::new(ledger_2),
             selector_controller,
-            mip_store.clone(),
+            mip_store,
             last_start_period_2,
         );
 

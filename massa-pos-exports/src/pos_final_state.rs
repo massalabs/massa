@@ -1681,7 +1681,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -1797,7 +1798,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -1872,7 +1874,7 @@ mod tests {
         let selector_controller = Box::new(MockSelectorController::new());
 
         let mut pos_state_2 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_2.path().to_path_buf(),
             selector_controller,
@@ -1912,7 +1914,7 @@ mod tests {
         let cycle_info_0 = CycleInfo::new(
             0,
             Default::default(),
-            roll_counts_c0.clone(),
+            roll_counts_c0,
             Default::default(),
             Default::default(),
         );
@@ -1923,17 +1925,17 @@ mod tests {
         };
         let cycle_info_2 = CycleInfo {
             cycle: 2,
-            roll_counts: roll_counts_c2.clone(),
+            roll_counts: roll_counts_c2,
             ..cycle_info_0.clone()
         };
         let cycle_info_3 = CycleInfo {
             cycle: 3,
-            roll_counts: roll_counts_c3.clone(),
+            roll_counts: roll_counts_c3,
             ..cycle_info_0.clone()
         };
         let cycle_info_4 = CycleInfo {
             cycle: 4,
-            roll_counts: roll_counts_c4.clone(),
+            roll_counts: roll_counts_c4,
             ..cycle_info_0.clone()
         };
 
@@ -1988,7 +1990,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -2086,7 +2089,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -2259,7 +2263,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: 2,
         };
         let db = Arc::new(RwLock::new(
@@ -2279,7 +2284,7 @@ mod tests {
 
         let init_seed = "";
         let mut pos_state_0 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_0.path().to_path_buf(),
             selector_controller,
@@ -2362,8 +2367,9 @@ mod tests {
         let db_config = MassaDBConfig {
             path: tempdir.path().to_path_buf(),
             max_history_length: 10,
-            max_new_elements: 100,
             thread_count: 2,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -2386,7 +2392,7 @@ mod tests {
 
         let init_seed = "";
         let mut pos_state_0 = PoSFinalState::new(
-            pos_config.clone(),
+            pos_config,
             init_seed,
             &initial_rolls_file_0.path().to_path_buf(),
             selector_controller,

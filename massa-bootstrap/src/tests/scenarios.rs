@@ -94,7 +94,7 @@ fn mock_bootstrap_manager(
 
     // start proof-of-stake selectors
     let (server_selector_manager, server_selector_controller) =
-        start_selector_worker(selector_local_config.clone())
+        start_selector_worker(selector_local_config)
             .expect("could not start server selector controller");
 
     // setup final state local config
@@ -102,7 +102,8 @@ fn mock_bootstrap_manager(
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count: 2,
     };
     let db = Arc::new(RwLock::new(
@@ -163,7 +164,7 @@ fn mock_bootstrap_manager(
             db.clone(),
         )
         .unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db.clone(),
     )));
     let mut stream_mock1 = Box::new(MockConsensusController::new());
@@ -190,7 +191,7 @@ fn mock_bootstrap_manager(
             stream_mock1,
             mocked1,
             final_state_server,
-            bootstrap_config.clone(),
+            bootstrap_config,
             keypair.clone(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaMetrics::new(
@@ -237,7 +238,8 @@ fn test_bootstrap_server() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_server = Arc::new(RwLock::new(
@@ -247,7 +249,8 @@ fn test_bootstrap_server() {
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_client = Arc::new(RwLock::new(
@@ -483,7 +486,7 @@ fn test_bootstrap_server() {
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
-    let list_changes_clone = list_changes.clone();
+    let list_changes_clone = list_changes;
     let mod_thread = std::thread::Builder::new()
         .name("modifier thread".to_string())
         .spawn(move || {
@@ -631,7 +634,8 @@ fn test_bootstrap_accept_err() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_server = Arc::new(RwLock::new(
@@ -692,7 +696,7 @@ fn test_bootstrap_accept_err() {
     };
 
     // start proof-of-stake selectors
-    let (_, server_selector_controller) = start_selector_worker(selector_local_config.clone())
+    let (_, server_selector_controller) = start_selector_worker(selector_local_config)
         .expect("could not start server selector controller");
 
     let pos_server = PoSFinalState::new(
@@ -706,7 +710,7 @@ fn test_bootstrap_accept_err() {
     // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         pos_server.unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db_server.clone(),
     )));
 

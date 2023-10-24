@@ -8,9 +8,10 @@ use crate::{
 use crate::{BootstrapConfig, BootstrapError};
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
-    MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_BLOCKS,
-    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
     MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
     MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
@@ -51,7 +52,8 @@ impl BootstrapClientBinder {
             thread_count: THREAD_COUNT,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
             max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-            max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+            max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+            max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
             max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -117,14 +119,12 @@ fn test_binders() {
                 listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners)];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers.clone()),
+                    peers: BootstrapPeers(vector_peers),
                 };
 
                 server.handshake_timeout(version(), None).unwrap();
 
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
 
                 let message = server.next_timeout(None).unwrap();
                 match message {
@@ -143,12 +143,10 @@ fn test_binders() {
                     (peer_id4, listeners.clone()),
                 ];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers.clone()),
+                    peers: BootstrapPeers(vector_peers),
                 };
 
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
@@ -253,13 +251,11 @@ fn test_binders_double_send_server_works() {
                 listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers.clone()),
+                    peers: BootstrapPeers(vector_peers),
                 };
 
                 server.handshake_timeout(version(), None).unwrap();
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
 
                 // Test message 2
                 let mut listeners = HashMap::default();
@@ -270,12 +266,10 @@ fn test_binders_double_send_server_works() {
                     (peer_id4, listeners.clone()),
                 ];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers.clone()),
+                    peers: BootstrapPeers(vector_peers),
                 };
 
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
@@ -365,7 +359,7 @@ fn test_binders_try_double_send_client_works() {
                 listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
                 let vector_peers = vec![(peer_id1, listeners.clone())];
                 let test_peers_message = BootstrapServerMessage::BootstrapPeers {
-                    peers: BootstrapPeers(vector_peers.clone()),
+                    peers: BootstrapPeers(vector_peers),
                 };
 
                 server.handshake_timeout(version(), None).unwrap();
@@ -389,9 +383,7 @@ fn test_binders_try_double_send_client_works() {
                     _ => panic!("Bad message receive: Expected a peers list message"),
                 }
 
-                server
-                    .send_timeout(test_peers_message.clone(), None)
-                    .unwrap();
+                server.send_timeout(test_peers_message, None).unwrap();
             }
         })
         .unwrap();
