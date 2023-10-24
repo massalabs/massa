@@ -12,6 +12,8 @@
 <a href="#12" id="12">12</a>
 <a href="#13" id="13">13</a>
 <a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::path::PathBuf;
 
 <span class="doccomment">/// Config structure for a `MassaDBRaw`
@@ -21,8 +23,10 @@
     </span><span class="kw">pub </span>path: PathBuf,
     <span class="doccomment">/// Change history to keep (indexed by ChangeID)
     </span><span class="kw">pub </span>max_history_length: usize,
-    <span class="doccomment">/// max_new_elements for bootstrap
-    </span><span class="kw">pub </span>max_new_elements: usize,
+    <span class="doccomment">/// max_new_elements for bootstrap in versioning stream batch
+    </span><span class="kw">pub </span>max_versioning_elements_size: usize,
+    <span class="doccomment">/// max_new_elements for bootstrap in final_state stream batch
+    </span><span class="kw">pub </span>max_final_state_elements_size: usize,
     <span class="doccomment">/// Thread count for slot serialization
     </span><span class="kw">pub </span>thread_count: u8,
 }

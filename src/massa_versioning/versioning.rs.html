@@ -2649,6 +2649,7 @@
 <a href="#2649" id="2649">2649</a>
 <a href="#2650" id="2650">2650</a>
 <a href="#2651" id="2651">2651</a>
+<a href="#2652" id="2652">2652</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -5123,7 +5124,8 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100_000</span>,
+            max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(

@@ -448,6 +448,9 @@
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -748,7 +751,8 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
@@ -761,7 +765,7 @@
 
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span>op_id_1 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">0</span>]));
-        changes.insert(op_id_1.clone(), (<span class="bool-val">true</span>, slot_1));
+        changes.insert(op_id_1, (<span class="bool-val">true</span>, slot_1));
         <span class="kw">let </span>slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + <span class="number">2</span>, <span class="number">3</span>);
         <span class="kw">let </span>op_id_2 = OperationId::new(Hash::compute_from(<span class="kw-2">&amp;</span>[<span class="number">1</span>]));
         changes.insert(op_id_2, (<span class="bool-val">true</span>, slot_2));
@@ -780,11 +784,11 @@
         drop(exec_ops);
 
         <span class="kw">let </span>db2 = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config.clone())) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
         ));
 
         <span class="comment">// After an init from disk, cache is empty, so recompute it and compare with original
-        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_ops2 = ExecutedOps::new(config.clone(), db2.clone());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_ops2 = ExecutedOps::new(config, db2.clone());
         exec_ops2.recompute_sorted_ops_and_op_exec_status();
         <span class="macro">assert_eq!</span>(exec_ops2.sorted_ops, sorted_ops_1);
 
@@ -806,13 +810,15 @@
         <span class="kw">let </span>db_a_config = MassaDBConfig {
             path: tempdir_a.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
         };
         <span class="kw">let </span>db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
-            max_new_elements: <span class="number">100</span>,
+            max_final_state_elements_size: <span class="number">100</span>,
+            max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
         };
 
