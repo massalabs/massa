@@ -271,8 +271,8 @@ mod test {
             index: ENDORSEMENT_COUNT - 1,
         };
         let mut changes = ExecutedDenunciationsChanges::new();
-        changes.insert(de_idx_1.clone());
-        changes.insert(de_idx_2.clone());
+        changes.insert(de_idx_1);
+        changes.insert(de_idx_2);
         let mut batch = DBBatch::new();
         exec_de.apply_changes_to_batch(changes, slot_2, &mut batch);
         exec_de

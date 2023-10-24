@@ -312,7 +312,7 @@ mod test {
 
         let slot_1 = Slot::new(1, 0);
         let op_id_1 = OperationId::new(Hash::compute_from(&[0]));
-        changes.insert(op_id_1.clone(), (true, slot_1));
+        changes.insert(op_id_1, (true, slot_1));
         let slot_2 = Slot::new(KEEP_EXECUTED_HISTORY_EXTRA_PERIODS + 2, 3);
         let op_id_2 = OperationId::new(Hash::compute_from(&[1]));
         changes.insert(op_id_2, (true, slot_2));
@@ -331,11 +331,11 @@ mod test {
         drop(exec_ops);
 
         let db2 = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
 
         // After an init from disk, cache is empty, so recompute it and compare with original
-        let mut exec_ops2 = ExecutedOps::new(config.clone(), db2.clone());
+        let mut exec_ops2 = ExecutedOps::new(config, db2.clone());
         exec_ops2.recompute_sorted_ops_and_op_exec_status();
         assert_eq!(exec_ops2.sorted_ops, sorted_ops_1);
 
