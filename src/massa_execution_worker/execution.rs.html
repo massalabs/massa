@@ -2220,7 +2220,7 @@
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
 
         <span class="comment">// set the context max gas to match the one defined in the operation
-        </span>context.max_gas = operation.get_gas_usage();
+        </span>context.max_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
 
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
@@ -2255,7 +2255,7 @@
         }
 
         <span class="comment">// check remaining block gas
-        </span><span class="kw">let </span>op_gas = operation.get_gas_usage();
+        </span><span class="kw">let </span>op_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
         <span class="kw">let </span>new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 <span class="string">&quot;not enough remaining block gas to execute operation&quot;</span>.to_string(),

@@ -327,6 +327,8 @@
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -569,6 +571,8 @@
 </span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
 <span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
 </span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
+</span><span class="kw">pub const </span>BASE_OPERATION_GAS_COST: u64 = MAX_GAS_PER_BLOCK / (MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64);
 <span class="doccomment">/// Maximum event size in bytes
 </span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE: usize = <span class="number">50_000</span>;
 
