@@ -205,7 +205,7 @@
         config: (u8, MassaTime, MassaTime, u64, u64),
     ) -&gt; MassaSurveyStopper {
         <span class="kw">if </span>massa_metrics.is_enabled() {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+            <span class="attr">#[cfg(all(not(feature = <span class="string">&quot;sandbox&quot;</span>), not(test)))]
             </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>data_sent = <span class="number">0</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>data_received = <span class="number">0</span>;
@@ -299,7 +299,7 @@
                 }
             }
 
-            <span class="attr">#[cfg(feature = <span class="string">&quot;sandbox&quot;</span>)]
+            <span class="attr">#[cfg(any(feature = <span class="string">&quot;sandbox&quot;</span>, test))]
             </span>{
                 MassaSurveyStopper {
                     handle: <span class="prelude-val">None</span>,
