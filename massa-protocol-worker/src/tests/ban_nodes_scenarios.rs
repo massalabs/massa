@@ -147,6 +147,8 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
         ))),
     );
     ban_breakpoint.wait();
+
+    // After `unban_everyone_timer` the node should be unbanned
     unban_breakpoint.wait();
 }
 

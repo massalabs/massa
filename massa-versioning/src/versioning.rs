@@ -1836,7 +1836,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        // Another versioning info (from an attacker) for test-exports
+        // Another versioning info (from an attacker) for testing
         let vi_2 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
