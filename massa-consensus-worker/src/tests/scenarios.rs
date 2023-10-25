@@ -19,6 +19,43 @@ use massa_test_framework::TestUniverse;
 use massa_time::MassaTime;
 use mockall::Sequence;
 
+#[test]
+fn test_genesis_block_creation() {
+    let staking_key: KeyPair = KeyPair::generate(0).unwrap();
+    let thread_count = 2;
+    let cfg = ConsensusConfig {
+        t0: MassaTime::from_millis(1000),
+        thread_count,
+        genesis_timestamp: MassaTime::now().unwrap(),
+        force_keep_final_periods: 50,
+        force_keep_final_periods_without_ops: 128,
+        max_future_processing_blocks: 10,
+        genesis_key: staking_key.clone(),
+        ..ConsensusConfig::default()
+    };
+    let mut foreign_controllers = ConsensusForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .execution_controller
+        .expect_update_blockclique_status()
+        .return_once(|_, _, _| {});
+    foreign_controllers
+        .pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
+    foreign_controllers
+        .pool_controller
+        .expect_add_denunciation_precursor()
+        .returning(|_| {});
+    let universe = ConsensusTestUniverse::new(foreign_controllers, cfg);
+    let genesis_hashes = universe
+        .module_controller
+        .get_block_graph_status(None, None)
+        .expect("could not get block graph status")
+        .genesis_blocks;
+    assert_eq!(genesis_hashes.len() as u8, thread_count);
+}
+
 /// This test tests that the blocks are well processed by consensus even if they are not sent in a sorted way.
 #[test]
 fn test_unsorted_block() {
