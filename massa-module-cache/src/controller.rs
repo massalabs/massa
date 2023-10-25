@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{Compiler, RuntimeModule};
@@ -41,21 +43,26 @@ impl ModuleCache {
 
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
-        match RuntimeModule::new(
+        let a = Instant::now();
+        let r = match RuntimeModule::new(
             bytecode,
             self.cfg.gas_costs.max_instance_cost,
             self.cfg.gas_costs.clone(),
             Compiler::CL,
         ) {
             Ok(module) => {
-                debug!("compilation of module {} succeeded", hash);
+                warn!("compilation of module {} succeeded", hash);
                 ModuleInfo::Module(module)
             }
             Err(e) => {
                 warn!("compilation of module {} failed with: {}", hash, e);
                 ModuleInfo::Invalid
             }
-        }
+        };
+        let b = Instant::now();
+        let c = b.duration_since(a).as_micros();
+        warn!("compilation took {} us", c);
+        r
     }
 
     /// Save a new or an already existing module in the cache
@@ -81,6 +88,7 @@ impl ModuleCache {
 
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
+        warn!("set_init_cost {}", init_cost);
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_init_cost(hash, init_cost);
         self.hd_cache.set_init_cost(hash, init_cost);
