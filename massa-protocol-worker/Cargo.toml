@@ -42,4 +42,5 @@ massa_test_framework = {workspace = true}
 mockall = {workspace = true}
 mockall_wrap = {workspace = true}
 num = {workspace = true}
+massa_channel = {workspace = true, features = ["test-exports"]}
 peernet = {workspace = true, features = ["testing"]}

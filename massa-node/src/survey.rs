@@ -47,7 +47,7 @@ impl MassaSurvey {
         config: (u8, MassaTime, MassaTime, u64, u64),
     ) -> MassaSurveyStopper {
         if massa_metrics.is_enabled() {
-            #[cfg(not(feature = "sandbox"))]
+            #[cfg(all(not(feature = "sandbox"), not(test)))]
             {
                 let mut data_sent = 0;
                 let mut data_received = 0;
@@ -141,7 +141,7 @@ impl MassaSurvey {
                 }
             }
 
-            #[cfg(feature = "sandbox")]
+            #[cfg(any(feature = "sandbox", test))]
             {
                 MassaSurveyStopper {
                     handle: None,

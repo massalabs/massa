@@ -10,7 +10,7 @@ use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
-use mockall::predicate;
+use mockall::{predicate, Sequence};
 use parking_lot::{RwLock, RwLockWriteGuard};
 
 use crate::handlers::peer_handler::models::{PeerInfo, PeerState};
@@ -363,6 +363,9 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
     let ban_waitpoint = WaitPoint::new();
     let ban_waitpoint_trigger_handle = ban_waitpoint.get_trigger_handle();
 
+    let mut seq = Sequence::new();
+
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
     foreign_controllers
         .peer_db
         .write()
@@ -383,6 +386,8 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
         .peer_db
         .write()
         .expect_ban_peer()
+        .times(1)
+        .in_sequence(&mut seq)
         .returning(move |peer_id| {
             assert_eq!(peer_id, &node_a_peer_id);
             ban_waitpoint_trigger_handle.trigger();
@@ -408,16 +413,13 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
             assert_eq!(block_id, block.id);
             assert_eq!(header.id, block.content.header.id);
         });
-    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
     shared_active_connections.set_expectations(
         |active_connections: &mut MockActiveConnectionsTrait| {
             active_connections
                 .expect_get_peer_ids_connected()
-                .returning(move || {
-                    let mut peers = HashSet::new();
-                    peers.insert(node_a_peer_id);
-                    peers
-                });
+                .times(2)
+                .in_sequence(&mut seq)
+                .returning(HashSet::new);
             active_connections
                 .expect_shutdown_connection()
                 .times(1)

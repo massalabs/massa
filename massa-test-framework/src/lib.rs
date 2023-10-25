@@ -31,7 +31,9 @@ pub trait TestUniverse {
         }));
         use tracing_subscriber::prelude::*;
         let tracing_layer = tracing_subscriber::fmt::layer().with_filter(LevelFilter::DEBUG);
-        tracing_subscriber::registry().with(tracing_layer).init();
+        let _ = tracing_subscriber::registry()
+            .with(tracing_layer)
+            .try_init();
     }
 
     fn create_block(

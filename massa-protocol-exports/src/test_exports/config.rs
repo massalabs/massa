@@ -14,7 +14,7 @@ impl Default for ProtocolConfig {
                 .expect("cannot create temp file")
                 .path()
                 .to_path_buf(),
-            ask_block_timeout: MassaTime::from_millis(500),
+            ask_block_timeout: MassaTime::from_millis(10000),
             max_blocks_kept_for_propagation: 300,
             max_block_propagation_time: MassaTime::from_millis(40000),
             block_propagation_tick: MassaTime::from_millis(1000),

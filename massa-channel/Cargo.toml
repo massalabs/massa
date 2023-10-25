@@ -3,6 +3,9 @@ name = "massa_channel"
 version = "0.26.1"
 edition = "2021"
 
+[features]
+test-exports = []
+
 [dependencies]
 prometheus = {workspace = true}
 crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.0" if problem

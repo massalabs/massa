@@ -931,7 +931,11 @@ impl RetrievalThread {
             .ok_or(TimeError::TimeOverflowError)
             .expect("could not compute next block retrieval timer tick");
 
-        // Get conencted peer list
+        if self.asked_blocks.is_empty() && self.asked_blocks.is_empty() {
+            return;
+        }
+
+        // Get connected peer list
         let connected_peers = self.active_connections.get_peer_ids_connected();
 
         // Update cache
