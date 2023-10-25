@@ -931,7 +931,7 @@ impl RetrievalThread {
             .ok_or(TimeError::TimeOverflowError)
             .expect("could not compute next block retrieval timer tick");
 
-        if self.asked_blocks.is_empty() && self.asked_blocks.is_empty() {
+        if self.asked_blocks.is_empty() && self.block_wishlist.is_empty() {
             return;
         }
 

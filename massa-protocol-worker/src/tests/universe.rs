@@ -36,6 +36,7 @@ use tracing::{debug, log::warn};
 
 pub struct ProtocolTestUniverse {
     pub module_controller: Box<dyn ProtocolController>,
+    module_manager: Box<dyn ProtocolManager>,
     messages_handler: MessagesHandler,
     message_serializer: MessagesSerializer,
     pub storage: Storage,
@@ -68,7 +69,7 @@ impl TestUniverse for ProtocolTestUniverse {
 
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self {
         let storage = Storage::create_root();
-        let (messages_handler, protocol_controller, _manager) =
+        let (messages_handler, protocol_controller, protocol_manager) =
             start_protocol_controller_with_mock_network(
                 config,
                 controllers.selector_controller,
@@ -89,6 +90,7 @@ impl TestUniverse for ProtocolTestUniverse {
                 .with_operation_message_serializer(OperationMessageSerializer::new())
                 .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
             storage,
+            module_manager: protocol_manager,
         };
         universe.initialize();
         universe
@@ -96,6 +98,10 @@ impl TestUniverse for ProtocolTestUniverse {
 }
 
 impl ProtocolTestUniverse {
+    pub fn stop(&mut self) {
+        self.module_manager.stop();
+    }
+
     pub fn mock_message_receive(&self, peer_id: &PeerId, message: Message) {
         let mut data = Vec::new();
         self.message_serializer
