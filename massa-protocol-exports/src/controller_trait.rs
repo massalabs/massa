@@ -13,7 +13,7 @@ use massa_models::{block_header::SecuredHeader, block_id::BlockId};
 use massa_storage::Storage;
 use peernet::peer::PeerConnectionType;
 
-#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
+#[cfg_attr(feature = "test-exports", mockall::automock)]
 pub trait ProtocolController: Send + Sync {
     /// Perform all operations needed to stop the ProtocolController
     /// without dropping it completely yet.

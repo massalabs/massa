@@ -117,7 +117,7 @@ impl PropagationThread {
                                 .iter()
                                 .filter_map(|(peer_id, knowledge)| {
                                     match knowledge.peek(&block_id) {
-                                        Some((true, _)) => Some(peer_id.clone()),
+                                        Some((true, _)) => Some(*peer_id),
                                         _ => None,
                                     }
                                 })

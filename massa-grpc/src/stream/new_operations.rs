@@ -45,7 +45,7 @@ pub(crate) async fn new_operations(
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
     // Subscribe to the new operations channel
-    let mut subscriber = grpc.pool_channels.operation_sender.subscribe();
+    let mut subscriber = grpc.pool_broadcasts.operation_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
     // let grpc = grpc.clone();
 

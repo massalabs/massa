@@ -12,11 +12,14 @@ pub mod error;
 pub mod events;
 pub mod export_active_block;
 
-pub use channels::ConsensusChannels;
+pub use channels::{ConsensusBroadcasts, ConsensusChannels};
 pub use controller_trait::{ConsensusController, ConsensusManager};
 pub use settings::ConsensusConfig;
 
+#[cfg(feature = "test-exports")]
+pub use controller_trait::MockConsensusController;
+
 /// Test utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;

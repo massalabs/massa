@@ -5,12 +5,13 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["crossbeam-channel"]
+test-exports = ["mockall", "mockall_wrap"]
 
 [dependencies]
 serde = {workspace = true, "features" = ["derive"]}
 tokio = {workspace = true, "features" = ["sync"]}
-crossbeam-channel = {workspace = true, "optional" = true}
+mockall = {workspace = true, "optional" = true}
+mockall_wrap = {workspace = true, "optional" = true}
 massa_models = {workspace = true}
 massa_storage = {workspace = true}
 massa_time = {workspace = true}
@@ -18,3 +19,4 @@ massa_pos_exports = {workspace = true}
 massa_execution_exports = {workspace = true}
 
 [dev-dependencies]
+mockall = {workspace = true}

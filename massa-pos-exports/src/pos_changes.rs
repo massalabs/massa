@@ -191,3 +191,68 @@ impl Deserializer<PoSChanges> for PoSChangesDeserializer {
         .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_models::amount::Amount;
+    use massa_models::config::{
+        MAX_DEFERRED_CREDITS_LENGTH, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
+        THREAD_COUNT,
+    };
+    use massa_models::slot::Slot;
+    use massa_serialization::DeserializeError;
+    use std::str::FromStr;
+
+    impl PartialEq<PoSChanges> for PoSChanges {
+        fn eq(&self, other: &PoSChanges) -> bool {
+            self.seed_bits == other.seed_bits
+                && self.roll_changes == other.roll_changes
+                && self.production_stats == other.production_stats
+                && self.deferred_credits.credits == other.deferred_credits.credits
+        }
+    }
+
+    #[test]
+    fn test_pos_changes_ser_der() {
+        let addr1 =
+            Address::from_str("AU1jUbxeXW49QRT6Le5aPuNdcGWQV2kpnDyQkKoka4MmEUW3m8Xm").unwrap();
+        let addr2 =
+            Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
+        let mut roll_changes = PreHashMap::default();
+        roll_changes.insert(addr1, 5);
+        roll_changes.insert(addr2, u64::MAX);
+        let mut prod_stats = PreHashMap::default();
+        prod_stats.insert(addr1, ProductionStats::default());
+        prod_stats.insert(
+            addr2,
+            ProductionStats {
+                block_success_count: 0,
+                block_failure_count: u64::MAX,
+            },
+        );
+        let mut def_credits = DeferredCredits::default();
+        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("300.0").unwrap());
+
+        let pos_changes = PoSChanges {
+            roll_changes,
+            seed_bits: BitVec::from_vec(vec![1, 0, 1, 1]),
+            production_stats: prod_stats,
+            deferred_credits: DeferredCredits::default(),
+        };
+
+        let mut buf = Vec::new();
+        let serializer = PoSChangesSerializer::new();
+        let deserializer = PoSChangesDeserializer::new(
+            THREAD_COUNT,
+            MAX_ROLLS_COUNT_LENGTH,
+            MAX_PRODUCTION_STATS_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH,
+        );
+
+        serializer.serialize(&pos_changes, &mut buf).unwrap();
+        let (rem, pos_changes_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
+        assert!(rem.is_empty());
+        assert_eq!(pos_changes_der, pos_changes);
+    }
+}

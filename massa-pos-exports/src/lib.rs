@@ -5,6 +5,7 @@
 //! the future cycles
 
 #![warn(missing_docs)]
+#![warn(unused_imports)]
 
 mod config;
 mod controller_traits;
@@ -16,8 +17,8 @@ mod pos_final_state;
 mod settings;
 
 pub use config::PoSConfig;
-#[cfg(any(test, feature = "testing"))]
-pub use controller_traits::MockSelectorController;
+#[cfg(any(test, feature = "test-exports"))]
+pub use controller_traits::{MockSelectorController, MockSelectorControllerWrapper};
 pub use controller_traits::{Selection, SelectorController, SelectorManager};
 pub use cycle_info::*;
 pub use deferred_credits::*;
@@ -26,5 +27,5 @@ pub use pos_changes::*;
 pub use pos_final_state::*;
 pub use settings::SelectorConfig;
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

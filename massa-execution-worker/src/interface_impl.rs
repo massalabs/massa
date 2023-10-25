@@ -30,7 +30,8 @@ use massa_time::MassaTime;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
@@ -45,7 +46,8 @@ use tracing::debug;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 use massa_models::datastore::Datastore;
 
@@ -78,7 +80,8 @@ impl InterfaceImpl {
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing"
+        feature = "test-exports",
+        test
     ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
@@ -1718,7 +1721,7 @@ mod tests {
         };
 
         let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
-        assert_eq!(is_valid, true);
+        assert!(is_valid);
 
         let mul = interface
             .scalar_mul_native_amount_wasmv1(&amount1, 2)
@@ -1874,8 +1877,7 @@ mod tests {
         let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
         println!(
             "do some compare with time1 = {}, time2 = {}",
-            time1.milliseconds.to_string(),
-            time2.milliseconds.to_string()
+            time1.milliseconds, time2.milliseconds
         );
 
         let cmp_res = interface
@@ -1990,7 +1992,7 @@ fn test_evm_verify() {
     // build the message
     let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
     let to_hash = [prefix.as_bytes(), message_].concat();
-    let full_hash = sha3::Keccak256::digest(&to_hash);
+    let full_hash = sha3::Keccak256::digest(to_hash);
     let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
 
     // parse the signature as being (r, s, v)

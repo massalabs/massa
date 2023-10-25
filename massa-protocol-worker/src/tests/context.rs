@@ -5,23 +5,13 @@ use crate::{
     handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
     messages::MessagesHandler, tests::mock_network::MockNetworkController,
 };
-use crossbeam::channel::Receiver;
 use massa_channel::MassaChannel;
-use massa_consensus_exports::{
-    test_exports::{ConsensusControllerImpl, ConsensusEventReceiver},
-    ConsensusController,
-};
+use massa_consensus_exports::{ConsensusController, MockConsensusController};
 use massa_metrics::MassaMetrics;
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 //use crate::handlers::block_handler::BlockInfoReply;
-use massa_pool_exports::{
-    test_exports::{MockPoolController, PoolEventReceiver},
-    PoolController,
-};
-use massa_pos_exports::{
-    test_exports::{MockSelectorController, MockSelectorControllerMessage},
-    SelectorController,
-};
+use massa_pool_exports::{MockPoolController, PoolController};
+use massa_pos_exports::{MockSelectorController, SelectorController};
 use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
@@ -40,6 +30,7 @@ use tracing::{debug, log::warn};
 /// * `config`: protocol settings
 /// * `consensus_controller`: interact with consensus module
 /// * `storage`: Shared storage to fetch data that are fetch across all modules
+#[allow(clippy::type_complexity)]
 pub fn start_protocol_controller_with_mock_network(
     config: ProtocolConfig,
     selector_controller: Box<dyn SelectorController>,
@@ -149,86 +140,18 @@ pub fn start_protocol_controller_with_mock_network(
     Ok((network_controller, controller, Box::new(manager)))
 }
 
-pub fn protocol_test<F>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-        Receiver<MockSelectorControllerMessage>,
-    ) -> (
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-        Receiver<MockSelectorControllerMessage>,
-    ),
+pub fn protocol_test<F>(
+    protocol_config: &ProtocolConfig,
+    consensus_controller: Box<MockConsensusController>,
+    pool_controller: Box<MockPoolController>,
+    selector_controller: Box<MockSelectorController>,
+    test: F,
+) where
+    F: FnOnce(Box<MockNetworkController>, Storage, Box<dyn ProtocolController>),
 {
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
-    let (consensus_controller, consensus_event_receiver) =
-        ConsensusControllerImpl::new_with_receiver();
-    let (selector_controller, selector_event_receiver) =
-        MockSelectorController::new_with_receiver();
-    // start protocol controller
-    let (network_controller, protocol_controller, protocol_manager) =
-        start_protocol_controller_with_mock_network(
-            protocol_config.clone(),
-            selector_controller,
-            consensus_controller,
-            pool_controller,
-            Storage::create_root(),
-        )
-        .expect("could not start protocol controller");
-
-    let (
-        _network_controller,
-        _protocol_controller,
-        mut protocol_manager,
-        _consensus_event_receiver,
-        _pool_event_receiver,
-        _selector_event_receiver,
-    ) = test(
-        network_controller,
-        protocol_controller,
-        protocol_manager,
-        consensus_event_receiver,
-        pool_event_receiver,
-        selector_event_receiver,
-    );
-
-    protocol_manager.stop()
-}
-
-pub fn protocol_test_with_storage<F>(protocol_config: &ProtocolConfig, test: F)
-where
-    F: FnOnce(
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-        Receiver<MockSelectorControllerMessage>,
-        Storage,
-    ) -> (
-        Box<MockNetworkController>,
-        Box<dyn ProtocolController>,
-        Box<dyn ProtocolManager>,
-        ConsensusEventReceiver,
-        PoolEventReceiver,
-        Receiver<MockSelectorControllerMessage>,
-    ),
-{
-    let (pool_controller, pool_event_receiver) = MockPoolController::new_with_receiver();
-    let (consensus_controller, consensus_event_receiver) =
-        ConsensusControllerImpl::new_with_receiver();
-    let (selector_controller, selector_event_receiver) =
-        MockSelectorController::new_with_receiver();
     let storage = Storage::create_root();
     // start protocol controller
-    let (network_controller, protocol_controller, protocol_manager) =
+    let (network_controller, protocol_controller, mut protocol_manager) =
         start_protocol_controller_with_mock_network(
             protocol_config.clone(),
             selector_controller,
@@ -238,64 +161,7 @@ where
         )
         .expect("could not start protocol controller");
 
-    let (
-        _protocol_controller,
-        _network_controller,
-        mut protocol_manager,
-        _consensus_event_receiver,
-        _pool_event_receiver,
-        _selector_event_receiver,
-    ) = test(
-        network_controller,
-        protocol_controller,
-        protocol_manager,
-        consensus_event_receiver,
-        pool_event_receiver,
-        selector_event_receiver,
-        storage,
-    );
+    test(network_controller, storage, protocol_controller);
 
     protocol_manager.stop()
 }
-
-// /// send a block and assert it has been propagate (or not)
-// pub async fn send_and_propagate_block(
-//     network_controller: &mut MockNetworkController,
-//     block: SecureShareBlock,
-//     source_node_id: NodeId,
-//     protocol_command_sender: &mut ProtocolCommandSender,
-//     operations: Vec<SecureShareOperation>,
-// ) {
-//     network_controller
-//         .send_header(source_node_id, block.content.header.clone())
-//         .await;
-
-//     let mut protocol_sender = protocol_command_sender.clone();
-//     tokio::task::spawn_blocking(move || {
-//         protocol_sender
-//             .send_wishlist_delta(
-//                 vec![(block.id, Some(block.content.header.clone()))]
-//                     .into_iter()
-//                     .collect(),
-//                 PreHashSet::<BlockId>::default(),
-//             )
-//             .unwrap();
-//     })
-//     .await
-//     .unwrap();
-
-//     // Send block info to protocol.
-//     let info = vec![(
-//         block.id,
-//         BlockInfoReply::Info(block.content.operations.clone()),
-//     )];
-//     network_controller
-//         .send_block_info(source_node_id, info)
-//         .await;
-
-//     // Send full ops.
-//     let info = vec![(block.id, BlockInfoReply::Operations(operations))];
-//     network_controller
-//         .send_block_info(source_node_id, info)
-//         .await;
-// }

@@ -1,11 +1,11 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! This file defines testing tools related to the configuration
 
 use massa_models::config::{
     MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
     THREAD_COUNT,
 };
 
-///! This file defines testing tools related to the configuration
 use crate::config::AsyncPoolConfig;
 
 /// Default value of `AsyncPoolConfig` used for tests

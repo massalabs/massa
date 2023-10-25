@@ -19,11 +19,6 @@ def coverage_for_pkg(package: str, capture_output: bool = False):
     print("Creating folder:", base_output)
     base_output.mkdir(parents=True)
 
-    enable_feature_testing: bool = False
-    with open(f"{package}/Cargo.toml", "rb") as f:
-        data = tomllib.load(f)
-        enable_feature_testing = "features" in data and "testing" in data["features"]
-
     base_cmd = [
         "cargo",
         "llvm-cov",
@@ -33,9 +28,6 @@ def coverage_for_pkg(package: str, capture_output: bool = False):
         # "--open",
         f"--package {package_}",
     ]
-
-    if enable_feature_testing:
-        base_cmd.append("--features testing")
 
     ignore_flag = ["--ignore-filename-regex"]
     ignore_flag_arg_ = []

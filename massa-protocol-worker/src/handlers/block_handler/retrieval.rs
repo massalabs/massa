@@ -148,14 +148,14 @@ impl RetrievalThread {
                             }
                             match message {
                                 BlockMessage::DataRequest{block_id, block_info} => {
-                                    self.on_ask_for_block_info_received(peer_id.clone(), block_id, block_info);
+                                    self.on_ask_for_block_info_received(peer_id, block_id, block_info);
                                 }
                                 BlockMessage::DataResponse{block_id, block_info} => {
-                                   self.on_block_info_received(peer_id.clone(), block_id, block_info);
+                                   self.on_block_info_received(peer_id, block_id, block_info);
                                    self.update_block_retrieval();
                                 }
                                 BlockMessage::Header(header) => {
-                                    self.on_block_header_received(peer_id.clone(), header);
+                                    self.on_block_header_received(peer_id, header);
                                     self.update_block_retrieval();
                                 }
                             }
@@ -430,7 +430,7 @@ impl RetrievalThread {
                     "peer {} sent us critically incorrect header: {}",
                     &from_peer_id, err
                 );
-                if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
+                if let Err(err) = self.ban_peers(&[from_peer_id]) {
                     warn!("Error while banning peer {} err: {:?}", &from_peer_id, err);
                 }
                 return;
@@ -686,7 +686,7 @@ impl RetrievalThread {
             let cache_read = self.cache.read();
             for (peer_id, peer_known_blocks) in cache_read.blocks_known_by_peer.iter() {
                 if peer_known_blocks.peek(block_id).is_some() {
-                    peers_to_ban.push(peer_id.clone());
+                    peers_to_ban.push(*peer_id);
                 }
             }
         }
@@ -762,7 +762,7 @@ impl RetrievalThread {
             != computed_operations_hash
         {
             warn!("Peer id {} sent us a operation list for block id {} but the hash in the header doesn't match.", from_peer_id, block_id);
-            if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
+            if let Err(err) = self.ban_peers(&[from_peer_id]) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
@@ -887,7 +887,7 @@ impl RetrievalThread {
                 "Peer id {} sent us operations for block id {} but they failed validity checks: {}",
                 from_peer_id, block_id, err
             );
-            if let Err(err) = self.ban_peers(&[from_peer_id.clone()]) {
+            if let Err(err) = self.ban_peers(&[from_peer_id]) {
                 warn!("Error while banning peer {} err: {:?}", from_peer_id, err);
             }
             return;
@@ -975,7 +975,7 @@ impl RetrievalThread {
 
                     // mark this peer as loaded with an angoing ask
                     peer_loads
-                        .entry(peer_id.clone())
+                        .entry(*peer_id)
                         .and_modify(|v| *v += 1)
                         .or_insert(1);
 
@@ -1018,7 +1018,7 @@ impl RetrievalThread {
                                 Some(-(now.saturating_duration_since(info_t).as_millis() as i64)), // the older the info the better
                                 peer_load,                 // the lower the load the better
                                 thread_rng().gen::<u64>(), // random tie breaker,
-                                peer_id.clone(),
+                                *peer_id,
                             ))
                         }
                         None => {
@@ -1028,7 +1028,7 @@ impl RetrievalThread {
                                 None,                      // N/A
                                 peer_load,                 // the lower the load the better
                                 thread_rng().gen::<u64>(), // random tie breaker,
-                                peer_id.clone(),
+                                *peer_id,
                             ))
                         }
                         Some((true, info_t)) => {
@@ -1038,7 +1038,7 @@ impl RetrievalThread {
                                 Some(now.saturating_duration_since(info_t).as_millis() as i64), // the newer the info the better
                                 peer_load,                 // the lower the load the better
                                 thread_rng().gen::<u64>(), // random tie breaker,
-                                peer_id.clone(),
+                                *peer_id,
                             ))
                         }
                     }
@@ -1096,7 +1096,7 @@ impl RetrievalThread {
 
                     // Update the asked_blocks list
                     self.asked_blocks
-                        .entry(peer_id.clone())
+                        .entry(peer_id)
                         .or_insert_with(Default::default)
                         .insert(block_id, now);
 

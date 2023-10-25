@@ -59,7 +59,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount>;
 
     /// Get the entire datastore for a given address.
@@ -68,6 +68,6 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>>;
 }

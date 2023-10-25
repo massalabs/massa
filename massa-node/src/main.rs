@@ -24,7 +24,9 @@ use massa_bootstrap::{
 use massa_channel::receiver::MassaReceiver;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
-use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
+use massa_consensus_exports::{
+    ConsensusBroadcasts, ConsensusChannels, ConsensusConfig, ConsensusManager,
+};
 use massa_consensus_worker::start_consensus_worker;
 use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
@@ -71,12 +73,13 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
-    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
-    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
+    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
+    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
-use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -268,7 +271,8 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(
@@ -378,7 +382,8 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -557,9 +562,14 @@ async fn launch(
     };
 
     let pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+        broadcasts: PoolBroadcasts {
+            endorsement_sender: broadcast::channel(
+                pool_config.broadcast_endorsements_channel_capacity,
+            )
             .0,
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
+            operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity)
+                .0,
+        },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
     };
@@ -710,15 +720,17 @@ async fn launch(
         pool_controller: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_controller: protocol_controller.clone(),
-        block_header_sender: broadcast::channel(
-            consensus_config.broadcast_blocks_headers_channel_capacity,
-        )
-        .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
-        filled_block_sender: broadcast::channel(
-            consensus_config.broadcast_filled_blocks_channel_capacity,
-        )
-        .0,
+        broadcasts: ConsensusBroadcasts {
+            block_header_sender: broadcast::channel(
+                consensus_config.broadcast_blocks_headers_channel_capacity,
+            )
+            .0,
+            block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
+            filled_block_sender: broadcast::channel(
+                consensus_config.broadcast_filled_blocks_channel_capacity,
+            )
+            .0,
+        },
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -832,9 +844,9 @@ async fn launch(
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
-        consensus_channels.clone(),
+        consensus_channels.broadcasts.clone(),
         execution_controller.clone(),
-        pool_channels.clone(),
+        pool_channels.broadcasts.clone(),
         api_config.clone(),
         *VERSION,
     );
@@ -863,10 +875,10 @@ async fn launch(
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
-            consensus_channels: consensus_channels.clone(),
+            consensus_broadcasts: consensus_channels.broadcasts.clone(),
             execution_controller: execution_controller.clone(),
             execution_channels,
-            pool_channels,
+            pool_broadcasts: pool_channels.broadcasts.clone(),
             pool_controller: pool_controller.clone(),
             protocol_controller: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),

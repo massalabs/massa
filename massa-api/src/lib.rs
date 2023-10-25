@@ -12,7 +12,7 @@ use jsonrpsee::server::middleware::HostFilterLayer;
 use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
-    address::AddressInfo,
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -24,7 +24,7 @@ use massa_api_exports::{
     page::{PageRequest, PagedVec},
     TimeInterval,
 };
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -36,7 +36,7 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, slot::Slot, version::Version,
 };
-use massa_pool_exports::{PoolChannels, PoolController};
+use massa_pool_exports::{PoolBroadcasts, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
@@ -53,6 +53,11 @@ mod api;
 mod api_trait;
 mod private;
 mod public;
+
+#[cfg(feature = "testing")]
+use massa_channel as _;
+#[cfg(feature = "testing")]
+use massa_grpc as _;
 
 #[cfg(test)]
 mod tests;
@@ -102,12 +107,12 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
+    /// channels with informations broadcasted by the consensus
+    pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
+    /// channels with informations broadcasted by the pool
+    pub pool_broadcasts: PoolBroadcasts,
     /// API settings
     pub api_settings: APIConfig,
     /// node version
@@ -368,6 +373,10 @@ pub trait MassaRpc {
     /// Get addresses.
     #[method(name = "get_addresses")]
     async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
+
+    /// Get addresses bytecode.
+    #[method(name = "get_addresses_bytecode")]
+    async fn get_addresses_bytecode(&self, args: Vec<AddressFilter>) -> RpcResult<Vec<Vec<u8>>>;
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[method(name = "send_operations")]

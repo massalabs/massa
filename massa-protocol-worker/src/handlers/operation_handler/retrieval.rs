@@ -233,15 +233,14 @@ impl RetrievalThread {
                     count_reask += 1;
                     ask_set.insert(op_id);
                     *previous_ask_time = now;
-                    previous_ask_peers.push(peer_id.clone());
+                    previous_ask_peers.push(*peer_id);
                 } else {
                     future_set.insert(op_id);
                 }
             } else {
                 // the same peer announced this op for a second time, ask them immediately
                 ask_set.insert(op_id);
-                self.asked_operations
-                    .insert(op_id, (now, vec![peer_id.clone()]));
+                self.asked_operations.insert(op_id, (now, vec![*peer_id]));
             }
         } // EndOf for op_id in op_batch:
 
@@ -255,7 +254,7 @@ impl RetrievalThread {
                 instant: now
                     .checked_add(self.config.operation_batch_proc_period.into())
                     .ok_or(TimeError::TimeOverflowError)?,
-                peer_id: peer_id.clone(),
+                peer_id: *peer_id,
                 operations_prefix_ids: future_set,
             });
         }
@@ -355,7 +354,7 @@ impl RetrievalThread {
     fn ban_node(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }

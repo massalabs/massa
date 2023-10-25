@@ -5,9 +5,8 @@
 use std::{collections::HashMap, net::SocketAddr};
 
 use massa_api_exports::config::APIConfig;
-use massa_channel::MassaChannel;
-use massa_consensus_exports::{test_exports::MockConsensusControllerImpl, ConsensusChannels};
-use massa_grpc::tests::mock::{MockExecutionCtrl, MockPoolCtrl, MockSelectorCtrl};
+use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
+use massa_execution_exports::MockExecutionController;
 use massa_models::{
     config::{
         ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
@@ -18,7 +17,8 @@ use massa_models::{
     },
     node::NodeId,
 };
-use massa_pool_exports::PoolChannels;
+use massa_pool_exports::{MockPoolController, PoolBroadcasts};
+use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::{MockProtocolController, PeerCategoryInfo, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -34,7 +34,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
     let api_config: APIConfig = APIConfig {
         bind_private: "[::]:0".parse().unwrap(),
         bind_public: "[::]:0".parse().unwrap(),
-        bind_api: addr.clone(),
+        bind_api: *addr,
         draw_lookahead_period_count: 10,
         max_arguments: 128,
         openrpc_spec_path: "base_config/openrpc.json".parse().unwrap(),
@@ -74,25 +74,15 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
 
     // let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let consensus_ctrl = MockConsensusControllerImpl::new();
-    let exec_ctrl = MockExecutionCtrl::new();
-    // let pool_ctrl = MockPoolCtrl::new();
-    // let protocol_controller = MockProtocolController::new();
-    let selector_ctrl = MockSelectorCtrl::new();
+    let consensus_ctrl = MockConsensusController::new();
+    let exec_ctrl = MockExecutionController::new();
 
-    let pool_channels = PoolChannels {
+    let pool_broadcasts = PoolBroadcasts {
         endorsement_sender: broadcast::channel(100).0,
         operation_sender: broadcast::channel(100).0,
-        selector: Box::new(selector_ctrl),
-        execution_controller: Box::new(MockExecutionCtrl::new()),
     };
 
-    let consensus_channels = ConsensusChannels {
-        execution_controller: Box::new(MockExecutionCtrl::new()),
-        selector_controller: Box::new(MockSelectorCtrl::new()),
-        pool_controller: Box::new(MockPoolCtrl::new()),
-        controller_event_tx: MassaChannel::new("test".to_string(), None).0,
-        protocol_controller: Box::new(MockProtocolController::new()),
+    let consensus_broadcasts = ConsensusBroadcasts {
         block_header_sender: broadcast::channel(100).0,
         block_sender: broadcast::channel(100).0,
         filled_block_sender: broadcast::channel(100).0,
@@ -100,9 +90,9 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
 
     let api = API::<ApiV2>::new(
         Box::new(consensus_ctrl),
-        consensus_channels,
+        consensus_broadcasts,
         Box::new(exec_ctrl),
-        pool_channels,
+        pool_broadcasts,
         api_config.clone(),
         *VERSION,
     );
@@ -155,11 +145,11 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
 
     let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
 
-    let consensus_ctrl = MockConsensusControllerImpl::new();
-    let exec_ctrl = MockExecutionCtrl::new();
-    let pool_ctrl = MockPoolCtrl::new();
+    let consensus_ctrl = MockConsensusController::new();
+    let exec_ctrl = MockExecutionController::new();
+    let pool_ctrl = MockPoolController::new();
     let protocol_controller = MockProtocolController::new();
-    let selector_ctrl = MockSelectorCtrl::new();
+    let selector_ctrl = MockSelectorController::new();
 
     let api_public = API::<Public>::new(
         Box::new(consensus_ctrl),

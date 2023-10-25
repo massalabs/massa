@@ -137,7 +137,7 @@ impl Deserializer<EndorsementMessage> for EndorsementMessageDeserializer {
     }
 }
 
-#[cfg(all(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use std::str::FromStr;
 

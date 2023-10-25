@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = []
+test-exports = []
 
 [dependencies]
 machine = { workspace = true }

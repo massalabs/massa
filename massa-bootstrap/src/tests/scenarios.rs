@@ -17,9 +17,7 @@ use crate::{
     listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
 };
 use massa_async_pool::AsyncPoolConfig;
-use massa_consensus_exports::{
-    bootstrapable_graph::BootstrapableGraph, test_exports::MockConsensusControllerImpl,
-};
+use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, MockConsensusController};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
@@ -96,7 +94,7 @@ fn mock_bootstrap_manager(
 
     // start proof-of-stake selectors
     let (server_selector_manager, server_selector_controller) =
-        start_selector_worker(selector_local_config.clone())
+        start_selector_worker(selector_local_config)
             .expect("could not start server selector controller");
 
     // setup final state local config
@@ -104,7 +102,8 @@ fn mock_bootstrap_manager(
     let db_config = MassaDBConfig {
         path: temp_dir.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count: 2,
     };
     let db = Arc::new(RwLock::new(
@@ -165,12 +164,12 @@ fn mock_bootstrap_manager(
             db.clone(),
         )
         .unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db.clone(),
     )));
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(MockConsensusController::new());
+    let mut stream_mock2 = Box::new(MockConsensusController::new());
+    let stream_mock3 = Box::new(MockConsensusController::new());
     stream_mock2
         .expect_clone_box()
         .return_once(move || stream_mock3);
@@ -185,14 +184,14 @@ fn mock_bootstrap_manager(
         .times(1)
         .returning(move || _listener.poll());
     listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    return (
+    (
         start_bootstrap_server(
             listener,
             listener_stopper,
             stream_mock1,
             mocked1,
             final_state_server,
-            bootstrap_config.clone(),
+            bootstrap_config,
             keypair.clone(),
             Version::from_str("TEST.1.10").unwrap(),
             MassaMetrics::new(
@@ -205,7 +204,7 @@ fn mock_bootstrap_manager(
         )
         .unwrap(),
         server_selector_manager,
-    );
+    )
 }
 
 #[test]
@@ -213,12 +212,12 @@ fn mock_bootstrap_manager(
 fn test_bootstrap_whitelist() {
     let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
     let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr.clone(), config.clone());
+    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr, config.clone());
 
     let conn = TcpStream::connect(addr);
     let mut stream = conn.unwrap();
-    let mut buf = Vec::with_capacity(1);
-    stream.read(&mut buf).unwrap();
+    let mut buf = vec![0; 0];
+    stream.read_exact(&mut buf).unwrap();
     stream.shutdown(std::net::Shutdown::Both).unwrap();
 
     bs_manager.stop().unwrap();
@@ -239,7 +238,8 @@ fn test_bootstrap_server() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_server = Arc::new(RwLock::new(
@@ -249,7 +249,8 @@ fn test_bootstrap_server() {
     let db_client_config = MassaDBConfig {
         path: temp_dir_client.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_client = Arc::new(RwLock::new(
@@ -379,7 +380,7 @@ fn test_bootstrap_server() {
             .write_batch(batch, Default::default(), Some(next));
 
         let final_state_hash = final_write.db.read().get_xof_db_hash();
-        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+        let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
         final_write
             .pos_state
             .feed_cycle_state_hash(cycle, final_state_hash);
@@ -417,9 +418,9 @@ fn test_bootstrap_server() {
 
     mocked1.expect_clone_box().return_once(move || mocked2);
 
-    let mut stream_mock1 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock2 = Box::new(MockConsensusControllerImpl::new());
-    let mut stream_mock3 = Box::new(MockConsensusControllerImpl::new());
+    let mut stream_mock1 = Box::new(MockConsensusController::new());
+    let mut stream_mock2 = Box::new(MockConsensusController::new());
+    let mut stream_mock3 = Box::new(MockConsensusController::new());
     let mut seq = mockall::Sequence::new();
 
     let sent_graph = get_boot_state();
@@ -485,7 +486,7 @@ fn test_bootstrap_server() {
 
     // launch the modifier thread
     let list_changes: Arc<RwLock<Vec<(Slot, StateChanges)>>> = Arc::new(RwLock::new(Vec::new()));
-    let list_changes_clone = list_changes.clone();
+    let list_changes_clone = list_changes;
     let mod_thread = std::thread::Builder::new()
         .name("modifier thread".to_string())
         .spawn(move || {
@@ -534,7 +535,7 @@ fn test_bootstrap_server() {
                     .write_batch(batch, Default::default(), Some(next));
 
                 let final_state_hash = final_write.db.read().get_xof_db_hash();
-                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle.clone());
+                let cycle = next.get_cycle(final_state_local_config.periods_per_cycle);
                 final_write
                     .pos_state
                     .feed_cycle_state_hash(cycle, final_state_hash);
@@ -591,7 +592,7 @@ fn test_bootstrap_server() {
 
     // check peers
     assert_eq!(
-        get_peers(&keypair).0,
+        get_peers(keypair).0,
         bootstrap_res.peers.unwrap().0,
         "mismatch between sent and received peers"
     );
@@ -633,7 +634,8 @@ fn test_bootstrap_accept_err() {
     let db_server_config = MassaDBConfig {
         path: temp_dir_server.path().to_path_buf(),
         max_history_length: 10,
-        max_new_elements: 100,
+        max_final_state_elements_size: 100_000_000,
+        max_versioning_elements_size: 100_000_000,
         thread_count,
     };
     let db_server = Arc::new(RwLock::new(
@@ -694,7 +696,7 @@ fn test_bootstrap_accept_err() {
     };
 
     // start proof-of-stake selectors
-    let (_, server_selector_controller) = start_selector_worker(selector_local_config.clone())
+    let (_, server_selector_controller) = start_selector_worker(selector_local_config)
         .expect("could not start server selector controller");
 
     let pos_server = PoSFinalState::new(
@@ -708,7 +710,7 @@ fn test_bootstrap_accept_err() {
     // setup final states
     let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
         pos_server.unwrap(),
-        final_state_local_config.clone(),
+        final_state_local_config,
         db_server.clone(),
     )));
 
@@ -720,7 +722,7 @@ fn test_bootstrap_accept_err() {
         .expect_clone_box()
         .return_once(move || Box::new(MockProtocolController::new()));
 
-    let stream_mock1 = Box::new(MockConsensusControllerImpl::new());
+    let stream_mock1 = Box::new(MockConsensusController::new());
 
     // Start the bootstrap server thread. The expectation for an err then stop is the test.
     // By ensuring that there is a call to poll following an accept err, it shows that the server

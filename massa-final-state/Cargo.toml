@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_ledger_worker/testing", "massa_async_pool/testing", "massa_pos_exports/testing"]
+test-exports = ["massa_ledger_worker/test-exports", "massa_async_pool/test-exports", "massa_pos_exports/test-exports"]
 sandbox = ["massa_async_pool/sandbox"]
 bootstrap_server = []
 
@@ -32,11 +32,10 @@ massa_time = {workspace = true}
 massa_hash = {workspace = true}
 
 [dev-dependencies]
-massa_async_pool = {workspace = true, "features" = ["testing"]}
-massa_ledger_worker = {workspace = true, "features" = ["testing"]}
-massa_pos_worker = {workspace = true, "features" = ["testing"]}
-massa_pos_exports = {workspace = true, "features" = ["testing"]}
+massa_async_pool = {workspace = true, "features" = ["test-exports"]}
+massa_ledger_worker = {workspace = true, "features" = ["test-exports"]}
+massa_pos_worker = {workspace = true, "features" = ["test-exports"]}
+massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_db_worker = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-crossbeam-channel = {workspace = true}

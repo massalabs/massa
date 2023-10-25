@@ -40,7 +40,7 @@ fn test_add_operation() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {
@@ -96,7 +96,7 @@ fn test_add_irrelevant_operation() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {
@@ -138,8 +138,10 @@ fn test_add_irrelevant_operation() {
 
 #[test]
 fn test_pool() {
-    let mut pool_config = PoolConfig::default();
-    pool_config.max_operations_per_block = 10;
+    let pool_config = PoolConfig {
+        max_operations_per_block: 10,
+        ..Default::default()
+    };
     let execution_controller = default_mock_execution_controller();
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
@@ -151,7 +153,7 @@ fn test_pool() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {

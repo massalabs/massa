@@ -180,6 +180,8 @@ mod tests {
                     include_bytes!("./wasm/event_test.wasm").to_vec(),
                 ),
                 is_final: true,
+                coins: None,
+                fee: None,
             })
             .expect("readonly execution failed");
 
@@ -195,6 +197,8 @@ mod tests {
                     include_bytes!("./wasm/event_test.wasm").to_vec(),
                 ),
                 is_final: false,
+                coins: None,
+                fee: None,
             })
             .expect("readonly execution failed");
 
@@ -412,7 +416,7 @@ mod tests {
             start: Some(Slot::new(2, 0)),
             ..Default::default()
         });
-        assert!(events.len() > 0);
+        assert!(!events.is_empty());
         // Check that we always subtract gas through the execution (even in sub calls)
         let events_formatted = events
             .iter()
@@ -781,7 +785,7 @@ mod tests {
 
         // create the block contaning the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-        let tested_op_id = operation.id.clone();
+        let tested_op_id = operation.id;
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
             KeyPair::generate(0).unwrap(),
@@ -2451,14 +2455,14 @@ mod tests {
         // match the events
         println!("{:?}", events);
         assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
-        let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+        let key_a: Vec<u8> = [1, 0, 4, 255].to_vec();
         let key_a_str: String = key_a
             .iter()
             .map(|b| format!("{}", b))
             .collect::<Vec<String>>()
             .join(",");
 
-        let key_b: Vec<u8> = [2, 0, 254, 255].iter().cloned().collect();
+        let key_b: Vec<u8> = [2, 0, 254, 255].to_vec();
         let key_b_str: String = key_b
             .iter()
             .map(|b| format!("{}", b))

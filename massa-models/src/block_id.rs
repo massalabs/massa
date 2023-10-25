@@ -53,7 +53,7 @@ impl BlockId {
     }
 
     /// Generate a version 0 block id from an hash used only for tests
-    #[cfg(any(test, feature = "testing"))]
+    #[cfg(any(test, feature = "test-exports"))]
     pub fn generate_from_hash(hash: Hash) -> BlockId {
         BlockId::BlockIdV0(BlockIdV0(hash))
     }

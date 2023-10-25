@@ -5,14 +5,13 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-gas_calibration = ["massa_ledger_exports/testing", "parking_lot", "tempfile"]
-testing = ["massa_models/testing", "massa_ledger_exports/testing", "parking_lot", "tempfile", "mockall"]
+gas_calibration = ["tempfile"]
+test-exports = ["massa_models/test-exports", "tempfile", "mockall"]
 
 [dependencies]
 displaydoc = {workspace = true}
 thiserror = {workspace = true}
 num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
-parking_lot = {workspace = true, "features" = ["deadlock_detection"], "optional" = true}
 tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
 tokio = {workspace = true, "features" = ["sync"]}
 mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
@@ -23,7 +22,6 @@ massa_time = {workspace = true}
 massa_storage = {workspace = true}
 massa_final_state = {workspace = true}
 massa_pos_exports = {workspace = true}
-massa_ledger_exports = {workspace = true, "optional" = true}
 massa_module_cache = {workspace = true}
 massa_versioning = {workspace = true}
 massa-sc-runtime = {workspace = true}

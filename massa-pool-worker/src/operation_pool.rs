@@ -421,7 +421,7 @@ impl OperationPool {
 
                 // Broadcast operations to active channel subscribers.
                 if self.config.broadcast_enabled {
-                    if let Err(err) = self.channels.operation_sender.send(op.clone()) {
+                    if let Err(err) = self.channels.broadcasts.operation_sender.send(op.clone()) {
                         trace!("error, failed to broadcast operations {}: {}", op.id, err);
                     }
                 }
