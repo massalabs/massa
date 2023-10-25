@@ -8,7 +8,7 @@
   "assembly_script_create_sc": 300000,
   "cl_compilation": 1000,
   "sp_compilation": 1000,
-  "max_instance": 1000,
+  "max_instance": 1000000,
   "assembly_script_date_now": 71,
   "assembly_script_delete_data": 196,
   "assembly_script_delete_data_for": 220,

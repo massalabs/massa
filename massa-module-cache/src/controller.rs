@@ -61,7 +61,7 @@ impl ModuleCache {
         };
         let b = Instant::now();
         let c = b.duration_since(a).as_micros();
-        warn!("compilation took {} us", c);
+        warn!("cl compilation took {} us", c);
         r
     }
 
@@ -181,14 +181,17 @@ impl ModuleCache {
             .ok_or(CacheError::LoadError(
                 "Provided max gas is below the default instance creation cost".to_string(),
             ))?;
-        Ok((
-            RuntimeModule::new(
-                bytecode,
-                remaining,
-                self.cfg.gas_costs.clone(),
-                Compiler::SP,
-            )?,
+
+        let a = Instant::now();
+        let module = RuntimeModule::new(
+            bytecode,
             remaining,
-        ))
+            self.cfg.gas_costs.clone(),
+            Compiler::SP,
+        )?;
+        let b = Instant::now();
+        let c = b.duration_since(a).as_micros();
+        warn!("sp compilation took {} us", c);
+        Ok((module, remaining))
     }
 }
