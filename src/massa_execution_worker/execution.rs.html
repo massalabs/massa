@@ -1866,6 +1866,11 @@
 <a href="#1866" id="1866">1866</a>
 <a href="#1867" id="1867">1867</a>
 <a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2214,6 +2219,9 @@
         // save a snapshot of the context to revert any further changes on error
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
 
+        <span class="comment">// set the context max gas to match the one defined in the operation
+        </span>context.max_gas = operation.get_gas_usage();
+
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
 
@@ -2247,7 +2255,7 @@
         }
 
         <span class="comment">// check remaining block gas
-        </span><span class="kw">let </span>op_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
+        </span><span class="kw">let </span>op_gas = operation.get_gas_usage();
         <span class="kw">let </span>new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 <span class="string">&quot;not enough remaining block gas to execute operation&quot;</span>.to_string(),
@@ -2814,6 +2822,7 @@
         <span class="kw">let </span>bytecode = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
             context.creator_min_balance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
@@ -3273,6 +3282,7 @@
         </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
             <span class="self">self</span>.config.clone(),
             slot,
+            req.max_gas,
             req.call_stack,
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
