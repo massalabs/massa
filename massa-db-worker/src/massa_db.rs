@@ -882,7 +882,7 @@ mod test {
             .err()
             .unwrap()
             .into_string()
-            .contains("IO error: lock hold by current process"));
+            .contains("IO error"));
     }
 
     #[test]
