@@ -4,7 +4,7 @@ version = "0.26.1"
 edition = "2021"
 
 [features]
-testing = ["massa-sc-runtime/testing"]
+test-exports = ["massa-sc-runtime/testing"]
 
 [dependencies]
 schnellru = {workspace = true}

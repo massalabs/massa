@@ -2772,6 +2772,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "mockall",
  "num",
@@ -3125,6 +3126,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "mockall",
+ "mockall_wrap",
  "serde",
  "tokio",
 ]
@@ -3164,6 +3166,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "mockall",
+ "mockall_wrap",
  "nom",
  "num",
  "parking_lot",
@@ -3228,8 +3231,11 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "massa_versioning",
+ "mockall",
+ "mockall_wrap",
  "nom",
  "num",
  "num_enum 0.7.0",
@@ -3301,6 +3307,16 @@ dependencies = [
  "massa_models",
  "massa_signature",
  "parking_lot",
+]
+
+[[package]]
+name = "massa_test_framework"
+version = "0.26.1"
+dependencies = [
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3484,6 +3500,17 @@ dependencies = [
  "proc-macro2 1.0.69",
  "quote 1.0.33",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "mockall_wrap"
+version = "0.11.2"
+source = "git+https://github.com/AurelienFT/mockall-wrap?rev=18f88253a000df96cf407dfe4b9158c69c0aeb96#18f88253a000df96cf407dfe4b9158c69c0aeb96"
+dependencies = [
+ "cfg-if",
+ "proc-macro2 1.0.69",
+ "quote 1.0.33",
+ "syn 2.0.38",
 ]
 
 [[package]]

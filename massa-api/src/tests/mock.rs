@@ -34,7 +34,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
     let api_config: APIConfig = APIConfig {
         bind_private: "[::]:0".parse().unwrap(),
         bind_public: "[::]:0".parse().unwrap(),
-        bind_api: addr.clone(),
+        bind_api: *addr,
         draw_lookahead_period_count: 10,
         max_arguments: 128,
         openrpc_spec_path: "base_config/openrpc.json".parse().unwrap(),

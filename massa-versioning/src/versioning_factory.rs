@@ -199,7 +199,7 @@ mod test {
                         "Please provide 'slot' in args".to_string(),
                     ))?,
                     creator: args.creator.clone().unwrap(),
-                    index: args.index.clone().unwrap(),
+                    index: args.index.unwrap(),
                 })),
                 Ok(v) => Err(FactoryError::UnimplementedVersion(v)),
                 Err(e) => Err(e),

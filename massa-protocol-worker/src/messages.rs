@@ -246,38 +246,33 @@ impl PeerNetMessagesHandler<PeerId> for MessagesHandler {
         match id {
             // Blocks are high-priority: we block if the channel is full.
             // This means that the sender will be blocked until the message is sent.
-            MessageTypeId::Block => self
-                .sender_blocks
-                .send((peer_id.clone(), data.to_vec()))
-                .map_err(|err| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesHandler",
-                        Some(format!("Failed to send block message to channel: {}", err)),
-                    )
-                }),
+            MessageTypeId::Block => {
+                self.sender_blocks
+                    .send((*peer_id, data.to_vec()))
+                    .map_err(|err| {
+                        PeerNetError::HandlerError.error(
+                            "MessagesHandler",
+                            Some(format!("Failed to send block message to channel: {}", err)),
+                        )
+                    })
+            }
             // Endorsements are low priority: we just drop the message if the channel is full
             MessageTypeId::Endorsement => {
-                if let Err(err) = self
-                    .sender_endorsements
-                    .try_send((peer_id.clone(), data.to_vec()))
-                {
+                if let Err(err) = self.sender_endorsements.try_send((*peer_id, data.to_vec())) {
                     debug!("Failed to send endorsement message to channel: {}", err)
                 }
                 Ok(())
             }
             // Operations are low priority: we just drop the message if the channel is full
             MessageTypeId::Operation => {
-                if let Err(err) = self
-                    .sender_operations
-                    .try_send((peer_id.clone(), data.to_vec()))
-                {
+                if let Err(err) = self.sender_operations.try_send((*peer_id, data.to_vec())) {
                     debug!("Failed to send operation message to channel: {}", err)
                 }
                 Ok(())
             }
             // Peer management messages are low priority: we just drop the message if the channel is full
             MessageTypeId::PeerManagement => {
-                if let Err(err) = self.sender_peers.try_send((peer_id.clone(), data.to_vec())) {
+                if let Err(err) = self.sender_peers.try_send((*peer_id, data.to_vec())) {
                     debug!("Failed to send peer message to channel: {}", err)
                 }
                 Ok(())

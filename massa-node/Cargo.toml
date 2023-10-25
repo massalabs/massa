@@ -22,7 +22,6 @@ sandbox = [
     "massa_models/sandbox",
     "massa_metrics/sandbox",
 ]
-testing = ["massa_metrics/testing", "massa_grpc/testing"]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem

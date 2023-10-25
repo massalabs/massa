@@ -216,12 +216,6 @@ impl PoolController for PoolControllerImpl {
         operations.iter().map(|id| lck.contains(id)).collect()
     }
 
-    /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(feature = "testing")]
-    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool {
-        self.denunciation_pool.read().contains(denunciation)
-    }
-
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize {
         self.denunciation_pool.read().len()
@@ -234,8 +228,8 @@ impl PoolController for PoolControllerImpl {
     }
 
     /// Get final consensus periods
-    fn get_final_cs_periods(&self) -> &Vec<u64> {
-        &self.last_cs_final_periods
+    fn get_final_cs_periods(&self) -> Vec<u64> {
+        self.last_cs_final_periods.clone()
     }
 }
 

@@ -12,6 +12,7 @@ use massa_versioning::versioning::MipStore;
 
 use crate::{FinalState, FinalStateConfig};
 
+#[allow(clippy::too_many_arguments)]
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
     config: FinalStateConfig,
@@ -73,12 +74,11 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     let mut count = 0;
     for ((key1, value1), (key2, value2)) in iter_state_db1.zip(iter_state_db2) {
         count += 1;
-        assert_eq!(key1, key2, "{}", format!("state key mismatch {}", count));
+        assert_eq!(key1, key2, "state key mismatch {}", count);
         assert_eq!(
-            value1,
-            value2,
-            "{}",
-            format!("state value n°{} mismatch for key {:?} ", count, key1)
+            value1, value2,
+            "state value n°{} mismatch for key {:?} ",
+            count, key1
         );
     }
 

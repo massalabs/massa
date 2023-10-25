@@ -31,6 +31,12 @@ pub struct MockActiveConnections {
     pub connections: HashMap<PeerId, MassaSender<Message>>,
 }
 
+impl Default for MockActiveConnections {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockActiveConnections {
     pub fn new() -> Self {
         Self {
@@ -64,7 +70,7 @@ impl ActiveConnectionsTrait for SharedMockActiveConnections {
             .keys()
             .map(|peer_id| {
                 (
-                    peer_id.clone(),
+                    *peer_id,
                     (
                         std::net::SocketAddr::from(([127, 0, 0, 1], 0)),
                         PeerConnectionType::OUT,
@@ -150,18 +156,15 @@ impl MockNetworkController {
         let (sender, receiver) = MassaChannel::new("create_fake_connection".to_string(), None);
 
         // Don't fake connect if we are banned
-        if let Some(peer_info) = self.peer_db.read().peers.get(&peer_id) {
+        if let Some(peer_info) = self.peer_db.read().get_peers().get(&peer_id) {
             if peer_info.state == PeerState::Banned {
                 return (peer_id, receiver);
             }
         }
         // Otherwise, add to active connections and to peer_db
-        self.connections
-            .write()
-            .connections
-            .insert(peer_id.clone(), sender);
-        self.peer_db.write().peers.insert(
-            peer_id.clone(),
+        self.connections.write().connections.insert(peer_id, sender);
+        self.peer_db.write().get_peers_mut().insert(
+            peer_id,
             PeerInfo {
                 last_announce: None,
                 state: PeerState::Trusted,
@@ -175,11 +178,7 @@ impl MockNetworkController {
     }
 
     /// Simulate a peer that send a message to us
-    pub fn send_from_peer(
-        &mut self,
-        peer_id: &PeerId,
-        message: Message,
-    ) -> Result<(), ProtocolError> {
+    pub fn send_from_peer(&self, peer_id: &PeerId, message: Message) -> Result<(), ProtocolError> {
         let peers_connected: HashSet<PeerId> = self
             .connections
             .read()

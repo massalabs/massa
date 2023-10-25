@@ -135,17 +135,15 @@ mod tests {
         for clique in max_cliques {
             // Check that all pairs of vertices in the clique are compatible
             for (v1, v2) in clique.iter().tuple_combinations() {
-                if gi_head[&v1].contains(&v2) || gi_head[&v2].contains(&v1) {
+                if gi_head[v1].contains(v2) || gi_head[v2].contains(v1) {
                     panic!("incompatible vertices found within the same clique");
                 }
             }
 
             // Check that the clique is maximal
             for v in gi_head.keys() {
-                if !clique.contains(v) {
-                    if clique.iter().all(|c| !gi_head[&v].contains(&c)) {
-                        panic!("a clique is non-maximal");
-                    }
+                if !clique.contains(v) && clique.iter().all(|c| !gi_head[v].contains(c)) {
+                    panic!("a clique is non-maximal");
                 }
             }
         }

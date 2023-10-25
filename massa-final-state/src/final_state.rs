@@ -200,7 +200,7 @@ impl FinalState {
             })?;
 
         // This is needed for `test_bootstrap_server` to work
-        if cfg!(feature = "testing") {
+        if cfg!(feature = "test-exports") {
             let mut batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(&mut batch);
             final_state
@@ -860,7 +860,6 @@ mod test {
         MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
         PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
     };
-    use massa_models::prehash::PreHashMap;
     use massa_pos_exports::MockSelectorController;
     use massa_pos_exports::{PoSChanges, PoSConfig, PosError};
     use massa_time::MassaTime;
@@ -959,7 +958,7 @@ mod test {
         let selector_controller = Box::new(MockSelectorController::new());
         let ledger = FinalLedger::new(ledger_config, db.clone());
 
-        let fstate = FinalState::new(
+        FinalState::new(
             db,
             final_state_config,
             Box::new(ledger),
@@ -967,9 +966,7 @@ mod test {
             mip_store,
             false,
         )
-        .expect("Cannot init final state");
-
-        fstate
+        .expect("Cannot init final state")
     }
 
     fn get_state_changes() -> StateChanges {
@@ -1010,7 +1007,6 @@ mod test {
         state_changes.ledger_changes = ledger_changes;
 
         let mut pos_changes = PoSChanges::default();
-        pos_changes.roll_changes = PreHashMap::default();
         pos_changes.roll_changes.insert(
             Address::from_str("AU12r1iM79EcS3sa4dmtUp28TiaPxK1weQcLsATcFoynPdukjdMqM").unwrap(),
             0,

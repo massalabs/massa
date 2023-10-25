@@ -934,7 +934,7 @@ impl MipStoreRaw {
                         }
                     }
 
-                    #[cfg(not(feature = "testing"))]
+                    #[cfg(not(any(test, feature = "test-exports")))]
                     if m_info.activation_delay < VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = Some(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -1559,7 +1559,7 @@ mod test {
         let start = MassaTime::from_utc_ymd_hms(2017, 11, 1, 7, 33, 44).unwrap();
         let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
 
-        return (
+        (
             start,
             timeout,
             MipInfo {
@@ -1570,7 +1570,7 @@ mod test {
                 timeout,
                 activation_delay: MassaTime::from_millis(20),
             },
-        );
+        )
     }
 
     #[test]
@@ -1861,11 +1861,11 @@ mod test {
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), false);
+        assert!(vsh.is_consistent_with(&vi_1).is_err());
 
         let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_consistent_with(&vi_1, MassaTime::from_millis(3)), false);
 
@@ -1879,9 +1879,9 @@ mod test {
 
         // At state Started at time now -> true
         assert_eq!(vsh.state, ComponentState::started(Ratio::new_raw(14, 100)));
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
         // Now with another versioning info
-        assert_eq!(vsh.is_consistent_with(&vi_2).is_ok(), false);
+        assert!(vsh.is_consistent_with(&vi_2).is_err());
 
         // Advance to LockedIn
         let now = MassaTime::from_millis(4);
@@ -1890,7 +1890,7 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -2022,7 +2022,7 @@ mod test {
                     ],
                     mip_stats_cfg.clone(),
                 ));
-                assert_eq!(_store_2_.is_err(), true);
+                assert!(_store_2_.is_err());
             }
         }
 
@@ -2194,7 +2194,7 @@ mod test {
         };
 
         let mip_store = MipStore::try_from(([], mip_stats_config));
-        assert_eq!(mip_store.is_ok(), true);
+        assert!(mip_store.is_ok());
     }
 
     #[test]

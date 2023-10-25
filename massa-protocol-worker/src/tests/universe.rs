@@ -1,45 +1,126 @@
-use std::{collections::HashMap, fs::read_to_string, sync::Arc};
-
-use crate::{
-    connectivity::start_connectivity_thread, create_protocol_controller,
-    handlers::peer_handler::models::PeerDB, manager::ProtocolManagerImpl,
-    messages::MessagesHandler, tests::mock_network::MockNetworkController,
-};
 use massa_channel::MassaChannel;
 use massa_consensus_exports::{ConsensusController, MockConsensusController};
-use massa_metrics::MassaMetrics;
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
-//use crate::handlers::block_handler::BlockInfoReply;
-use massa_pool_exports::{MockPoolController, PoolController};
-use massa_pos_exports::{MockSelectorController, SelectorController};
+use massa_pool_exports::{MockPoolControllerWrapper, PoolController};
+use massa_pos_exports::{MockSelectorControllerWrapper, SelectorController};
 use massa_protocol_exports::{
     PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
+use massa_test_framework::TestUniverse;
+use parking_lot::RwLock;
+use peernet::messages::{MessagesHandler as _, MessagesSerializer as _};
+use std::{collections::HashMap, fs::read_to_string, sync::Arc};
+
+use crate::{
+    connectivity::start_connectivity_thread,
+    create_protocol_controller,
+    handlers::{
+        block_handler::BlockMessageSerializer,
+        endorsement_handler::EndorsementMessageSerializer,
+        operation_handler::OperationMessageSerializer,
+        peer_handler::{models::SharedPeerDB, PeerManagementMessageSerializer},
+    },
+    manager::ProtocolManagerImpl,
+    messages::{Message, MessagesHandler, MessagesSerializer},
+    wrap_network::{MockNetworkController, NetworkController},
+    wrap_peer_db::MockPeerDBTrait,
+};
+use massa_metrics::MassaMetrics;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
-use parking_lot::RwLock;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
 
-/// start a new `ProtocolController` from a `ProtocolConfig`
-///
-/// # Arguments
-/// * `config`: protocol settings
-/// * `consensus_controller`: interact with consensus module
-/// * `storage`: Shared storage to fetch data that are fetch across all modules
+pub struct ProtocolTestUniverse {
+    pub module_controller: Box<dyn ProtocolController>,
+    messages_handler: MessagesHandler,
+    message_serializer: MessagesSerializer,
+    pub storage: Storage,
+    pub peer_db: SharedPeerDB,
+}
+
+pub struct ProtocolForeignControllers {
+    pub consensus_controller: Box<MockConsensusController>,
+    pub pool_controller: Box<MockPoolControllerWrapper>,
+    pub selector_controller: Box<MockSelectorControllerWrapper>,
+    pub network_controller: Box<MockNetworkController>,
+    pub peer_db: Arc<RwLock<MockPeerDBTrait>>,
+}
+
+impl ProtocolForeignControllers {
+    pub fn new_with_mocks() -> Self {
+        Self {
+            consensus_controller: Box::new(MockConsensusController::new()),
+            pool_controller: Box::new(MockPoolControllerWrapper::new()),
+            selector_controller: Box::new(MockSelectorControllerWrapper::new()),
+            network_controller: Box::new(MockNetworkController::new()),
+            peer_db: Arc::new(RwLock::new(MockPeerDBTrait::new())),
+        }
+    }
+}
+
+impl TestUniverse for ProtocolTestUniverse {
+    type ForeignControllers = ProtocolForeignControllers;
+    type Config = ProtocolConfig;
+
+    fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self {
+        let storage = Storage::create_root();
+        let (messages_handler, protocol_controller, _manager) =
+            start_protocol_controller_with_mock_network(
+                config,
+                controllers.selector_controller,
+                controllers.consensus_controller,
+                controllers.pool_controller,
+                controllers.network_controller,
+                storage.clone(),
+                controllers.peer_db.clone(),
+            )
+            .unwrap();
+        let universe = Self {
+            module_controller: protocol_controller,
+            messages_handler,
+            peer_db: controllers.peer_db,
+            message_serializer: MessagesSerializer::new()
+                .with_block_message_serializer(BlockMessageSerializer::new())
+                .with_endorsement_message_serializer(EndorsementMessageSerializer::new())
+                .with_operation_message_serializer(OperationMessageSerializer::new())
+                .with_peer_management_message_serializer(PeerManagementMessageSerializer::new()),
+            storage,
+        };
+        universe.initialize();
+        universe
+    }
+}
+
+impl ProtocolTestUniverse {
+    pub fn mock_message_receive(&self, peer_id: &PeerId, message: Message) {
+        let mut data = Vec::new();
+        self.message_serializer
+            .serialize(&message, &mut data)
+            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+            .unwrap();
+        self.messages_handler
+            .handle(&data, peer_id)
+            .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
+            .unwrap();
+    }
+}
+
 #[allow(clippy::type_complexity)]
 pub fn start_protocol_controller_with_mock_network(
     config: ProtocolConfig,
     selector_controller: Box<dyn SelectorController>,
     consensus_controller: Box<dyn ConsensusController>,
     pool_controller: Box<dyn PoolController>,
+    network_controller: Box<dyn NetworkController>,
     storage: Storage,
+    peer_db: SharedPeerDB,
 ) -> Result<
     (
-        Box<MockNetworkController>,
+        MessagesHandler,
         Box<dyn ProtocolController>,
         Box<dyn ProtocolManager>,
     ),
@@ -61,7 +142,6 @@ pub fn start_protocol_controller_with_mock_network(
         keypair
     };
     debug!("starting protocol controller with mock network");
-    let peer_db = Arc::new(RwLock::new(PeerDB::default()));
 
     let (sender_operations, receiver_operations) = MassaChannel::new(
         "operations".to_string(),
@@ -91,11 +171,6 @@ pub fn start_protocol_controller_with_mock_network(
 
     let (controller, channels) = create_protocol_controller(config.clone());
 
-    let network_controller = Box::new(MockNetworkController::new(
-        message_handlers.clone(),
-        peer_db.clone(),
-    ));
-
     let mip_stats_config = MipStatsConfig {
         block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         warn_announced_version_ratio: Ratio::new_raw(30, 100),
@@ -105,7 +180,7 @@ pub fn start_protocol_controller_with_mock_network(
     let connectivity_thread_handle = start_connectivity_thread(
         PeerId::from_public_key(keypair.get_public_key()),
         selector_controller,
-        network_controller.clone(),
+        network_controller,
         consensus_controller,
         pool_controller,
         (sender_blocks, receiver_blocks),
@@ -116,7 +191,7 @@ pub fn start_protocol_controller_with_mock_network(
         peer_db,
         storage,
         channels,
-        message_handlers,
+        message_handlers.clone(),
         HashMap::default(),
         PeerCategoryInfo {
             allow_local_peers: true,
@@ -137,31 +212,5 @@ pub fn start_protocol_controller_with_mock_network(
 
     let manager = ProtocolManagerImpl::new(connectivity_thread_handle);
 
-    Ok((network_controller, controller, Box::new(manager)))
-}
-
-pub fn protocol_test<F>(
-    protocol_config: &ProtocolConfig,
-    consensus_controller: Box<MockConsensusController>,
-    pool_controller: Box<MockPoolController>,
-    selector_controller: Box<MockSelectorController>,
-    test: F,
-) where
-    F: FnOnce(Box<MockNetworkController>, Storage, Box<dyn ProtocolController>),
-{
-    let storage = Storage::create_root();
-    // start protocol controller
-    let (network_controller, protocol_controller, mut protocol_manager) =
-        start_protocol_controller_with_mock_network(
-            protocol_config.clone(),
-            selector_controller,
-            consensus_controller,
-            pool_controller,
-            storage.clone_without_refs(),
-        )
-        .expect("could not start protocol controller");
-
-    test(network_controller, storage, protocol_controller);
-
-    protocol_manager.stop()
+    Ok((message_handlers, controller, Box::new(manager)))
 }

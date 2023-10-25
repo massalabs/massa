@@ -36,7 +36,7 @@ impl EndorsementCache {
     ) {
         let known_endorsements = self
             .endorsements_known_by_peer
-            .entry(peer_id.clone())
+            .entry(*peer_id)
             .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_endorsements_by_peer)));
         for endorsement in endorsements {
             known_endorsements.insert(*endorsement, ());
@@ -56,7 +56,7 @@ impl EndorsementCache {
 
         // Add new connected peers to cache
         for peer_id in peers_connected {
-            match self.endorsements_known_by_peer.entry(peer_id.clone()) {
+            match self.endorsements_known_by_peer.entry(*peer_id) {
                 std::collections::hash_map::Entry::Occupied(_) => {}
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(LruMap::new(ByLength::new(

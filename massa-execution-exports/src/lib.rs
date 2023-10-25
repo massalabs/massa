@@ -39,7 +39,7 @@
 //!
 //! ## Test exports
 //!
-//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
 
 #![warn(missing_docs)]
@@ -54,7 +54,7 @@ mod settings;
 mod types;
 
 pub use channels::ExecutionChannels;
-#[cfg(any(test, feature = "testing"))]
+#[cfg(feature = "test-exports")]
 pub use controller_traits::MockExecutionController;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::{ExecutionError, ExecutionQueryError};
@@ -69,5 +69,5 @@ pub use types::{
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 
-#[cfg(any(feature = "testing", feature = "gas_calibration"))]
+#[cfg(any(feature = "test-exports", feature = "gas_calibration"))]
 pub mod test_exports;

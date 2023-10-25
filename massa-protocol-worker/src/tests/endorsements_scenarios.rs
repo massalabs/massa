@@ -30,9 +30,11 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
         .expect_clone_box()
@@ -50,6 +52,13 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -96,9 +105,11 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
         default_panic(info);
         std::process::exit(1);
     }));
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
         .expect_clone_box()
@@ -116,6 +127,13 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -162,9 +180,11 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let mut consensus_controller = Box::new(MockConsensusController::new());
     consensus_controller
         .expect_clone_box()
@@ -182,6 +202,13 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());
@@ -245,9 +272,11 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let address_block_creator = Address::from_public_key(&block_creator.get_public_key());
     let content = Endorsement {
@@ -284,6 +313,13 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
             });
         pool_controller
     });
+    pool_controller
+        .expect_add_endorsements()
+        .return_once(move |endorsements_storage| {
+            let stored_endorsements = endorsements_storage.get_endorsement_refs();
+            assert_eq!(stored_endorsements.len(), 1);
+            assert!(stored_endorsements.contains(&endorsement.id));
+        });
     let mut selector_controller = Box::new(MockSelectorController::new());
     selector_controller.expect_clone_box().returning(move || {
         let mut selector_controller = Box::new(MockSelectorController::new());

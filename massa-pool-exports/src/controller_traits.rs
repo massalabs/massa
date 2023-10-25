@@ -9,8 +9,11 @@ use massa_models::{
 };
 use massa_storage::Storage;
 
+#[cfg(feature = "test-exports")]
+use std::sync::{Arc, RwLock};
+
 /// Trait defining a pool controller
-#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait PoolController: Send + Sync {
     /// Asynchronously add operations to pool. Simply print a warning on failure.
     fn add_operations(&mut self, ops: Storage);
@@ -49,10 +52,6 @@ pub trait PoolController: Send + Sync {
     /// Check if the pool contains a list of operations. Returns one boolean per item.
     fn contains_operations(&self, operations: &[OperationId]) -> Vec<bool>;
 
-    /// Check if the pool contains a denunciation. Returns a boolean
-    #[cfg(feature = "testing")]
-    fn contains_denunciation(&self, denunciation: &Denunciation) -> bool;
-
     /// Get the number of denunciations in the pool
     fn get_denunciation_count(&self) -> usize;
 
@@ -61,7 +60,7 @@ pub trait PoolController: Send + Sync {
     fn clone_box(&self) -> Box<dyn PoolController>;
 
     /// Get final cs periods (updated regularly from consensus)
-    fn get_final_cs_periods(&self) -> &Vec<u64>;
+    fn get_final_cs_periods(&self) -> Vec<u64>;
 }
 
 /// Allow cloning `Box<dyn PoolController>`

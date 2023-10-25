@@ -59,7 +59,7 @@ async fn get_status() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -92,7 +92,7 @@ async fn get_transactions_throughput() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -114,7 +114,7 @@ async fn get_operations() {
 
     // create an operation and store it in the storage
     let op = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 0);
-    let op_id = op.id.clone();
+    let op_id = op.id;
     public_server.storage.store_operations(vec![op]);
 
     // start the server
@@ -123,7 +123,7 @@ async fn get_operations() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -178,7 +178,7 @@ async fn get_blocks() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -207,19 +207,19 @@ async fn get_stakers() {
         let mut map = std::collections::BTreeMap::new();
         map.insert(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            5 as u64,
+            5_u64,
         );
         map.insert(
             Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-            10 as u64,
+            10_u64,
         );
         map.insert(
             Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
-            20 as u64,
+            20_u64,
         );
         map.insert(
             Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key()),
-            30 as u64,
+            30_u64,
         );
 
         map
@@ -233,7 +233,7 @@ async fn get_stakers() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -303,7 +303,7 @@ async fn get_datastore_entries() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -363,7 +363,7 @@ async fn execute_read_only_call() {
     // start grpc client and connect to the server
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -456,7 +456,7 @@ async fn get_endorsements() {
     let config = public_server.grpc_config.clone();
 
     let endorsement = create_endorsement();
-    let end_id = endorsement.id.clone();
+    let end_id = endorsement.id;
     public_server
         .storage
         .store_endorsements(vec![endorsement.clone()]);
@@ -494,7 +494,7 @@ async fn get_endorsements() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -530,7 +530,7 @@ async fn get_endorsements() {
 
     assert_eq!(result.wrapped_endorsements.len(), 1);
     let endorsement = result.wrapped_endorsements.get(0).unwrap();
-    assert_eq!(endorsement.is_final, true);
+    assert!(endorsement.is_final);
     assert!(endorsement.in_blocks.contains(&block_id.to_string()));
 
     stop_handle.stop();
@@ -561,7 +561,7 @@ async fn get_next_block_best_parents() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -620,7 +620,7 @@ async fn get_sc_execution_events() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -727,7 +727,7 @@ async fn get_selector_draws() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -904,7 +904,7 @@ async fn query_state() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -950,7 +950,7 @@ async fn search_blocks() {
         },
         vec![op],
     );
-    block_op.content.header.content_creator_address = address.clone();
+    block_op.content.header.content_creator_address = address;
     block_op.content_creator_pub_key = keypair.get_public_key();
 
     let mut block = create_block(&KeyPair::generate(0).unwrap());
@@ -975,7 +975,7 @@ async fn search_blocks() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1196,14 +1196,14 @@ async fn search_endorsements() {
     let endorsement2 = create_endorsement();
     let endorsement3 = create_endorsement();
 
-    let end1_id = endorsement.id.clone();
-    let end2_id = endorsement2.id.clone();
-    let end3_id = endorsement3.id.clone();
+    let end1_id = endorsement.id;
+    let end2_id = endorsement2.id;
+    let end3_id = endorsement3.id;
 
     let keypair = KeyPair::generate(0).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
 
-    endorsement.content_creator_address = address.clone();
+    endorsement.content_creator_address = address;
     endorsement.content_creator_pub_key = keypair.get_public_key();
 
     public_server.storage.store_endorsements(vec![
@@ -1243,7 +1243,7 @@ async fn search_endorsements() {
     let stop_handle = public_server.serve(&config).await.unwrap();
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();
@@ -1411,7 +1411,7 @@ async fn search_operations() {
     // create an operation and store it in the storage
     let op = create_operation_with_expire_period(&keypair, 0);
     let op2 = create_operation_with_expire_period(&KeyPair::generate(0).unwrap(), 0);
-    let op_id = op.id.clone();
+    let op_id = op.id;
     public_server.storage.store_operations(vec![op, op2]);
 
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -1421,7 +1421,7 @@ async fn search_operations() {
 
     let mut public_client = PublicServiceClient::connect(format!(
         "grpc://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .await
     .unwrap();

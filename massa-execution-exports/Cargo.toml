@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 gas_calibration = ["tempfile"]
-testing = ["massa_models/testing", "tempfile", "mockall"]
+test-exports = ["massa_models/test-exports", "tempfile", "mockall"]
 
 [dependencies]
 displaydoc = {workspace = true}

@@ -13,10 +13,10 @@ pub use channels::{PoolBroadcasts, PoolChannels};
 pub use config::PoolConfig;
 pub use controller_traits::{PoolController, PoolManager};
 
-#[cfg(feature = "testing")]
-pub use controller_traits::MockPoolController;
+#[cfg(feature = "test-exports")]
+pub use controller_traits::{MockPoolController, MockPoolControllerWrapper};
 
 /// Test utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 /// Exports related to tests as Mocks and configurations
 pub mod test_exports;

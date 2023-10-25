@@ -345,10 +345,7 @@ fn test_fts_multiple_max_cliques_1() {
                 print.push(format!(
                     "{:?} => {:?}",
                     hash_to_slot[from_id],
-                    to_ids
-                        .iter()
-                        .map(|v| hash_to_slot[v].clone())
-                        .collect::<Vec<_>>()
+                    to_ids.iter().map(|v| hash_to_slot[v]).collect::<Vec<_>>()
                 ));
             }
             print.sort();
@@ -363,7 +360,7 @@ fn test_fts_multiple_max_cliques_1() {
                     clique
                         .block_ids
                         .iter()
-                        .map(|v| hash_to_slot[v].clone())
+                        .map(|v| hash_to_slot[v])
                         .collect::<Vec<_>>()
                 );
             }

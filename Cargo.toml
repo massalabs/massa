@@ -32,6 +32,7 @@ members = [
   "massa-module-cache",
   "massa-serialization",
   "massa-signature",
+  "massa-test-framework",
   "massa-time",
   "massa-wallet",
   "massa-ledger-worker",
@@ -51,8 +52,8 @@ opt-level = 3 # Speed-up the CI
 
 # # Features
 #
-# * testing: enable some tests specific exports.
-# Usage: add testing = ["massa_crate/testing", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
+# * test-exports: enable some tests specific exports.
+# Usage: add test-exports = ["massa_crate/test-exports", ...] to dev-dependencies to use test specific functions avaible in massa-crate.
 # Do not add as a regular dependency. Never.
 #
 # * sandbox: for testing purpose, genesis timestamps is set as now + 9 seconds.
@@ -93,6 +94,7 @@ massa_sdk = { path = "./massa-sdk" }
 massa_serialization = { path = "./massa-serialization" }
 massa_signature = { path = "./massa-signature" }
 massa_storage = { path = "./massa-storage" }
+massa_test_framework = { path = "./massa-test-framework" }
 massa_time = { path = "./massa-time" }
 massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
@@ -142,6 +144,7 @@ lazy_static = "1.4"
 libsecp256k1 = "=0.7"
 mio = "0.8"
 mockall = "0.11"
+mockall_wrap = { git = "https://github.com/AurelienFT/mockall-wrap", rev = "18f88253a000df96cf407dfe4b9158c69c0aeb96" }
 more-asserts = "0.3"
 nom = "=7.1"
 num = "=0.4"

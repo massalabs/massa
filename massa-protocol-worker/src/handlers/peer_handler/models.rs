@@ -1,5 +1,5 @@
 use massa_channel::sender::MassaSender;
-use massa_protocol_exports::{BootstrapPeers, PeerId, ProtocolError};
+use massa_protocol_exports::{BootstrapPeers, PeerId};
 use massa_time::MassaTime;
 use parking_lot::RwLock;
 use peernet::transports::TransportType;
@@ -10,6 +10,8 @@ use std::collections::HashSet;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 use tracing::log::info;
+
+use crate::wrap_peer_db::PeerDBTrait;
 
 use super::announcement::Announcement;
 
@@ -145,7 +147,7 @@ impl ConnectionMetadata {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PeerDB {
     pub peers: HashMap<PeerId, PeerInfo>,
     /// Tested addresses used to avoid testing the same address too often. //TODO: Need to be pruned
@@ -156,7 +158,7 @@ pub struct PeerDB {
     pub peers_in_test: HashSet<SocketAddr>,
 }
 
-pub type SharedPeerDB = Arc<RwLock<PeerDB>>;
+pub type SharedPeerDB = Arc<RwLock<dyn PeerDBTrait>>;
 
 pub type PeerMessageTuple = (PeerId, Vec<u8>);
 
@@ -190,8 +192,8 @@ pub struct PeerManagementChannel {
     pub command_sender: MassaSender<PeerManagementCmd>,
 }
 
-impl PeerDB {
-    pub fn ban_peer(&mut self, peer_id: &PeerId) {
+impl PeerDBTrait for PeerDB {
+    fn ban_peer(&mut self, peer_id: &PeerId) {
         if let Some(peer) = self.peers.get_mut(peer_id) {
             peer.state = PeerState::Banned;
             info!("Banned peer: {:?}", peer_id);
@@ -200,7 +202,7 @@ impl PeerDB {
         };
     }
 
-    pub fn unban_peer(&mut self, peer_id: &PeerId) {
+    fn unban_peer(&mut self, peer_id: &PeerId) {
         if let Some(peer) = self.peers.get_mut(peer_id) {
             // We set the state to HandshakeFailed to force the peer to be tested again
             peer.state = PeerState::HandshakeFailed;
@@ -211,7 +213,7 @@ impl PeerDB {
     }
 
     /// Retrieve the peer with the oldest test date.
-    pub fn get_oldest_peer(
+    fn get_oldest_peer(
         &self,
         cooldown: Duration,
         in_test: &HashSet<SocketAddr>,
@@ -238,7 +240,7 @@ impl PeerDB {
 
     /// Select max 100 peers to send to another peer
     /// The selected peers should has been online within the last 3 days
-    pub fn get_rand_peers_to_send(
+    fn get_rand_peers_to_send(
         &self,
         nb_peers: usize,
     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
@@ -278,15 +280,81 @@ impl PeerDB {
         result
     }
 
-    pub fn get_banned_peer_count(&self) -> u64 {
+    fn clone_box(&self) -> Box<dyn PeerDBTrait> {
+        Box::new(self.clone())
+    }
+
+    fn get_banned_peer_count(&self) -> u64 {
         self.peers
             .values()
             .filter(|peer| peer.state == PeerState::Banned)
             .count() as u64
     }
 
-    // Flush PeerDB to disk ?
-    fn _flush(&self) -> Result<(), ProtocolError> {
-        unimplemented!()
+    fn get_known_peer_count(&self) -> u64 {
+        self.peers.len() as u64
+    }
+
+    fn get_peers(&self) -> &HashMap<PeerId, PeerInfo> {
+        &self.peers
+    }
+
+    fn get_peers_mut(&mut self) -> &mut HashMap<PeerId, PeerInfo> {
+        &mut self.peers
+    }
+
+    fn get_connection_metadata_or_default(&self, addr: &SocketAddr) -> ConnectionMetadata {
+        self.try_connect_history
+            .get(addr)
+            .cloned()
+            .unwrap_or(ConnectionMetadata::default())
+    }
+
+    fn set_try_connect_success_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .try_connect();
+    }
+
+    fn set_try_connect_failure_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .failure();
+    }
+
+    fn set_try_connect_test_success_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_success();
+    }
+
+    fn set_try_connect_test_failure_or_insert(&mut self, addr: &SocketAddr) {
+        self.try_connect_history
+            .entry(*addr)
+            .or_insert(ConnectionMetadata::default())
+            .test_failure();
+    }
+
+    fn get_peers_in_test(&self) -> &HashSet<SocketAddr> {
+        &self.peers_in_test
+    }
+
+    fn insert_peer_in_test(&mut self, addr: &SocketAddr) -> bool {
+        self.peers_in_test.insert(*addr)
+    }
+
+    fn remove_peer_in_test(&mut self, addr: &SocketAddr) -> bool {
+        self.peers_in_test.remove(addr)
+    }
+
+    fn insert_tested_address(&mut self, addr: &SocketAddr, time: MassaTime) {
+        self.tested_addresses.insert(*addr, time);
+    }
+
+    fn get_tested_addresses(&self) -> &HashMap<SocketAddr, MassaTime> {
+        &self.tested_addresses
     }
 }

@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_models/testing", "massa_execution_exports/testing", "massa_pool_exports/testing", "massa_pos_exports/testing", "massa_protocol_exports/testing", "massa_storage/testing", "dep:mockall"]
+test-exports = ["massa_models/test-exports", "massa_execution_exports/test-exports", "massa_pool_exports/test-exports", "massa_pos_exports/test-exports", "massa_protocol_exports/test-exports", "massa_storage/test-exports", "dep:mockall"]
 
 [dependencies]
 displaydoc = {workspace = true}

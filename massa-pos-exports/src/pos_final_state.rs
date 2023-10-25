@@ -1573,7 +1573,7 @@ impl PoSFinalState {
 }
 
 /// Helpers for testing
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 impl PoSFinalState {
     /// Queries all the deferred credits in the database
     pub fn get_deferred_credits(&self) -> DeferredCredits {

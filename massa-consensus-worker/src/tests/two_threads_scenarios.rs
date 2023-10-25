@@ -1233,15 +1233,13 @@ fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
 
             // block_2_1 and block_3_0 should be in different max cliques.
             if status.max_cliques[0].block_ids.contains(&block_2_1.id) {
-                assert_eq!(
+                assert!(
                     status.max_cliques[1].block_ids.contains(&block_3_0.id),
-                    true,
                     "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             } else {
-                assert_eq!(
+                assert!(
                     status.max_cliques[0].block_ids.contains(&block_3_0.id),
-                    true,
                     "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             }

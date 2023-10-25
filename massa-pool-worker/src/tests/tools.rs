@@ -182,7 +182,7 @@ pub fn create_endorsement(
         index,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blabla".as_bytes())),
     };
-    Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair).unwrap()
+    Endorsement::new_verifiable(content, EndorsementSerializer::new(), sender_keypair).unwrap()
 }
 
 // Create a execution controller that will return the same result for all as it's not always used

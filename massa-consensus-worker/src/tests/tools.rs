@@ -125,6 +125,7 @@ pub fn create_block_with_merkle_root(
     .unwrap()
 }
 
+#[allow(clippy::borrowed_box)]
 pub fn register_block(
     consensus_controller: &Box<dyn ConsensusController>,
     block: SecureShareBlock,

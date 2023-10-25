@@ -264,13 +264,13 @@ pub fn start_protocol_controller(
             .chain(
                 initial_peers_infos
                     .iter()
-                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
+                    .map(|(peer_id, data)| (*peer_id, data.listeners.clone())),
             )
             .collect()
     } else {
         initial_peers_infos
             .iter()
-            .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone()))
+            .map(|(peer_id, data)| (*peer_id, data.listeners.clone()))
             .collect()
     };
 

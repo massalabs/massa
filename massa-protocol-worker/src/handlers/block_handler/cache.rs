@@ -37,7 +37,7 @@ impl BlockCache {
         let now = Instant::now();
         let known_blocks = self
             .blocks_known_by_peer
-            .entry(from_peer_id.clone())
+            .entry(*from_peer_id)
             .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_blocks_by_peer)));
         for block_id in block_ids {
             known_blocks.insert(*block_id, (known, now));
@@ -61,7 +61,7 @@ impl BlockCache {
 
         // Add new connected peers to cache
         for peer_id in peers_connected {
-            match self.blocks_known_by_peer.entry(peer_id.clone()) {
+            match self.blocks_known_by_peer.entry(*peer_id) {
                 std::collections::hash_map::Entry::Occupied(_) => {}
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(LruMap::new(ByLength::new(self.max_known_blocks_by_peer)));

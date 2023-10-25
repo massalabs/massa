@@ -109,10 +109,10 @@ fn test_binders() {
     let server_thread = std::thread::Builder::new()
         .name("test_binders::server_thread".to_string())
         .spawn({
-            let peer_id1 = peer_id1.clone();
-            let peer_id2 = peer_id2.clone();
-            let peer_id3 = peer_id3.clone();
-            let peer_id4 = peer_id4.clone();
+            let peer_id1 = peer_id1;
+            let peer_id2 = peer_id2;
+            let peer_id3 = peer_id3;
+            let peer_id4 = peer_id4;
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
@@ -241,10 +241,10 @@ fn test_binders_double_send_server_works() {
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_server_works::server_thread".to_string())
         .spawn({
-            let peer_id1 = peer_id1.clone();
-            let peer_id2 = peer_id2.clone();
-            let peer_id3 = peer_id3.clone();
-            let peer_id4 = peer_id4.clone();
+            let peer_id1 = peer_id1;
+            let peer_id2 = peer_id2;
+            let peer_id3 = peer_id3;
+            let peer_id4 = peer_id4;
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
@@ -352,7 +352,7 @@ fn test_binders_try_double_send_client_works() {
     let server_thread = std::thread::Builder::new()
         .name("test_buinders_double_send_client_works::server_thread".to_string())
         .spawn({
-            let peer_id1 = peer_id1.clone();
+            let peer_id1 = peer_id1;
             move || {
                 // Test message 1
                 let mut listeners = HashMap::default();
@@ -396,7 +396,7 @@ fn test_binders_try_double_send_client_works() {
                 // Test message 1
                 let mut listeners = HashMap::default();
                 listeners.insert(bootstrap_config.bootstrap_list[0].0, TransportType::Tcp);
-                let vector_peers = vec![(peer_id1.clone(), listeners.clone())];
+                let vector_peers = vec![(peer_id1, listeners.clone())];
 
                 client.handshake(version()).unwrap();
                 let message = client.next_timeout(None).unwrap();
@@ -579,7 +579,7 @@ fn test_client_drip_feed() {
                 // give a message size that we can drip-feed
                 client_clone.write_all(&[0, 0, 0, 120]).unwrap();
                 for i in 0..120 {
-                    client_clone.write(&[i]).unwrap();
+                    client_clone.write_all(&[i]).unwrap();
                     client_clone.flush().unwrap();
                     std::thread::sleep(Duration::from_millis(10));
                 }

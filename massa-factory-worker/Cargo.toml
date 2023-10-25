@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 sandbox = []
-testing = ["massa_factory_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing", "massa_protocol_exports/testing", "massa_wallet/testing"]
+test-exports = ["massa_factory_exports/test-exports", "massa_pos_exports/test-exports", "massa_pool_exports/test-exports", "massa_protocol_exports/test-exports", "massa_wallet/test-exports"]
 
 [dependencies]
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
@@ -26,10 +26,10 @@ massa_versioning = {workspace = true}
 [dev-dependencies]
 num = {workspace = true}
 massa_hash = {workspace = true}
-massa_protocol_exports = {workspace = true, "features" = ["testing"]}
-massa_consensus_exports = {workspace = true, "features" = ["testing"]}
-massa_factory_exports = {workspace = true, "features" = ["testing"]}
-massa_wallet = {workspace = true, "features" = ["testing"]}
-massa_pos_exports = {workspace = true, "features" = ["testing"]}
-massa_pool_exports = {workspace = true, "features" = ["testing"]}
+massa_protocol_exports = {workspace = true, "features" = ["test-exports"]}
+massa_consensus_exports = {workspace = true, "features" = ["test-exports"]}
+massa_factory_exports = {workspace = true, "features" = ["test-exports"]}
+massa_wallet = {workspace = true, "features" = ["test-exports"]}
+massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
+massa_pool_exports = {workspace = true, "features" = ["test-exports"]}
 serial_test = { workspace = true }

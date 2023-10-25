@@ -76,6 +76,7 @@ pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &
     }
 }
 
+#[allow(clippy::borrowed_box)]
 /// send a block and assert it has been propagate (or not)
 pub fn send_and_propagate_block(
     network_controller: &mut MockNetworkController,

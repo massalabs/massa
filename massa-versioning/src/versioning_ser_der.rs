@@ -943,7 +943,7 @@ mod test {
 
     #[test]
     fn test_advance_ser_der() {
-        let now = MassaTime::from_utc_ymd_hms(2017, 05, 11, 11, 33, 44).unwrap();
+        let now = MassaTime::from_utc_ymd_hms(2017, 5, 11, 11, 33, 44).unwrap();
 
         let adv_lw = AdvanceLW {
             threshold: Default::default(),
@@ -1115,7 +1115,7 @@ mod test {
 
         // Cannot use update_with ou try_from here as the names are not uniques
         let store_raw = MipStoreRaw {
-            store: BTreeMap::from_iter(store_raw_.into_iter()),
+            store: BTreeMap::from_iter(store_raw_),
             stats: MipStoreStats::new(MipStatsConfig {
                 block_count_considered: 10,
                 warn_announced_version_ratio: Ratio::new(30, 100),

@@ -479,7 +479,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     pub fn get_every_address(
         &self,
     ) -> std::collections::BTreeMap<Address, massa_models::amount::Amount> {
@@ -514,7 +514,7 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
-    #[cfg(any(test, feature = "testing"))]
+    #[cfg(any(test, feature = "test-exports"))]
     pub fn get_entire_datastore(
         &self,
         addr: &Address,

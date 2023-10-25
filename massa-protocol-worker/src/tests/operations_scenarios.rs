@@ -28,9 +28,11 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let operation_1 = tools::create_operation_with_expire_period(&block_creator, 1);
     let operation_2 = tools::create_operation_with_expire_period(&block_creator, 1);
@@ -88,9 +90,11 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let mut operation_1 = tools::create_operation_with_expire_period(&op_creator, 1);
     // Making the signature of the op invalid
@@ -137,9 +141,11 @@ fn test_protocol_propagates_operations_to_active_nodes() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -218,9 +224,11 @@ fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_t
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -294,9 +302,11 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let api_operation = tools::create_operation_with_expire_period(&op_creator, 1);
@@ -384,9 +394,11 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let block_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&block_creator, 1);
     let block = tools::create_block_with_operations(
@@ -502,9 +514,11 @@ fn test_protocol_ask_operations_on_batch_received() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -563,9 +577,11 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -649,9 +665,11 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
@@ -744,9 +762,11 @@ fn test_protocol_on_ask_operations() {
         std::process::exit(1);
     }));
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        initial_peers: "./src/tests/empty_initial_peers.json".to_string().into(),
+        ..Default::default()
+    };
     let op_creator = KeyPair::generate(0).unwrap();
     let operation = tools::create_operation_with_expire_period(&op_creator, 1);
     let mut consensus_controller = Box::new(MockConsensusController::new());
