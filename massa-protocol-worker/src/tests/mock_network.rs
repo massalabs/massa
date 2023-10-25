@@ -200,10 +200,6 @@ impl MockNetworkController {
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))?;
         Ok(())
     }
-
-    pub fn get_connections(&self) -> SharedMockActiveConnections {
-        self.connections.clone()
-    }
 }
 
 impl NetworkController for MockNetworkController {
