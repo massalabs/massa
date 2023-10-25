@@ -38,44 +38,6 @@ pub fn assert_hash_asked_to_node(
     }
 }
 
-pub fn assert_block_info_sent_to_node(node: &MassaReceiver<Message>, block_id: &BlockId) {
-    let msg = node
-        .recv_timeout(Duration::from_millis(1500))
-        .expect("Node didn't receive the infos block message");
-    match msg {
-        Message::Block(message) => {
-            if let BlockMessage::Header(header) = *message {
-                assert_eq!(&header.id, block_id);
-            } else {
-                panic!("Node didn't receive the block header message")
-            }
-        }
-        _ => panic!("Node didn't receive the block header message"),
-    }
-
-    let msg = node
-        .recv_timeout(Duration::from_millis(3500))
-        .expect("Node didn't receive the infos block message");
-    match msg {
-        Message::Block(message) => {
-            if let BlockMessage::DataResponse {
-                block_id: b_id,
-                block_info,
-            } = *message
-            {
-                assert_eq!(&b_id, block_id);
-                match block_info {
-                    BlockInfoReply::OperationIds(_) => {}
-                    _ => panic!("Node didn't receive the infos block message"),
-                }
-            } else {
-                panic!("Node didn't receive the infos block message")
-            }
-        }
-        _ => panic!("Node didn't receive the infos block message"),
-    }
-}
-
 #[allow(clippy::borrowed_box)]
 /// send a block and assert it has been propagate (or not)
 pub fn send_and_propagate_block(

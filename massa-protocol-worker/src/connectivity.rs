@@ -196,17 +196,17 @@ pub(crate) fn start_connectivity_thread(
                         protocol_channels.connectivity_thread.1.update_metrics();
                         match msg {
                             Ok(ConnectivityCommand::Stop) => {
-                                println!("Stopping protocol");
+                                debug!("Stopping protocol");
                                 drop(network_controller);
-                                println!("Stopped network controller");
+                                debug!("Stopped network controller");
                                 operation_handler.stop();
-                                println!("Stopped operation handler");
+                                debug!("Stopped operation handler");
                                 endorsement_handler.stop();
-                                println!("Stopped endorsement handler");
+                                debug!("Stopped endorsement handler");
                                 block_handler.stop();
-                                println!("Stopped block handler");
+                                debug!("Stopped block handler");
                                 peer_management_handler.stop();
-                                println!("Stopped peer handler");
+                                debug!("Stopped peer handler");
                                 break;
                             },
                             Ok(ConnectivityCommand::GetStats { responder }) => {

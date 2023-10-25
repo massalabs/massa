@@ -15,7 +15,6 @@ use massa_models::{
     slot::Slot,
 };
 use massa_signature::KeyPair;
-use tracing_subscriber::filter::LevelFilter;
 
 pub trait TestUniverse {
     type ForeignControllers;
@@ -29,8 +28,9 @@ pub trait TestUniverse {
             default_panic(info);
             std::process::exit(1);
         }));
-        use tracing_subscriber::prelude::*;
-        let tracing_layer = tracing_subscriber::fmt::layer().with_filter(LevelFilter::DEBUG);
+        use tracing_subscriber::{prelude::*, EnvFilter};
+        let tracing_layer =
+            tracing_subscriber::fmt::layer().with_filter(EnvFilter::from_default_env());
         let _ = tracing_subscriber::registry()
             .with(tracing_layer)
             .try_init();
