@@ -1453,13 +1453,18 @@ mod tests {
         .unwrap();
 
         let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
-        let roll_count_too_high = balance_initial.checked_div(exec_cfg.roll_price).unwrap().saturating_add(10);
+        let roll_count_too_high = balance_initial
+            .checked_div(exec_cfg.roll_price)
+            .unwrap()
+            .saturating_add(10);
         // This second operation will fail as the price is too high
         let operation_too_expensive = Operation::new_verifiable(
             Operation {
                 fee: Amount::zero(),
                 expire_period: 10,
-                op: OperationType::RollBuy { roll_count: roll_count_too_high },
+                op: OperationType::RollBuy {
+                    roll_count: roll_count_too_high,
+                },
             },
             OperationSerializer::new(),
             &keypair,
@@ -1605,32 +1610,36 @@ mod tests {
             &keypair,
         )
         .unwrap();
-    let operation2 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_2,
+        let operation2 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollSell {
+                    roll_count: roll_sell_2,
+                },
             },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    let operation3 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_3,
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        let operation3 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollSell {
+                    roll_count: roll_sell_3,
+                },
             },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
         // create the block containing the roll buy operation
-        storage.store_operations(vec![operation1.clone(), operation2.clone(), operation3.clone()]);
+        storage.store_operations(vec![
+            operation1.clone(),
+            operation2.clone(),
+            operation3.clone(),
+        ]);
         let block = create_block(
             KeyPair::generate(0).unwrap(),
             vec![operation1, operation2, operation3],
