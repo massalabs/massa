@@ -1144,6 +1144,9 @@ impl Interface for InterfaceImpl {
         if validity_end.1 >= self.config.thread_count {
             bail!("validity end thread exceeds the configuration thread count")
         }
+        if &max_gas < self.config.gas_costs.launch_cost {
+            bail!("Minimum gas required to launch a message is {}", self.config.gas_costs.launch_cost)
+        }
         let target_addr = Address::from_str(target_address)?;
 
         // check that the target address is an SC address
