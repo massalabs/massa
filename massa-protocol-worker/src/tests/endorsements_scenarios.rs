@@ -247,7 +247,6 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
 
     let waitpoint = WaitPoint::new();
     let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
-    let waitpoint_trigger_handle2 = waitpoint.get_trigger_handle();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
     ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
@@ -259,12 +258,11 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         active_connections.expect_send_to_peer().times(1).returning(
             move |peer_id, _message_serializer, message, _high_priority| {
                 assert_eq!(peer_id, &node_b_peer_id);
-                println!("message: {:?}", message);
                 match message {
                     Message::Endorsement(EndorsementMessage::Endorsements(endorsements)) => {
                         assert_eq!(endorsements.len(), 1);
                         assert_eq!(endorsements[0], endorsement_clone);
-                        waitpoint_trigger_handle2.trigger();
+                        waitpoint_trigger_handle.trigger();
                     }
                     _ => panic!("Unexpected message type"),
                 }
@@ -305,7 +303,6 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         .expect_register_block_header()
         .return_once(move |block_id, block| {
             assert_eq!(block_id, block.id);
-            waitpoint_trigger_handle.trigger();
         });
     let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
@@ -314,13 +311,5 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         Message::Block(Box::new(BlockMessage::Header(block.content.header))),
     );
     waitpoint.wait();
-
-    // universe.storage.store_endorsements(vec![endorsement]);
-    // universe
-    //     .module_controller
-    //     .propagate_endorsements(universe.storage.clone())
-    //     .unwrap();
-    waitpoint.wait();
-
     universe.stop();
 }
