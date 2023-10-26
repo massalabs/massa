@@ -43,15 +43,15 @@ impl ModuleCache {
 
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
-        let a = Instant::now();
-        let r = match RuntimeModule::new(
+        let start = Instant::now();
+        let module = match RuntimeModule::new(
             bytecode,
             self.cfg.gas_costs.max_instance_cost,
             self.cfg.gas_costs.clone(),
             Compiler::CL,
         ) {
             Ok(module) => {
-                warn!("compilation of module {} succeeded", hash);
+                debug!("compilation of module {} succeeded", hash);
                 ModuleInfo::Module(module)
             }
             Err(e) => {
@@ -59,10 +59,10 @@ impl ModuleCache {
                 ModuleInfo::Invalid
             }
         };
-        let b = Instant::now();
-        let c = b.duration_since(a).as_micros();
-        warn!("cl compilation took {} us", c);
-        r
+        let end = Instant::now();
+        let elapsed = end.duration_since(start).as_micros();
+        debug!("TIMER: cl compilation took {} μs", elapsed);
+        return module;
     }
 
     /// Save a new or an already existing module in the cache
@@ -138,7 +138,6 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
-        // TODO: DOCUMENT HERE AND WHEN USED
         execution_gas
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
             .ok_or(CacheError::LoadError(
@@ -169,7 +168,6 @@ impl ModuleCache {
         bytecode: &[u8],
         limit: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
-        // TODO: DOCUMENT HERE AND WHEN USED
         debug!("load_tmp_module");
         let remaining = limit
             .checked_sub(self.cfg.gas_costs.sp_compilation_cost)
@@ -182,16 +180,16 @@ impl ModuleCache {
                 "Provided max gas is below the default instance creation cost".to_string(),
             ))?;
 
-        let a = Instant::now();
+        let start = Instant::now();
         let module = RuntimeModule::new(
             bytecode,
             remaining,
             self.cfg.gas_costs.clone(),
             Compiler::SP,
         )?;
-        let b = Instant::now();
-        let c = b.duration_since(a).as_micros();
-        warn!("sp compilation took {} us", c);
+        let end = Instant::now();
+        let elapsed = end.duration_since(start).as_micros();
+        debug!("TIMER: sp compilation took {} μs", elapsed);
         Ok((module, remaining))
     }
 }
