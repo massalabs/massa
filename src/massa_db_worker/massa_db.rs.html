@@ -1617,6 +1617,10 @@
 <a href="#1617" id="1617">1617</a>
 <a href="#1618" id="1618">1618</a>
 <a href="#1619" id="1619">1619</a>
+<a href="#1620" id="1620">1620</a>
+<a href="#1621" id="1621">1621</a>
+<a href="#1622" id="1622">1622</a>
+<a href="#1623" id="1623">1623</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2497,7 +2501,11 @@
         <span class="comment">// Check not allowed to init a second instance
         </span><span class="kw">let </span>db2 = MassaDB::new_with_options(db_config, db_opts.clone());
         <span class="macro">assert!</span>(db2.is_err());
-        <span class="macro">assert!</span>(db2.err().unwrap().into_string().contains(<span class="string">&quot;IO error&quot;</span>));
+        <span class="macro">assert!</span>(db2
+            .err()
+            .unwrap()
+            .into_string()
+            .contains(<span class="string">&quot;IO error: lock hold by current process&quot;</span>));
     }
 
     <span class="attr">#[test]
