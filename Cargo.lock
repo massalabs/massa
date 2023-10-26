@@ -2551,6 +2551,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=fix-sc-gas#b944ecde3a4399b477db4532107dcc02f6cdc48b"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
