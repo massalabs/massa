@@ -132,6 +132,17 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
 <span class="kw">use </span>massa_hash::Hash;
@@ -141,6 +152,7 @@
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{
         compute_operations_hash, Operation, OperationIdSerializer, OperationSerializer,
         OperationType, SecureShareOperation,
@@ -174,6 +186,7 @@
         keypair: <span class="kw-2">&amp;</span>KeyPair,
         slot: Slot,
         operations: <span class="prelude-ty">Option</span>&lt;Vec&lt;SecureShareOperation&gt;&gt;,
+        endorsements: <span class="prelude-ty">Option</span>&lt;Vec&lt;SecureShareEndorsement&gt;&gt;,
     ) -&gt; SecureShareBlock {
         <span class="kw">let </span>op_ids = operations
             .unwrap_or_default()
@@ -191,7 +204,7 @@
                     BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
                 ],
                 operation_merkle_root,
-                endorsements: Vec::new(),
+                endorsements: endorsements.unwrap_or_default(),
                 denunciations: Vec::new(),
             },
             BlockHeaderSerializer::new(),
@@ -223,6 +236,15 @@
             expire_period,
         };
         Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
+    }
+
+    <span class="kw">fn </span>create_endorsement(creator: <span class="kw-2">&amp;</span>KeyPair, slot: Slot) -&gt; SecureShareEndorsement {
+        <span class="kw">let </span>content = Endorsement {
+            slot,
+            index: <span class="number">0</span>,
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
+        };
+        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator).unwrap()
     }
 }
 
