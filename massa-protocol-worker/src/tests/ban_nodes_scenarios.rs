@@ -427,7 +427,6 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
         |active_connections: &mut MockActiveConnectionsTrait| {
             active_connections
                 .expect_get_peer_ids_connected()
-                .times(2)
                 .returning(HashSet::new);
             active_connections
                 .expect_shutdown_connection()

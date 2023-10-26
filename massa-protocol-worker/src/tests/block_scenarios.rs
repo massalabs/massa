@@ -3,12 +3,13 @@
 use std::collections::HashSet;
 
 use crate::handlers::block_handler::{AskForBlockInfo, BlockInfoReply, BlockMessage};
+use crate::handlers::operation_handler::OperationMessage;
 use crate::messages::Message;
 use crate::wrap_network::MockActiveConnectionsTraitWrapper;
 
 use super::universe::{ProtocolForeignControllers, ProtocolTestUniverse};
 use massa_models::block_header::SecuredHeader;
-use massa_models::operation::OperationId;
+use massa_models::operation::{OperationId, OperationPrefixId};
 use massa_models::prehash::PreHashSet;
 use massa_models::{block_id::BlockId, slot::Slot};
 use massa_protocol_exports::PeerId;
@@ -54,6 +55,8 @@ enum TestsStepMatch {
     SendData((PeerIdMatchers, BlockId, BlockInfoReply)),
     // Match all expected call when a block is managed (id, has_ops)
     BlockManaged((BlockId, bool)),
+    // Match all expected propagation of the operations of a block
+    OperationsPropagated((PeerIdMatchers, PreHashSet<OperationPrefixId>)),
 }
 
 fn block_retrieval_mock(
@@ -174,6 +177,32 @@ fn block_retrieval_mock(
                         assert_eq!(block_id, asked_block_id);
                         waitpoint_trigger_handle.trigger();
                     });
+            }
+            TestsStepMatch::OperationsPropagated((node_peer_id, sent_ops)) => {
+                node_peer_id.extend(&mut peer_ids);
+                shared_active_connections.set_expectations({
+                    |active_connections| {
+                        active_connections
+                            .expect_send_to_peer()
+                            .times(1)
+                            .in_sequence(&mut sequence)
+                            .returning(move |peer_id, _, message, high_priority| {
+                                std::thread::sleep(std::time::Duration::from_millis(50));
+                                assert!(node_peer_id.matches(peer_id));
+                                match message {
+                                    Message::Operation(
+                                        OperationMessage::OperationsAnnouncement(operations),
+                                    ) => {
+                                        assert_eq!(operations, sent_ops);
+                                    }
+                                    _ => panic!("Node didn't receive the infos block message"),
+                                }
+                                assert!(!high_priority);
+                                waitpoint_trigger_handle.trigger();
+                                Ok(())
+                            });
+                    }
+                });
             }
         }
     }
@@ -866,6 +895,111 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
             block_info: BlockInfoReply::Operations(vec![op_1]),
         })),
     );
+    waitpoint.wait();
+
+    universe.stop();
+}
+
+#[test]
+fn test_protocol_does_propagate_operations_received_in_blocks() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ask_block_timeout: MassaTime::from_millis(200),
+        ..Default::default()
+    };
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_thread = op_1
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        Some(vec![op_1.clone()]),
+        None,
+    );
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block.id);
+            assert_eq!(header.id, block.content.header.id);
+        });
+    block_retrieval_mock(
+        vec![
+            TestsStepMatch::AskData((
+                PeerIdMatchers::PeerId(node_a_peer_id),
+                block.id,
+                AskForBlockInfo::OperationIds,
+            )),
+            TestsStepMatch::AskData((
+                PeerIdMatchers::PeerId(node_a_peer_id),
+                block.id,
+                AskForBlockInfo::Operations(
+                    vec![op_1.id]
+                        .into_iter()
+                        .collect::<PreHashSet<OperationId>>()
+                        .into_iter()
+                        .collect(),
+                ),
+            )),
+            TestsStepMatch::BlockManaged((block.id, true)),
+            TestsStepMatch::OperationsPropagated((
+                PeerIdMatchers::PeerId(node_b_peer_id),
+                vec![op_1.clone()]
+                    .into_iter()
+                    .map(|op| op.id.prefix())
+                    .collect(),
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint.get_trigger_handle(),
+    );
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+    waitpoint.wait();
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![op_1.id]),
+        })),
+    );
+    waitpoint.wait();
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::Operations(vec![op_1]),
+        })),
+    );
+    waitpoint.wait();
     waitpoint.wait();
 
     universe.stop();

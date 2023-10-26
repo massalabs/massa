@@ -139,6 +139,9 @@ impl ProtocolTestUniverse {
                 .expect_get_peer_ids_connected()
                 .returning(move || peer_ids_clone.clone());
             mock_active_connections
+                .expect_shutdown_connection()
+                .returning(move |_| ());
+            mock_active_connections
                 .expect_get_peers_connected()
                 .returning(move || {
                     peer_ids
