@@ -97,7 +97,7 @@ pub trait TestUniverse {
         let content = Endorsement {
             slot,
             index: 0,
-            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&[])),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
         };
         Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator).unwrap()
     }

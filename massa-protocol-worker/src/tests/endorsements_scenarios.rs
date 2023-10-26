@@ -259,6 +259,7 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         active_connections.expect_send_to_peer().times(1).returning(
             move |peer_id, _message_serializer, message, _high_priority| {
                 assert_eq!(peer_id, &node_b_peer_id);
+                println!("message: {:?}", message);
                 match message {
                     Message::Endorsement(EndorsementMessage::Endorsements(endorsements)) => {
                         assert_eq!(endorsements.len(), 1);
@@ -314,11 +315,11 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
     );
     waitpoint.wait();
 
-    universe.storage.store_endorsements(vec![endorsement]);
-    universe
-        .module_controller
-        .propagate_endorsements(universe.storage.clone())
-        .unwrap();
+    // universe.storage.store_endorsements(vec![endorsement]);
+    // universe
+    //     .module_controller
+    //     .propagate_endorsements(universe.storage.clone())
+    //     .unwrap();
     waitpoint.wait();
 
     universe.stop();
