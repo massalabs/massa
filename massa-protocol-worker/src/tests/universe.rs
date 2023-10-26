@@ -4,15 +4,20 @@ use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
 use massa_pool_exports::{MockPoolControllerWrapper, PoolController};
 use massa_pos_exports::{MockSelectorControllerWrapper, SelectorController};
 use massa_protocol_exports::{
-    PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolController, ProtocolError, ProtocolManager,
+    PeerCategoryInfo, PeerConnectionType, PeerId, ProtocolConfig, ProtocolController,
+    ProtocolError, ProtocolManager,
 };
 use massa_serialization::U64VarIntDeserializer;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
-use parking_lot::RwLock;
+use parking_lot::{RwLock, RwLockWriteGuard};
 use peernet::messages::{MessagesHandler as _, MessagesSerializer as _};
-use std::{collections::HashMap, fs::read_to_string, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::read_to_string,
+    sync::Arc,
+};
 
 use crate::{
     connectivity::start_connectivity_thread,
@@ -25,7 +30,7 @@ use crate::{
     },
     manager::ProtocolManagerImpl,
     messages::{Message, MessagesHandler, MessagesSerializer},
-    wrap_network::{MockNetworkController, NetworkController},
+    wrap_network::{MockActiveConnectionsTraitWrapper, MockNetworkController, NetworkController},
     wrap_peer_db::MockPeerDBTrait,
 };
 use massa_metrics::MassaMetrics;
@@ -112,6 +117,45 @@ impl ProtocolTestUniverse {
             .handle(&data, peer_id)
             .map_err(|err| ProtocolError::GeneralProtocolError(err.to_string()))
             .unwrap();
+    }
+
+    pub fn peer_db_boilerplate(mock_peer_db: &mut RwLockWriteGuard<MockPeerDBTrait>) {
+        mock_peer_db
+            .expect_get_peers_in_test()
+            .return_const(HashSet::default());
+        mock_peer_db.expect_get_oldest_peer().return_const(None);
+        mock_peer_db
+            .expect_get_rand_peers_to_send()
+            .return_const(vec![]);
+    }
+
+    pub fn active_connections_boilerplate(
+        mock_active_connections: &mut MockActiveConnectionsTraitWrapper,
+        peer_ids: HashSet<PeerId>,
+    ) {
+        let peer_ids_clone = peer_ids.clone();
+        mock_active_connections.set_expectations(|mock_active_connections| {
+            mock_active_connections
+                .expect_get_peer_ids_connected()
+                .returning(move || peer_ids_clone.clone());
+            mock_active_connections
+                .expect_get_peers_connected()
+                .returning(move || {
+                    peer_ids
+                        .iter()
+                        .map(|peer_id| {
+                            (
+                                *peer_id,
+                                (
+                                    "127.0.0.1:8080".parse().unwrap(),
+                                    PeerConnectionType::OUT,
+                                    None,
+                                ),
+                            )
+                        })
+                        .collect()
+                });
+        });
     }
 }
 

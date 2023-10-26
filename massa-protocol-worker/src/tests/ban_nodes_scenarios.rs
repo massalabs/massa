@@ -47,7 +47,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let mut block_bad_public_key = block.clone();
     block_bad_public_key.content.header.content_creator_pub_key =
         KeyPair::generate(0).unwrap().get_public_key();
@@ -237,6 +237,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         &block_creator,
         Slot::new(1, 1),
         Some(vec![operation_1]),
+        None,
     );
     let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
     let node_a_keypair = KeyPair::generate(0).unwrap();
@@ -365,7 +366,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let mut bad_block = block.clone();
     bad_block.content.header.content_creator_pub_key =
         KeyPair::generate(0).unwrap().get_public_key();
@@ -482,7 +483,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();

@@ -5,59 +5,18 @@ use std::collections::HashSet;
 use crate::handlers::block_handler::{AskForBlockInfo, BlockInfoReply, BlockMessage};
 use crate::messages::Message;
 use crate::wrap_network::MockActiveConnectionsTraitWrapper;
-use crate::wrap_peer_db::MockPeerDBTrait;
 
 use super::universe::{ProtocolForeignControllers, ProtocolTestUniverse};
 use massa_models::block_header::SecuredHeader;
 use massa_models::operation::OperationId;
 use massa_models::prehash::PreHashSet;
 use massa_models::{block_id::BlockId, slot::Slot};
+use massa_protocol_exports::PeerId;
 use massa_protocol_exports::ProtocolConfig;
-use massa_protocol_exports::{PeerConnectionType, PeerId};
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
 use mockall::Sequence;
-use parking_lot::RwLockWriteGuard;
-
-fn peer_db_boilerplate(mock_peer_db: &mut RwLockWriteGuard<MockPeerDBTrait>) {
-    mock_peer_db
-        .expect_get_peers_in_test()
-        .return_const(HashSet::default());
-    mock_peer_db.expect_get_oldest_peer().return_const(None);
-    mock_peer_db
-        .expect_get_rand_peers_to_send()
-        .return_const(vec![]);
-}
-
-fn active_connections_boilerplate(
-    mock_active_connections: &mut MockActiveConnectionsTraitWrapper,
-    peer_ids: HashSet<PeerId>,
-) {
-    let peer_ids_clone = peer_ids.clone();
-    mock_active_connections.set_expectations(|mock_active_connections| {
-        mock_active_connections
-            .expect_get_peer_ids_connected()
-            .returning(move || peer_ids_clone.clone());
-        mock_active_connections
-            .expect_get_peers_connected()
-            .returning(move || {
-                peer_ids
-                    .iter()
-                    .map(|peer_id| {
-                        (
-                            *peer_id,
-                            (
-                                "127.0.0.1:8080".parse().unwrap(),
-                                PeerConnectionType::OUT,
-                                None,
-                            ),
-                        )
-                    })
-                    .collect()
-            });
-    });
-}
 
 #[derive(Clone, Debug)]
 enum PeerIdMatchers {
@@ -218,7 +177,7 @@ fn block_retrieval_mock(
             }
         }
     }
-    active_connections_boilerplate(&mut shared_active_connections, peer_ids);
+    ProtocolTestUniverse::active_connections_boilerplate(&mut shared_active_connections, peer_ids);
     foreign_controllers
         .network_controller
         .expect_get_active_connections()
@@ -242,6 +201,7 @@ fn test_full_ask_block_workflow() {
         &block_creator,
         Slot::new(1, op_thread),
         Some(vec![op_1.clone()]),
+        None,
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -250,7 +210,7 @@ fn test_full_ask_block_workflow() {
 
     let waitpoint = WaitPoint::new();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -336,7 +296,7 @@ fn test_empty_block() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -345,7 +305,7 @@ fn test_empty_block() {
     let waitpoint = WaitPoint::new();
 
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -419,6 +379,7 @@ fn test_dont_want_it_anymore() {
         &block_creator,
         Slot::new(1, op_thread),
         Some(vec![op_1.clone(), op_2.clone()]),
+        None,
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -427,7 +388,7 @@ fn test_dont_want_it_anymore() {
 
     let waitpoint = WaitPoint::new();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -500,7 +461,7 @@ fn test_no_one_has_it() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -508,7 +469,7 @@ fn test_no_one_has_it() {
 
     let waitpoint = WaitPoint::new();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -570,8 +531,8 @@ fn test_multiple_blocks_without_a_priori() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block_1 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 0), None);
-    let block_2 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block_1 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 0), None, None);
+    let block_2 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -579,13 +540,13 @@ fn test_multiple_blocks_without_a_priori() {
 
     let waitpoint = WaitPoint::new();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
         .returning(move |_, _| {});
     let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
-    active_connections_boilerplate(
+    ProtocolTestUniverse::active_connections_boilerplate(
         &mut shared_active_connections,
         [node_a_peer_id, node_b_peer_id].iter().cloned().collect(),
     );
@@ -649,7 +610,7 @@ fn test_protocol_sends_blocks_when_asked_for() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
 
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -658,7 +619,7 @@ fn test_protocol_sends_blocks_when_asked_for() {
 
     let waitpoint = WaitPoint::new();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -734,7 +695,7 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None);
+    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
 
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -746,7 +707,7 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
     let waitpoint = WaitPoint::new();
     let waipoint_trigger_handle = waitpoint.get_trigger_handle();
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
-    peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
     foreign_controllers
         .consensus_controller
         .expect_register_block_header()
@@ -799,6 +760,110 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
         Message::Block(Box::new(BlockMessage::DataRequest {
             block_id: block.id,
             block_info: AskForBlockInfo::OperationIds,
+        })),
+    );
+    waitpoint.wait();
+
+    universe.stop();
+}
+
+#[test]
+fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        max_known_blocks_size: 1,
+        ask_block_timeout: MassaTime::from_millis(100),
+        ..Default::default()
+    };
+
+    let block_creator = KeyPair::generate(0).unwrap();
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_thread = op_1
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        Some(vec![op_1.clone()]),
+        None,
+    );
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .return_once(move |block_id, header| {
+            assert_eq!(block_id, block.id);
+            assert_eq!(header.id, block.content.header.id);
+        });
+    block_retrieval_mock(
+        vec![
+            TestsStepMatch::AskData((
+                PeerIdMatchers::PeerId(node_a_peer_id),
+                block.id,
+                AskForBlockInfo::OperationIds,
+            )),
+            TestsStepMatch::AskData((
+                PeerIdMatchers::PeerId(node_b_peer_id),
+                block.id,
+                AskForBlockInfo::OperationIds,
+            )),
+            TestsStepMatch::AskData((
+                PeerIdMatchers::PeerId(node_b_peer_id),
+                block.id,
+                AskForBlockInfo::Operations(
+                    vec![op_1.id]
+                        .into_iter()
+                        .collect::<PreHashSet<OperationId>>()
+                        .into_iter()
+                        .collect(),
+                ),
+            )),
+            TestsStepMatch::BlockManaged((block.id, true)),
+        ],
+        &mut foreign_controllers,
+        waitpoint.get_trigger_handle(),
+    );
+
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+    waitpoint.wait();
+    waitpoint.wait();
+
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![op_1.id]),
+        })),
+    );
+    waitpoint.wait();
+
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::Operations(vec![op_1]),
         })),
     );
     waitpoint.wait();
