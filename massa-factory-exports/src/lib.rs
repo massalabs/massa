@@ -17,5 +17,5 @@ pub use error::*;
 pub use types::*;
 
 /// Tests utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

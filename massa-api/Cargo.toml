@@ -4,41 +4,43 @@ version = "0.26.1"
 edition = "2021"
 
 [features]
-testing = []
+test-exports = ["dep:massa_channel", "dep:massa_grpc", "massa_grpc/test-exports"]
 
 [dependencies]
-jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
-futures = { workspace = true }
-async-trait = { workspace = true }
-serde = { workspace = true, "features" = ["derive"] }
-serde_json = { workspace = true }
-tower-http = { workspace = true, "features" = ["cors"] }
-tower = { workspace = true, "features" = ["full"] }
-hyper = { workspace = true }
-tokio = { workspace = true, "features" = ["full"] }
-tokio-stream = { workspace = true, "features" = ["sync"] }
-tracing = { workspace = true }
-itertools = { workspace = true }
-parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
-massa_consensus_exports = { workspace = true }
 massa_api_exports = { workspace = true }
+massa_channel = { workspace = true, optional = true}
+massa_consensus_exports = { workspace = true }
+massa_execution_exports = { workspace = true }
+massa_grpc = { workspace = true, "features" = ["test-exports"], optional = true}
+massa_hash = { workspace = true }
 massa_models = { workspace = true }
 massa_pool_exports = { workspace = true }
-massa_protocol_exports = { workspace = true }
-massa_execution_exports = { workspace = true }
 massa_pos_exports = { workspace = true }
-massa_storage = { workspace = true }
+massa_protocol_exports = { workspace = true }
 massa_serialization = { workspace = true }
 massa_signature = { workspace = true }
+massa_storage = { workspace = true }
 massa_time = { workspace = true }
 massa_versioning = { workspace = true }
-massa_hash = { workspace = true }
 massa_wallet = { workspace = true }
 
+async-trait = { workspace = true }
+futures = { workspace = true }
+hyper = { workspace = true }
+itertools = { workspace = true }
+jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+serde = { workspace = true, "features" = ["derive"] }
+serde_json = { workspace = true }
+tokio = { workspace = true, "features" = ["full"] }
+tokio-stream = { workspace = true, "features" = ["sync"] }
+tower = { workspace = true, "features" = ["full"] }
+tower-http = { workspace = true, "features" = ["cors"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
 jsonrpsee = { workspace = true, "features" = ["full"] }
-massa_consensus_exports = { workspace = true, "features" = ["testing"] }
+massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
 tempfile = { workspace = true }
 num = { workspace = true }
 massa_final_state = { workspace = true }

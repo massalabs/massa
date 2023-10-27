@@ -55,7 +55,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         generate_self_signed_certificates: false,
         subject_alt_names: vec![],
         // bind: "[::]:8888".parse().unwrap(),
-        bind: addr.clone(),
+        bind: *addr,
         // bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8888),
         accept_compressed: None,
         send_compressed: None,

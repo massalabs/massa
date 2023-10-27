@@ -30,7 +30,7 @@ use crate::handlers::peer_handler::models::PeerState;
 use crate::messages::{Message, MessagesHandler, MessagesSerializer};
 use crate::wrap_network::ActiveConnectionsTrait;
 
-use self::models::{ConnectionMetadata, PeerInfo};
+use self::models::PeerInfo;
 use self::{
     models::{
         InitialPeers, PeerManagementChannel, PeerManagementCmd, PeerMessageTuple, SharedPeerDB,
@@ -153,7 +153,7 @@ impl PeerManagementHandler {
                                     let listeners = config.listeners.iter().map(|(addr, ty)| {
                                         (SocketAddr::new(routable_ip, addr.port()), *ty)
                                     }).collect();
-                                    peers.push((peer_id.clone(), listeners));
+                                    peers.push((peer_id, listeners));
                                 }
                                 if let Err(err) = responder.try_send(BootstrapPeers(peers)) {
                                     warn!("error sending bootstrap peers: {:?}", err);
@@ -179,7 +179,7 @@ impl PeerManagementHandler {
                                 }
                             };
                             // check if peer is banned
-                            if let Some(peer) = peer_db.read().peers.get(&peer_id) {
+                            if let Some(peer) = peer_db.read().get_peers().get(&peer_id) {
                                 if peer.state == PeerState::Banned {
                                     warn!("Banned peer sent us a message: {:?}", peer_id);
                                     continue;
@@ -223,11 +223,11 @@ impl PeerManagementHandler {
             let mut message = Vec::new();
             message_serializer
                 .serialize(
-                    &PeerManagementMessage::NewPeerConnected((peer_id.clone(), listeners.clone())),
+                    &PeerManagementMessage::NewPeerConnected((*peer_id, listeners.clone())),
                     &mut message,
                 )
                 .unwrap();
-            sender_msg.try_send((peer_id.clone(), message)).unwrap();
+            sender_msg.try_send((*peer_id, message)).unwrap();
         }
 
         Self {
@@ -291,11 +291,7 @@ impl MassaHandshake {
 
     fn handshake_fail(&mut self, addr: &SocketAddr) {
         let mut peer_db_write = self.peer_db.write();
-        peer_db_write
-            .try_connect_history
-            .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
-            .failure();
+        peer_db_write.set_try_connect_failure_or_insert(addr);
     }
 }
 
@@ -364,7 +360,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             })?;
         {
             let peer_db_read = self.peer_db.read();
-            if let Some(info) = peer_db_read.peers.get(&peer_id) {
+            if let Some(info) = peer_db_read.get_peers().get(&peer_id) {
                 if info.state == PeerState::Banned {
                     debug!("Banned peer tried to connect: {:?}", peer_id);
                 }
@@ -375,8 +371,8 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             {
                 let mut peer_db_write = self.peer_db.write();
                 peer_db_write
-                    .peers
-                    .entry(peer_id.clone())
+                    .get_peers_mut()
+                    .entry(peer_id)
                     .and_modify(|info| {
                         info.state = PeerState::InHandshake;
                     });
@@ -425,7 +421,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             .error("Massa Handshake", Some("Invalid signature".to_string())));
                     }
                     let message = PeerManagementMessage::NewPeerConnected((
-                        peer_id.clone(),
+                        peer_id,
                         announcement.clone().listeners,
                     ));
                     let mut bytes = Vec::new();
@@ -489,7 +485,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                             PeerNetError::HandshakeError
                                 .error("Massa Handshake", Some(format!("Signature error {}", err)))
                         })?;
-                    Ok((peer_id.clone(), Some(announcement)))
+                    Ok((peer_id, Some(announcement)))
                 }
                 1 => {
                     messages_handler.handle(
@@ -499,7 +495,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         )?,
                         &peer_id,
                     )?;
-                    Ok((peer_id.clone(), None))
+                    Ok((peer_id, None))
                 }
                 _ => Err(PeerNetError::HandshakeError
                     .error("Massa Handshake", Some("Invalid message id".to_string()))),
@@ -511,14 +507,10 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
             match &res {
                 Ok((peer_id, Some(announcement))) => {
                     info!("Peer connected: {:?}", peer_id);
+                    peer_db_write.set_try_connect_success_or_insert(&addr);
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .success();
-                    peer_db_write
-                        .peers
-                        .entry(peer_id.clone())
+                        .get_peers_mut()
+                        .entry(*peer_id)
                         .and_modify(|info| {
                             info.last_announce = Some(announcement.clone());
                             info.state = PeerState::Trusted;
@@ -529,30 +521,28 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
                         });
                 }
                 Ok((_peer_id, None)) => {
-                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                        info.state = PeerState::HandshakeFailed;
-                    });
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .failure();
+                        .get_peers_mut()
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                            info.state = PeerState::HandshakeFailed;
+                        });
+                    peer_db_write.set_try_connect_failure_or_insert(&addr);
                     return Err(PeerNetError::HandshakeError.error(
                         "Massa Handshake",
                         Some("Distant peer don't have slot for us.".to_string()),
                     ));
                 }
                 Err(_) => {
+                    peer_db_write.set_try_connect_failure_or_insert(&addr);
                     peer_db_write
-                        .try_connect_history
-                        .entry(addr)
-                        .or_insert(ConnectionMetadata::default())
-                        .failure();
-                    peer_db_write.peers.entry(peer_id).and_modify(|info| {
-                        //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
-                        info.state = PeerState::HandshakeFailed;
-                    });
+                        .get_peers_mut()
+                        .entry(peer_id)
+                        .and_modify(|info| {
+                            //TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
+                            info.state = PeerState::HandshakeFailed;
+                        });
                 }
             }
         }
@@ -625,7 +615,7 @@ impl InitConnectionHandler<PeerId, Context, MessagesHandler> for MassaHandshake 
     }
 }
 
-#[cfg(all(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use std::{collections::HashMap, ops::Deref, sync::Arc};
 

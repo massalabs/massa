@@ -9,7 +9,7 @@ use crate::PosResult;
 use massa_hash::Hash;
 use massa_models::{address::Address, prehash::PreHashSet, slot::Slot};
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 use std::collections::{HashMap, VecDeque};
 
 /// Selections of endorsements and producer
@@ -21,7 +21,10 @@ pub struct Selection {
     pub producer: Address,
 }
 
-#[cfg_attr(any(test, feature = "testing"), mockall::automock)]
+#[cfg(feature = "test-exports")]
+use std::sync::Arc;
+
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 /// interface that communicates with the selector worker thread
 pub trait SelectorController: Send + Sync {
     /// Waits for draws to reach at least a given cycle number.
@@ -66,7 +69,7 @@ pub trait SelectorController: Send + Sync {
     /// Get every [Selection]
     ///
     /// Only used in tests for post-bootstrap selection matching.
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     fn get_entire_selection(&self) -> VecDeque<(u64, HashMap<Slot, Selection>)> {
         unimplemented!("mock implementation only")
     }

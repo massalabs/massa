@@ -324,3 +324,40 @@ impl Deserializer<PreHashMap<Address, Amount>> for CreditsDeserializer {
         .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_models::config::{MAX_DEFERRED_CREDITS_LENGTH, THREAD_COUNT};
+    use massa_serialization::DeserializeError;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_deferred_credits_ser_der() {
+        let addr1 =
+            Address::from_str("AU1jUbxeXW49QRT6Le5aPuNdcGWQV2kpnDyQkKoka4MmEUW3m8Xm").unwrap();
+        let addr2 =
+            Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
+
+        let mut def_credits = DeferredCredits::default();
+        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("0.0").unwrap());
+        def_credits.insert(Slot::new(1, 3), addr2, Amount::from_raw(u64::MAX));
+
+        let mut buf = Vec::new();
+        let serializer = DeferredCreditsSerializer::new();
+        let deserializer =
+            DeferredCreditsDeserializer::new(THREAD_COUNT, MAX_DEFERRED_CREDITS_LENGTH);
+        let deserializer2 = DeferredCreditsDeserializer::new(THREAD_COUNT, 1);
+
+        serializer.serialize(&def_credits, &mut buf).unwrap();
+        let (rem, def_credits_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
+        assert!(rem.is_empty());
+        assert_eq!(def_credits_der.credits, def_credits.credits);
+
+        buf.clear();
+        serializer.serialize(&def_credits, &mut buf).unwrap();
+        let res = deserializer2.deserialize::<DeserializeError>(&buf);
+
+        assert!(res.is_err());
+    }
+}

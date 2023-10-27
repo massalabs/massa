@@ -1067,7 +1067,7 @@ mod tests {
     }
 
     fn create_message() -> AsyncMessage {
-        let message = AsyncMessage::new(
+        AsyncMessage::new(
             Slot::new(1, 0),
             0,
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -1085,18 +1085,18 @@ mod tests {
                 datastore_key: Some(vec![1, 2, 3, 4]),
             }),
             None,
-        );
-        return message;
+        )
     }
 
     #[test]
-    fn test_pool_ser_deser_empty<'a>() {
+    fn test_pool_ser_deser_empty() {
         let config = AsyncPoolConfig::default();
         let temp_dir = tempdir().expect("Unable to create a temp folder");
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1114,11 +1114,11 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message_ids: Vec<&'a AsyncMessageId> = vec![];
+        let message_ids: Vec<&AsyncMessageId> = vec![];
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
 
@@ -1136,7 +1136,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1175,7 +1176,7 @@ mod tests {
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1196,7 +1197,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1233,7 +1235,7 @@ mod tests {
         let to_ser_ = pool.fetch_messages(message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| ((*k).clone(), v.clone().unwrap()))
+            .map(|(k, v)| (*(*k), v.clone().unwrap()))
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1251,7 +1253,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1280,8 +1283,10 @@ mod tests {
 
         let mut batch2 = DBBatch::new();
         pool.delete_entry(&message_id, &mut batch2);
-        let mut message_update = AsyncMessageUpdate::default();
-        message_update.function = SetOrKeep::Set("test0".to_string());
+        let message_update = AsyncMessageUpdate {
+            function: SetOrKeep::Set("test0".to_string()),
+            ..Default::default()
+        };
         pool.update_entry(&message2_id, message_update, &mut batch2);
 
         let versioning_batch2 = DBBatch::new();
@@ -1304,7 +1309,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -1352,7 +1358,8 @@ mod tests {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(

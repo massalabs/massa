@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["tempfile", "massa_models/testing"]
+test-exports = ["tempfile", "massa_models/test-exports"]
 
 [dependencies]
 displaydoc = {workspace = true}

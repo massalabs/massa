@@ -356,7 +356,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
     }
 }
 
-#[cfg(all(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use std::str::FromStr;
 

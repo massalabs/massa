@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use itertools::{izip, Itertools};
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    address::AddressInfo,
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockInfoContent, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -22,7 +22,9 @@ use massa_api_exports::{
 use massa_consensus_exports::block_status::DiscardReason;
 use massa_consensus_exports::ConsensusController;
 use massa_execution_exports::{
-    ExecutionController, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionController, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionQueryResponseItem, ExecutionStackElement, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_models::{
     address::Address,
@@ -362,12 +364,12 @@ impl MassaRpcServer for API<Public> {
         let consensus_stats_result = self.0.consensus_controller.get_stats();
         let consensus_stats = match consensus_stats_result {
             Ok(consensus_stats) => consensus_stats,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
         let (network_stats, peers) = match self.0.protocol_controller.get_stats() {
             Ok((stats, peers)) => (stats, peers),
-            Err(e) => return Err(ApiError::ProtocolError(e).into()),
+            Err(e) => return Err(ApiError::ProtocolError(e.to_string()).into()),
         };
 
         let pool_stats = (
@@ -754,7 +756,7 @@ impl MassaRpcServer for API<Public> {
             .get_block_graph_status(start_slot, end_slot)
         {
             Ok(graph) => graph,
-            Err(e) => return Err(ApiError::ConsensusError(e).into()),
+            Err(e) => return Err(ApiError::ConsensusError(e.to_string()).into()),
         };
 
         let mut res = Vec::with_capacity(graph.active_blocks.len());
@@ -965,6 +967,49 @@ impl MassaRpcServer for API<Public> {
         }
 
         Ok(res)
+    }
+
+    /// get addresses bytecode
+    async fn get_addresses_bytecode(&self, args: Vec<AddressFilter>) -> RpcResult<Vec<Vec<u8>>> {
+        let queries = args
+            .into_iter()
+            .map(|arg| {
+                if arg.is_final {
+                    ExecutionQueryRequestItem::AddressBytecodeFinal(arg.address)
+                } else {
+                    ExecutionQueryRequestItem::AddressBytecodeCandidate(arg.address)
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if queries.is_empty() {
+            return Err(ApiError::BadRequest("no arguments specified".to_string()).into());
+        }
+
+        if queries.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", self.0.api_settings.max_arguments)).into());
+        }
+
+        let responses = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests: queries })
+            .responses;
+
+        let res: Result<Vec<Vec<u8>>, ApiError> = responses
+            .into_iter()
+            .map(|value| match value {
+                Ok(item) => match item {
+                    ExecutionQueryResponseItem::Bytecode(bytecode) => Ok(bytecode.0),
+                    _ => Err(ApiError::InternalServerError(
+                        "unexpected response type".to_string(),
+                    )),
+                },
+                Err(err) => Err(ApiError::InternalServerError(err.to_string())),
+            })
+            .collect();
+
+        Ok(res?)
     }
 
     /// send operations

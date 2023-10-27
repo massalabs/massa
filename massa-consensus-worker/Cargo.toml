@@ -7,7 +7,7 @@ edition = "2021"
 [features]
 sandbox = []
 bootstrap_server = []
-testing = ["tokio", "crossbeam-channel", "massa_execution_exports/testing", "massa_protocol_exports/testing", "massa_consensus_exports/testing", "massa_pos_exports/testing", "massa_pool_exports/testing"]
+test-exports = ["tokio", "crossbeam-channel", "massa_execution_exports/test-exports", "massa_protocol_exports/test-exports", "massa_consensus_exports/test-exports", "massa_pos_exports/test-exports", "massa_pool_exports/test-exports"]
 
 [dependencies]
 num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
@@ -32,6 +32,13 @@ tokio = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"ve
 crossbeam-channel = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.5.6", "optional": true} if problem
 
 [dev-dependencies]
+massa_pool_exports = {workspace = true, features = ["test-exports"]}
+massa_pos_exports = {workspace = true, features = ["test-exports"]}
+massa_protocol_exports = {workspace = true, features = ["test-exports"]}
+massa_execution_exports = {workspace = true, features = ["test-exports"]}
+massa_consensus_exports = {workspace = true, features = ["test-exports"]}
+massa_test_framework = {workspace = true}
 mockall = {workspace = true}
 rand = {workspace = true}
 itertools = {workspace = true}
+tokio = {workspace = true}

@@ -2538,7 +2538,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=7a5674743033b803af6e022738e3aa0ab7e39e33#7a5674743033b803af6e022738e3aa0ab7e39e33"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=a2e335b1493d302aa03b87e5fd611a2f2c21afdb#a2e335b1493d302aa03b87e5fd611a2f2c21afdb"
 dependencies = [
  "glob",
  "prost",
@@ -2551,7 +2551,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=24defd4e319bbba72b4a3cf47078ac8695976c38#24defd4e319bbba72b4a3cf47078ac8695976c38"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=04b70f8e2e39363a2cd0018e837b5643e32d09a0#04b70f8e2e39363a2cd0018e837b5643e32d09a0"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2593,9 +2593,11 @@ dependencies = [
  "itertools 0.11.0",
  "jsonrpsee",
  "massa_api_exports",
+ "massa_channel",
  "massa_consensus_exports",
  "massa_execution_exports",
  "massa_final_state",
+ "massa_grpc",
  "massa_hash",
  "massa_models",
  "massa_pool_exports",
@@ -2625,12 +2627,9 @@ version = "0.26.1"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
- "massa_consensus_exports",
- "massa_execution_exports",
  "massa_final_state",
  "massa_hash",
  "massa_models",
- "massa_protocol_exports",
  "massa_signature",
  "massa_time",
  "massa_versioning",
@@ -2773,6 +2772,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "mockall",
  "num",
@@ -2914,6 +2914,7 @@ dependencies = [
  "massa_channel",
  "massa_consensus_exports",
  "massa_factory_exports",
+ "massa_hash",
  "massa_models",
  "massa_pool_exports",
  "massa_pos_exports",
@@ -2925,6 +2926,7 @@ dependencies = [
  "massa_wallet",
  "num",
  "parking_lot",
+ "serial_test",
  "tracing",
 ]
 
@@ -3125,6 +3127,7 @@ dependencies = [
  "massa_storage",
  "massa_time",
  "mockall",
+ "mockall_wrap",
  "serde",
  "tokio",
 ]
@@ -3153,6 +3156,7 @@ dependencies = [
 name = "massa_pos_exports"
 version = "0.26.1"
 dependencies = [
+ "assert_matches",
  "bitvec",
  "crossbeam-channel",
  "displaydoc",
@@ -3163,6 +3167,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "mockall",
+ "mockall_wrap",
  "nom",
  "num",
  "parking_lot",
@@ -3227,8 +3232,11 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "massa_versioning",
+ "mockall",
+ "mockall_wrap",
  "nom",
  "num",
  "num_enum 0.7.0",
@@ -3300,6 +3308,16 @@ dependencies = [
  "massa_models",
  "massa_signature",
  "parking_lot",
+]
+
+[[package]]
+name = "massa_test_framework"
+version = "0.26.1"
+dependencies = [
+ "massa_hash",
+ "massa_models",
+ "massa_signature",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3483,6 +3501,17 @@ dependencies = [
  "proc-macro2 1.0.69",
  "quote 1.0.33",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "mockall_wrap"
+version = "0.11.2"
+source = "git+https://github.com/AurelienFT/mockall-wrap?rev=18f88253a000df96cf407dfe4b9158c69c0aeb96#18f88253a000df96cf407dfe4b9158c69c0aeb96"
+dependencies = [
+ "cfg-if",
+ "proc-macro2 1.0.69",
+ "quote 1.0.33",
+ "syn 2.0.38",
 ]
 
 [[package]]

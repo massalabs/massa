@@ -369,15 +369,15 @@
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # timeout for providing the bootstrap to a connection
-    bootstrap_timeout = 1200000
+    bootstrap_timeout = 86400000    # 1 day
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
-    read_timeout = 100000
+    read_timeout = 60000
     # timeout for message sending
-    write_timeout = 100000
+    write_timeout = 60000
     # timeout for incoming error message readout
     read_error_timeout = 200
     # timeout for message error sending

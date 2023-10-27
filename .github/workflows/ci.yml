@@ -94,7 +94,7 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -A clippy::uninlined-format-args
+          args: --no-deps --all-targets
 
   security:
     if: github.ref != 'refs/heads/staging'
@@ -206,14 +206,14 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --features testing --retries 10
+          args: run --retries 10
       - uses: actions-rs/cargo@v1
         with:
           command: clean
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --features testing --doc
+          args: --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full

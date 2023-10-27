@@ -18,7 +18,7 @@ use std::{collections::HashMap, net::IpAddr};
 use std::{thread::JoinHandle, time::Duration};
 use tracing::{debug, warn};
 
-use crate::handlers::peer_handler::models::{ConnectionMetadata, PeerDB};
+use crate::handlers::peer_handler::models::ConnectionMetadata;
 use crate::{
     handlers::peer_handler::models::{InitialPeers, PeerState, SharedPeerDB},
     ip::to_canonical,
@@ -166,7 +166,7 @@ pub(crate) fn start_connectivity_thread(
                 network_controller.get_active_connections(),
                 selector_controller,
                 consensus_controller,
-                pool_controller.clone(),
+                pool_controller,
                 channel_blocks.1,
                 sender_blocks_retrieval_ext,
                 protocol_channels.block_handler_retrieval.1.clone(),
@@ -215,7 +215,7 @@ pub(crate) fn start_connectivity_thread(
                                 let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
                                 let (banned_peer_count, known_peer_count) = {
                                     let peer_db_read = peer_db.read();
-                                    (peer_db_read.get_banned_peer_count(), peer_db_read.peers.len() as u64)
+                                    (peer_db_read.get_banned_peer_count(), peer_db_read.get_known_peer_count())
                                 };
                                 let stats = NetworkStats {
                                     active_node_count,
@@ -243,7 +243,7 @@ pub(crate) fn start_connectivity_thread(
                         let peers_map = active_conn.get_peers_connections_bandwidth();
                         massa_metrics.update_peers_tx_rx(peers_map);
                         let peer_db_read = peer_db.read();
-                        massa_metrics.set_known_peers(peer_db_read.peers.len());
+                        massa_metrics.set_known_peers(peer_db_read.get_known_peer_count() as usize);
                         massa_metrics.set_banned_peers(peer_db_read.get_banned_peer_count() as usize);
                     },
                     recv(tick_try_connect) -> _ => {
@@ -261,7 +261,7 @@ pub(crate) fn start_connectivity_thread(
                         let mut addresses_can_connect  = Vec::new();
                         {
                             let peer_db_read = peer_db.read();
-                            for (peer_id, peer_info) in &peer_db_read.peers {
+                            for (peer_id, peer_info) in peer_db_read.get_peers() {
 
                                 // If peer already connected, decrement the slots for the given category, or default category if none
                                 if let Some(peer) = peers_connected.get(peer_id) {
@@ -309,7 +309,7 @@ pub(crate) fn start_connectivity_thread(
                                                 continue;
                                             }
 
-                                            let connection_metadata = peer_db_read.try_connect_history.get(addr).cloned().unwrap_or(ConnectionMetadata::default());
+                                            let connection_metadata = peer_db_read.get_connection_metadata_or_default(addr);
 
                                             // check if the peer last connect attempt has not been too recent
                                             if let ConnectionMetadata { last_try_connect: Some(lt), .. } = connection_metadata {
@@ -383,9 +383,9 @@ pub(crate) fn start_connectivity_thread(
                     recv(tick_unban_everyone) -> _ => {
                         debug!("Periodic unban of every peer");
                         let mut peer_db_write = peer_db.write();
-                        for (peer_id, peer_status) in &peer_db_write.peers.clone() {
+                        for (peer_id, peer_status) in peer_db_write.get_peers().clone() {
                             if peer_status.state == PeerState::Banned {
-                                peer_db_write.unban_peer(peer_id);
+                                peer_db_write.unban_peer(&peer_id);
                             }
                         }
                     }
@@ -402,7 +402,7 @@ pub(crate) fn start_connectivity_thread(
 fn try_connect_peer(
     addr: SocketAddr,
     network_controller: &mut Box<dyn NetworkController>,
-    peer_db: &Arc<RwLock<PeerDB>>,
+    peer_db: &SharedPeerDB,
     config: &ProtocolConfig,
 ) -> Result<(), ProtocolError> {
     debug!("Trying to connect to addr {}", addr);
@@ -410,18 +410,10 @@ fn try_connect_peer(
     let conn_res = network_controller.try_connect(addr, config.timeout_connection.to_duration());
     {
         let mut peer_db_write = peer_db.write();
-        peer_db_write
-            .try_connect_history
-            .entry(addr)
-            .or_insert(ConnectionMetadata::default())
-            .try_connect();
+        peer_db_write.set_try_connect_success_or_insert(&addr);
         if let Err(ref err) = conn_res {
             debug!("Failed to connect to peer {:?}: {:?}", addr, err);
-            peer_db_write
-                .try_connect_history
-                .entry(addr)
-                .or_insert(ConnectionMetadata::default())
-                .failure();
+            peer_db_write.set_try_connect_failure_or_insert(&addr);
         }
     }
     conn_res

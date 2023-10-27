@@ -48,7 +48,7 @@ use super::tools::PoolTestBoilerPlate;
 fn test_simple_get_operations() {
     // Setup the execution story.
     let keypair = KeyPair::generate(0).unwrap();
-    let addr = Address::from_public_key(&keypair.get_public_key()).clone();
+    let addr = Address::from_public_key(&keypair.get_public_key());
 
     // setup operations
     let op_gen = OpGenerator::default().creator(keypair.clone()).expirery(1);
@@ -77,7 +77,7 @@ fn test_simple_get_operations() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {
@@ -210,7 +210,7 @@ fn test_get_operations_overflow() {
                     let mut all_slots = BTreeMap::new();
                     let addr = *opt_addrs
                         .expect("No addresses filter given")
-                        .into_iter()
+                        .iter()
                         .next()
                         .expect("No addresses given");
                     for i in 0..15 {

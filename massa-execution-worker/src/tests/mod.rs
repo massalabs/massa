@@ -4,7 +4,8 @@
     test,
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 mod mock;
 
@@ -19,6 +20,7 @@ mod interface;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 pub use mock::get_sample_state;

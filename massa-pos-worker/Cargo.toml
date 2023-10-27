@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 sandbox = []
-testing = ["massa_pos_exports/testing"]
+test-exports = ["massa_pos_exports/test-exports"]
 
 [dependencies]
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
@@ -19,4 +19,4 @@ massa_models = {workspace = true}
 massa_pos_exports = {workspace = true}
 
 [dev-dependencies]
-massa_pos_exports = {workspace = true, "features" = ["testing"]}
+massa_pos_exports = {workspace = true, "features" = ["test-exports"]}

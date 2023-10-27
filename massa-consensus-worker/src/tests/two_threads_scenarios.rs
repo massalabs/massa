@@ -35,13 +35,9 @@ fn test_tts_latest_blocks_as_parents() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -221,13 +217,9 @@ fn test_tts_latest_period_blocks_as_parents() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -388,13 +380,9 @@ fn test_tts_mixed_blocks_as_parents() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -579,13 +567,9 @@ fn test_tts_p2_depends_on_p0_1() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -735,13 +719,9 @@ fn test_tts_p2_depends_on_p0_2() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -877,13 +857,9 @@ fn test_tts_p3_depends_on_p0() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -984,13 +960,9 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -1173,13 +1145,9 @@ fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -1265,15 +1233,13 @@ fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
 
             // block_2_1 and block_3_0 should be in different max cliques.
             if status.max_cliques[0].block_ids.contains(&block_2_1.id) {
-                assert_eq!(
+                assert!(
                     status.max_cliques[1].block_ids.contains(&block_3_0.id),
-                    true,
                     "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             } else {
-                assert_eq!(
+                assert!(
                     status.max_cliques[0].block_ids.contains(&block_3_0.id),
-                    true,
                     "block_2_1 and block_3_0 should not be in the same max clique"
                 );
             }
@@ -1303,13 +1269,9 @@ fn test_tts_parent_registered_later() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -1449,13 +1411,9 @@ fn test_tts_incompatible_parents() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});

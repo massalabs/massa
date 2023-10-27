@@ -223,5 +223,5 @@ impl std::fmt::Display for Wallet {
 }
 
 /// Test utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

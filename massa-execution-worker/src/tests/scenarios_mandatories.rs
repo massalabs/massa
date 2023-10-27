@@ -416,7 +416,7 @@ mod tests {
             start: Some(Slot::new(2, 0)),
             ..Default::default()
         });
-        assert!(events.len() > 0);
+        assert!(!events.is_empty());
         // Check that we always subtract gas through the execution (even in sub calls)
         let events_formatted = events
             .iter()
@@ -785,7 +785,7 @@ mod tests {
 
         // create the block contaning the smart contract execution operation
         let operation = create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-        let tested_op_id = operation.id.clone();
+        let tested_op_id = operation.id;
         storage.store_operations(vec![operation.clone()]);
         let block = create_block(
             KeyPair::generate(0).unwrap(),
@@ -1451,11 +1451,30 @@ mod tests {
             &keypair,
         )
         .unwrap();
+
+        let balance_initial = sample_state.read().ledger.get_balance(&address).unwrap();
+        let roll_count_too_high = balance_initial
+            .checked_div(exec_cfg.roll_price)
+            .unwrap()
+            .saturating_add(10);
+        // This second operation will fail as the price is too high
+        let operation_too_expensive = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollBuy {
+                    roll_count: roll_count_too_high,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
         // create the block containing the roll buy operation
-        storage.store_operations(vec![operation.clone()]);
+        storage.store_operations(vec![operation.clone(), operation_too_expensive.clone()]);
         let block = create_block(
             KeyPair::generate(0).unwrap(),
-            vec![operation],
+            vec![operation, operation_too_expensive],
             vec![],
             Slot::new(1, 0),
         )
@@ -1558,6 +1577,7 @@ mod tests {
         let roll_count_initial = sample_state.read().pos_state.get_rolls_for(&address);
         let roll_sell_1 = 10;
         let roll_sell_2 = 1;
+        let roll_sell_3 = roll_count_initial.saturating_add(10);
 
         let initial_deferred_credits = Amount::from_str("100").unwrap();
 
@@ -1602,11 +1622,27 @@ mod tests {
             &keypair,
         )
         .unwrap();
+        let operation3 = Operation::new_verifiable(
+            Operation {
+                fee: Amount::zero(),
+                expire_period: 10,
+                op: OperationType::RollSell {
+                    roll_count: roll_sell_3,
+                },
+            },
+            OperationSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
         // create the block containing the roll buy operation
-        storage.store_operations(vec![operation1.clone(), operation2.clone()]);
+        storage.store_operations(vec![
+            operation1.clone(),
+            operation2.clone(),
+            operation3.clone(),
+        ]);
         let block = create_block(
             KeyPair::generate(0).unwrap(),
-            vec![operation1, operation2],
+            vec![operation1, operation2, operation3],
             vec![],
             Slot::new(3, 0),
         )
@@ -2455,14 +2491,14 @@ mod tests {
         // match the events
         println!("{:?}", events);
         assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
-        let key_a: Vec<u8> = [1, 0, 4, 255].iter().cloned().collect();
+        let key_a: Vec<u8> = [1, 0, 4, 255].to_vec();
         let key_a_str: String = key_a
             .iter()
             .map(|b| format!("{}", b))
             .collect::<Vec<String>>()
             .join(",");
 
-        let key_b: Vec<u8> = [2, 0, 254, 255].iter().cloned().collect();
+        let key_b: Vec<u8> = [2, 0, 254, 255].to_vec();
         let key_b_str: String = key_b
             .iter()
             .map(|b| format!("{}", b))

@@ -17,4 +17,4 @@ massa_hash = {workspace = true}
 parking_lot = {workspace = true}
 
 [features]
-testing = ["massa_models/testing"]
+test-exports = ["massa_models/test-exports"]

@@ -35,13 +35,9 @@ fn test_fts_latest_blocks_as_parents() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -248,13 +244,9 @@ fn test_fts_multiple_max_cliques_1() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});
@@ -353,10 +345,7 @@ fn test_fts_multiple_max_cliques_1() {
                 print.push(format!(
                     "{:?} => {:?}",
                     hash_to_slot[from_id],
-                    to_ids
-                        .iter()
-                        .map(|v| hash_to_slot[v].clone())
-                        .collect::<Vec<_>>()
+                    to_ids.iter().map(|v| hash_to_slot[v]).collect::<Vec<_>>()
                 ));
             }
             print.sort();
@@ -371,7 +360,7 @@ fn test_fts_multiple_max_cliques_1() {
                     clique
                         .block_ids
                         .iter()
-                        .map(|v| hash_to_slot[v].clone())
+                        .map(|v| hash_to_slot[v])
                         .collect::<Vec<_>>()
                 );
             }
@@ -580,13 +569,9 @@ fn test_fts_multiple_max_cliques_2() {
         .expect_update_blockclique_status()
         .returning(|_, _, _| {});
     let mut pool_controller = Box::new(MockPoolController::new());
-    pool_controller.expect_clone_box().returning(move || {
-        let mut pool_controller = Box::new(MockPoolController::new());
-        pool_controller
-            .expect_notify_final_cs_periods()
-            .returning(|_| {});
-        pool_controller
-    });
+    pool_controller
+        .expect_notify_final_cs_periods()
+        .returning(|_| {});
     pool_controller
         .expect_add_denunciation_precursor()
         .returning(|_| {});

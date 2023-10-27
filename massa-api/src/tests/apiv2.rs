@@ -38,7 +38,7 @@ async fn get_version() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -79,7 +79,7 @@ async fn get_next_block_best_parents() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -123,7 +123,7 @@ async fn get_largest_stakers() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -160,7 +160,7 @@ async fn subscribe_new_blocks() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -193,7 +193,7 @@ async fn subscribe_new_blocks_headers() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShare<BlockHeader, BlockId>>(10);
@@ -240,7 +240,7 @@ async fn subscribe_new_filled_blocks() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<FilledBlock>(10);
@@ -294,7 +294,7 @@ async fn subscribe_new_operations() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
     let (tx, _rx) = tokio::sync::broadcast::channel::<SecureShareOperation>(10);

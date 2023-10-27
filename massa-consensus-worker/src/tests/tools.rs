@@ -24,48 +24,26 @@ use massa_storage::Storage;
 
 pub fn consensus_test<F>(
     cfg: ConsensusConfig,
-    defined_execution_controller: Box<MockExecutionController>,
+    execution_controller: Box<MockExecutionController>,
     pool_controller: Box<MockPoolController>,
-    defined_selector_controller: Box<MockSelectorController>,
+    selector_controller: Box<MockSelectorController>,
     test: F,
 ) where
     F: FnOnce(Box<dyn ConsensusController>),
 {
     let storage: Storage = Storage::create_root();
-    // mock protocol & pool
+    // mock protocol
     let mut protocol_controller = Box::new(MockProtocolController::new());
-    let mut protocol_controller_2 = MockProtocolController::default();
-    let mut protocol_controller_3 = MockProtocolController::default();
     //TODO: Test better here for example number of times
-    protocol_controller_3
+    protocol_controller
         .expect_integrated_block()
         .returning(|_, _| Ok(()));
-    protocol_controller_2
-        .expect_integrated_block()
-        .returning(|_, _| Ok(()));
-    protocol_controller_2
+    protocol_controller
         .expect_send_wishlist_delta()
         .returning(|_, _| Ok(()));
-    protocol_controller_2
-        .expect_notify_block_attack()
-        .returning(|_| Ok(()));
-    protocol_controller_3
-        .expect_notify_block_attack()
-        .returning(|_| Ok(()));
-    protocol_controller_2
-        .expect_clone_box()
-        .return_once(move || Box::new(protocol_controller_3));
     protocol_controller
-        .expect_clone_box()
-        .return_once(move || Box::new(protocol_controller_2));
-    let mut execution_controller = Box::new(MockExecutionController::new());
-    execution_controller
-        .expect_clone_box()
-        .return_once(move || defined_execution_controller);
-    let mut selector_controller = Box::new(MockSelectorController::new());
-    selector_controller
-        .expect_clone_box()
-        .return_once(move || defined_selector_controller);
+        .expect_notify_block_attack()
+        .returning(|_| Ok(()));
     // launch consensus controller
     let (consensus_event_sender, _) = MassaChannel::new(String::from("consensus_event"), Some(10));
 
@@ -147,6 +125,7 @@ pub fn create_block_with_merkle_root(
     .unwrap()
 }
 
+#[allow(clippy::borrowed_box)]
 pub fn register_block(
     consensus_controller: &Box<dyn ConsensusController>,
     block: SecureShareBlock,

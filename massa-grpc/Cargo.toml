@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-testing = []
+test-exports = []
 
 [dependencies]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }
@@ -47,8 +47,8 @@ massa_bootstrap = { workspace = true }
 massa_sdk = { workspace = true }
 
 [dev-dependencies]
-massa_consensus_exports = { workspace = true, "features" = ["testing"] }
-massa_protocol_exports = { workspace = true, "features" = ["testing"] }
+massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
+massa_protocol_exports = { workspace = true, "features" = ["test-exports"] }
 massa_final_state = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
 num = {workspace = true}
