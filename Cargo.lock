@@ -3029,6 +3029,7 @@ dependencies = [
  "num_enum 0.7.0",
  "serde",
  "serde_json",
+ "serde_with",
  "tempfile",
  "thiserror",
 ]
