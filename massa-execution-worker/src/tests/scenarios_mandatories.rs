@@ -1106,7 +1106,6 @@ fn roll_buy() {
 fn roll_sell() {
     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
     // Check for resulting roll count + resulting deferred credits
-    // setup the period duration
 
     // setup the period duration
     // turn off roll selling on missed block opportunities
@@ -1124,7 +1123,6 @@ fn roll_sell() {
     let block_producer = KeyPair::generate(0).unwrap();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     let address = Address::from_public_key(&keypair.get_public_key());
-
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
@@ -1133,37 +1131,25 @@ fn roll_sell() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // get initial balance
-    let balance_initial = universe
-        .final_state
-        .read()
-        .ledger
-        .get_balance(&address)
-        .unwrap();
+    let balance_initial = universe.final_state.read().ledger.get_balance(&address).unwrap();
 
     // get initial roll count
-    let roll_count_initial = universe
-        .final_state
-        .read()
-        .pos_state
-        .get_rolls_for(&address);
+    let roll_count_initial = universe.final_state.read().pos_state.get_rolls_for(&address);
     let roll_sell_1 = 10;
     let roll_sell_2 = 1;
+    let roll_sell_3 = roll_count_initial.saturating_add(10);
 
     let initial_deferred_credits = Amount::from_str("100").unwrap();
 
     let mut batch = DBBatch::new();
 
     // set initial_deferred_credits that will be reimbursed at first block
-    universe
-        .final_state
-        .write()
-        .pos_state
-        .put_deferred_credits_entry(
-            &Slot::new(1, 0),
-            &address,
-            &initial_deferred_credits,
-            &mut batch,
-        );
+    universe.final_state.write().pos_state.put_deferred_credits_entry(
+        &Slot::new(1, 0),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
 
     universe
         .final_state
@@ -1197,16 +1183,30 @@ fn roll_sell() {
         &keypair,
     )
     .unwrap();
+    let operation3 = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell {
+                roll_count: roll_sell_3,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
     // create the block containing the roll buy operation
-    universe
-        .storage
-        .store_operations(vec![operation1.clone(), operation2.clone()]);
+    universe.storage.store_operations(vec![
+        operation1.clone(),
+        operation2.clone(),
+        operation3.clone(),
+    ]);
     let block = ExecutionTestUniverse::create_block(
-        &block_producer,
+        &KeyPair::generate(0).unwrap(),
         Slot::new(3, 0),
-        vec![operation1, operation2],
+        vec![operation1, operation2, operation3],
         vec![],
-        vec![],
+        vec![]
     );
     // store the block in storage
     universe.storage.store_block(block.clone());
@@ -1217,7 +1217,7 @@ fn roll_sell() {
     block_metadata.insert(
         block.id,
         ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+            same_thread_parent_creator: Some(address),
             storage: Some(universe.storage.clone()),
         },
     );
