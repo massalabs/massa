@@ -4,7 +4,9 @@ use massa_db_exports::DBBatch;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionConfig, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
-use massa_models::config::{LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE};
+use massa_models::config::{
+    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+};
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
@@ -15,7 +17,7 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
-use massa_pos_exports::MockSelectorControllerWrapper;
+use massa_pos_exports::{MockSelectorControllerWrapper, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
@@ -47,6 +49,14 @@ fn selector_boilerplate(
         selector_controller
             .expect_get_producer()
             .returning(move |_| Ok(block_creator_address));
+        selector_controller
+            .expect_get_selection()
+            .returning(move |_| {
+                Ok(Selection {
+                    producer: block_creator_address,
+                    endorsements: vec![block_creator_address; ENDORSEMENT_COUNT as usize],
+                })
+            });
     });
 }
 
@@ -60,6 +70,7 @@ fn test_execution_shutdown() {
         &block_producer,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
+    std::thread::sleep(Duration::from_millis(100));
 }
 
 #[test]
@@ -77,6 +88,7 @@ fn test_sending_command() {
         Default::default(),
         Default::default(),
     );
+    std::thread::sleep(Duration::from_millis(100));
 }
 
 #[test]
@@ -974,7 +986,7 @@ fn send_and_receive_transaction() {
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     let recipient_address =
-        Address::from_public_key(&KeyPair::from_str(TEST_SK_2).unwrap().get_public_key());
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
 
     // create the operation
     let operation = Operation::new_verifiable(
@@ -1326,10 +1338,7 @@ fn roll_slash() {
     let address = Address::from_public_key(&keypair.get_public_key());
 
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // get initial balance
@@ -1394,7 +1403,9 @@ fn roll_slash() {
     block_metadata.insert(
         block.id,
         ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+            same_thread_parent_creator: Some(Address::from_public_key(
+                &block_producer.get_public_key(),
+            )),
             storage: Some(universe.storage.clone()),
         },
     );
@@ -1473,10 +1484,7 @@ fn roll_slash_2() {
     let address = Address::from_public_key(&keypair.get_public_key());
 
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // get initial balance
@@ -1852,7 +1860,7 @@ fn datastore_manipulations() {
             .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
     let block = ExecutionTestUniverse::create_block(
-        &keypair,
+        &block_producer,
         Slot::new(1, 0),
         vec![operation],
         vec![],
@@ -1929,13 +1937,14 @@ fn datastore_manipulations() {
     let key_len = (key_a.len() + key_b.len()) as u64;
     let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
 
+    let amount = universe
+        .final_state
+        .read()
+        .ledger
+        .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+        .unwrap();
     assert_eq!(
-        universe
-            .final_state
-            .read()
-            .ledger
-            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap(),
+        amount,
         Amount::from_str("300000")
             .unwrap()
             // Gas fee
@@ -2184,7 +2193,7 @@ fn sc_builtins() {
             .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
     let block = ExecutionTestUniverse::create_block(
-        &keypair,
+        &block_producer,
         Slot::new(1, 0),
         vec![operation],
         vec![],
@@ -2265,7 +2274,7 @@ fn validate_address() {
             .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
     let block = ExecutionTestUniverse::create_block(
-        &keypair,
+        &block_producer,
         Slot::new(1, 0),
         vec![operation],
         vec![],
