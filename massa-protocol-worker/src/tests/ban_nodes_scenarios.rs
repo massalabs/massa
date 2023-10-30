@@ -132,7 +132,7 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -144,8 +144,6 @@ fn test_protocol_bans_node_sending_block_header_with_invalid_signature() {
 
     // After `unban_everyone_timer` the node should be unbanned
     unban_waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -211,15 +209,13 @@ fn test_protocol_bans_node_sending_operation_with_invalid_signature() {
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Operation(OperationMessage::Operations(vec![operation])),
     );
     ban_waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -326,7 +322,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -352,8 +348,6 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         })),
     );
     ban_waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -440,7 +434,7 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -468,8 +462,6 @@ fn test_protocol_does_not_asks_for_block_from_banned_node_who_propagated_header(
 
     //TODO: Find a way to check that no message will never be sent
     std::thread::sleep(Duration::from_millis(1000));
-
-    universe.stop();
 }
 
 #[test]
@@ -599,7 +591,7 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -620,6 +612,4 @@ fn test_protocol_bans_all_nodes_propagating_an_attack_attempt() {
         .unwrap();
 
     ban_waitpoint.wait();
-
-    universe.stop();
 }

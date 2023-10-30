@@ -64,15 +64,13 @@ fn test_protocol_sends_valid_endorsements_it_receives_to_pool() {
                     })
                 });
         });
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement.clone()])),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -133,15 +131,13 @@ fn test_protocol_does_not_send_invalid_endorsements_it_receives_to_pool() {
                     })
                 });
         });
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement.clone()])),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -213,15 +209,13 @@ fn test_protocol_propagates_endorsements_to_active_nodes() {
                     })
                 });
         });
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Endorsement(EndorsementMessage::Endorsements(vec![endorsement.clone()])),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -304,12 +298,11 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
         .return_once(move |block_id, block| {
             assert_eq!(block_id, block.id);
         });
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
         Message::Block(Box::new(BlockMessage::Header(block.content.header))),
     );
     waitpoint.wait();
-    universe.stop();
 }
