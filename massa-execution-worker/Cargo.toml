@@ -93,6 +93,7 @@ massa_pos_worker = { workspace = true }
 massa-sc-runtime = { workspace = true, features = ["testing"] }
 massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
+massa_test_framework = {workspace = true}
 massa_db_worker = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 massa_ledger_worker = { workspace = true }

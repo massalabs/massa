@@ -46,6 +46,7 @@ struct WalletFileFormat {
     public_key: Vec<u8>,
 }
 
+//TODO: Use exports and mock it
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {

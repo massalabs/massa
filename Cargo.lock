@@ -2789,6 +2789,8 @@ dependencies = [
  "displaydoc",
  "massa_hash",
  "massa_models",
+ "mockall",
+ "mockall_wrap",
  "parking_lot",
  "thiserror",
 ]
@@ -2873,6 +2875,7 @@ dependencies = [
  "massa_serialization",
  "massa_signature",
  "massa_storage",
+ "massa_test_framework",
  "massa_time",
  "massa_versioning",
  "massa_wallet",
