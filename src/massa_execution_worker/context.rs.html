@@ -1079,6 +1079,26 @@
 <a href="#1079" id="1079">1079</a>
 <a href="#1080" id="1080">1080</a>
 <a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1540,6 +1560,16 @@
 
     <span class="doccomment">/// Creates a new smart contract address with initial bytecode, and returns this address
     </span><span class="kw">pub fn </span>create_new_sc_address(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: Bytecode) -&gt; <span class="prelude-ty">Result</span>&lt;Address, ExecutionError&gt; {
+        <span class="comment">// pay the compilation cost of the new SC
+        </span><span class="kw">let </span>cost = <span class="self">self</span>.config.gas_costs.cl_compilation_cost;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(remaining) = <span class="self">self</span>.max_gas.checked_sub(cost) {
+            <span class="self">self</span>.max_gas = remaining
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
+                <span class="string">&quot;create_new_sc_address: not enough gas for new SC compilation&quot;</span>.into(),
+            ));
+        }
+
         <span class="comment">// deterministically generate a new unique smart contract address
         </span><span class="kw">let </span>slot_timestamp = get_block_slot_timestamp(
             <span class="self">self</span>.config.thread_count,
@@ -2000,6 +2030,16 @@
         address: <span class="kw-2">&amp;</span>Address,
         bytecode: Bytecode,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// pay the compilation cost of the new SC
+        </span><span class="kw">let </span>cost = <span class="self">self</span>.config.gas_costs.cl_compilation_cost;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(remaining) = <span class="self">self</span>.max_gas.checked_sub(cost) {
+            <span class="self">self</span>.max_gas = remaining
+        } <span class="kw">else </span>{
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
+                <span class="string">&quot;set_bytecode: not enough gas for new SC compilation&quot;</span>.into(),
+            ));
+        }
+
         <span class="comment">// check access right
         </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(address) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
