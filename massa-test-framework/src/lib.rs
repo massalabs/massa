@@ -7,6 +7,7 @@ use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
+    denunciation::Denunciation,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{
         compute_operations_hash, Operation, OperationIdSerializer, OperationSerializer,
@@ -37,17 +38,15 @@ pub trait TestUniverse {
             .try_init();
     }
 
+    // TODO: Create a block builder
     fn create_block(
         keypair: &KeyPair,
         slot: Slot,
-        operations: Option<Vec<SecureShareOperation>>,
-        endorsements: Option<Vec<SecureShareEndorsement>>,
+        operations: Vec<SecureShareOperation>,
+        endorsements: Vec<SecureShareEndorsement>,
+        denunciations: Vec<Denunciation>,
     ) -> SecureShareBlock {
-        let op_ids = operations
-            .unwrap_or_default()
-            .iter()
-            .map(|op| op.id)
-            .collect::<Vec<_>>();
+        let op_ids = operations.iter().map(|op| op.id).collect::<Vec<_>>();
         let operation_merkle_root = compute_operations_hash(&op_ids, &OperationIdSerializer::new());
         let header = BlockHeader::new_verifiable(
             BlockHeader {
@@ -59,8 +58,8 @@ pub trait TestUniverse {
                     BlockId::generate_from_hash(Hash::compute_from("Genesis 1".as_bytes())),
                 ],
                 operation_merkle_root,
-                endorsements: endorsements.unwrap_or_default(),
-                denunciations: Vec::new(),
+                endorsements,
+                denunciations,
             },
             BlockHeaderSerializer::new(),
             keypair,

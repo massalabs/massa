@@ -235,8 +235,9 @@ fn test_protocol_propagates_endorsements_only_to_nodes_that_dont_know_about_it_b
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, 1),
-        None,
-        Some(vec![endorsement.clone()]),
+        vec![],
+        vec![endorsement.clone()],
+        vec![],
     );
 
     let waitpoint = WaitPoint::new();

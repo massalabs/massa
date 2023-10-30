@@ -231,8 +231,9 @@ fn test_full_ask_block_workflow() {
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, op_thread),
-        Some(vec![op_1.clone()]),
-        None,
+        vec![op_1.clone()],
+        vec![],
+        vec![],
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -325,7 +326,8 @@ fn test_empty_block() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -405,8 +407,9 @@ fn test_dont_want_it_anymore() {
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, op_thread),
-        Some(vec![op_1.clone(), op_2.clone()]),
-        None,
+        vec![op_1.clone(), op_2.clone()],
+        vec![],
+        vec![],
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -486,7 +489,8 @@ fn test_no_one_has_it() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -554,8 +558,10 @@ fn test_multiple_blocks_without_a_priori() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block_1 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 0), None, None);
-    let block_2 = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
+    let block_1 =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 0), vec![], vec![], vec![]);
+    let block_2 =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -631,7 +637,8 @@ fn test_protocol_sends_blocks_when_asked_for() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
 
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -714,7 +721,8 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let block = ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), None, None);
+    let block =
+        ProtocolTestUniverse::create_block(&block_creator, Slot::new(1, 1), vec![], vec![], vec![]);
 
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -801,8 +809,9 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, op_thread),
-        Some(vec![op_1.clone()]),
-        None,
+        vec![op_1.clone()],
+        vec![],
+        vec![],
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
@@ -902,8 +911,9 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, op_thread),
-        Some(vec![op_1.clone()]),
-        None,
+        vec![op_1.clone()],
+        vec![],
+        vec![],
     );
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
