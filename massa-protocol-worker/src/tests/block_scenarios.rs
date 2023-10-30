@@ -59,6 +59,8 @@ enum TestsStepMatch {
     OperationsPropagated((PeerIdMatchers, PreHashSet<OperationPrefixId>)),
 }
 
+/// This function allow you to pass a sequence of steps that should be executed in an certain order.
+/// This will be checked and after each step executed the waitpoint will be triggered.
 fn block_retrieval_mock(
     steps: Vec<TestsStepMatch>,
     foreign_controllers: &mut ProtocolForeignControllers,
@@ -276,7 +278,7 @@ fn test_full_ask_block_workflow() {
         waitpoint.get_trigger_handle(),
     );
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -312,8 +314,6 @@ fn test_full_ask_block_workflow() {
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -359,7 +359,7 @@ fn test_empty_block() {
         &mut foreign_controllers,
         waitpoint.get_trigger_handle(),
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -386,8 +386,6 @@ fn test_empty_block() {
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -435,7 +433,7 @@ fn test_dont_want_it_anymore() {
         waitpoint.get_trigger_handle(),
     );
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -477,8 +475,6 @@ fn test_dont_want_it_anymore() {
             .checked_mul(2)
             .unwrap(),
     );
-
-    universe.stop();
 }
 
 #[test]
@@ -526,7 +522,7 @@ fn test_no_one_has_it() {
         waitpoint.get_trigger_handle(),
     );
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
 
     universe
         .module_controller
@@ -547,8 +543,6 @@ fn test_no_one_has_it() {
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -610,7 +604,7 @@ fn test_multiple_blocks_without_a_priori() {
         .network_controller
         .expect_get_active_connections()
         .returning(move || Box::new(shared_active_connections.clone()));
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config.clone());
 
     universe
         .module_controller
@@ -626,8 +620,6 @@ fn test_multiple_blocks_without_a_priori() {
         .unwrap();
     waitpoint.wait();
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -711,8 +703,6 @@ fn test_protocol_sends_blocks_when_asked_for() {
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -792,8 +782,6 @@ fn test_protocol_propagates_block_to_node_who_asked_for_operations_and_only_head
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -860,7 +848,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
         waitpoint.get_trigger_handle(),
     );
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -896,8 +884,6 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
         })),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -965,7 +951,7 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
         waitpoint.get_trigger_handle(),
     );
 
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -1001,6 +987,4 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
     );
     waitpoint.wait();
     waitpoint.wait();
-
-    universe.stop();
 }

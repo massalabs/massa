@@ -33,6 +33,8 @@ enum TestsStepMatch {
     OperationsSent((PeerId, Vec<SecureShareOperation>)),
 }
 
+/// This function allow you to pass a sequence of steps that should be executed in an certain order.
+/// This will be checked and after each step executed the waitpoint will be triggered.
 fn operation_workflow_mock(
     steps: Vec<TestsStepMatch>,
     foreign_controllers: &mut ProtocolForeignControllers,
@@ -202,7 +204,7 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -212,8 +214,6 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
         ])),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
             waitpoint_trigger_handle2.trigger();
         });
     operation_workflow_mock(vec![], &mut foreign_controllers, waitpoint_trigger_handle);
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -255,8 +255,6 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
     );
     //Peer ban
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -292,7 +290,7 @@ fn test_protocol_propagates_operations_to_active_nodes() {
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -303,8 +301,6 @@ fn test_protocol_propagates_operations_to_active_nodes() {
     );
     waitpoint.wait();
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -353,8 +349,6 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
         .unwrap();
     waitpoint.wait();
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -475,8 +469,6 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
 
     waitpoint.wait();
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -504,7 +496,7 @@ fn test_protocol_ask_operations_on_batch_received() {
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -513,8 +505,6 @@ fn test_protocol_ask_operations_on_batch_received() {
         )),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -544,7 +534,7 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -561,8 +551,6 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
         )),
     );
     waitpoint.wait();
-
-    universe.stop();
 }
 
 #[test]
@@ -592,7 +580,7 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -620,8 +608,6 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
 
     //TODO: Find a way to test we didn't sent
     std::thread::sleep(Duration::from_millis(200));
-
-    universe.stop();
 }
 
 #[test]
@@ -654,7 +640,7 @@ fn test_protocol_on_ask_operations() {
         &mut foreign_controllers,
         waitpoint_trigger_handle,
     );
-    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
     universe.mock_message_receive(
         &node_a_peer_id,
@@ -672,6 +658,4 @@ fn test_protocol_on_ask_operations() {
         )),
     );
     waitpoint.wait();
-
-    universe.stop();
 }

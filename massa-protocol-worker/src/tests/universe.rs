@@ -102,11 +102,13 @@ impl TestUniverse for ProtocolTestUniverse {
     }
 }
 
-impl ProtocolTestUniverse {
-    pub fn stop(&mut self) {
+impl Drop for ProtocolTestUniverse {
+    fn drop(&mut self) {
         self.module_manager.stop();
     }
+}
 
+impl ProtocolTestUniverse {
     pub fn mock_message_receive(&self, peer_id: &PeerId, message: Message) {
         let mut data = Vec::new();
         self.message_serializer
