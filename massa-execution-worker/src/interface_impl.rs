@@ -99,7 +99,6 @@ impl InterfaceImpl {
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
