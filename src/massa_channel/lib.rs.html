@@ -79,6 +79,10 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Massa Channel is a crossbeam channel wrapper with prometheus metrics
 //! expose for each channel :
 //! - actual length of channel (can be inc() when sending msg or dec() when receive)
@@ -99,7 +103,6 @@
 
 <span class="kw">use </span>receiver::MassaReceiver;
 <span class="kw">use </span>sender::MassaSender;
-<span class="kw">use </span>tracing::debug;
 
 <span class="kw">pub mod </span>receiver;
 <span class="kw">pub mod </span>sender;
@@ -135,12 +138,17 @@
 
         <span class="comment">// Register metrics in prometheus
         // error here if metrics already registered (ex : ProtocolController&gt;::get_stats )
-        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(actual_len.clone())) {
-            <span class="macro">debug!</span>(<span class="string">&quot;Failed to register actual_len gauge for {} : {}&quot;</span>, name, e);
-        }
 
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(received.clone())) {
-            <span class="macro">debug!</span>(<span class="string">&quot;Failed to register received counter for {} : {}&quot;</span>, name, e);
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+        </span>{
+            <span class="kw">use </span>tracing::debug;
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(actual_len.clone())) {
+                <span class="macro">debug!</span>(<span class="string">&quot;Failed to register actual_len gauge for {} : {}&quot;</span>, name, e);
+            }
+
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::register(Box::new(received.clone())) {
+                <span class="macro">debug!</span>(<span class="string">&quot;Failed to register received counter for {} : {}&quot;</span>, name, e);
+            }
         }
 
         <span class="kw">let </span>sender = MassaSender {
