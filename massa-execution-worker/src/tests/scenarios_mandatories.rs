@@ -2,7 +2,8 @@
 
 use massa_db_exports::DBBatch;
 use massa_execution_exports::{
-    ExecutionBlockMetadata, ExecutionConfig, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionBlockMetadata, ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::config::{
     ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
@@ -1842,7 +1843,7 @@ fn datastore_manipulations() {
     let block = ExecutionTestUniverse::create_block(
         &block_producer,
         Slot::new(1, 0),
-        vec![operation],
+        vec![operation.clone()],
         vec![],
         vec![],
     );
@@ -1917,11 +1918,12 @@ fn datastore_manipulations() {
     let key_len = (key_a.len() + key_b.len()) as u64;
     let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
 
+    let addr = Address::from_public_key(&keypair.get_public_key());
     let amount = universe
         .final_state
         .read()
         .ledger
-        .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+        .get_balance(&addr)
         .unwrap();
     assert_eq!(
         amount,
@@ -1951,6 +1953,49 @@ fn datastore_manipulations() {
                     .saturating_mul_u64(value_len)
             )
     );
+
+    universe
+        .module_controller
+        .query_state(ExecutionQueryRequest {
+            requests: vec![
+                ExecutionQueryRequestItem::AddressExistsCandidate(addr.clone()),
+                ExecutionQueryRequestItem::AddressExistsFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressBalanceCandidate(addr.clone()),
+                ExecutionQueryRequestItem::AddressBalanceFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr.clone()),
+                ExecutionQueryRequestItem::AddressBytecodeFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    addr: addr.clone(),
+                    prefix: vec![],
+                },
+                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                    addr: addr.clone(),
+                    prefix: vec![],
+                },
+                ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+                    addr: addr.clone(),
+                    key: key_a.clone(),
+                },
+                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+                    addr: addr.clone(),
+                    key: key_a.clone(),
+                },
+                ExecutionQueryRequestItem::OpExecutionStatusCandidate(operation.id),
+                ExecutionQueryRequestItem::OpExecutionStatusFinal(operation.id),
+                ExecutionQueryRequestItem::AddressRollsCandidate(addr.clone()),
+                ExecutionQueryRequestItem::AddressRollsFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr.clone()),
+                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr.clone()),
+                ExecutionQueryRequestItem::CycleInfos {
+                    cycle: 0,
+                    restrict_to_addresses: None,
+                },
+                ExecutionQueryRequestItem::Events(EventFilter::default()),
+            ],
+        });
+    universe
+        .module_controller
+        .get_addresses_infos(&[addr.clone()]);
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
@@ -2310,5 +2355,119 @@ fn validate_address() {
             .unwrap()
             // Gas fee
             .saturating_sub(Amount::const_init(10, 0))
+    );
+}
+
+#[test]
+fn test_rewards() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        t0: MassaTime::from_millis(100),
+        cursor_delay: MassaTime::from_millis(0),
+        ..ExecutionConfig::default()
+    };
+    let block_producer = KeyPair::generate(0).unwrap();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(
+        &mut foreign_controllers.selector_controller,
+        &block_producer,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // First block
+    let block = ExecutionTestUniverse::create_block(
+        &block_producer,
+        Slot::new(1, 0),
+        vec![],
+        vec![
+            ExecutionTestUniverse::create_endorsement(&block_producer, Slot::new(1, 0));
+            ENDORSEMENT_COUNT as usize
+        ],
+        vec![],
+    );
+    // store the block in storage
+    universe.storage.store_block(block.clone());
+
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let block_store = vec![(
+        block.id,
+        ExecutionBlockMetadata {
+            storage: Some(universe.storage.clone()),
+            same_thread_parent_creator: Some(Address::from_public_key(
+                &block_producer.get_public_key(),
+            )),
+        },
+    )]
+    .into_iter()
+    .collect();
+    universe.module_controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_store,
+    );
+    std::thread::sleep(
+        exec_cfg
+            .t0
+            .saturating_add(MassaTime::from_millis(50))
+            .into(),
+    );
+    let (_, candidate_balance) = universe
+        .module_controller
+        .get_final_and_candidate_balance(&[Address::from_public_key(
+            &block_producer.get_public_key(),
+        )])[0];
+    let first_block_reward = exec_cfg.block_reward.saturating_sub(LEDGER_ENTRY_BASE_COST);
+    println!("{:#?}", candidate_balance);
+    assert_eq!(candidate_balance.unwrap(), first_block_reward);
+
+    // Second block
+    let block = ExecutionTestUniverse::create_block(
+        &block_producer,
+        Slot::new(2, 0),
+        vec![],
+        vec![
+            ExecutionTestUniverse::create_endorsement(&block_producer, Slot::new(2, 0));
+            ENDORSEMENT_COUNT as usize
+        ],
+        vec![],
+    );
+    // store the block in storage
+    universe.storage.store_block(block.clone());
+
+    // set our block as a final block
+    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+    finalized_blocks.insert(block.content.header.content.slot, block.id);
+    let block_store = vec![(
+        block.id,
+        ExecutionBlockMetadata {
+            storage: Some(universe.storage.clone()),
+            same_thread_parent_creator: Some(Address::from_public_key(
+                &block_producer.get_public_key(),
+            )),
+        },
+    )]
+    .into_iter()
+    .collect();
+    universe.module_controller.update_blockclique_status(
+        finalized_blocks,
+        Default::default(),
+        block_store,
+    );
+    std::thread::sleep(
+        exec_cfg
+            .t0
+            .saturating_add(MassaTime::from_millis(50))
+            .into(),
+    );
+    let (_, candidate_balance) = universe
+        .module_controller
+        .get_final_and_candidate_balance(&[Address::from_public_key(
+            &block_producer.get_public_key(),
+        )])[0];
+    assert_eq!(
+        candidate_balance.unwrap(),
+        first_block_reward.saturating_add(exec_cfg.block_reward)
     );
 }
