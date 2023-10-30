@@ -1300,6 +1300,10 @@
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
 <a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -2233,7 +2237,11 @@
             .ok_or(TimeError::TimeOverflowError)
             .expect(<span class="string">&quot;could not compute next block retrieval timer tick&quot;</span>);
 
-        <span class="comment">// Get conencted peer list
+        <span class="kw">if </span><span class="self">self</span>.asked_blocks.is_empty() &amp;&amp; <span class="self">self</span>.block_wishlist.is_empty() {
+            <span class="kw">return</span>;
+        }
+
+        <span class="comment">// Get connected peer list
         </span><span class="kw">let </span>connected_peers = <span class="self">self</span>.active_connections.get_peer_ids_connected();
 
         <span class="comment">// Update cache
