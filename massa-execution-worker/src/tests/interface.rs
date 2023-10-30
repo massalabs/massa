@@ -3,12 +3,10 @@
 use hex_literal::hex;
 use massa_models::address::Address;
 use massa_sc_runtime::Interface;
-use serial_test::serial;
 use std::str::FromStr;
 
 use crate::interface_impl::InterfaceImpl;
 #[test]
-#[serial]
 fn test_hash_sha256() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),

@@ -1,5 +1,3 @@
-use serial_test::serial;
-
 use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionOutput;
 use massa_models::slot::Slot;
@@ -13,7 +11,6 @@ use massa_models::prehash::{CapacityAllocator, PreHashMap};
 use massa_pos_exports::{DeferredCredits, PoSChanges};
 
 #[test]
-#[serial]
 fn test_active_history_deferred_credits() {
     let slot1 = Slot::new(2, 2);
     let slot2 = Slot::new(4, 11);

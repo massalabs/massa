@@ -83,5 +83,4 @@ massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_test_framework = {workspace = true}
 tokio = { workspace = true, features = ["sync"] }
-serial_test = { workspace = true }
 hex-literal = { workspace = true }

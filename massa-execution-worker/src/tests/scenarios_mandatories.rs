@@ -23,7 +23,6 @@ use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
 use massa_time::MassaTime;
 use num::rational::Ratio;
-use serial_test::serial;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
@@ -61,7 +60,6 @@ fn selector_boilerplate(
 }
 
 #[test]
-#[serial]
 fn test_execution_shutdown() {
     let block_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
@@ -74,7 +72,6 @@ fn test_execution_shutdown() {
 }
 
 #[test]
-#[serial]
 fn test_sending_command() {
     let block_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
@@ -92,7 +89,6 @@ fn test_sending_command() {
 }
 
 #[test]
-#[serial]
 fn test_readonly_execution() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -136,7 +132,6 @@ fn test_readonly_execution() {
 ///
 /// This test can fail if the gas is going up in the execution
 #[test]
-#[serial]
 fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -268,7 +263,6 @@ fn test_nested_call_gas_usage() {
 /// Deploy an SC with a method `test` that generate an event saying how many coins he received
 /// Calling the SC in a second time
 #[test]
-#[serial]
 fn test_get_call_coins() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -410,7 +404,6 @@ fn test_get_call_coins() {
 /// 12. if they are some, we verify that the data has the correct value
 ///
 #[test]
-#[serial]
 fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
@@ -503,7 +496,6 @@ fn send_and_receive_async_message() {
 /// 11 we check that the execution status is the one we expected
 ///
 #[test]
-#[serial]
 fn test_operation_execution_status() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -584,7 +576,6 @@ fn test_operation_execution_status() {
 /// 4. retrieve events emitted by the initial an sub functions
 /// 5. match event and call stack to make sure that executions were local
 #[test]
-#[serial]
 fn local_execution() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -691,7 +682,6 @@ fn local_execution() {
 /// 4. retrieve events emitted by the initial an sub functions
 /// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
 #[test]
-#[serial]
 fn sc_deployment() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -788,7 +778,6 @@ fn sc_deployment() {
 /// 11. we check if they are events
 /// 12. if they are some, we verify that the data has the correct value
 #[test]
-#[serial]
 fn send_and_receive_async_message_with_trigger() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -968,7 +957,6 @@ fn send_and_receive_async_message_with_trigger() {
 }
 
 #[test]
-#[serial]
 fn send_and_receive_transaction() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -1048,7 +1036,6 @@ fn send_and_receive_transaction() {
 }
 
 #[test]
-#[serial]
 fn roll_buy() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -1115,7 +1102,6 @@ fn roll_buy() {
 }
 
 #[test]
-#[serial]
 fn roll_sell() {
     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
     // Check for resulting roll count + resulting deferred credits
@@ -1313,7 +1299,6 @@ fn roll_sell() {
 }
 
 #[test]
-#[serial]
 fn roll_slash() {
     // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
     // 3 rolls)
@@ -1459,7 +1444,6 @@ fn roll_slash() {
 }
 
 #[test]
-#[serial]
 fn roll_slash_2() {
     // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
     // 4 rolls)
@@ -1626,7 +1610,6 @@ fn roll_slash_2() {
 }
 
 #[test]
-#[serial]
 fn sc_execution_error() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
@@ -1697,7 +1680,6 @@ fn sc_execution_error() {
 }
 
 #[test]
-#[serial]
 fn sc_datastore() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
@@ -1764,7 +1746,6 @@ fn sc_datastore() {
 }
 
 #[test]
-#[serial]
 fn set_bytecode_error() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -1834,7 +1815,6 @@ fn set_bytecode_error() {
 }
 
 #[test]
-#[serial]
 fn datastore_manipulations() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -1975,7 +1955,6 @@ fn datastore_manipulations() {
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
 #[test]
-#[serial]
 fn events_from_switching_blockclique() {
     // setup the period duration and the maximum gas for asynchronous messages execution
     let exec_cfg = ExecutionConfig {
@@ -2089,7 +2068,6 @@ fn events_from_switching_blockclique() {
 }
 
 #[test]
-#[serial]
 fn not_enough_compilation_gas() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -2167,7 +2145,6 @@ fn not_enough_compilation_gas() {
 }
 
 #[test]
-#[serial]
 fn sc_builtins() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
@@ -2246,7 +2223,6 @@ fn sc_builtins() {
 }
 
 #[test]
-#[serial]
 fn validate_address() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
