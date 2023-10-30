@@ -62,7 +62,7 @@ impl ModuleCache {
         let end = Instant::now();
         let elapsed = end.duration_since(start).as_micros();
         debug!("TIMER: cl compilation took {} μs", elapsed);
-        return module;
+        module
     }
 
     /// Save a new or an already existing module in the cache

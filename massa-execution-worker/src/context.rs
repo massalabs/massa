@@ -459,7 +459,7 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
-        // pay the compilation cost of the new SC
+        // pay the Cranelift compilation cost
         let cost = self.config.gas_costs.cl_compilation_cost;
         if let Some(remaining) = self.max_gas.checked_sub(cost) {
             self.max_gas = remaining
@@ -929,7 +929,7 @@ impl ExecutionContext {
         address: &Address,
         bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
-        // pay the compilation cost of the new SC
+        // pay the Cranelift compilation cost
         let cost = self.config.gas_costs.cl_compilation_cost;
         if let Some(remaining) = self.max_gas.checked_sub(cost) {
             self.max_gas = remaining
