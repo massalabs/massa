@@ -48,7 +48,7 @@ It contains:
 
 1. Paid in `massa-execution-worker` > `context.rs` > `create_new_sc_address` & `set_bytecode`
 2. Used in `massa-execution-worker` > `interface_impl.rs` > `create_module`, `raw_set_bytecode` & `raw_set_bytecode_for`
-3. Called by `massa-sc-runtime` corresponding ABIs, respectively `assembly_script_create_sc`, `assembly_script_set_bytecode_for` & `assembly_script_set_bytecode_for`
+3. Called by `massa-sc-runtime` corresponding ABIs, respectively `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`
 
 ### VM & Module instantiation
 

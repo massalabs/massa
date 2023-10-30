@@ -139,6 +139,8 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
+        // TODO: interesting but unimportant optim
+        // remove max_instance_cost hard check if module is cached and has a delta
         execution_gas
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
             .ok_or(CacheError::LoadError(
