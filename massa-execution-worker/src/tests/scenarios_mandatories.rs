@@ -1131,10 +1131,19 @@ fn roll_sell() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // get initial balance
-    let balance_initial = universe.final_state.read().ledger.get_balance(&address).unwrap();
+    let balance_initial = universe
+        .final_state
+        .read()
+        .ledger
+        .get_balance(&address)
+        .unwrap();
 
     // get initial roll count
-    let roll_count_initial = universe.final_state.read().pos_state.get_rolls_for(&address);
+    let roll_count_initial = universe
+        .final_state
+        .read()
+        .pos_state
+        .get_rolls_for(&address);
     let roll_sell_1 = 10;
     let roll_sell_2 = 1;
     let roll_sell_3 = roll_count_initial.saturating_add(10);
@@ -1144,12 +1153,16 @@ fn roll_sell() {
     let mut batch = DBBatch::new();
 
     // set initial_deferred_credits that will be reimbursed at first block
-    universe.final_state.write().pos_state.put_deferred_credits_entry(
-        &Slot::new(1, 0),
-        &address,
-        &initial_deferred_credits,
-        &mut batch,
-    );
+    universe
+        .final_state
+        .write()
+        .pos_state
+        .put_deferred_credits_entry(
+            &Slot::new(1, 0),
+            &address,
+            &initial_deferred_credits,
+            &mut batch,
+        );
 
     universe
         .final_state
@@ -1206,7 +1219,7 @@ fn roll_sell() {
         Slot::new(3, 0),
         vec![operation1, operation2, operation3],
         vec![],
-        vec![]
+        vec![],
     );
     // store the block in storage
     universe.storage.store_block(block.clone());
@@ -1958,34 +1971,34 @@ fn datastore_manipulations() {
         .module_controller
         .query_state(ExecutionQueryRequest {
             requests: vec![
-                ExecutionQueryRequestItem::AddressExistsCandidate(addr.clone()),
-                ExecutionQueryRequestItem::AddressExistsFinal(addr.clone()),
-                ExecutionQueryRequestItem::AddressBalanceCandidate(addr.clone()),
-                ExecutionQueryRequestItem::AddressBalanceFinal(addr.clone()),
-                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr.clone()),
-                ExecutionQueryRequestItem::AddressBytecodeFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressExistsCandidate(addr),
+                ExecutionQueryRequestItem::AddressExistsFinal(addr),
+                ExecutionQueryRequestItem::AddressBalanceCandidate(addr),
+                ExecutionQueryRequestItem::AddressBalanceFinal(addr),
+                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
+                ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr: addr.clone(),
+                    addr,
                     prefix: vec![],
                 },
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr: addr.clone(),
+                    addr,
                     prefix: vec![],
                 },
                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
-                    addr: addr.clone(),
+                    addr,
                     key: key_a.clone(),
                 },
                 ExecutionQueryRequestItem::AddressDatastoreValueFinal {
-                    addr: addr.clone(),
+                    addr,
                     key: key_a.clone(),
                 },
                 ExecutionQueryRequestItem::OpExecutionStatusCandidate(operation.id),
                 ExecutionQueryRequestItem::OpExecutionStatusFinal(operation.id),
-                ExecutionQueryRequestItem::AddressRollsCandidate(addr.clone()),
-                ExecutionQueryRequestItem::AddressRollsFinal(addr.clone()),
-                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr.clone()),
-                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr.clone()),
+                ExecutionQueryRequestItem::AddressRollsCandidate(addr),
+                ExecutionQueryRequestItem::AddressRollsFinal(addr),
+                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr),
+                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr),
                 ExecutionQueryRequestItem::CycleInfos {
                     cycle: 0,
                     restrict_to_addresses: None,
@@ -1993,9 +2006,7 @@ fn datastore_manipulations() {
                 ExecutionQueryRequestItem::Events(EventFilter::default()),
             ],
         });
-    universe
-        .module_controller
-        .get_addresses_infos(&[addr.clone()]);
+    universe.module_controller.get_addresses_infos(&[addr]);
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
