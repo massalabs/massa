@@ -8,34 +8,34 @@ It contains:
 
 # Gas table
 
-| TYPE                     | PAYMENT                     |
-|--------------------------|-----------------------------|
-| **CallSC (OP)**          |                             |
-| compilation              | NOT PAID                    |
+| TYPE                     | PAYMENT                             |
+| ------------------------ | ----------------------------------- |
+| **CallSC (OP)**          |                                     |
+| compilation              | NOT PAID                            |
 | VM instantiation         | PAID IN MAX_GAS (UNIFIED CONSTANT)  |
-| module instantiation     | PAID IN MAX_GAS             |
-| execution                | PAID IN MAX_GAS             |
-| **ExecuteSC (OP)**       |                             |
-| compilation              | PAID IN MAX_GAS             |
+| module instantiation     | PAID IN MAX_GAS                     |
+| execution                | PAID IN MAX_GAS                     |
+| **ExecuteSC (OP)**       |                                     |
+| compilation              | PAID IN MAX_GAS                     |
 | VM instantiation         | PAID IN MAX_GAS (UNIFIED CONSTANT)  |
-| module instantiation     | PAID IN MAX_GAS             |
-| execution                | PAID IN MAX_GAS             |
-| **Call (ABI)**           |                             |
-| compilation              | NOT PAID                    |
+| module instantiation     | PAID IN MAX_GAS                     |
+| execution                | PAID IN MAX_GAS                     |
+| **Call (ABI)**           |                                     |
+| compilation              | NOT PAID                            |
 | VM instantiation         | PAID IN CALL GAS (UNIFIED CONSTANT) |
-| module instantiation     | PAID IN CALL GAS            |
-| execution                | PAID IN CALL GAS            |
-| base gas cost of the ABI | PAID IN ABI GAS             |
-| **LocalExecution (ABI)** |                             |
-| compilation              | PAID IN CALL GAS            |
+| module instantiation     | PAID IN CALL GAS                    |
+| execution                | PAID IN CALL GAS                    |
+| base gas cost of the ABI | PAID IN ABI GAS                     |
+| **LocalExecution (ABI)** |                                     |
+| compilation              | PAID IN CALL GAS                    |
 | VM instantiation         | PAID IN CALL GAS (UNIFIED CONSTANT) |
-| module instantiation     | PAID IN CALL GAS            |
-| execution                | PAID IN CALL GAS            |
-| base gas cost of the ABI | PAID IN ABI GAS             |
-| **CreateSC (ABI)**       |                             |
-| compilation              | PAID IN ABI GAS             |
-| **SetBytecode (ABI)**    |                             |
-| compilation              | PAID IN ABI GAS             |
+| module instantiation     | PAID IN CALL GAS                    |
+| execution                | PAID IN CALL GAS                    |
+| base gas cost of the ABI | PAID IN ABI GAS                     |
+| **CreateSC (ABI)**       |                                     |
+| compilation              | PAID IN ABI GAS                     |
+| **SetBytecode (ABI)**    |                                     |
+| compilation              | PAID IN ABI GAS                     |
 
 # Functions
 
@@ -46,9 +46,7 @@ It contains:
 
 ### Cranelift compilation
 
-1. Paid in `massa-execution-worker` > `context.rs` > `create_new_sc_address` & `set_bytecode`
-2. Used in `massa-execution-worker` > `interface_impl.rs` > `create_module`, `raw_set_bytecode` & `raw_set_bytecode_for`
-3. Called by `massa-sc-runtime` corresponding ABIs, respectively `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`
+Paid by `massa-sc-runtime` corresponding ABIs costs, `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`. These ABIs costs hold the CL compilation cost.
 
 ### VM & Module instantiation
 
@@ -57,4 +55,4 @@ It contains:
 
 ### Execution
 
-1. Paid in `massa-sc-runtime`
+Paid in `massa-sc-runtime`.
