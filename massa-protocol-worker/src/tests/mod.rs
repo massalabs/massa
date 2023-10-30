@@ -17,14 +17,9 @@ use crate::{create_protocol_controller, start_protocol_controller};
 
 mod ban_nodes_scenarios;
 mod block_scenarios;
-mod cache_scenarios;
-mod context;
 mod endorsements_scenarios;
-mod in_block_operations_scenarios;
-mod mock_network;
 mod operations_scenarios;
 mod peer_priorization;
-mod tools;
 mod universe;
 
 #[test]
@@ -186,7 +181,7 @@ fn basic() {
     )
     .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(15));
+    std::thread::sleep(Duration::from_secs(2));
     // Stop the protocols
     sender_manager1.stop();
     manager1.stop();
@@ -347,7 +342,7 @@ fn stop_with_controller_still_exists() {
     )
     .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(15));
+    std::thread::sleep(Duration::from_secs(2));
     // Stop the protocols
     sender_manager1.stop();
     sender_manager2.stop();
