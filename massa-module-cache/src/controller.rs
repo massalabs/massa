@@ -132,7 +132,8 @@ impl ModuleCache {
         }
     }
 
-    /// Load a cached module for execution and check its validity for execution
+    /// Load a cached module for execution and check its validity for execution.
+    /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     pub fn load_module(
         &mut self,
         bytecode: &[u8],
@@ -162,7 +163,9 @@ impl ModuleCache {
         Ok((module, execution_gas))
     }
 
-    /// Load a temporary module from arbitrary bytecode
+    /// Load a temporary module from arbitrary bytecode.
+    /// Pays the Singlepass compilation cost.
+    /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     pub fn load_tmp_module(
         &self,
         bytecode: &[u8],

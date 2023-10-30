@@ -342,14 +342,7 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// The string representation of the newly created address
     fn create_module(&self, bytecode: &[u8]) -> Result<String> {
-        let mut context = context_guard!(self);
-        let cost = self.config.gas_costs.cl_compilation_cost;
-        if let Some(remaining) = context.max_gas.checked_sub(cost) {
-            context.max_gas = remaining
-        } else {
-            bail!("couldn't create new SC: not enough gas for compilation");
-        }
-        match context.create_new_sc_address(Bytecode(bytecode.to_vec())) {
+        match context_guard!(self).create_new_sc_address(Bytecode(bytecode.to_vec())) {
             Ok(addr) => Ok(addr.to_string()),
             Err(err) => bail!("couldn't create new SC address: {}", err),
         }

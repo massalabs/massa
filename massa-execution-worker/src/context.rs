@@ -459,6 +459,16 @@ impl ExecutionContext {
 
     /// Creates a new smart contract address with initial bytecode, and returns this address
     pub fn create_new_sc_address(&mut self, bytecode: Bytecode) -> Result<Address, ExecutionError> {
+        // pay the compilation cost of the new SC
+        let cost = self.config.gas_costs.cl_compilation_cost;
+        if let Some(remaining) = self.max_gas.checked_sub(cost) {
+            self.max_gas = remaining
+        } else {
+            return Err(ExecutionError::RuntimeError(
+                "create_new_sc_address: not enough gas for new SC compilation".into(),
+            ));
+        }
+
         // deterministically generate a new unique smart contract address
         let slot_timestamp = get_block_slot_timestamp(
             self.config.thread_count,
@@ -919,6 +929,16 @@ impl ExecutionContext {
         address: &Address,
         bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
+        // pay the compilation cost of the new SC
+        let cost = self.config.gas_costs.cl_compilation_cost;
+        if let Some(remaining) = self.max_gas.checked_sub(cost) {
+            self.max_gas = remaining
+        } else {
+            return Err(ExecutionError::RuntimeError(
+                "set_bytecode: not enough gas for new SC compilation".into(),
+            ));
+        }
+
         // check access right
         if !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(
