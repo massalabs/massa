@@ -391,6 +391,9 @@ impl BootstrapServerMessageDeserializer {
         }
     }
 
+    // Validate that the message got from deserialization is under the limit set in the
+    // parameters.
+    // Put here everything that cannot be tested inside the parsing process itself.
     fn validate_result<
         'a,
         E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>,

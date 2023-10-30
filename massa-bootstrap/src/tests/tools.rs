@@ -725,6 +725,19 @@ fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
     Block { header, operations }
 }
 
+pub fn gen_random_streaming_step<T, R: Rng>(rng: &mut R, content: T) -> StreamingStep<T> {
+    match rng.gen_range(0..3) {
+        0 => StreamingStep::Started,
+        1 => StreamingStep::Ongoing(content),
+        2 => StreamingStep::Finished(if rng.gen_bool(0.8) {
+            Some(content)
+        } else {
+            None
+        }),
+        _ => unreachable!(),
+    }
+}
+
 impl BootstrapServerMessage {
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..6);
@@ -799,6 +812,9 @@ impl BootstrapServerMessage {
         }
     }
 
+    // Generate a message with errors added inside the message.
+    // Has to be generated quickly, and have a previsible error case based on the
+    // "faulty_part" input number.
     pub fn generate_faulty<R: Rng>(rng: &mut R, faulty_part: usize) -> Self {
         assert!(faulty_part < 20, "Faulty part < 20");
         // Error
@@ -1142,46 +1158,8 @@ impl BootstrapServerMessage {
     }
 }
 
-pub fn parametric_test<F, T>(
-    duration: std::time::Duration,
-    data: T,
-    regressions: Vec<u64>,
-    test_fct: F,
-) where
-    F: Fn(&T, &mut SmallRng),
-{
-    #[cfg(feature = "heavy_testing")]
-    let duration = duration * 120;
-
-    for reg in regressions {
-        println!("[*] Regression {reg}");
-        let mut rng = SmallRng::seed_from_u64(reg);
-        test_fct(&data, &mut rng);
-    }
-
-    let tstart = std::time::Instant::now();
-    let mut seeder = SmallRng::from_entropy();
-    let mut n = 0;
-    while tstart.elapsed() < duration {
-        let new_seed: u64 = seeder.gen();
-        println!("[{n}] Seed {new_seed}");
-        let mut rng = SmallRng::seed_from_u64(new_seed);
-        test_fct(&data, &mut rng);
-        n += 1;
-    }
-}
-
-pub fn gen_random_streaming_step<T, R: Rng>(_rng: &mut R, _content: T) -> StreamingStep<T> {
-    // match rng.gen_range(0..3) {
-    //     0 => StreamingStep::Started,
-    //     1 => StreamingStep::Ongoing(content),
-    //     2 => StreamingStep::Finished(if rng.gen_bool(0.8) { Some(content) } else { None }),
-    //     _ => unreachable!(),
-    // }
-    StreamingStep::Started
-}
-
 impl BootstrapClientMessage {
+    // Checks that two messages are equal or not
     pub fn equals(&self, other: &BootstrapClientMessage) -> bool {
         match (self, other) {
             (
@@ -1222,6 +1200,8 @@ impl BootstrapClientMessage {
         }
     }
 
+    // Generates a message filled with random data of random size based on the limit given in
+    // constants. Used for parametric testing
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..4);
         match variant {
@@ -1263,6 +1243,9 @@ impl BootstrapClientMessage {
         }
     }
 
+    // Generate a message with errors added inside the message.
+    // Has to be generated quickly, and have a previsible error case based on the
+    // "faulty_part" input number.
     pub fn generate_faulty<R: Rng>(rng: &mut R, faulty_part: u8) -> Self {
         assert!(faulty_part < 4, "Faulty part has to be < 4");
         let mut last_slot = gen_random_slot(rng);
@@ -1307,5 +1290,44 @@ impl BootstrapClientMessage {
             last_consensus_step,
             send_last_start_period: false,
         }
+    }
+}
+
+// Perform a parametric test, meaning that it checks conditions that should be met whatever the
+// data is.
+// The idea is to generate random cases, tests them, and let the random check for every edge
+// case a humain brain can't think of.
+// This function will call the `test_fct` as long as we are under the `duration` time,
+// passing some fixed data `data` to it.
+// IMPORTANT
+//    If a bug is encounteded with a given seed, add it to `regressions` so this case gets
+//    always tested afterwards
+// Also adds a new feature "heavy_testing" in order to extend the length of the testing
+pub fn parametric_test<F, T>(
+    duration: std::time::Duration,
+    data: T,
+    regressions: Vec<u64>,
+    test_fct: F,
+) where
+    F: Fn(&T, &mut SmallRng),
+{
+    #[cfg(feature = "heavy_testing")]
+    let duration = duration * 120;
+
+    for reg in regressions {
+        println!("[*] Regression {reg}");
+        let mut rng = SmallRng::seed_from_u64(reg);
+        test_fct(&data, &mut rng);
+    }
+
+    let tstart = std::time::Instant::now();
+    let mut seeder = SmallRng::from_entropy();
+    let mut n = 0;
+    while tstart.elapsed() < duration {
+        let new_seed: u64 = seeder.gen();
+        println!("[{n}] Seed {new_seed}");
+        let mut rng = SmallRng::seed_from_u64(new_seed);
+        test_fct(&data, &mut rng);
+        n += 1;
     }
 }
