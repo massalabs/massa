@@ -43,15 +43,18 @@ It contains:
 
 1. Paid in `massa-module-cache` > `controller.rs` > `load_tmp_module`
 2. Called in `massa-execution-worker` > `execution.rs` > `execute_executesc_op` & `execute_readonly_request`
+3. Called in `massa-execution-worker` > `interface_impl.rs` > `get_tmp_module`, later called by `massa-sc-runtime` `assembly_script_local_execution`
 
 ### Cranelift compilation
 
-Paid by `massa-sc-runtime` corresponding ABIs costs, `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`. These ABIs costs hold the CL compilation cost.
+Paid in `massa-sc-runtime` ABIs costs by `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`. These ABIs produce Cranelift compilations and must have according costs to pay for it.
 
 ### VM & Module instantiation
 
 1. Threshold checked in `massa-module-cache` > `controller.rs` > `load_module` & `load_tmp_module`
-2. Actual cost paid in `massa-sc-runtime`
+2. `load_module` is used in every function calling SCs stored on the chain
+3. `load_tmp_module` is used in every function calling arbitrary code
+4. Actual cost paid in `massa-sc-runtime`
 
 ### Execution
 
