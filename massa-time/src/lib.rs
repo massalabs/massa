@@ -162,7 +162,7 @@ impl MassaTime {
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     /// let now_massa_time : MassaTime = MassaTime::now();
-    /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
+    /// let converted:MassaTime = MassaTime::from_millis(now_duration.as_millis() as u64);
     /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < MassaTime::from_millis(100))
     /// ```
     pub fn now() -> Self {
@@ -370,8 +370,9 @@ impl MassaTime {
     /// assert_eq!(massa_time.format_instant(), String::from("2022-01-01T00:00:00Z"))
     /// ```
     pub fn format_instant(&self) -> String {
-        let naive = OffsetDateTime::from_unix_timestamp((self.as_millis() / 1000) as i64).unwrap();
-        naive.format(&Rfc3339).unwrap()
+        OffsetDateTime::from_unix_timestamp((self.as_millis() / 1000) as i64)
+            .map(|time| time.format(&Rfc3339).unwrap_or_default())
+            .unwrap_or_default()
     }
 
     /// ```
