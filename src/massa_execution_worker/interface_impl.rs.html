@@ -2188,7 +2188,7 @@
 
 <span class="doccomment">/// Helper function that creates a NativeTime from the MassaTime internal representation
 </span><span class="kw">fn </span>massa_time_to_native_time(time: <span class="kw-2">&amp;</span>MassaTime) -&gt; NativeTime {
-    <span class="kw">let </span>milliseconds = time.as_millis();
+    <span class="kw">let </span>milliseconds = time.to_millis();
     NativeTime { milliseconds }
 }
 
@@ -3099,7 +3099,7 @@
             <span class="self">self</span>.config.genesis_timestamp,
             slot,
         )<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(ts.as_millis())
+        <span class="prelude-val">Ok</span>(ts.to_millis())
     }
 
     <span class="doccomment">/// Returns a pseudo-random deterministic `i64` number
@@ -3885,8 +3885,8 @@
         </span>);
 
         <span class="comment">//time
-        </span><span class="kw">let </span>time1 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_millis(<span class="number">1</span>));
-        <span class="kw">let </span>time2 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_millis(<span class="number">2</span>));
+        </span><span class="kw">let </span>time1 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_str(<span class="string">&quot;1&quot;</span>).unwrap());
+        <span class="kw">let </span>time2 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_str(<span class="string">&quot;2&quot;</span>).unwrap());
         <span class="macro">println!</span>(
             <span class="string">&quot;do some compare with time1 = {}, time2 = {}&quot;</span>,
             time1.milliseconds, time2.milliseconds

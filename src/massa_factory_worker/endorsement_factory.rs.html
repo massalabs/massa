@@ -291,7 +291,7 @@
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     </span><span class="kw">fn </span>get_next_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, previous_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;) -&gt; (Slot, Instant) {
         <span class="comment">// get delayed time
-        </span><span class="kw">let </span>now = MassaTime::now();
+        </span><span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
 
         <span class="comment">// if it&#39;s the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         </span><span class="kw">let </span>base_time = <span class="kw">if </span>previous_slot.is_none() {

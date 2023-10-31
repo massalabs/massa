@@ -268,7 +268,7 @@
 
         <span class="comment">// Block is coming from protocol mark it for desync calculation
         </span><span class="kw">if </span>!created {
-            <span class="kw">let </span>now = MassaTime::now();
+            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
             <span class="self">self</span>.protocol_blocks.push_back((now, block_id));
         }
 

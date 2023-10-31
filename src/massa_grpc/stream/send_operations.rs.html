@@ -230,6 +230,14 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -287,7 +295,15 @@
                         )
                         .<span class="kw">await</span>;
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>now = MassaTime::now();
+                        <span class="kw">let </span><span class="prelude-val">Ok</span>(now) = MassaTime::now() <span class="kw">else </span>{
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                <span class="string">&quot;failed to get current time&quot;</span>.to_owned(),
+                            )
+                            .<span class="kw">await</span>;
+                            <span class="kw">continue</span>;
+                        };
                         <span class="kw">let </span><span class="prelude-val">Ok</span>(last_slot) = get_latest_block_slot_at_timestamp(
                             config.thread_count,
                             config.t0,

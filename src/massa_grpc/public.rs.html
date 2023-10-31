@@ -1336,7 +1336,7 @@
     <span class="kw">let </span>caller_address = <span class="kw">match </span>call.caller_address {
         <span class="prelude-val">Some</span>(addr) =&gt; Address::from_str(<span class="kw-2">&amp;</span>addr)<span class="question-mark">?</span>,
         <span class="prelude-val">None </span>=&gt; {
-            <span class="kw">let </span>now = MassaTime::now();
+            <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
             <span class="kw">let </span>keypair = grpc.keypair_factory.create(<span class="kw-2">&amp;</span>(), FactoryStrategy::At(now))<span class="question-mark">?</span>;
             Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key())
         }
@@ -1691,7 +1691,7 @@
         });
 
     <span class="comment">// Get the current cycle and slot.
-    </span><span class="kw">let </span>now: MassaTime = MassaTime::now();
+    </span><span class="kw">let </span>now: MassaTime = MassaTime::now()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -1978,7 +1978,7 @@
     _request: tonic::Request&lt;grpc_api::GetStatusRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetStatusResponse, GrpcError&gt; {
     <span class="kw">let </span>config = CompactConfig::default();
-    <span class="kw">let </span>now = MassaTime::now();
+    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,

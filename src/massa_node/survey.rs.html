@@ -150,6 +150,12 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -234,7 +240,13 @@
 
                                 {
                                            <span class="comment">// update stakers / rolls
-                                    </span><span class="kw">let </span>now = MassaTime::now();
+                                    </span><span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
+                                        <span class="prelude-val">Ok</span>(now) =&gt; now,
+                                        <span class="prelude-val">Err</span>(e) =&gt; {
+                                            <span class="macro">warn!</span>(<span class="string">&quot;MassaSurvey | Failed to get current time: {:?}&quot;</span>, e);
+                                            <span class="kw">continue</span>;
+                                        }
+                                    };
 
                                     <span class="kw">let </span>curr_cycle =
                                         <span class="kw">match </span>get_latest_block_slot_at_timestamp(config.<span class="number">0</span>, config.<span class="number">1</span>, config.<span class="number">2</span>, now)

@@ -1374,7 +1374,7 @@
                 <span class="self">self</span>.config.genesis_timestamp,
                 add_block_slot,
             )<span class="question-mark">?</span>;
-            <span class="kw">let </span>diff = MassaTime::now().saturating_sub(add_slot_timestamp);
+            <span class="kw">let </span>diff = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(add_slot_timestamp);
             <span class="self">self</span>.massa_metrics
                 .set_block_slot_delay(diff.to_duration().as_secs_f64());
         }
@@ -1521,7 +1521,7 @@
             }
 
             <span class="comment">// manage finalized blocks
-            </span><span class="kw">let </span>timestamp = MassaTime::now();
+            </span><span class="kw">let </span>timestamp = MassaTime::now()<span class="question-mark">?</span>;
             <span class="kw">let </span>finalized_blocks = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_final_blocks);
             <span class="kw">let </span><span class="kw-2">mut </span>final_block_slots = HashMap::with_capacity(finalized_blocks.len());
             <span class="kw">let </span><span class="kw-2">mut </span>final_block_stats = VecDeque::with_capacity(finalized_blocks.len());
@@ -1546,7 +1546,7 @@
 
             <span class="comment">// add stale blocks to stats
             </span><span class="kw">let </span>new_stale_block_ids_creators_slots = mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.new_stale_blocks);
-            <span class="kw">let </span>timestamp = MassaTime::now();
+            <span class="kw">let </span>timestamp = MassaTime::now()<span class="question-mark">?</span>;
             <span class="kw">for </span>(_b_id, (_b_creator, _b_slot)) <span class="kw">in </span>new_stale_block_ids_creators_slots.into_iter() {
                 <span class="self">self</span>.stale_block_stats.push_back(timestamp);
             }

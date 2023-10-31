@@ -18,7 +18,7 @@
 <span class="kw">impl </span>From&lt;MassaTime&gt; <span class="kw">for </span>grpc_model::NativeTime {
     <span class="kw">fn </span>from(value: MassaTime) -&gt; <span class="self">Self </span>{
         grpc_model::NativeTime {
-            milliseconds: value.as_millis(),
+            milliseconds: value.to_millis(),
         }
     }
 }

@@ -565,7 +565,7 @@
     <span class="comment">// From there we note new endorsements and propagate them
 
     // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    </span><span class="kw">let </span>now = MassaTime::now();
+    </span><span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     new_endorsements.retain(|_id, endorsement| {
         <span class="kw">match </span>get_block_slot_timestamp(
             config.thread_count,

@@ -251,6 +251,8 @@
 <a href="#251" id="251">251</a>
 <a href="#252" id="252">252</a>
 <a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     net::{IpAddr, SocketAddr},
@@ -457,7 +459,9 @@
             buf.extend_from_slice(<span class="kw-2">&amp;</span>port_bytes);
             buf.push(<span class="kw-2">*</span>listener.<span class="number">1 </span><span class="kw">as </span>u8);
         }
-        <span class="kw">let </span>timestamp = MassaTime::now().as_millis();
+        <span class="kw">let </span>timestamp = MassaTime::now()
+            .expect(<span class="string">&quot;Unable to get MassaTime::now&quot;</span>)
+            .to_millis();
         buf.extend(timestamp.to_be_bytes());
         <span class="kw">let </span>hash = Hash::compute_from(<span class="kw-2">&amp;</span>buf);
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{

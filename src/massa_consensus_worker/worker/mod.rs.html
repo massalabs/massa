@@ -212,7 +212,7 @@
         stale_block_stats: Default::default(),
         protocol_blocks: Default::default(),
         wishlist: Default::default(),
-        launch_time: MassaTime::now(),
+        launch_time: MassaTime::now().unwrap(),
         stats_desync_detection_timespan,
         stats_history_timespan: std::cmp::max(
             stats_desync_detection_timespan,
