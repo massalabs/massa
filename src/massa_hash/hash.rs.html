@@ -460,7 +460,7 @@
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>Hash {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_bs58_check())
+        std::fmt::Display::fmt(<span class="self">self</span>, f)
     }
 }
 

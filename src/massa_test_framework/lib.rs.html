@@ -142,6 +142,7 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
 <span class="kw">use </span>massa_hash::Hash;
@@ -151,7 +152,6 @@
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
     block_id::BlockId,
-    denunciation::Denunciation,
     endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement},
     operation::{
         compute_operations_hash, Operation, OperationIdSerializer, OperationSerializer,
@@ -182,15 +182,17 @@
             .try_init();
     }
 
-    <span class="comment">// TODO: Create a block builder
-    </span><span class="kw">fn </span>create_block(
+    <span class="kw">fn </span>create_block(
         keypair: <span class="kw-2">&amp;</span>KeyPair,
         slot: Slot,
-        operations: Vec&lt;SecureShareOperation&gt;,
-        endorsements: Vec&lt;SecureShareEndorsement&gt;,
-        denunciations: Vec&lt;Denunciation&gt;,
+        operations: <span class="prelude-ty">Option</span>&lt;Vec&lt;SecureShareOperation&gt;&gt;,
+        endorsements: <span class="prelude-ty">Option</span>&lt;Vec&lt;SecureShareEndorsement&gt;&gt;,
     ) -&gt; SecureShareBlock {
-        <span class="kw">let </span>op_ids = operations.iter().map(|op| op.id).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+        <span class="kw">let </span>op_ids = operations
+            .unwrap_or_default()
+            .iter()
+            .map(|op| op.id)
+            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>operation_merkle_root = compute_operations_hash(<span class="kw-2">&amp;</span>op_ids, <span class="kw-2">&amp;</span>OperationIdSerializer::new());
         <span class="kw">let </span>header = BlockHeader::new_verifiable(
             BlockHeader {
@@ -202,8 +204,8 @@
                     BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
                 ],
                 operation_merkle_root,
-                endorsements,
-                denunciations,
+                endorsements: endorsements.unwrap_or_default(),
+                denunciations: Vec::new(),
             },
             BlockHeaderSerializer::new(),
             keypair,
