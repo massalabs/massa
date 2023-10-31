@@ -185,9 +185,6 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 </span><span class="kw">use </span>std::net::SocketAddr;
@@ -256,10 +253,7 @@
     ) -&gt; RpcResult&lt;PagedVecV2&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
-            <span class="prelude-val">Ok</span>(now) =&gt; now,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::TimeError(e).into()),
-        };
+        <span class="kw">let </span>now = MassaTime::now();
 
         <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
             cfg.thread_count,

@@ -147,7 +147,7 @@
             DOWNTIME_END_TIMESTAMP, DOWNTIME_END_TIMESTAMP_BOOTSTRAP, DOWNTIME_START_TIMESTAMP,
         };
 
-        <span class="kw">let </span>now = massa_time::MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
+        <span class="kw">let </span>now = massa_time::MassaTime::now();
 
         <span class="comment">// last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
         </span><span class="kw">let </span>start_time = DOWNTIME_START_TIMESTAMP;

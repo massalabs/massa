@@ -2648,8 +2648,6 @@
 <a href="#2648" id="2648">2648</a>
 <a href="#2649" id="2649">2649</a>
 <a href="#2650" id="2650">2650</a>
-<a href="#2651" id="2651">2651</a>
-<a href="#2652" id="2652">2652</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -4561,7 +4559,7 @@
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
+        <span class="kw">let </span>_time = MassaTime::now();
         <span class="kw">let </span>vs_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>vi_1);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(vs_1.state, ComponentState::Active(<span class="kw">_</span>)));
 
@@ -4618,7 +4616,7 @@
             timeout: MassaTime::from_millis(<span class="number">5</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
+        <span class="kw">let </span>_time = MassaTime::now();
         <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_1);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(ms_1.state, ComponentState::Active(<span class="kw">_</span>)));
 
@@ -4801,7 +4799,7 @@
             timeout: MassaTime::from_millis(<span class="number">5</span>),
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
+        <span class="kw">let </span>_time = MassaTime::now();
         <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_1);
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(ms_1.state, ComponentState::Active(<span class="kw">_</span>)));
         {
@@ -5256,9 +5254,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
         <span class="kw">let </span>activation_delay = MassaTime::from_millis(<span class="number">100</span>);
-        <span class="kw">let </span>timeout = MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from_millis(<span class="number">50_000</span>)); <span class="comment">// + 50 seconds
+        <span class="kw">let </span>timeout = MassaTime::now().saturating_add(MassaTime::from_millis(<span class="number">50_000</span>)); <span class="comment">// + 50 seconds
         </span><span class="kw">let </span>mi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
             version: <span class="number">1</span>,
@@ -5286,7 +5282,7 @@
         <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>mi_, mi_1);
         <span class="macro">assert_matches!</span>(ms_.state, ComponentState::LockedIn(..));
 
-        <span class="kw">let </span><span class="kw-2">mut </span>at = MassaTime::now().unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>at = MassaTime::now();
         at = at.saturating_add(activation_delay);
         <span class="macro">assert_eq!</span>(
             ms_.state_at(at, mi_1.start, mi_1.timeout, mi_1.activation_delay),

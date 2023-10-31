@@ -1169,18 +1169,6 @@
 <a href="#1169" id="1169">1169</a>
 <a href="#1170" id="1170">1170</a>
 <a href="#1171" id="1171">1171</a>
-<a href="#1172" id="1172">1172</a>
-<a href="#1173" id="1173">1173</a>
-<a href="#1174" id="1174">1174</a>
-<a href="#1175" id="1175">1175</a>
-<a href="#1176" id="1176">1176</a>
-<a href="#1177" id="1177">1177</a>
-<a href="#1178" id="1178">1178</a>
-<a href="#1179" id="1179">1179</a>
-<a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
-<a href="#1182" id="1182">1182</a>
-<a href="#1183" id="1183">1183</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1325,9 +1313,7 @@
             <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
                 addr
             } <span class="kw">else </span>{
-                <span class="kw">let </span>now = MassaTime::now().map_err(|e| {
-                    ApiError::InconsistencyError(<span class="macro">format!</span>(<span class="string">&quot;Unable to get current time: {}&quot;</span>, e))
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>now = MassaTime::now();
                 <span class="kw">let </span>keypair = <span class="self">self
                     </span>.<span class="number">0
                     </span>.keypair_factory
@@ -1427,9 +1413,7 @@
             <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
                 addr
             } <span class="kw">else </span>{
-                <span class="kw">let </span>now = MassaTime::now().map_err(|e| {
-                    ApiError::InconsistencyError(<span class="macro">format!</span>(<span class="string">&quot;Unable to get current time: {}&quot;</span>, e))
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>now = MassaTime::now();
                 <span class="kw">let </span>keypair = <span class="self">self
                     </span>.<span class="number">0
                     </span>.keypair_factory
@@ -1527,10 +1511,7 @@
         <span class="kw">let </span>protocol_config = <span class="self">self</span>.<span class="number">0</span>.protocol_config.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
         <span class="kw">let </span>config = CompactConfig::default();
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
-            <span class="prelude-val">Ok</span>(now) =&gt; now,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::TimeError(e).into()),
-        };
+        <span class="kw">let </span>now = MassaTime::now();
 
         <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
@@ -1642,10 +1623,7 @@
     ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt; {
         <span class="kw">let </span>cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
 
-        <span class="kw">let </span>now = <span class="kw">match </span>MassaTime::now() {
-            <span class="prelude-val">Ok</span>(now) =&gt; now,
-            <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::TimeError(e).into()),
-        };
+        <span class="kw">let </span>now = MassaTime::now();
 
         <span class="kw">let </span>latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
             cfg.thread_count,
@@ -2213,9 +2191,7 @@
             api_cfg.max_op_datastore_key_length,
             api_cfg.max_op_datastore_value_length,
         ));
-        <span class="kw">let </span>now = MassaTime::now().map_err(|e| {
-            ApiError::InconsistencyError(<span class="macro">format!</span>(<span class="string">&quot;Unable to get current time: {}&quot;</span>, e))
-        })<span class="question-mark">?</span>;
+        <span class="kw">let </span>now = MassaTime::now();
         <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
             api_cfg.thread_count,
             api_cfg.t0,

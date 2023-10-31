@@ -2193,7 +2193,7 @@
             activation_delay: MassaTime::from_millis(<span class="number">2</span>),
         };
 
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
+        <span class="kw">let </span>_time = MassaTime::now();
         <span class="kw">let </span>state_2 = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>mi_2);
         <span class="kw">let </span>state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(<span class="number">42</span>, <span class="number">100</span>)), <span class="kw-2">&amp;</span>mi_3);
 
@@ -2236,7 +2236,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>all_state_size = <span class="number">0</span>;
 
-        <span class="kw">let </span>_time = MassaTime::now().unwrap();
+        <span class="kw">let </span>_time = MassaTime::now();
         <span class="kw">let </span>store_raw_: Vec&lt;(MipInfo, MipState)&gt; = (<span class="number">0</span>..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += <span class="number">1</span>;
