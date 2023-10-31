@@ -905,12 +905,12 @@
     };
 
     <span class="comment">// handshake
-    </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now();
+    </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now()<span class="question-mark">?</span>;
     <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
     </span>client.handshake(our_version)<span class="question-mark">?</span>;
 
     <span class="comment">// compute ping
-    </span><span class="kw">let </span>ping = MassaTime::now().saturating_sub(send_time_uncompensated);
+    </span><span class="kw">let </span>ping = MassaTime::now()<span class="question-mark">?</span>.saturating_sub(send_time_uncompensated);
     <span class="kw">if </span>ping &gt; cfg.max_ping {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
             <span class="string">&quot;bootstrap ping too high&quot;</span>.into(),
@@ -940,7 +940,7 @@
     };
 
     <span class="comment">// get the time of reception
-    </span><span class="kw">let </span>recv_time = MassaTime::now();
+    </span><span class="kw">let </span>recv_time = MassaTime::now()<span class="question-mark">?</span>;
 
     <span class="comment">// compute ping
     </span><span class="kw">let </span>ping = recv_time.saturating_sub(send_time_uncompensated);
@@ -1094,7 +1094,7 @@
     }
 
     <span class="comment">// if we are before genesis, do not bootstrap
-    </span><span class="kw">if </span>MassaTime::now() &lt; genesis_timestamp {
+    </span><span class="kw">if </span>MassaTime::now()<span class="question-mark">? </span>&lt; genesis_timestamp {
         <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
         <span class="comment">// init final state
         </span>{
@@ -1175,7 +1175,7 @@
         }
         <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
-                <span class="kw">if </span>MassaTime::now() &gt; end {
+                <span class="kw">if </span>MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>) &gt; end {
                     <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
                 }
             }
@@ -1284,7 +1284,7 @@
 <span class="kw">fn </span>warn_user_about_versioning_updates(updated: Vec&lt;MipInfo&gt;, added: BTreeMap&lt;MipInfo, MipState&gt;) {
     <span class="kw">if </span>!added.is_empty() {
         <span class="kw">for </span>(mip_info, mip_state) <span class="kw">in </span>added.iter() {
-            <span class="kw">let </span>now = MassaTime::now();
+            <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;Cannot get current time&quot;</span>);
             <span class="kw">match </span>mip_state.state_at(
                 now,
                 mip_info.start,

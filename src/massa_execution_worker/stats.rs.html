@@ -150,21 +150,21 @@
 
     <span class="doccomment">/// register final blocks
     </span><span class="kw">pub fn </span>register_final_blocks(<span class="kw-2">&amp;mut </span><span class="self">self</span>, count: usize) {
-        <span class="kw">let </span>current_time = MassaTime::now();
+        <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
         <span class="self">self</span>.final_blocks.push_back((count, current_time));
         <span class="self">self</span>.refresh(current_time);
     }
 
     <span class="doccomment">/// register final executed operations
     </span><span class="kw">pub fn </span>register_final_executed_operations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, count: usize) {
-        <span class="kw">let </span>current_time = MassaTime::now();
+        <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
         <span class="self">self</span>.final_executed_ops.push_back((count, current_time));
         <span class="self">self</span>.refresh(current_time);
     }
 
     <span class="doccomment">/// register final executed denunciations
     </span><span class="kw">pub fn </span>register_final_executed_denunciations(<span class="kw-2">&amp;mut </span><span class="self">self</span>, count: usize) {
-        <span class="kw">let </span>current_time = MassaTime::now();
+        <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
         <span class="self">self</span>.final_executed_denunciations
             .push_back((count, current_time));
         <span class="self">self</span>.refresh(current_time);
@@ -172,7 +172,7 @@
 
     <span class="doccomment">/// get statistics
     </span><span class="kw">pub fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>, active_cursor: Slot, final_cursor: Slot) -&gt; ExecutionStats {
-        <span class="kw">let </span>current_time = MassaTime::now();
+        <span class="kw">let </span>current_time = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
         <span class="kw">let </span>start_time = current_time.saturating_sub(<span class="self">self</span>.time_window_duration);
         <span class="kw">let </span>map_func = |pair: <span class="kw-2">&amp;</span>(usize, MassaTime)| -&gt; usize {
             <span class="kw">let </span>(cnt, t) = pair;

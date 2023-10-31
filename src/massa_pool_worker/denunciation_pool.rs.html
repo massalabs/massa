@@ -477,7 +477,7 @@
             </span><span class="kw">return</span>;
         }
 
-        <span class="kw">let </span>now = MassaTime::now();
+        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
 
         <span class="comment">// get closest slot according to the current absolute time
         </span><span class="kw">let </span>slot_now = get_closest_slot_to_timestamp(

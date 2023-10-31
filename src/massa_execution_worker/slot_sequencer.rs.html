@@ -760,6 +760,10 @@
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
 <a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -950,7 +954,9 @@
     /// Note that this time cursor is shifted by `self.config.cursor_delay`
     /// to avoid computing speculative slots that are too recent, and therefore subject to frequent re-writes.
     </span><span class="kw">fn </span>get_time_cursor(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Slot {
-        <span class="kw">let </span>shifted_now = MassaTime::now().saturating_sub(<span class="self">self</span>.config.cursor_delay);
+        <span class="kw">let </span>shifted_now = MassaTime::now()
+            .expect(<span class="string">&quot;could not get current time&quot;</span>)
+            .saturating_sub(<span class="self">self</span>.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
             <span class="self">self</span>.config.thread_count,
             <span class="self">self</span>.config.t0,
@@ -1497,12 +1503,14 @@
         // This means that we are still waiting for `Self::update` to be called for the first time.
         // To avoid CPU-intensive loops upstream, just register a wake-up after a single slot delay (t0/T).
         </span><span class="kw">if </span><span class="self">self</span>.sequence.is_empty() {
-            <span class="kw">return </span>MassaTime::now().saturating_add(
-                <span class="self">self</span>.config
-                    .t0
-                    .checked_div_u64(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
-                    .unwrap(),
-            );
+            <span class="kw">return </span>MassaTime::now()
+                .expect(<span class="string">&quot;could not get current time&quot;</span>)
+                .saturating_add(
+                    <span class="self">self</span>.config
+                        .t0
+                        .checked_div_u64(<span class="self">self</span>.config.thread_count <span class="kw">as </span>u64)
+                        .unwrap(),
+                );
         }
 
         <span class="comment">// Compute the next slot after the current time cursor.

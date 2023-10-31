@@ -645,7 +645,7 @@
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_, <span class="prelude-val">Err</span>(FactoryError::OnStateNotReady(<span class="number">2</span>))));
 
         <span class="comment">// Advance state 1 to Active
-        </span><span class="kw">let </span>_time = MassaTime::now();
+        </span><span class="kw">let </span>_time = MassaTime::now().unwrap();
         <span class="kw">let </span>vs_1_new = advance_state_until(ComponentState::active(_time), <span class="kw-2">&amp;</span>vi_1);
         <span class="comment">// Create a new factory
         </span><span class="kw">let </span>info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
@@ -661,7 +661,7 @@
             <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>]
         );
         <span class="comment">// assert_eq!(fa.get_latest_component_version(), 1);
-        </span><span class="kw">let </span>addr_b = fa.create(<span class="kw-2">&amp;</span>args, FactoryStrategy::At(MassaTime::now()));
+        </span><span class="kw">let </span>addr_b = fa.create(<span class="kw-2">&amp;</span>args, FactoryStrategy::At(MassaTime::now().unwrap()));
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(addr_b, <span class="prelude-val">Ok</span>(TestAddress::V1(<span class="kw">_</span>))));
 
         <span class="comment">// Error if not enough args
@@ -678,7 +678,7 @@
     </span><span class="kw">fn </span>test_factory_strategy_at() {
         <span class="comment">// Test factory &amp; FactoryStrategy::At(...)
 
-        </span><span class="kw">let </span>_time = MassaTime::now();
+        </span><span class="kw">let </span>_time = MassaTime::now().unwrap();
         <span class="kw">let </span>vi_1 = MipInfo {
             name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
             version: <span class="number">1</span>,

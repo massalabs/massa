@@ -392,7 +392,7 @@
     t0: MassaTime,
     genesis_timestamp: MassaTime,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, ModelsError&gt; {
-    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now())
+    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now()<span class="question-mark">?</span>)
 }
 
 <span class="doccomment">/// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end

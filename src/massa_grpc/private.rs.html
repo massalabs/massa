@@ -700,7 +700,7 @@
     _request: tonic::Request&lt;grpc_api::GetNodeStatusRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetNodeStatusResponse, GrpcError&gt; {
     <span class="kw">let </span>config = CompactConfig::default();
-    <span class="kw">let </span>now = MassaTime::now();
+    <span class="kw">let </span>now = MassaTime::now()<span class="question-mark">?</span>;
     <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,

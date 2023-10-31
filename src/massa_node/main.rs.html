@@ -1588,7 +1588,7 @@
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    <span class="kw">let </span>now = MassaTime::now();
+    <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get now time&quot;</span>);
     <span class="comment">// Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
     </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;sandbox&quot;</span>), not(feature = <span class="string">&quot;bootstrap_server&quot;</span>)))]
