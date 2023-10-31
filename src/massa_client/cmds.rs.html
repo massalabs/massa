@@ -2470,7 +2470,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = end {
                     <span class="kw">let </span>(days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()<span class="question-mark">?</span>).days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
+                        e.saturating_sub(MassaTime::now()).days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
 
                     </span><span class="kw">let _ </span>= <span class="macro">write!</span>(res, <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, days, hours, mins, secs);
                 } <span class="kw">else </span>{

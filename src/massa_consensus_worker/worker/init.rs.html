@@ -416,7 +416,7 @@
         init_graph: <span class="prelude-ty">Option</span>&lt;BootstrapableGraph&gt;,
         storage: Storage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ConsensusError&gt; {
-        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;Couldn&#39;t init timer consensus&quot;</span>);
+        <span class="kw">let </span>now = MassaTime::now();
         <span class="kw">let </span>previous_slot = get_latest_block_slot_at_timestamp(
             config.thread_count,
             config.t0,

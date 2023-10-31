@@ -250,7 +250,7 @@
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     </span><span class="kw">fn </span>get_next_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, previous_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;) -&gt; (Slot, Instant) {
         <span class="comment">// get current absolute time
-        </span><span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+        </span><span class="kw">let </span>now = MassaTime::now();
 
         <span class="comment">// get closest slot according to the current absolute time
         </span><span class="kw">let </span><span class="kw-2">mut </span>next_slot = get_closest_slot_to_timestamp(
@@ -323,7 +323,7 @@
                         }
                     };
                     <span class="kw">if </span>last_prune.elapsed().as_millis()
-                        &gt; <span class="self">self</span>.config.block_db_prune_interval.to_millis() <span class="kw">as </span>u128
+                        &gt; <span class="self">self</span>.config.block_db_prune_interval.as_millis() <span class="kw">as </span>u128
                     {
                         <span class="self">self</span>.shared_state
                             .write()

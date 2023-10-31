@@ -806,7 +806,7 @@
                                     <span class="bool-val">true
                                 </span>}).count());
                                 {
-                                    <span class="kw">let </span>now = MassaTime::now().unwrap();
+                                    <span class="kw">let </span>now = MassaTime::now();
                                     <span class="kw">let </span>db = db.clone();
                                     <span class="comment">// receive new listener to test
                                     </span><span class="kw">for </span>(addr, <span class="kw">_</span>) <span class="kw">in </span>listener.<span class="number">1</span>.iter() {
@@ -900,7 +900,7 @@
                                 db_write.get_peers_in_test(),
                             ) {
                                 db_write.insert_peer_in_test(<span class="kw-2">&amp;</span>listener);
-                                db_write.insert_tested_address(<span class="kw-2">&amp;</span>listener, MassaTime::now().unwrap());
+                                db_write.insert_tested_address(<span class="kw-2">&amp;</span>listener, MassaTime::now());
                                 listener
                             } <span class="kw">else </span>{
                                 <span class="kw">continue</span>;
