@@ -283,6 +283,19 @@ impl Interface for InterfaceImpl {
         Ok((module, remaining_gas))
     }
 
+    /// Compile and return a temporary module
+    ///
+    /// # Returns
+    /// A `massa-sc-runtime` compiled module
+    fn get_tmp_module(&self, bytecode: &[u8], limit: u64) -> Result<(RuntimeModule, u64)> {
+        let context = context_guard!(self);
+        let (module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, limit)?;
+        Ok((module, remaining_gas))
+    }
+
     /// Gets the balance of the current address address (top of the stack).
     ///
     /// # Returns
