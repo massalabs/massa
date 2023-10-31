@@ -40,9 +40,9 @@ async fn transactions_throughput_stream() {
     exec_ctrl.expect_clone_box().returning(|| {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
-            let now = MassaTime::now().unwrap();
+            let now = MassaTime::now();
             let futur = MassaTime::from_millis(
-                now.to_millis()
+                now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
@@ -67,9 +67,9 @@ async fn transactions_throughput_stream() {
     exec_ctrl.expect_clone_box().returning(|| {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
-            let now = MassaTime::now().unwrap();
+            let now = MassaTime::now();
             let futur = MassaTime::from_millis(
-                now.to_millis()
+                now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 

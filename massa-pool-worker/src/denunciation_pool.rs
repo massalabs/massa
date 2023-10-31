@@ -68,7 +68,7 @@ impl DenunciationPool {
             return;
         }
 
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
 
         // get closest slot according to the current absolute time
         let slot_now = get_closest_slot_to_timestamp(

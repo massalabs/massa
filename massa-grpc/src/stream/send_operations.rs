@@ -55,15 +55,7 @@ pub(crate) async fn send_operations(
                         )
                         .await;
                     } else {
-                        let Ok(now) = MassaTime::now() else {
-                            report_error(
-                                tx.clone(),
-                                tonic::Code::InvalidArgument,
-                                "failed to get current time".to_owned(),
-                            )
-                            .await;
-                            continue;
-                        };
+                        let now = MassaTime::now();
                         let Ok(last_slot) = get_latest_block_slot_at_timestamp(
                             config.thread_count,
                             config.t0,

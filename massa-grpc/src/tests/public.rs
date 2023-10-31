@@ -77,8 +77,8 @@ async fn get_transactions_throughput() {
 
     let mut exec_ctrl = Box::new(MockExecutionController::new());
     exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
-        time_window_start: MassaTime::now().unwrap(),
-        time_window_end: MassaTime::now().unwrap(),
+        time_window_start: MassaTime::now(),
+        time_window_end: MassaTime::now(),
         final_block_count: 0,
         final_executed_operations_count: 0,
         active_cursor: Slot::new(0, 0),

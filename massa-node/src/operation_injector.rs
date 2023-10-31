@@ -24,7 +24,7 @@ pub fn start_operation_injector(
 ) {
     let mut wait = genesis_timestamp
         .clone()
-        .saturating_sub(MassaTime::now().unwrap())
+        .saturating_sub(MassaTime::now())
         .saturating_add(MassaTime::from_millis(1000))
         .to_duration();
     if wait < Duration::from_secs(20) {
@@ -42,12 +42,8 @@ pub fn start_operation_injector(
     let mut init_ops = vec![];
     while wallets_created.iter().any(|e| *e == false) {
         let keypair = KeyPair::generate(0).unwrap();
-        let final_slot = get_closest_slot_to_timestamp(
-            THREAD_COUNT,
-            T0,
-            genesis_timestamp,
-            MassaTime::now().unwrap(),
-        );
+        let final_slot =
+            get_closest_slot_to_timestamp(THREAD_COUNT, T0, genesis_timestamp, MassaTime::now());
         let addr = Address::from_public_key(&keypair.get_public_key());
         let index: usize = addr.get_thread(THREAD_COUNT) as usize;
         if !wallets_created[index] {
@@ -90,7 +86,7 @@ pub fn start_operation_injector(
                 THREAD_COUNT,
                 T0,
                 genesis_timestamp,
-                MassaTime::now().unwrap(),
+                MassaTime::now(),
             );
             let mut ops = vec![];
 

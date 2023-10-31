@@ -204,9 +204,7 @@ impl Announcement {
             buf.extend_from_slice(&port_bytes);
             buf.push(*listener.1 as u8);
         }
-        let timestamp = MassaTime::now()
-            .expect("Unable to get MassaTime::now")
-            .to_millis();
+        let timestamp = MassaTime::now().as_millis();
         buf.extend(timestamp.to_be_bytes());
         let hash = Hash::compute_from(&buf);
         Ok(Self {

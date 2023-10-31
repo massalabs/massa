@@ -554,9 +554,7 @@ fn test_bootstrap_server() {
         final_state_client_clone,
         mock_remote_connector,
         Version::from_str("TEST.1.10").unwrap(),
-        MassaTime::now()
-            .unwrap()
-            .saturating_sub(MassaTime::from_millis(1000)),
+        MassaTime::now().saturating_sub(MassaTime::from_millis(1000)),
         None,
         None,
         Arc::new((Mutex::new(false), Condvar::new())),

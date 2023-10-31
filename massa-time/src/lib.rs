@@ -10,13 +10,10 @@ use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64Va
 use nom::error::{context, ContextError, ParseError};
 use nom::IResult;
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::ops::Bound;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
-};
 use time::format_description::well_known::Rfc3339;
 use time::{Date, OffsetDateTime};
 
@@ -61,7 +58,7 @@ impl Serializer<MassaTime> for MassaTimeSerializer {
         value: &MassaTime,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.u64_serializer.serialize(&value.to_millis(), buffer)
+        self.u64_serializer.serialize(&value.as_millis(), buffer)
     }
 }
 
@@ -77,15 +74,15 @@ impl MassaTimeDeserializer {
     /// * range: minimum value for the time to deserialize
     pub fn new(range: (Bound<MassaTime>, Bound<MassaTime>)) -> Self {
         let min = match range.0 {
-            Bound::Included(x) => Bound::Included(x.to_millis()),
-            Bound::Excluded(x) => Bound::Excluded(x.to_millis()),
+            Bound::Included(x) => Bound::Included(x.as_millis()),
+            Bound::Excluded(x) => Bound::Excluded(x.as_millis()),
             Bound::Unbounded => Bound::Included(0),
         };
 
         let max = match range.1 {
-            Bound::Included(x) => Bound::Included(x.to_millis()),
-            Bound::Excluded(x) => Bound::Excluded(x.to_millis()),
-            Bound::Unbounded => Bound::Included(MassaTime::max().to_millis()),
+            Bound::Included(x) => Bound::Included(x.as_millis()),
+            Bound::Excluded(x) => Bound::Excluded(x.as_millis()),
+            Bound::Unbounded => Bound::Included(MassaTime::max().as_millis()),
         };
 
         Self {
@@ -123,29 +120,7 @@ impl Deserializer<MassaTime> for MassaTimeDeserializer {
 
 impl fmt::Display for MassaTime {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_millis())
-    }
-}
-
-impl TryFrom<Duration> for MassaTime {
-    type Error = TimeError;
-
-    /// Conversion from `std::time::Duration`.
-    /// ```
-    /// # use std::time::Duration;
-    /// # use massa_time::*;
-    /// # use std::convert::TryFrom;
-    /// let duration: Duration = Duration::from_millis(42);
-    /// let time : MassaTime = MassaTime::from_millis(42);
-    /// assert_eq!(time, MassaTime::try_from(duration).unwrap());
-    /// ```
-    fn try_from(value: Duration) -> Result<Self, Self::Error> {
-        Ok(MassaTime(
-            value
-                .as_millis()
-                .try_into()
-                .map_err(|_| TimeError::ConversionError)?,
-        ))
+        write!(f, "{}", self.as_millis())
     }
 }
 
@@ -162,26 +137,6 @@ impl From<MassaTime> for Duration {
     /// ```
     fn from(value: MassaTime) -> Self {
         value.to_duration()
-    }
-}
-
-impl FromStr for MassaTime {
-    type Err = crate::TimeError;
-
-    /// Conversion from `&str`.
-    ///
-    /// ```
-    /// # use massa_time::*;
-    /// # use std::str::FromStr;
-    /// let duration: &str = "42";
-    /// let time : MassaTime = MassaTime::from_millis(42);
-    ///
-    /// assert_eq!(time, MassaTime::from_str(duration).unwrap());
-    /// ```
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(MassaTime(
-            u64::from_str(s).map_err(|_| Self::Err::ConversionError)?,
-        ))
     }
 }
 
@@ -206,18 +161,18 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// let now_duration : Duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-    /// let now_massa_time : MassaTime = MassaTime::now().unwrap();
+    /// let now_massa_time : MassaTime = MassaTime::now();
     /// let converted  :MassaTime = MassaTime::try_from(now_duration).unwrap();
     /// assert!(max(now_massa_time.saturating_sub(converted), converted.saturating_sub(now_massa_time)) < MassaTime::from_millis(100))
     /// ```
-    pub fn now() -> Result<Self, TimeError> {
-        let now: u64 = SystemTime::now()
+    pub fn now() -> Self {
+        let now_millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|_| TimeError::TimeOverflowError)?
+            .expect("could not get duration since UNIX_EPOCH")
             .as_millis()
             .try_into()
-            .map_err(|_| TimeError::TimeOverflowError)?;
-        Ok(MassaTime(now))
+            .expect("could fit current time into its underlying representation");
+        MassaTime::from_millis(now_millis)
     }
 
     /// Conversion to `std::time::Duration`.
@@ -237,10 +192,10 @@ impl MassaTime {
     /// ```
     /// # use massa_time::*;
     /// let time : MassaTime = MassaTime::from_millis(42);
-    /// let res: u64 = time.to_millis();
+    /// let res: u64 = time.as_millis();
     /// assert_eq!(res, 42);
     /// ```
-    pub const fn to_millis(&self) -> u64 {
+    pub const fn as_millis(&self) -> u64 {
         self.0
     }
 
@@ -250,7 +205,7 @@ impl MassaTime {
     /// # use std::convert::TryFrom;
     /// # use std::cmp::max;
     /// # use std::time::Instant;
-    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now().unwrap(), Instant::now());
+    /// let (cur_timestamp, cur_instant): (MassaTime, Instant) = (MassaTime::now(), Instant::now());
     /// let massa_time_instant: Instant = cur_timestamp.estimate_instant().unwrap();
     /// assert!(max(
     ///     massa_time_instant.saturating_duration_since(cur_instant),
@@ -258,7 +213,7 @@ impl MassaTime {
     /// ) < std::time::Duration::from_millis(10))
     /// ```
     pub fn estimate_instant(self) -> Result<Instant, TimeError> {
-        let (cur_timestamp, cur_instant) = (MassaTime::now()?, Instant::now());
+        let (cur_timestamp, cur_instant) = (MassaTime::now(), Instant::now());
         if self >= cur_timestamp {
             cur_instant.checked_add(self.saturating_sub(cur_timestamp).to_duration())
         } else {
@@ -415,7 +370,7 @@ impl MassaTime {
     /// assert_eq!(massa_time.format_instant(), String::from("2022-01-01T00:00:00Z"))
     /// ```
     pub fn format_instant(&self) -> String {
-        let naive = OffsetDateTime::from_unix_timestamp((self.to_millis() / 1000) as i64).unwrap();
+        let naive = OffsetDateTime::from_unix_timestamp((self.as_millis() / 1000) as i64).unwrap();
         naive.format(&Rfc3339).unwrap()
     }
 
