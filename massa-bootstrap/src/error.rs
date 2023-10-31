@@ -10,6 +10,7 @@ use massa_hash::MassaHashError;
 use massa_pos_exports::PosError;
 use massa_protocol_exports::ProtocolError;
 use massa_serialization::SerializeError;
+use massa_time::TimeError;
 use thiserror::Error;
 
 #[non_exhaustive]
@@ -42,6 +43,8 @@ pub enum BootstrapError {
     MassaConsensusError(#[from] ConsensusError),
     /// `massa_signature` error {0}
     MassaSignatureError(#[from] massa_signature::MassaSignatureError),
+    /// time error: {0}
+    TimeError(#[from] TimeError),
     /// protocol error: {0}
     ProtocolError(#[from] ProtocolError),
     /// final state error: {0}
