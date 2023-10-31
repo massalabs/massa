@@ -764,13 +764,6 @@
 <a href="#764" id="764">764</a>
 <a href="#765" id="765">765</a>
 <a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -792,9 +785,9 @@
     <span class="doccomment">/// Slot
     </span>slot: Slot,
     <span class="doccomment">/// Whether the slot is CSS-final
-    </span>consensus_final: bool,
+    </span>css_final: bool,
     <span class="doccomment">/// Whether the slot is SCE-final
-    </span>execution_final: bool,
+    </span>sce_final: bool,
     <span class="doccomment">/// Content of the slot (None if miss, otherwise block ID and associated metadata)
     </span>content: <span class="prelude-ty">Option</span>&lt;(BlockId, ExecutionBlockMetadata)&gt;,
 }
@@ -822,10 +815,10 @@
     </span>sequence: VecDeque&lt;SlotInfo&gt;,
 
     <span class="doccomment">/// latest CSS-final slots (one per thread)
-    </span>latest_consensus_final_slots: Vec&lt;Slot&gt;,
+    </span>latest_css_final_slots: Vec&lt;Slot&gt;,
 
     <span class="doccomment">/// latest SCE-final slot
-    </span>latest_execution_final_slot: Slot,
+    </span>latest_sce_final_slot: Slot,
 
     <span class="doccomment">/// final slot execution cursor
     </span>latest_executed_final_slot: Slot,
@@ -844,10 +837,10 @@
     </span><span class="kw">pub fn </span>new(config: ExecutionConfig, final_cursor: Slot) -&gt; <span class="self">Self </span>{
         SlotSequencer {
             sequence: Default::default(),
-            latest_consensus_final_slots: (<span class="number">0</span>..config.thread_count)
+            latest_css_final_slots: (<span class="number">0</span>..config.thread_count)
                 .map(|t| Slot::new(config.last_start_period, t))
                 .collect(),
-            latest_execution_final_slot: final_cursor,
+            latest_sce_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
             config,
@@ -860,29 +853,29 @@
     ///
     /// # Arguments
     ///
-    /// `initial_consensus_final_blocks`: the list of CSS-final blocks (must not be empty)
+    /// `initial_css_final_blocks`: the list of CSS-final blocks (must not be empty)
     /// `initial_blockclique`: initial blockclique, usually empty except on major bootstrap latency
-    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_consensus_final_blocks` and `initial_blockclique`
+    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_css_final_blocks` and `initial_blockclique`
     </span><span class="kw">fn </span>init(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        <span class="kw-2">mut </span>initial_consensus_final_blocks: HashMap&lt;Slot, BlockId&gt;,
+        <span class="kw-2">mut </span>initial_css_final_blocks: HashMap&lt;Slot, BlockId&gt;,
         <span class="kw-2">mut </span>initial_blockclique: HashMap&lt;Slot, BlockId&gt;,
         <span class="kw-2">mut </span>blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
         <span class="comment">// Compute the latest CSS-final slots
-        </span><span class="kw">for </span>(s, <span class="kw">_</span>) <span class="kw">in </span>initial_consensus_final_blocks.iter() {
-            <span class="kw">if </span>s.period &gt; <span class="self">self</span>.latest_consensus_final_slots[s.thread <span class="kw">as </span>usize].period {
-                <span class="self">self</span>.latest_consensus_final_slots[s.thread <span class="kw">as </span>usize] = <span class="kw-2">*</span>s;
+        </span><span class="kw">for </span>(s, <span class="kw">_</span>) <span class="kw">in </span>initial_css_final_blocks.iter() {
+            <span class="kw">if </span>s.period &gt; <span class="self">self</span>.latest_css_final_slots[s.thread <span class="kw">as </span>usize].period {
+                <span class="self">self</span>.latest_css_final_slots[s.thread <span class="kw">as </span>usize] = <span class="kw-2">*</span>s;
             }
         }
 
         <span class="comment">// Build the slot sequence
 
         // Get the starting slot of the sequence: the earliest CSS-final slot
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="kw-2">*</span>initial_consensus_final_blocks
+        </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="kw-2">*</span>initial_css_final_blocks
             .keys()
             .min()
-            .expect(<span class="string">&quot;init call should be done with non-empty new_consensus_final_blocks&quot;</span>);
+            .expect(<span class="string">&quot;init call should be done with non-empty new_css_final_blocks&quot;</span>);
 
         <span class="comment">// Compute the maximal slot until which the slot sequence is useful.
         // This is the max between the latest CSS-final slot, the latest blockclique slot,
@@ -890,10 +883,10 @@
         </span><span class="kw">let </span>max_slot = std::cmp::max(
             std::cmp::max(
                 <span class="kw-2">*</span><span class="self">self
-                    </span>.latest_consensus_final_slots
+                    </span>.latest_css_final_slots
                     .iter()
                     .max()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
+                    .expect(<span class="string">&quot;latest_css_final_slots is empty&quot;</span>),
                 initial_blockclique
                     .keys()
                     .max()
@@ -906,16 +899,16 @@
         <span class="comment">// Iterate from the starting slot to the `max_slot` to build the slot sequence.
         </span><span class="kw">while </span>slot &lt;= max_slot {
             <span class="comment">// If the slot is rearlier than (or equal to) the latest CSS-final slot in that thread =&gt; mark the slot as CSS-final
-            </span><span class="kw">let </span>consensus_final = slot &lt;= <span class="self">self</span>.latest_consensus_final_slots[slot.thread <span class="kw">as </span>usize];
+            </span><span class="kw">let </span>css_final = slot &lt;= <span class="self">self</span>.latest_css_final_slots[slot.thread <span class="kw">as </span>usize];
 
             <span class="comment">// If the slot is before (or equal to) the latest SCE-final slot =&gt; mark the slot as SCE-final.
-            // Note that `self.latest_execution_final_slot` was initialized in `Self::new`.
-            </span><span class="kw">let </span>execution_final = slot &lt;= <span class="self">self</span>.latest_execution_final_slot;
+            // Note that `self.latest_sce_final_slot` was initialized in `Self::new`.
+            </span><span class="kw">let </span>sce_final = slot &lt;= <span class="self">self</span>.latest_sce_final_slot;
 
-            <span class="comment">// Gather the content of the slot by looking for a block at that slot inside `initial_consensus_final_blocks` (and remove it from there if found).
+            <span class="comment">// Gather the content of the slot by looking for a block at that slot inside `initial_css_final_blocks` (and remove it from there if found).
             // If not found, look into `initial_blockclique` (and remove it from there if found).
             // If still not found, assume a miss (content = None).
-            </span><span class="kw">let </span>content = initial_consensus_final_blocks
+            </span><span class="kw">let </span>content = initial_css_final_blocks
                 .remove(<span class="kw-2">&amp;</span>slot)
                 .or_else(|| initial_blockclique.remove(<span class="kw-2">&amp;</span>slot))
                 .map(|b_id| {
@@ -932,8 +925,8 @@
             <span class="comment">// Build the `SlotInfo` for that slot and add it to the sequence
             </span><span class="self">self</span>.sequence.push_back(SlotInfo {
                 slot,
-                consensus_final,
-                execution_final,
+                css_final,
+                sce_final,
                 content,
             });
 
@@ -943,8 +936,8 @@
                 .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
         }
         <span class="comment">// Explicitly consume tainted containers to prevent mistakes caused by using them later.
-        </span><span class="kw">if </span>initial_consensus_final_blocks.into_iter().next().is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in consensus_final_blocks after slot sequencing&quot;</span>);
+        </span><span class="kw">if </span>initial_css_final_blocks.into_iter().next().is_some() {
+            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in css_final_blocks after slot sequencing&quot;</span>);
         }
         <span class="kw">if </span>initial_blockclique.into_iter().next().is_some() {
             <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in blockclique after slot sequencing&quot;</span>);
@@ -978,21 +971,21 @@
     /// This function is also called on time slots to ensure new slots are taken into account even if they don&#39;t contain a block.
     ///
     /// # Arguments
-    /// * `new_consensus_final_blocks`: new CSS-finalized blocks
+    /// * `new_css_final_blocks`: new CSS-finalized blocks
     /// * `new_blockclique`: new blockclique (if changed since the last call to this method, otherwise None)
     /// * `new_blocks_metadata`: metadata for blocks that have not been seen previously by the sequencer
     </span><span class="kw">pub fn </span>update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        <span class="kw-2">mut </span>new_consensus_final_blocks: HashMap&lt;Slot, BlockId&gt;,
+        <span class="kw-2">mut </span>new_css_final_blocks: HashMap&lt;Slot, BlockId&gt;,
         <span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
         <span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
         <span class="comment">// If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
         </span><span class="kw">if </span><span class="self">self</span>.sequence.is_empty() {
-            <span class="kw">if </span>!new_consensus_final_blocks.is_empty() {
+            <span class="kw">if </span>!new_css_final_blocks.is_empty() {
                 <span class="self">self</span>.init(
-                    new_consensus_final_blocks,
+                    new_css_final_blocks,
                     new_blockclique.unwrap_or_default(),
                     new_blocks_metadata,
                 );
@@ -1001,16 +994,16 @@
         }
 
         <span class="comment">// Update the list of latest CSS-final slots
-        </span><span class="kw">for </span>(s, <span class="kw">_</span>) <span class="kw">in </span>new_consensus_final_blocks.iter() {
-            <span class="kw">if </span>s.period &gt; <span class="self">self</span>.latest_consensus_final_slots[s.thread <span class="kw">as </span>usize].period {
-                <span class="self">self</span>.latest_consensus_final_slots[s.thread <span class="kw">as </span>usize] = <span class="kw-2">*</span>s;
+        </span><span class="kw">for </span>(s, <span class="kw">_</span>) <span class="kw">in </span>new_css_final_blocks.iter() {
+            <span class="kw">if </span>s.period &gt; <span class="self">self</span>.latest_css_final_slots[s.thread <span class="kw">as </span>usize].period {
+                <span class="self">self</span>.latest_css_final_slots[s.thread <span class="kw">as </span>usize] = <span class="kw-2">*</span>s;
             }
         }
 
         <span class="comment">// Build the slot sequence:.
         // For this, we build a new slot sequence (`new_sequence`) that replaces the old `self.slot_sequence`.
         // For performance, we build the new sequence by recycling elements from the old `self.sequence`
-        // and gathering new ones from `new_consensus_final_blocks` and `new_blockclique`.
+        // and gathering new ones from `new_css_final_blocks` and `new_blockclique`.
 
         // Get earliest useful slot to start the new sequence from (eg. the earliest slot of the previous sequence)
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self
@@ -1027,10 +1020,10 @@
         </span><span class="kw">let </span>max_slot = std::cmp::max(
             std::cmp::max(
                 <span class="kw-2">*</span><span class="self">self
-                    </span>.latest_consensus_final_slots
+                    </span>.latest_css_final_slots
                     .iter()
                     .max()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
+                    .expect(<span class="string">&quot;latest_css_final_slots is empty&quot;</span>),
                 new_blockclique
                     .as_ref()
                     .and_then(|bq| bq.keys().max().copied())
@@ -1053,30 +1046,25 @@
         // The very first slot of the sequence must be SCE-final,
         // and as soon as we reach a slot that is not SCE-final,
         // this variable is set to `false` and remains like this until the end of the loop.
-        </span><span class="kw">let </span><span class="kw-2">mut </span>in_execution_finality = <span class="bool-val">true</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>in_sce_finality = <span class="bool-val">true</span>;
 
         <span class="comment">// Loop over the slots to build the new sequence
         </span><span class="kw">while </span>slot &lt;= max_slot {
             <span class="comment">// The slot is now CSS-final if it is before or at the latest CSS-final slot in its own thread
-            </span><span class="kw">let </span><span class="kw-2">mut </span>new_consensus_final =
-                slot &lt;= <span class="self">self</span>.latest_consensus_final_slots[slot.thread <span class="kw">as </span>usize];
+            </span><span class="kw">let </span><span class="kw-2">mut </span>new_css_final = slot &lt;= <span class="self">self</span>.latest_css_final_slots[slot.thread <span class="kw">as </span>usize];
 
             <span class="comment">// the slot S is also CSS-final if there is any CSS-final slot S&#39; in any thread so that t(S&#39;) &gt;= t(S) + t0
-            </span><span class="kw">if </span>!new_consensus_final {
-                new_consensus_final =
-                    <span class="self">self</span>.latest_consensus_final_slots
-                        .iter()
-                        .any(|consensus_final_slot| {
-                            consensus_final_slot
-                                .slots_since(<span class="kw-2">&amp;</span>slot, <span class="self">self</span>.config.thread_count)
-                                .unwrap_or_default()
-                                &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
-                        });
+            </span><span class="kw">if </span>!new_css_final {
+                new_css_final = <span class="self">self</span>.latest_css_final_slots.iter().any(|css_final_slot| {
+                    css_final_slot
+                        .slots_since(<span class="kw-2">&amp;</span>slot, <span class="self">self</span>.config.thread_count)
+                        .unwrap_or_default()
+                        &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
+                });
             }
 
             <span class="comment">// Try to get a block at the current slot by consuming it from the new CSS-final blocks.
-            </span><span class="kw">let </span>new_consensus_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt; =
-                new_consensus_final_blocks.remove(<span class="kw-2">&amp;</span>slot);
+            </span><span class="kw">let </span>new_css_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt; = new_css_final_blocks.remove(<span class="kw-2">&amp;</span>slot);
 
             <span class="comment">// Check if we were notified of a blockclique change.
             </span><span class="kw">let </span>blockclique_updated = new_blockclique.is_some();
@@ -1098,23 +1086,23 @@
             </span><span class="kw">let </span>(seq_item, seq_item_overwrites_history) = SlotSequencer::sequence_build_step(
                 slot,
                 prev_item,
-                new_consensus_final,
-                new_consensus_final_block,
+                new_css_final,
+                new_css_final_block,
                 blockclique_updated,
                 new_blockclique_block,
                 <span class="kw-2">&amp;mut </span>new_blocks_metadata,
-                in_execution_finality,
+                in_sce_finality,
             );
 
             <span class="comment">// If the computed slot is not SCE-final =&gt; all subsequent slots are not SCE-final
-            </span>in_execution_finality = in_execution_finality &amp;&amp; seq_item.execution_final;
+            </span>in_sce_finality = in_sce_finality &amp;&amp; seq_item.sce_final;
 
             <span class="comment">// Append the slot to the new sequence.
             </span>new_sequence.push_back(seq_item);
 
             <span class="comment">// If this slot is SCE-final =&gt; update the latest SCE-final slot
-            </span><span class="kw">if </span>in_execution_finality {
-                <span class="self">self</span>.latest_execution_final_slot = slot;
+            </span><span class="kw">if </span>in_sce_finality {
+                <span class="self">self</span>.latest_sce_final_slot = slot;
             }
 
             <span class="comment">// If the obtained slot overwrites history before the candidate execution cursor,
@@ -1134,8 +1122,8 @@
         </span><span class="kw">if </span>!<span class="self">self</span>.sequence.is_empty() {
             <span class="macro">panic!</span>(<span class="string">&quot;some items of the old slot sequence have been unexpectedly not processed&quot;</span>);
         }
-        <span class="kw">if </span>new_consensus_final_blocks.into_iter().next().is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in new_consensus_final_blocks after slot sequencing&quot;</span>);
+        <span class="kw">if </span>new_css_final_blocks.into_iter().next().is_some() {
+            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in new_css_final_blocks after slot sequencing&quot;</span>);
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(bq) = new_blockclique {
             <span class="kw">if </span>!bq.is_empty() {
@@ -1157,12 +1145,12 @@
     /// # Arguments
     /// * `slot`: the slot being constructed
     /// * `prev_item`: the corresponding slot status from the old sequence, if any
-    /// * `new_consensus_final`: whether this slot was CSS-finalized
-    /// * `new_consensus_final_block`: newly CSS-finalized block at that slot, if any
+    /// * `new_css_final`: whether this slot was CSS-finalized
+    /// * `new_css_final_block`: newly CSS-finalized block at that slot, if any
     /// * `blockclique_updated`: whether a new blockclique was provided when `Self::update` was called
     /// * `new_blockclique_block`: block at that slot within the new blockclique, if any
     /// * `new_blocks_metadata`: block metadata for execution
-    /// * `in_execution_finality`: whether the previous slot was SCE-final
+    /// * `in_sce_finality`: whether the previous slot was SCE-final
     ///
     /// # Returns
     /// A pair (SlotInfo, truncate_history: bool) where truncate_history indicates that this slot changes the content of an existing candidate slot
@@ -1170,12 +1158,12 @@
     </span><span class="kw">fn </span>sequence_build_step(
         slot: Slot,
         prev_item: <span class="prelude-ty">Option</span>&lt;SlotInfo&gt;,
-        new_consensus_final: bool,
-        new_consensus_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
+        new_css_final: bool,
+        new_css_final_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
         blockclique_updated: bool,
         new_blockclique_block: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
         new_blocks_metadata: <span class="kw-2">&amp;mut </span>PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
-        in_execution_finality: bool,
+        in_sce_finality: bool,
     ) -&gt; (SlotInfo, bool) {
         <span class="comment">// Match the slot state from the old sequence.
         // Most old slot states can be partially or completely recycled for performance.
@@ -1183,23 +1171,23 @@
             <span class="comment">// The slot was already present in the old sequence.
 
             // The slot was CSS-final
-            </span><span class="kw">if </span>prev_slot_info.consensus_final {
+            </span><span class="kw">if </span>prev_slot_info.css_final {
                 <span class="comment">// This CSS-final slot is SCE-final if the previous one was SCE-final.
-                </span>prev_slot_info.execution_final = in_execution_finality;
+                </span>prev_slot_info.sce_final = in_sce_finality;
 
                 <span class="comment">// Return the obtained slot.
                 </span><span class="kw">return </span>(prev_slot_info, <span class="bool-val">false</span>);
             }
 
             <span class="comment">// The slot was not CSS-final and needs to become CSS-final
-            </span><span class="kw">if </span>!prev_slot_info.consensus_final &amp;&amp; new_consensus_final {
+            </span><span class="kw">if </span>!prev_slot_info.css_final &amp;&amp; new_css_final {
                 <span class="comment">// Check if the content of the existing slot matches the newly CSS-finalized one.
-                </span><span class="kw">if </span>prev_slot_info.get_block_id() == new_consensus_final_block.as_ref() {
+                </span><span class="kw">if </span>prev_slot_info.get_block_id() == new_css_final_block.as_ref() {
                     <span class="comment">// Contents match =&gt; mark the slot as CSS-final
-                    </span>prev_slot_info.consensus_final = <span class="bool-val">true</span>;
+                    </span>prev_slot_info.css_final = <span class="bool-val">true</span>;
 
                     <span class="comment">// This CSS-final slot is SCE-final if the previous slot was SCE-final
-                    </span>prev_slot_info.execution_final = in_execution_finality;
+                    </span>prev_slot_info.sce_final = in_sce_finality;
 
                     <span class="comment">// Return the obtained slot.
                     </span><span class="kw">return </span>(prev_slot_info, <span class="bool-val">false</span>);
@@ -1208,13 +1196,13 @@
                 <span class="comment">// Here we know that the newly CSS-finalized slot has different contents than it used to in its previously non-CSS-final state.
 
                 // Mark the slot as CSS-final
-                </span>prev_slot_info.consensus_final = <span class="bool-val">true</span>;
+                </span>prev_slot_info.css_final = <span class="bool-val">true</span>;
 
                 <span class="comment">// This CSS-final slot is SCE-final if the previous slot was SCE-final
-                </span>prev_slot_info.execution_final = in_execution_finality;
+                </span>prev_slot_info.sce_final = in_sce_finality;
 
                 <span class="comment">// Overwrite the contents of the slot with the newly CSS-finalized block
-                </span>prev_slot_info.content = new_consensus_final_block.map(|b_id| {
+                </span>prev_slot_info.content = new_css_final_block.map(|b_id| {
                     (
                         b_id,
                         <span class="comment">// Can&#39;t recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
@@ -1261,17 +1249,17 @@
         <span class="comment">// This slot was not present in the old slot sequence.
 
         // Check if the new slot is CSS-final.
-        </span><span class="kw">if </span>new_consensus_final {
+        </span><span class="kw">if </span>new_css_final {
             <span class="comment">// The slot was absent (or considered a miss) before.
             // So, if there is a new block there, consider that it caused a mismatch at this slot.
-            </span><span class="kw">let </span>mismatch = new_consensus_final_block.is_some();
+            </span><span class="kw">let </span>mismatch = new_css_final_block.is_some();
 
             <span class="comment">// Generate the new CSS-final slot state.
             </span><span class="kw">let </span>slot_info = SlotInfo {
                 slot,
-                consensus_final: <span class="bool-val">true</span>,
-                execution_final: in_execution_finality, <span class="comment">// This CSS-final slot is SCE-final if the previous slot was SCE-final
-                </span>content: new_consensus_final_block.map(|b_id| {
+                css_final: <span class="bool-val">true</span>,
+                sce_final: in_sce_finality, <span class="comment">// This CSS-final slot is SCE-final if the previous slot was SCE-final
+                </span>content: new_css_final_block.map(|b_id| {
                     <span class="comment">// Get the newly CSS-finalized block at that slot, if any
                     </span>(
                         b_id,
@@ -1296,8 +1284,8 @@
         <span class="comment">// Generate a new speculative slot state for that slot.
         </span><span class="kw">let </span>slot_info = SlotInfo {
             slot,
-            consensus_final: <span class="bool-val">false</span>,
-            execution_final: <span class="bool-val">false</span>,
+            css_final: <span class="bool-val">false</span>,
+            sce_final: <span class="bool-val">false</span>,
             content: new_blockclique_block.map(|b_id| {
                 (
                     b_id,
@@ -1349,14 +1337,14 @@
         <span class="comment">// Check if the next SCE-final slot is available for execution
         </span>{
             <span class="comment">// Get the slot just after the last executed SCE-final slot
-            </span><span class="kw">let </span>next_execution_final_slot = <span class="self">self
+            </span><span class="kw">let </span>next_sce_final_slot = <span class="self">self
                 </span>.latest_executed_final_slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
                 .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
             <span class="comment">// Read whether that slot is present in the slot sequence and is marked as SCE-final.
             </span><span class="kw">let </span>finalization_task_available = <span class="self">self
-                </span>.get_slot(<span class="kw-2">&amp;</span>next_execution_final_slot)
-                .map_or(<span class="bool-val">false</span>, |s_info| s_info.execution_final);
+                </span>.get_slot(<span class="kw-2">&amp;</span>next_sce_final_slot)
+                .map_or(<span class="bool-val">false</span>, |s_info| s_info.sce_final);
             <span class="kw">if </span>finalization_task_available {
                 <span class="comment">// A non-executed SCE-final slot is ready for execution.
                 </span><span class="kw">return </span><span class="bool-val">true</span>;
@@ -1397,11 +1385,11 @@
         </span><span class="kw">let </span>min_useful_slot = std::cmp::min(
             std::cmp::min(
                 <span class="kw-2">*</span><span class="self">self
-                    </span>.latest_consensus_final_slots
+                    </span>.latest_css_final_slots
                     .iter()
                     .min()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots should not be empty&quot;</span>),
-                <span class="self">self</span>.latest_execution_final_slot,
+                    .expect(<span class="string">&quot;latest_css_final_slots should not be empty&quot;</span>),
+                <span class="self">self</span>.latest_sce_final_slot,
             ),
             std::cmp::min(
                 <span class="self">self</span>.latest_executed_final_slot,
@@ -1449,12 +1437,10 @@
                 .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
             <span class="comment">// Check whether that slot is in the sequence and marked as SCE-final.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(SlotInfo {
-                execution_final,
-                content,
-                ..
+                sce_final, content, ..
             }) = <span class="self">self</span>.get_slot(<span class="kw-2">&amp;</span>slot)
             {
-                <span class="kw">if </span><span class="kw-2">*</span>execution_final {
+                <span class="kw">if </span><span class="kw-2">*</span>sce_final {
                     <span class="comment">// There is an SCE-final slot ready for execution.
 
                     // Call the callback function to execute the slot.
