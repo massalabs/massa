@@ -48,8 +48,6 @@ pub enum ModelsError {
     InvalidLedgerChange(String),
     /// Time overflow error
     TimeOverflowError,
-    /// Time error {0}
-    TimeError(#[from] massa_time::TimeError),
     /// invalid roll update: {0}
     InvalidRollUpdate(String),
     /// Ledger changes, Amount overflow
