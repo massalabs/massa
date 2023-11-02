@@ -57,6 +57,7 @@ where
 impl<T, ST> Serializer<StreamingStep<T>> for StreamingStepSerializer<T, ST>
 where
     ST: Serializer<T>,
+    T: std::fmt::Debug,
 {
     fn serialize(
         &self,

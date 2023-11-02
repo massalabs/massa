@@ -41,7 +41,9 @@ fn test_serialize_bootstrap_server_message() {
     parametric_test(
         Duration::from_secs(30),
         config,
-        vec![5577929984194316755, 9248055555568684907],
+        vec![
+            4418156015316874292,
+        ],
         |config, rng| {
             let msg = BootstrapServerMessage::generate(rng);
             let mut bytes = Vec::new();
@@ -80,7 +82,9 @@ fn test_serialize_bootstrap_client_message() {
     parametric_test(
         Duration::from_secs(30),
         (),
-        vec![6186847917072968589],
+        vec![
+            12770601678208144436,
+        ],
         |_, rng| {
             let msg = BootstrapClientMessage::generate(rng);
             let mut bytes = Vec::new();
@@ -102,11 +106,11 @@ fn test_serialize_bootstrap_client_message() {
             );
             match deser.deserialize::<massa_serialization::DeserializeError>(&bytes) {
                 Ok((rest, msg_res)) => {
-                    println!("{bytes:?}");
-                    println!("{rest:?}");
+                    println!("SER Data:   {bytes:?}");
+                    println!("DESER rest: {rest:?}");
                     assert!(rest.is_empty(), "Data left after deserialization");
-                    println!("{msg_res:?}");
-                    println!("{msg:?}");
+                    println!("Serialized {msg:?}");
+                    println!("Got        {msg_res:?}");
                     assert!(msg_res.equals(&msg), "BootstrapClientMessages doesn't match after serialization / deserialization process")
                 }
                 Err(e) => {

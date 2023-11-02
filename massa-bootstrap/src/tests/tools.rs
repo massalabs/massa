@@ -584,23 +584,23 @@ fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
     }
 }
 
-fn gen_random_stream_batch<T, R>(change_id: T, rng: &mut R) -> StreamBatch<T>
+fn gen_random_stream_batch<T, R>(max: u32, change_id: T, rng: &mut R) -> StreamBatch<T>
 where
     T: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
     R: Rng,
 {
-    let batch_size = rng.gen_range(0..MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE);
+    let batch_size = rng.gen_range(0..max);
     let new_elements_size = rng.gen_range(0..batch_size);
     let mut new_elements = BTreeMap::new();
     let mut size = 0;
     loop {
         let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
         let val = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
-        if size + (key.len() as u64) + (val.len() as u64) > new_elements_size.into() {
-            break;
-        }
         size += key.len() as u64;
         size += val.len() as u64;
+        if size > new_elements_size.into() {
+            break;
+        }
         new_elements.insert(key, val);
     }
     let mut updates_on_previous_elements = BTreeMap::new();
@@ -614,10 +614,10 @@ where
         } else {
             None
         };
-        if (size + (s as u64)) > batch_size.into() {
+        size += s as u64;
+        if size > batch_size.into() {
             break;
         }
-        size += s as u64;
         updates_on_previous_elements.insert(key, val);
     }
     StreamBatch {
@@ -696,8 +696,6 @@ fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
         let endorsement = endorsement
             .new_verifiable(EndorsementSerializer::new(), keypair)
             .unwrap();
-        // assert!(endorsement.verify_signature().is_ok(), "Endorsement signature invalid");
-        // assert!(endorsement.check_invariants().is_ok(), "Endorsememnt invariants are invalid");
         endorsements.push(endorsement);
     }
 
@@ -772,15 +770,15 @@ impl BootstrapServerMessage {
             }
             2 => {
                 let slot = gen_random_slot(rng);
-                let state_part = gen_random_stream_batch(slot, rng);
+                let state_part = gen_random_stream_batch(MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, slot, rng);
                 let slot = gen_random_slot(rng);
-                let versioning_part = gen_random_stream_batch(slot, rng);
+                let versioning_part = gen_random_stream_batch(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, slot, rng);
                 let mut final_blocks = vec![];
                 let block_nb = rng.gen_range(5..100); //MAX_BOOTSTRAP_BLOCKS);
                 for _ in 0..block_nb {
                     final_blocks.push(gen_export_active_blocks(rng));
                 }
-                let nb = rng.gen_range(0..MAX_CONSENSUS_BLOCKS_IDS);
+                let nb = rng.gen_range(0..MAX_BOOTSTRAP_BLOCKS);
                 let mut consensus_outdated_ids = PreHashSet::default();
                 for _ in 0..nb {
                     consensus_outdated_ids.insert(gen_random_block_id(rng));
@@ -1207,21 +1205,36 @@ impl BootstrapClientMessage {
         match variant {
             0 => BootstrapClientMessage::AskBootstrapPeers,
             1 => {
-                let last_slot = if rng.gen_bool(0.7) {
+                let last_slot = if rng.gen_bool(0.95) {
                     Some(gen_random_slot(rng))
                 } else {
                     None
                 };
-                let last_state_step = gen_random_vector(10, rng);
-                let last_state_step = gen_random_streaming_step(rng, last_state_step);
-                let last_versioning_step = gen_random_vector(10, rng);
-                let last_versioning_step = gen_random_streaming_step(rng, last_versioning_step);
-                let nb = rng.gen_range(0..100);
-                let mut last_consensus_step = PreHashSet::with_capacity(nb);
-                for _ in 0..nb {
-                    last_consensus_step.insert(gen_random_block_id(rng));
-                }
-                let last_consensus_step = gen_random_streaming_step(rng, last_consensus_step);
+                let last_state_step = if last_slot.is_some() {
+                    let data = gen_random_vector(10, rng);
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+
+                let last_versioning_step = if last_slot.is_some() {
+                    let data = gen_random_vector(10, rng);
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+                
+                let last_consensus_step = if last_slot.is_some() {
+                    let nb = rng.gen_range(0..100);
+                    let mut data = PreHashSet::with_capacity(nb);
+                    for _ in 0..nb {
+                        data.insert(gen_random_block_id(rng));
+                    }
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+                
                 let send_last_start_period = if last_slot.is_none() {
                     true
                 } else {
