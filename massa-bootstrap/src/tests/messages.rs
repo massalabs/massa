@@ -41,9 +41,7 @@ fn test_serialize_bootstrap_server_message() {
     parametric_test(
         Duration::from_secs(30),
         config,
-        vec![
-            4418156015316874292,
-        ],
+        vec![4418156015316874292],
         |config, rng| {
             let msg = BootstrapServerMessage::generate(rng);
             let mut bytes = Vec::new();
@@ -82,9 +80,7 @@ fn test_serialize_bootstrap_client_message() {
     parametric_test(
         Duration::from_secs(30),
         (),
-        vec![
-            12770601678208144436,
-        ],
+        vec![12770601678208144436],
         |_, rng| {
             let msg = BootstrapClientMessage::generate(rng);
             let mut bytes = Vec::new();
