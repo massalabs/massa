@@ -77,7 +77,7 @@ impl ConsensusWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get current absolute time
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
 
         // get closest slot according to the current absolute time
         let mut next_slot = get_closest_slot_to_timestamp(
@@ -150,7 +150,7 @@ impl ConsensusWorker {
                         }
                     };
                     if last_prune.elapsed().as_millis()
-                        > self.config.block_db_prune_interval.to_millis() as u128
+                        > self.config.block_db_prune_interval.as_millis() as u128
                     {
                         self.shared_state
                             .write()

@@ -229,9 +229,7 @@ pub fn start_protocol_controller(
         let keypair_factory = KeyPairFactory {
             mip_store: mip_store.clone(),
         };
-        let now = MassaTime::now().map_err(|e| {
-            ProtocolError::GeneralProtocolError(format!("Unable to get current time: {}", e))
-        })?;
+        let now = MassaTime::now();
         let keypair = keypair_factory.create(&(), FactoryStrategy::At(now))?;
         if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
             warn!("could not generate node key file: {}", e);

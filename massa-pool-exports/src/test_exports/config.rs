@@ -28,7 +28,7 @@ impl Default for PoolConfig {
             broadcast_enabled: false,
             broadcast_endorsements_channel_capacity: 2000,
             broadcast_operations_channel_capacity: 5000,
-            genesis_timestamp: MassaTime::now().unwrap(),
+            genesis_timestamp: MassaTime::now(),
             t0: T0,
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,

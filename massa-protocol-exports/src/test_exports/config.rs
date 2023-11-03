@@ -39,7 +39,7 @@ impl Default for ProtocolConfig {
             max_serialized_operations_size_per_block: 1024,
             controller_channel_size: 1024,
             event_channel_size: 1024,
-            genesis_timestamp: MassaTime::now().unwrap(),
+            genesis_timestamp: MassaTime::now(),
             t0: MassaTime::from_millis(16000),
             max_ops_kept_for_propagation: 10000,
             max_operations_propagation_time: MassaTime::from_millis(30000),

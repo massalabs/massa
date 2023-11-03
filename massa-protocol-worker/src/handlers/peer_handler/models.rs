@@ -127,23 +127,23 @@ impl ConnectionMetadata {
         }
     }
     pub fn failure(&mut self) {
-        self.last_failure = Some(MassaTime::now().unwrap());
+        self.last_failure = Some(MassaTime::now());
     }
 
     pub fn test_failure(&mut self) {
-        self.last_test_failure = Some(MassaTime::now().unwrap());
+        self.last_test_failure = Some(MassaTime::now());
     }
 
     pub fn test_success(&mut self) {
-        self.last_test_success = Some(MassaTime::now().unwrap());
+        self.last_test_success = Some(MassaTime::now());
     }
 
     pub fn success(&mut self) {
-        self.last_success = Some(MassaTime::now().unwrap());
+        self.last_success = Some(MassaTime::now());
     }
 
     pub fn try_connect(&mut self) {
-        self.last_try_connect = Some(MassaTime::now().unwrap());
+        self.last_try_connect = Some(MassaTime::now());
     }
 }
 
@@ -245,9 +245,7 @@ impl PeerDBTrait for PeerDB {
         nb_peers: usize,
     ) -> Vec<(PeerId, HashMap<SocketAddr, TransportType>)> {
         //TODO: Add ourself
-        let now = MassaTime::now()
-            .expect("Unable to get MassaTime::now")
-            .to_millis();
+        let now = MassaTime::now().as_millis();
 
         let min_time = now - THREE_DAYS_MS;
 

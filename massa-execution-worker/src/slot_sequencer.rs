@@ -188,9 +188,7 @@ impl SlotSequencer {
     /// Note that this time cursor is shifted by `self.config.cursor_delay`
     /// to avoid computing speculative slots that are too recent, and therefore subject to frequent re-writes.
     fn get_time_cursor(&self) -> Slot {
-        let shifted_now = MassaTime::now()
-            .expect("could not get current time")
-            .saturating_sub(self.config.cursor_delay);
+        let shifted_now = MassaTime::now().saturating_sub(self.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
             self.config.thread_count,
             self.config.t0,
@@ -737,14 +735,12 @@ impl SlotSequencer {
         // This means that we are still waiting for `Self::update` to be called for the first time.
         // To avoid CPU-intensive loops upstream, just register a wake-up after a single slot delay (t0/T).
         if self.sequence.is_empty() {
-            return MassaTime::now()
-                .expect("could not get current time")
-                .saturating_add(
-                    self.config
-                        .t0
-                        .checked_div_u64(self.config.thread_count as u64)
-                        .unwrap(),
-                );
+            return MassaTime::now().saturating_add(
+                self.config
+                    .t0
+                    .checked_div_u64(self.config.thread_count as u64)
+                    .unwrap(),
+            );
         }
 
         // Compute the next slot after the current time cursor.

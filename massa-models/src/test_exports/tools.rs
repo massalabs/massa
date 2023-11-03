@@ -9,7 +9,7 @@ pub fn get_next_slot_instant(
     t0: MassaTime,
 ) -> MassaTime {
     // get current time
-    let now = MassaTime::now().expect("could not get current time");
+    let now = MassaTime::now();
 
     // get closest slot according to the current absolute time
     let mut slot = get_closest_slot_to_timestamp(thread_count, t0, genesis_timestamp, now);

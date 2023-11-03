@@ -88,7 +88,7 @@ impl ConsensusWorker {
         init_graph: Option<BootstrapableGraph>,
         storage: Storage,
     ) -> Result<Self, ConsensusError> {
-        let now = MassaTime::now().expect("Couldn't init timer consensus");
+        let now = MassaTime::now();
         let previous_slot = get_latest_block_slot_at_timestamp(
             config.thread_count,
             config.t0,

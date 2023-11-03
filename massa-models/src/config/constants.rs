@@ -51,7 +51,6 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| MassaTime::from_millis(timestamp.parse::<u64>().unwrap())).unwrap_or_else(|_|
             MassaTime::now()
-                .unwrap()
                 .saturating_sub(
                     T0.checked_mul(get_period_from_args()).unwrap()
                 )
@@ -324,6 +323,6 @@ pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
     assert!(THREAD_COUNT > 1);
-    assert!((T0).to_millis() >= 1);
-    assert!((T0).to_millis() % (THREAD_COUNT as u64) == 0);
+    assert!((T0).as_millis() >= 1);
+    assert!((T0).as_millis() % (THREAD_COUNT as u64) == 0);
 };

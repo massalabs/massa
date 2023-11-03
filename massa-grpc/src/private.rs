@@ -228,7 +228,7 @@ pub(crate) fn get_node_status(
     _request: tonic::Request<grpc_api::GetNodeStatusRequest>,
 ) -> Result<grpc_api::GetNodeStatusResponse, GrpcError> {
     let config = CompactConfig::default();
-    let now = MassaTime::now()?;
+    let now = MassaTime::now();
     let last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,

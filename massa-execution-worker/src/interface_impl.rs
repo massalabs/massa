@@ -180,7 +180,7 @@ fn massa_time_from_native_time(time: &NativeTime) -> Result<MassaTime> {
 
 /// Helper function that creates a NativeTime from the MassaTime internal representation
 fn massa_time_to_native_time(time: &MassaTime) -> NativeTime {
-    let milliseconds = time.to_millis();
+    let milliseconds = time.as_millis();
     NativeTime { milliseconds }
 }
 
@@ -1091,7 +1091,7 @@ impl Interface for InterfaceImpl {
             self.config.genesis_timestamp,
             slot,
         )?;
-        Ok(ts.to_millis())
+        Ok(ts.as_millis())
     }
 
     /// Returns a pseudo-random deterministic `i64` number
@@ -1877,8 +1877,8 @@ mod tests {
         );
 
         //time
-        let time1 = massa_time_to_native_time(&MassaTime::from_str("1").unwrap());
-        let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
+        let time1 = massa_time_to_native_time(&MassaTime::from_millis(1));
+        let time2 = massa_time_to_native_time(&MassaTime::from_millis(2));
         println!(
             "do some compare with time1 = {}, time2 = {}",
             time1.milliseconds, time2.milliseconds
