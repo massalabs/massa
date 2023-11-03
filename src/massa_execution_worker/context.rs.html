@@ -1073,12 +1073,6 @@
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1101,7 +1095,7 @@
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
 };
-<span class="kw">use </span>massa_final_state::{FinalStateController, StateChanges};
+<span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
@@ -1208,9 +1202,6 @@
     <span class="doccomment">/// speculative list of executed denunciations
     </span>speculative_executed_denunciations: SpeculativeExecutedDenunciations,
 
-    <span class="doccomment">/// max gas for this execution
-    </span><span class="kw">pub </span>max_gas: u64,
-
     <span class="doccomment">/// minimal balance allowed for the creator of the operation after its execution
     </span><span class="kw">pub </span>creator_min_balance: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
 
@@ -1270,7 +1261,7 @@
     /// A new (empty) `ExecutionContext` instance
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         config: ExecutionConfig,
-        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
@@ -1301,7 +1292,6 @@
                 final_state,
                 active_history,
             ),
-            max_gas: Default::default(),
             creator_min_balance: Default::default(),
             slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             created_addr_index: Default::default(),
@@ -1394,9 +1384,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>readonly(
         config: ExecutionConfig,
         slot: Slot,
-        max_gas: u64,
         call_stack: Vec&lt;ExecutionStackElement&gt;,
-        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
@@ -1412,7 +1401,6 @@
 
         <span class="comment">// return readonly context
         </span>ExecutionContext {
-            max_gas,
             slot,
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
@@ -1462,7 +1450,7 @@
         config: ExecutionConfig,
         slot: Slot,
         opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
-        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
