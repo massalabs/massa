@@ -1,6 +1,6 @@
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
-use massa_executed_ops::{ExecutedOps, ExecutedDenunciations};
+use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
 use massa_models::slot::Slot;
@@ -46,6 +46,7 @@ pub trait FinalStateController: Send + Sync {
     fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch);
 
     /// Get ledger
+    #[allow(clippy::borrowed_box)]
     fn get_ledger(&self) -> &Box<dyn LedgerController>;
 
     /// Get ledger mut
@@ -77,7 +78,7 @@ pub trait FinalStateController: Send + Sync {
 
     /// Get last slot before downtime
     fn get_last_slot_before_downtime(&self) -> &Option<Slot>;
-    
+
     /// Set last slot before downtime
     fn set_last_slot_before_downtime(&mut self, last_slot_before_downtime: Option<Slot>);
 

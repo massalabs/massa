@@ -1,6 +1,6 @@
 use humantime::format_duration;
 use massa_db_exports::DBBatch;
-use massa_final_state::{FinalStateError, FinalStateController};
+use massa_final_state::{FinalStateController, FinalStateError};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -441,7 +441,9 @@ pub fn get_state(
             // create the initial cycle of PoS cycle_history
             let mut batch = DBBatch::new();
             let mut db_versioning_batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
-            final_state_guard.get_pos_state_mut().create_initial_cycle(&mut batch);
+            final_state_guard
+                .get_pos_state_mut()
+                .create_initial_cycle(&mut batch);
 
             // set initial execution trail hash
             final_state_guard.init_execution_trail_hash_to_batch(&mut batch);
@@ -463,10 +465,11 @@ pub fn get_state(
                 .update_batches(&mut batch, &mut db_versioning_batch, None)
                 .map_err(|e| BootstrapError::GeneralError(e.to_string()))?;
 
-            final_state_guard
-                .get_database()
-                .write()
-                .write_batch(batch, db_versioning_batch, Some(slot));
+            final_state_guard.get_database().write().write_batch(
+                batch,
+                db_versioning_batch,
+                Some(slot),
+            );
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }

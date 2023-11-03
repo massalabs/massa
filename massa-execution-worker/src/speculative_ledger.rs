@@ -115,7 +115,9 @@ impl SpeculativeLedger {
         self.added_changes.get_balance_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(par_balance) => Some(par_balance),
-                HistorySearchResult::NoInfo => self.final_state.read().get_ledger().get_balance(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().get_balance(addr)
+                }
                 HistorySearchResult::Absent => None,
             }
         })
@@ -133,7 +135,9 @@ impl SpeculativeLedger {
         self.added_changes.get_bytecode_or_else(addr, || {
             match self.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
-                HistorySearchResult::NoInfo => self.final_state.read().get_ledger().get_bytecode(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().get_bytecode(addr)
+                }
                 HistorySearchResult::Absent => None,
             }
         })
@@ -220,7 +224,9 @@ impl SpeculativeLedger {
         self.added_changes.entry_exists_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(_balance) => true,
-                HistorySearchResult::NoInfo => self.final_state.read().get_ledger().entry_exists(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().entry_exists(addr)
+                }
                 HistorySearchResult::Absent => false,
             }
         })
@@ -436,9 +442,11 @@ impl SpeculativeLedger {
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(entry) => Some(entry),
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().get_ledger().get_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .get_ledger()
+                    .get_data_entry(addr, key),
                 HistorySearchResult::Absent => None,
             }
         })

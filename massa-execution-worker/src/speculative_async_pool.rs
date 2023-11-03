@@ -34,7 +34,11 @@ impl SpeculativeAsyncPool {
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
-        let mut message_infos = final_state.read().get_async_pool().message_info_cache.clone();
+        let mut message_infos = final_state
+            .read()
+            .get_async_pool()
+            .message_info_cache
+            .clone();
 
         for history_item in active_history.read().0.iter() {
             for change in history_item.state_changes.async_pool_changes.0.iter() {

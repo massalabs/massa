@@ -20,7 +20,7 @@ use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
 };
-use massa_final_state::{StateChanges, FinalStateController};
+use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;

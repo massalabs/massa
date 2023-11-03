@@ -440,7 +440,7 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
-    let last_slot_before_downtime_ = final_state.read().get_last_slot_before_downtime().clone();
+    let last_slot_before_downtime_ = *final_state.read().get_last_slot_before_downtime();
     if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
         let last_shutdown_start = last_slot_before_downtime
             .get_next_slot(THREAD_COUNT)

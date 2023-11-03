@@ -507,14 +507,14 @@ pub fn stream_bootstrap_information(
                 None
             };
             last_slot_before_downtime = if send_last_start_period {
-                Some(final_state_read.get_last_slot_before_downtime().clone())
+                Some(*final_state_read.get_last_slot_before_downtime())
             } else {
                 None
             };
 
             state_part = final_state_read
-            .get_database()
-            .read()
+                .get_database()
+                .read()
                 .get_batch_to_stream(&last_state_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
@@ -554,8 +554,8 @@ pub fn stream_bootstrap_information(
             };
 
             versioning_part = final_state_read
-            .get_database()
-            .read()
+                .get_database()
+                .read()
                 .get_versioning_batch_to_stream(&last_versioning_step, last_slot)
                 .map_err(|e| {
                     BootstrapError::GeneralError(format!(
@@ -682,7 +682,7 @@ pub fn stream_bootstrap_information(
                 consensus_part,
                 consensus_outdated_ids,
                 last_start_period,
-                last_slot_before_downtime: last_slot_before_downtime.clone(),
+                last_slot_before_downtime,
             },
         )?;
     }

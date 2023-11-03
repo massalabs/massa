@@ -95,9 +95,9 @@ mod mapping_grpc;
 mod state_changes;
 
 pub use config::FinalStateConfig;
+pub use controller_trait::FinalStateController;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
-pub use controller_trait::FinalStateController;
 use num as _;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 

@@ -247,7 +247,11 @@ impl ExecutionState {
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
 
         self.massa_metrics.set_async_message_pool_size(
-            self.final_state.read().get_async_pool().message_info_cache.len(),
+            self.final_state
+                .read()
+                .get_async_pool()
+                .message_info_cache
+                .len(),
         );
 
         self.massa_metrics.inc_executed_final_slot();
@@ -1552,7 +1556,11 @@ impl ExecutionState {
 
     /// Gets roll counts both at the latest final and active executed slots
     pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
-        let final_rolls = self.final_state.read().get_pos_state().get_rolls_for(address);
+        let final_rolls = self
+            .final_state
+            .read()
+            .get_pos_state()
+            .get_rolls_for(address);
         let active_rolls = self
             .active_history
             .read()
@@ -1567,7 +1575,11 @@ impl ExecutionState {
         address: &Address,
         key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().get_ledger().get_data_entry(address, key);
+        let final_entry = self
+            .final_state
+            .read()
+            .get_ledger()
+            .get_data_entry(address, key);
         let search_result = self
             .active_history
             .read()

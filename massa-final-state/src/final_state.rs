@@ -650,7 +650,7 @@ impl FinalState {
         Ok(())
     }
 
-        /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
+    /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
     /// we just create a new one. This will be changed in the follow-up.
     ///
     /// # Arguments
@@ -745,7 +745,6 @@ impl FinalState {
 
         Ok(final_state)
     }
-
 }
 
 impl FinalStateController for FinalState {
@@ -761,11 +760,11 @@ impl FinalStateController for FinalState {
 
     fn get_execution_trail_hash(&self) -> Hash {
         let hash_bytes = self
-        .db
-        .read()
-        .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
-        .expect("could not read execution trail hash from state DB")
-        .expect("could not find execution trail hash in state DB");
+            .db
+            .read()
+            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
+            .expect("could not read execution trail hash from state DB")
+            .expect("could not find execution trail hash in state DB");
         Hash::from_bytes(
             hash_bytes
                 .as_slice()
@@ -785,7 +784,7 @@ impl FinalStateController for FinalState {
             .get_change_id()
             .expect("Critical error: Final state has no slot attached")
     }
-    
+
     fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch) {
         batch.insert(
             EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
@@ -823,31 +822,31 @@ impl FinalStateController for FinalState {
         &self.ledger
     }
 
-    fn get_ledger_mut(&mut self) ->  &mut Box<dyn LedgerController> {
+    fn get_ledger_mut(&mut self) -> &mut Box<dyn LedgerController> {
         &mut self.ledger
     }
 
-    fn get_async_pool(&self) ->  &AsyncPool {
+    fn get_async_pool(&self) -> &AsyncPool {
         &self.async_pool
     }
 
-    fn get_pos_state(&self) ->  &PoSFinalState {
+    fn get_pos_state(&self) -> &PoSFinalState {
         &self.pos_state
     }
 
-    fn get_pos_state_mut(&mut self) ->  &mut PoSFinalState {
+    fn get_pos_state_mut(&mut self) -> &mut PoSFinalState {
         &mut self.pos_state
     }
 
-    fn get_executed_ops(&self) ->  &ExecutedOps {
+    fn get_executed_ops(&self) -> &ExecutedOps {
         &self.executed_ops
     }
 
-    fn get_executed_denunciations(&self) ->  &ExecutedDenunciations {
+    fn get_executed_denunciations(&self) -> &ExecutedDenunciations {
         &self.executed_denunciations
     }
 
-    fn get_database(&self) ->  &ShareableMassaDBController {
+    fn get_database(&self) -> &ShareableMassaDBController {
         &self.db
     }
 
@@ -855,7 +854,7 @@ impl FinalStateController for FinalState {
         self.last_start_period
     }
 
-    fn set_last_start_period(&mut self, last_start_period:u64) {
+    fn set_last_start_period(&mut self, last_start_period: u64) {
         self.last_start_period = last_start_period;
     }
 
@@ -863,15 +862,15 @@ impl FinalStateController for FinalState {
         &self.last_slot_before_downtime
     }
 
-    fn set_last_slot_before_downtime(&mut self, last_slot_before_downtime:Option<Slot>) {
+    fn set_last_slot_before_downtime(&mut self, last_slot_before_downtime: Option<Slot>) {
         self.last_slot_before_downtime = last_slot_before_downtime;
     }
 
-    fn get_mip_store_mut(&mut self) ->  &mut MipStore {
+    fn get_mip_store_mut(&mut self) -> &mut MipStore {
         &mut self.mip_store
     }
 
-    fn get_mip_store(&self) ->  &MipStore {
+    fn get_mip_store(&self) -> &MipStore {
         &self.mip_store
     }
 }

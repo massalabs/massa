@@ -89,7 +89,12 @@ impl SpeculativeRollState {
                 self.active_history
                     .read()
                     .fetch_roll_count(buyer_addr)
-                    .unwrap_or_else(|| self.final_state.read().get_pos_state().get_rolls_for(buyer_addr))
+                    .unwrap_or_else(|| {
+                        self.final_state
+                            .read()
+                            .get_pos_state()
+                            .get_rolls_for(buyer_addr)
+                    })
             });
         *count = count.saturating_add(roll_count);
     }
