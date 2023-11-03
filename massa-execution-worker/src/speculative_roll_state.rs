@@ -2,7 +2,7 @@
 
 use crate::active_history::ActiveHistory;
 use massa_execution_exports::ExecutionError;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::{
     address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
@@ -18,7 +18,7 @@ use std::sync::Arc;
 #[allow(dead_code)]
 pub(crate) struct SpeculativeRollState {
     /// Thread-safe shared access to the final state. For reading only.
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
 
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -34,7 +34,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         SpeculativeRollState {
@@ -70,7 +70,7 @@ impl SpeculativeRollState {
                 self.active_history
                     .read()
                     .fetch_roll_count(addr)
-                    .unwrap_or_else(|| self.final_state.read().pos_state.get_rolls_for(addr))
+                    .unwrap_or_else(|| self.final_state.read().get_pos_state().get_rolls_for(addr))
             })
     }
 
@@ -89,7 +89,7 @@ impl SpeculativeRollState {
                 self.active_history
                     .read()
                     .fetch_roll_count(buyer_addr)
-                    .unwrap_or_else(|| self.final_state.read().pos_state.get_rolls_for(buyer_addr))
+                    .unwrap_or_else(|| self.final_state.read().get_pos_state().get_rolls_for(buyer_addr))
             });
         *count = count.saturating_add(roll_count);
     }
@@ -330,7 +330,7 @@ impl SpeculativeRollState {
         {
             let final_state = self.final_state.read();
             for (slot, addr_amount) in final_state
-                .pos_state
+                .get_pos_state()
                 .get_deferred_credits_range(min_slot..)
                 .credits
             {
@@ -367,7 +367,7 @@ impl SpeculativeRollState {
         if let Some(v) = self
             .final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_address_credits_for_slot(addr, slot)
         {
             return Some(v);
@@ -390,7 +390,7 @@ impl SpeculativeRollState {
 
         // add finals
         final_state
-            .pos_state
+            .get_pos_state()
             .cycle_history_cache
             .iter()
             .for_each(|c| {
@@ -402,7 +402,7 @@ impl SpeculativeRollState {
                     active_rolls: None, // will be filled afterwards
                 };
                 if let Some(prod_stats) = final_state
-                    .pos_state
+                    .get_pos_state()
                     .get_production_stats_for_address(c.0, address)
                 {
                     cur_item.ok_count = prod_stats.block_success_count;
@@ -475,7 +475,7 @@ impl SpeculativeRollState {
         // add active roll counts
         for itm in res.iter_mut() {
             itm.active_rolls = final_state
-                .pos_state
+                .get_pos_state()
                 .get_address_active_rolls(address, itm.cycle);
         }
 
@@ -533,7 +533,7 @@ impl SpeculativeRollState {
         // on underflow, accumulate final state
         if underflow {
             let final_state = self.final_state.read();
-            if let Some(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
+            if let Some(final_stats) = final_state.get_pos_state().get_all_production_stats(cycle) {
                 for (addr, stats) in final_stats {
                     accumulated_stats
                         .entry(addr)
@@ -559,7 +559,7 @@ impl SpeculativeRollState {
         let mut credits = self
             .final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_deferred_credits_range(..=slot);
 
         // fetch active history deferred credits

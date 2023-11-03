@@ -29,7 +29,7 @@ use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use tempfile::{NamedTempFile, TempDir};
 
-use crate::{FinalState, FinalStateConfig};
+use crate::{FinalState, FinalStateConfig, controller_trait::FinalStateController};
 
 #[allow(clippy::too_many_arguments)]
 /// Create a `FinalState` from pre-set values
@@ -177,7 +177,7 @@ pub fn get_sample_state(
     last_start_period: u64,
     selector_controller: Box<dyn SelectorController>,
     mip_store: MipStore,
-) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
+) -> Result<(Arc<RwLock<dyn FinalStateController>>, NamedTempFile, TempDir), LedgerError> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
     let db_config = MassaDBConfig {

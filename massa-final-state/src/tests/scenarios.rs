@@ -1,5 +1,6 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use crate::controller_trait::FinalStateController;
 use crate::{
     /*test_exports::{assert_eq_final_state, assert_eq_final_state_hash},*/
     FinalState, FinalStateConfig, StateChanges,

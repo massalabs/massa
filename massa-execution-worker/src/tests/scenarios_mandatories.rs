@@ -1025,7 +1025,7 @@ fn send_and_receive_transaction() {
         universe
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_balance(&recipient_address)
             .unwrap(),
         // Storage cost applied
@@ -1095,9 +1095,9 @@ fn roll_buy() {
     std::thread::sleep(Duration::from_millis(100));
     // check roll count of the buyer address and its balance
     let sample_read = universe.final_state.read();
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 110);
+    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 110);
     assert_eq!(
-        sample_read.ledger.get_balance(&address).unwrap(),
+        sample_read.get_ledger().get_balance(&address).unwrap(),
         Amount::from_str("299_000").unwrap()
     );
 }
@@ -1134,7 +1134,7 @@ fn roll_sell() {
     let balance_initial = universe
         .final_state
         .read()
-        .ledger
+        .get_ledger()
         .get_balance(&address)
         .unwrap();
 
@@ -1142,7 +1142,7 @@ fn roll_sell() {
     let roll_count_initial = universe
         .final_state
         .read()
-        .pos_state
+        .get_pos_state()
         .get_rolls_for(&address);
     let roll_sell_1 = 10;
     let roll_sell_2 = 1;
@@ -1156,7 +1156,7 @@ fn roll_sell() {
     universe
         .final_state
         .write()
-        .pos_state
+        .get_pos_state()
         .put_deferred_credits_entry(
             &Slot::new(1, 0),
             &address,
@@ -1167,7 +1167,7 @@ fn roll_sell() {
     universe
         .final_state
         .write()
-        .db
+        .get_database()
         .write()
         .write_batch(batch, Default::default(), None);
 
@@ -1252,13 +1252,13 @@ fn roll_sell() {
     );
 
     assert_eq!(
-        sample_read.pos_state.get_rolls_for(&address),
+        sample_read.get_pos_state().get_rolls_for(&address),
         roll_remaining
     );
 
     assert_eq!(
         sample_read
-            .pos_state
+            .get_pos_state()
             .get_deferred_credits_range(..=Slot::new(9, 1))
             .credits
             .get(&Slot::new(9, 1))
@@ -1272,7 +1272,7 @@ fn roll_sell() {
 
     assert_eq!(
         sample_read
-            .pos_state
+            .get_pos_state()
             .get_deferred_credits_range(..=Slot::new(10, 1))
             .credits
             .get(&Slot::new(10, 1))
@@ -1284,7 +1284,7 @@ fn roll_sell() {
     // Check that the initial deferred_credits are set to zero
     assert_eq!(
         sample_read
-            .pos_state
+            .get_pos_state()
             .get_deferred_credits_range(..=Slot::new(10, 1))
             .credits
             .get(&Slot::new(1, 0))
@@ -1344,7 +1344,7 @@ fn roll_slash() {
     let balance_initial = universe
         .final_state
         .read()
-        .ledger
+        .get_ledger()
         .get_balance(&address)
         .unwrap();
 
@@ -1352,7 +1352,7 @@ fn roll_slash() {
     let roll_count_initial = universe
         .final_state
         .read()
-        .pos_state
+        .get_pos_state()
         .get_rolls_for(&address);
     let roll_to_sell = roll_count_initial
         .checked_sub(exec_cfg.roll_count_to_slash_on_denunciation)
@@ -1424,12 +1424,12 @@ fn roll_slash() {
         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
     );
 
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
 
     // Check the remaining deferred credits
     let slot_limit = Slot::new(10, 0);
     let deferred_credits = sample_read
-        .pos_state
+        .get_pos_state()
         .get_deferred_credits_range(..=slot_limit)
         .credits;
 
@@ -1489,7 +1489,7 @@ fn roll_slash_2() {
     let balance_initial = universe
         .final_state
         .read()
-        .ledger
+        .get_ledger()
         .get_balance(&address)
         .unwrap();
 
@@ -1497,7 +1497,7 @@ fn roll_slash_2() {
     let roll_count_initial = universe
         .final_state
         .read()
-        .pos_state
+        .get_pos_state()
         .get_rolls_for(&address);
     // sell all rolls so we can check if slash will occur on deferred credits
     let roll_to_sell_1 = 1;
@@ -1583,12 +1583,12 @@ fn roll_slash_2() {
         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
     );
 
-    assert_eq!(sample_read.pos_state.get_rolls_for(&address), 0);
+    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
 
     // Check the remaining deferred credits
     let slot_limit = Slot::new(10, 0);
     let deferred_credits = sample_read
-        .pos_state
+        .get_pos_state()
         .get_deferred_credits_range(..=slot_limit)
         .credits;
 
@@ -1935,7 +1935,7 @@ fn datastore_manipulations() {
     let amount = universe
         .final_state
         .read()
-        .ledger
+        .get_ledger()
         .get_balance(&addr)
         .unwrap();
     assert_eq!(
@@ -2272,7 +2272,7 @@ fn sc_builtins() {
         universe
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
             .unwrap(),
         Amount::from_str("299990").unwrap()
@@ -2360,7 +2360,7 @@ fn validate_address() {
         universe
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
             .unwrap(),
         Amount::from_str("300000")

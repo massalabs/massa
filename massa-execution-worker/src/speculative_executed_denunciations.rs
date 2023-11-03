@@ -8,13 +8,13 @@ use parking_lot::RwLock;
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_executed_ops::ExecutedDenunciationsChanges;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_models::denunciation::DenunciationIndex;
 
 /// Speculative state of executed denunciations
 pub(crate) struct SpeculativeExecutedDenunciations {
     /// Thread-safe shared access to the final state. For reading only.
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
 
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -31,7 +31,7 @@ impl SpeculativeExecutedDenunciations {
     /// * `final_state`: thread-safe shared access the the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         Self {
@@ -82,7 +82,7 @@ impl SpeculativeExecutedDenunciations {
         // check in the final state
         self.final_state
             .read()
-            .executed_denunciations
+            .get_executed_denunciations()
             .contains(de_idx)
     }
 

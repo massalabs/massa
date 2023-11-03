@@ -4,7 +4,7 @@ use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager,
 };
-use massa_final_state::{test_exports::get_sample_state, FinalState};
+use massa_final_state::{test_exports::get_sample_state, FinalStateController};
 use massa_metrics::MassaMetrics;
 use massa_models::{
     address::Address,
@@ -44,7 +44,7 @@ impl ExecutionForeignControllers {
 pub struct ExecutionTestUniverse {
     pub module_controller: Box<dyn ExecutionController>,
     pub storage: Storage,
-    pub final_state: Arc<RwLock<FinalState>>,
+    pub final_state: Arc<RwLock<dyn FinalStateController>>,
     module_manager: Box<dyn ExecutionManager>,
 }
 

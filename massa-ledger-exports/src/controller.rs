@@ -5,6 +5,7 @@ use std::fmt::Debug;
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
 
+#[cfg_attr(feature = "test-exports", mockall::automock)]
 pub trait LedgerController: Send + Sync + Debug {
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;

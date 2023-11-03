@@ -21,6 +21,7 @@ use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, MockConse
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
+use massa_final_state::FinalStateController;
 use massa_final_state::{
     test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
     FinalState, FinalStateConfig, StateChanges,

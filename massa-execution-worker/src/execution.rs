@@ -19,7 +19,7 @@ use massa_execution_exports::{
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -73,7 +73,7 @@ pub(crate) struct ExecutionState {
     // store containing execution events that became final
     final_events: EventStore,
     // final state with atomic R/W access
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     // execution context (see documentation in context.rs)
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
@@ -105,7 +105,7 @@ impl ExecutionState {
     /// A new `ExecutionState`
     pub fn new(
         config: ExecutionConfig,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
@@ -247,7 +247,7 @@ impl ExecutionState {
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
 
         self.massa_metrics.set_async_message_pool_size(
-            self.final_state.read().async_pool.message_info_cache.len(),
+            self.final_state.read().get_async_pool().message_info_cache.len(),
         );
 
         self.massa_metrics.inc_executed_final_slot();
@@ -1523,7 +1523,7 @@ impl ExecutionState {
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
-        let final_balance = self.final_state.read().ledger.get_balance(address);
+        let final_balance = self.final_state.read().get_ledger().get_balance(address);
         let search_result = self.active_history.read().fetch_balance(address);
         (
             final_balance,
@@ -1540,7 +1540,7 @@ impl ExecutionState {
         &self,
         address: &Address,
     ) -> (Option<Bytecode>, Option<Bytecode>) {
-        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let final_bytecode = self.final_state.read().get_ledger().get_bytecode(address);
         let search_result = self.active_history.read().fetch_bytecode(address);
         let speculative_v = match search_result {
             HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
@@ -1552,7 +1552,7 @@ impl ExecutionState {
 
     /// Gets roll counts both at the latest final and active executed slots
     pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
-        let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
+        let final_rolls = self.final_state.read().get_pos_state().get_rolls_for(address);
         let active_rolls = self
             .active_history
             .read()
@@ -1567,7 +1567,7 @@ impl ExecutionState {
         address: &Address,
         key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let final_entry = self.final_state.read().get_ledger().get_data_entry(address, key);
         let search_result = self
             .active_history
             .read()
@@ -1594,7 +1594,7 @@ impl ExecutionState {
         let final_keys = self
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_datastore_keys(addr, prefix);
 
         let mut candidate_keys = final_keys.clone();
@@ -1654,7 +1654,7 @@ impl ExecutionState {
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         self.final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_all_active_rolls(cycle)
     }
 
@@ -1706,7 +1706,7 @@ impl ExecutionState {
         let executed_final = self
             .final_state
             .read()
-            .executed_denunciations
+            .get_executed_denunciations()
             .contains(denunciation_index);
         if executed_final {
             return (true, true);
@@ -1734,7 +1734,7 @@ impl ExecutionState {
         let final_state_lock = self.final_state.read();
 
         // check if cycle is complete
-        let is_final = match final_state_lock.pos_state.is_cycle_complete(cycle) {
+        let is_final = match final_state_lock.get_pos_state().is_cycle_complete(cycle) {
             Some(v) => v,
             None => return None,
         };
@@ -1747,11 +1747,11 @@ impl ExecutionState {
                 .map(|addr| {
                     let staker_info = ExecutionQueryStakerInfo {
                         active_rolls: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_address_active_rolls(addr, cycle)
                             .unwrap_or(0),
                         production_stats: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_production_stats_for_address(cycle, addr)
                             .unwrap_or_default(),
                     };
@@ -1759,9 +1759,9 @@ impl ExecutionState {
                 })
                 .collect()
         } else {
-            let active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            let active_rolls = final_state_lock.get_pos_state().get_all_roll_counts(cycle);
             let production_stats = final_state_lock
-                .pos_state
+                .get_pos_state()
                 .get_all_production_stats(cycle)
                 .unwrap_or_default();
             let all_addrs: BTreeSet<Address> = active_rolls
@@ -1804,7 +1804,7 @@ impl ExecutionState {
         let res_final = self
             .final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_address_deferred_credits(address);
 
         // get values from active history, backwards
@@ -1839,7 +1839,7 @@ impl ExecutionState {
         let final_exec = self
             .final_state
             .read()
-            .executed_ops
+            .get_executed_ops()
             .get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
