@@ -305,6 +305,11 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -605,6 +610,11 @@
         }
 
         msgs
+    }
+
+    <span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test&quot;</span>))]
+    </span><span class="kw">pub fn </span>get_message_infos(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt; {
+        <span class="self">self</span>.message_infos.clone()
     }
 }
 
