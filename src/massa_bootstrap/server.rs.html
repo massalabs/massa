@@ -842,7 +842,7 @@
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 <span class="kw">use </span>massa_db_exports::CHANGE_ID_DESER_ERROR;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{
@@ -949,7 +949,7 @@
     listener_stopper: BootstrapListenerStopHandle,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
@@ -1021,7 +1021,7 @@
 <span class="kw">struct </span>BootstrapServer&lt;<span class="lifetime">&#39;a</span>&gt; {
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     ev_poller: BootstrapTcpListener,
     white_black_list: SharedWhiteBlackList&lt;<span class="lifetime">&#39;a</span>&gt;,
     keypair: KeyPair,
@@ -1225,7 +1225,7 @@
     arc_counter: Arc&lt;()&gt;,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
-    data_execution: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    data_execution: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     version: Version,
     consensus_command_sender: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,
@@ -1285,7 +1285,7 @@
 <span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>stream_bootstrap_information(
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     <span class="kw-2">mut </span>last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     <span class="kw-2">mut </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt;,
@@ -1315,18 +1315,18 @@
             <span class="kw">let </span>final_state_read = final_state.read();
 
             last_start_period = <span class="kw">if </span>send_last_start_period {
-                <span class="prelude-val">Some</span>(final_state_read.last_start_period)
+                <span class="prelude-val">Some</span>(final_state_read.get_last_start_period())
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>};
             last_slot_before_downtime = <span class="kw">if </span>send_last_start_period {
-                <span class="prelude-val">Some</span>(final_state_read.last_slot_before_downtime)
+                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>final_state_read.get_last_slot_before_downtime())
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>};
 
             state_part = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, last_slot)
                 .map_err(|e| {
@@ -1367,7 +1367,7 @@
             };
 
             versioning_part = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_versioning_batch_to_stream(<span class="kw-2">&amp;</span>last_versioning_step, last_slot)
                 .map_err(|e| {
@@ -1413,7 +1413,7 @@
             };
 
             <span class="kw">let </span>db_slot = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_change_id()
                 .expect(CHANGE_ID_DESER_ERROR);
@@ -1517,7 +1517,7 @@
 </span><span class="kw">fn </span>manage_bootstrap(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     server: <span class="kw-2">&amp;mut </span>BootstrapServerBinder,
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     version: Version,
     consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
     protocol_controller: Box&lt;<span class="kw">dyn </span>ProtocolController&gt;,

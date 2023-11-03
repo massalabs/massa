@@ -71,6 +71,7 @@
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 <span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::fmt::Debug;
@@ -78,7 +79,8 @@
 <span class="kw">use crate</span>::{LedgerChanges, LedgerError};
 <span class="kw">use </span>massa_db_exports::DBBatch;
 
-<span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
+<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
+</span><span class="kw">pub trait </span>LedgerController: Send + Sync + Debug {
     <span class="doccomment">/// Loads ledger from file
     </span><span class="kw">fn </span>load_initial_ledger(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), LedgerError&gt;;
 
