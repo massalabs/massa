@@ -3,9 +3,14 @@ name = "massa_db_exports"
 version = "0.26.1"
 edition = "2021"
 
+[features]
+test-exports = ["mockall", "mockall_wrap"]
+
 [dependencies]
 displaydoc = {workspace = true}
 thiserror = {workspace = true}
 parking_lot = {workspace = true}
 massa_hash = {workspace = true}
 massa_models = {workspace = true}
+mockall = {workspace = true, optional = true}
+mockall_wrap = {workspace = true, optional = true}

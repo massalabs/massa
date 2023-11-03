@@ -367,8 +367,9 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, op_thread),
-        Some(vec![operation_1.clone()]),
-        None,
+        vec![operation_1.clone()],
+        vec![],
+        vec![],
     );
     let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
     let node_a_keypair = KeyPair::generate(0).unwrap();

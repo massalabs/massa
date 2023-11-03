@@ -8,6 +8,7 @@ use std::{fmt::Debug, sync::Arc};
 pub type ShareableMassaDBController = Arc<RwLock<Box<dyn MassaDBController>>>;
 
 /// Controller trait for the MassaDB
+/// TODO: MOCK IT WITH MOCKALL. HAVING LIFETIMES ERRORS WITH AUTO MOCK
 pub trait MassaDBController: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
     fn backup_db(&self, slot: Slot) -> PathBuf;
