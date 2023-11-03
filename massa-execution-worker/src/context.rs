@@ -919,16 +919,6 @@ impl ExecutionContext {
         address: &Address,
         bytecode: Bytecode,
     ) -> Result<(), ExecutionError> {
-        // pay the Cranelift compilation cost
-        let cost = self.config.gas_costs.cl_compilation_cost;
-        if let Some(remaining) = self.max_gas.checked_sub(cost) {
-            self.max_gas = remaining
-        } else {
-            return Err(ExecutionError::RuntimeError(
-                "set_bytecode: not enough gas for new SC compilation".into(),
-            ));
-        }
-
         // check access right
         if !self.has_write_rights_on(address) {
             return Err(ExecutionError::RuntimeError(format!(

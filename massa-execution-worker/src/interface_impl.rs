@@ -276,23 +276,26 @@ impl Interface for InterfaceImpl {
     /// Get the module from cache if possible, compile it if not
     ///
     /// # Returns
-    /// A `massa-sc-runtime` compiled module
-    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<(RuntimeModule, u64)> {
+    /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
+    fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
         let context = context_guard!(self);
-        let (module, remaining_gas) = context.module_cache.write().load_module(bytecode, limit)?;
+        let (module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_module(bytecode, gas_limit)?;
         Ok((module, remaining_gas))
     }
 
     /// Compile and return a temporary module
     ///
     /// # Returns
-    /// A `massa-sc-runtime` compiled module
-    fn get_tmp_module(&self, bytecode: &[u8], limit: u64) -> Result<(RuntimeModule, u64)> {
+    /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
+    fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
         let context = context_guard!(self);
         let (module, remaining_gas) = context
             .module_cache
             .write()
-            .load_tmp_module(bytecode, limit)?;
+            .load_tmp_module(bytecode, gas_limit)?;
         Ok((module, remaining_gas))
     }
 
