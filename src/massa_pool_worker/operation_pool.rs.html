@@ -515,8 +515,6 @@
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -580,7 +578,7 @@
 
     <span class="doccomment">/// Get the relevant PoS draws of our staking addresses
     </span><span class="kw">fn </span>get_pos_draws(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; BTreeSet&lt;Slot&gt; {
-        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+        <span class="kw">let </span>now = MassaTime::now();
 
         <span class="comment">// min slot for PoS draw search = the earliest final slot
         </span><span class="kw">let </span>min_slot = <span class="self">self
@@ -673,7 +671,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>removed = PreHashSet::default();
         <span class="self">self</span>.sorted_ops.retain(|op_info| {
             <span class="comment">// filter out ops that use too much resources
-            </span><span class="kw">let </span><span class="kw-2">mut </span>retain = (op_info.max_gas_usage &lt;= <span class="self">self</span>.config.max_block_gas)
+            </span><span class="kw">let </span><span class="kw-2">mut </span>retain = (op_info.max_gas &lt;= <span class="self">self</span>.config.max_block_gas)
                 &amp;&amp; (op_info.size &lt;= <span class="self">self</span>.config.max_block_size <span class="kw">as </span>usize);
 
             <span class="comment">// filter out ops that are not valid during our PoS draws
@@ -761,7 +759,7 @@
         _exec_statuses: <span class="kw-2">&amp;</span>PreHashMap&lt;OperationId, bool&gt;,
         pos_draws: <span class="kw-2">&amp;</span>BTreeSet&lt;Slot&gt;,
     ) -&gt; PreHashMap&lt;OperationId, f32&gt; {
-        <span class="kw">let </span>now = MassaTime::now().expect(<span class="string">&quot;could not get current time&quot;</span>);
+        <span class="kw">let </span>now = MassaTime::now();
         <span class="kw">let </span>now_period = get_latest_block_slot_at_timestamp(
             <span class="self">self</span>.config.thread_count,
             <span class="self">self</span>.config.t0,
@@ -785,8 +783,7 @@
             <span class="comment">// gas score:
             //    0% of block gas =&gt; score 1
             //    100% of block gas =&gt; score 0
-            </span><span class="kw">let </span>gas_score =
-                <span class="number">1.0 </span>- (op_info.max_gas_usage <span class="kw">as </span>f32) / (<span class="self">self</span>.config.max_block_gas <span class="kw">as </span>f32);
+            </span><span class="kw">let </span>gas_score = <span class="number">1.0 </span>- (op_info.max_gas <span class="kw">as </span>f32) / (<span class="self">self</span>.config.max_block_gas <span class="kw">as </span>f32);
 
             <span class="comment">// general resource score (mean of gas and size scores)
             </span><span class="kw">let </span>epsilon_resource_factor = <span class="number">0.0001</span>; <span class="comment">// avoids zero score when gas and size are a perfect fit in the block
@@ -951,7 +948,6 @@
                     <span class="self">self</span>.config.operation_validity_periods,
                     <span class="self">self</span>.config.roll_price,
                     <span class="self">self</span>.config.thread_count,
-                    <span class="self">self</span>.config.base_operation_gas_cost,
                 ));
             }
         }
@@ -1008,7 +1004,7 @@
             }
 
             <span class="comment">// exclude ops that require too much gas
-            </span><span class="kw">if </span>op_info.max_gas_usage &gt; remaining_gas {
+            </span><span class="kw">if </span>op_info.max_gas &gt; remaining_gas {
                 <span class="kw">continue</span>;
             }
 
@@ -1019,7 +1015,7 @@
             </span>remaining_space -= op_info.size;
 
             <span class="comment">// update remaining block gas
-            </span>remaining_gas -= op_info.max_gas_usage;
+            </span>remaining_gas -= op_info.max_gas;
 
             <span class="comment">// update remaining number of operations
             </span>remaining_ops -= <span class="number">1</span>;
