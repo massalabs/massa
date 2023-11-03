@@ -5,11 +5,12 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["tempfile", "massa_models/test-exports", "mockall"]
+test-exports = ["tempfile", "massa_models/test-exports", "mockall", "mockall_wrap"]
 
 [dependencies]
 displaydoc = {workspace = true}
 mockall = {workspace = true, optional = true}
+mockall_wrap = {workspace = true, "optional" = true}
 serde = {workspace = true, "features" = ["derive"]}
 serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 serde_with = { workspace = true }

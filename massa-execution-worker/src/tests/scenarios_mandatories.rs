@@ -1,10 +1,14 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_db_exports::DBBatch;
+use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
+use massa_final_state::test_exports::get_initials;
+use massa_hash::Hash;
 use massa_models::config::{
     ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
 };
@@ -18,11 +22,12 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
-use massa_pos_exports::{MockSelectorControllerWrapper, Selection};
+use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
 use massa_time::MassaTime;
+use mockall::Sequence;
 use num::rational::Ratio;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
@@ -64,12 +69,29 @@ fn selector_boilerplate(
 fn test_execution_shutdown() {
     let block_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_slot()
+        .returning(move || Slot::new(0, 0));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_async_pool()
+        .return_const(AsyncPool::new(
+            AsyncPoolConfig::default(),
+            foreign_controllers.db.clone(),
+        ));
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
         &block_producer,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
-    std::thread::sleep(Duration::from_millis(100));
 }
 
 #[test]
@@ -80,13 +102,30 @@ fn test_sending_command() {
         &mut foreign_controllers.selector_controller,
         &block_producer,
     );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_slot()
+        .returning(move || Slot::new(0, 0));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_async_pool()
+        .return_const(AsyncPool::new(
+            AsyncPoolConfig::default(),
+            foreign_controllers.db.clone(),
+        ));
     let universe = ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
     universe.module_controller.update_blockclique_status(
         Default::default(),
         Default::default(),
         Default::default(),
     );
-    std::thread::sleep(Duration::from_millis(100));
 }
 
 #[test]
@@ -103,6 +142,39 @@ fn test_readonly_execution() {
         &mut foreign_controllers.selector_controller,
         &block_producer,
     );
+    let (rolls_path, _) = get_initials();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_slot()
+        .returning(move || Slot::new(0, 0));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_pos_state()
+        .return_const(
+            PoSFinalState::new(
+                PoSConfig::default(),
+                "",
+                &rolls_path.into_temp_path().to_path_buf(),
+                foreign_controllers.selector_controller.clone(),
+                foreign_controllers.db.clone(),
+            )
+            .unwrap(),
+        );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_async_pool()
+        .return_const(AsyncPool::new(
+            AsyncPoolConfig::default(),
+            foreign_controllers.db.clone(),
+        ));
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     let mut res = universe
@@ -119,7 +191,7 @@ fn test_readonly_execution() {
         })
         .expect("readonly execution failed");
 
-    assert_eq!(res.out.slot, Slot::new(1, 0));
+    assert_eq!(res.out.slot, Slot::new(0, 1));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
 }
@@ -137,7 +209,8 @@ fn test_nested_call_gas_usage() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
+        cursor_delay: MassaTime::from_millis(20),
+        thread_count: 2,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -146,6 +219,73 @@ fn test_nested_call_gas_usage() {
         &mut foreign_controllers.selector_controller,
         &block_producer,
     );
+    let (rolls_path, _) = get_initials();
+    let mut seq = Sequence::new();
+    for period in 0..2 {
+        for thread in 0..2 {
+            foreign_controllers
+                .final_state
+                .write()
+                .expect_get_slot()
+                .times(1)
+                .in_sequence(&mut seq)
+                .returning(move || Slot::new(period, thread));
+        }
+    }
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_pos_state()
+        .return_const(
+            PoSFinalState::new(
+                PoSConfig::default(),
+                "",
+                &rolls_path.into_temp_path().to_path_buf(),
+                foreign_controllers.selector_controller.clone(),
+                foreign_controllers.db.clone(),
+            )
+            .unwrap(),
+        );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_async_pool()
+        .return_const(AsyncPool::new(
+            AsyncPoolConfig::default(),
+            foreign_controllers.db.clone(),
+        ));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_executed_ops()
+        .return_const(ExecutedOps::new(
+            ExecutedOpsConfig {
+                thread_count: 2,
+                keep_executed_history_extra_periods: 10,
+            },
+            foreign_controllers.db.clone(),
+        ));
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // get random keypair

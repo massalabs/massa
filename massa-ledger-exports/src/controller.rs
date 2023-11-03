@@ -1,12 +1,14 @@
 use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 use std::collections::BTreeSet;
-use std::fmt::Debug;
 
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
 
-#[cfg_attr(feature = "test-exports", mockall::automock)]
-pub trait LedgerController: Send + Sync + Debug {
+#[cfg(feature = "test-exports")]
+use std::sync::{Arc, RwLock};
+
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
+pub trait LedgerController: Send + Sync {
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 

@@ -1,16 +1,19 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
+use massa_db_worker::MassaDB;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager,
 };
-use massa_final_state::{test_exports::get_sample_state, FinalStateController};
+use massa_final_state::{FinalStateController, MockFinalStateController};
+use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_metrics::MassaMetrics;
 use massa_models::{
     address::Address,
     amount::Amount,
     block_id::BlockId,
-    config::MIP_STORE_STATS_BLOCK_CONSIDERED,
+    config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT},
     datastore::Datastore,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
@@ -25,18 +28,37 @@ use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
 use parking_lot::RwLock;
+use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use crate::start_execution_worker;
 
 pub struct ExecutionForeignControllers {
     pub selector_controller: Box<MockSelectorControllerWrapper>,
+    pub final_state: Arc<RwLock<MockFinalStateController>>,
+    pub ledger_controller: MockLedgerControllerWrapper,
+    pub db: ShareableMassaDBController,
 }
 
 impl ExecutionForeignControllers {
     pub fn new_with_mocks() -> Self {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
         Self {
             selector_controller: Box::new(MockSelectorControllerWrapper::new()),
+            ledger_controller: MockLedgerControllerWrapper::new(),
+            final_state: Arc::new(RwLock::new(MockFinalStateController::new())),
+            db,
         }
     }
 }
@@ -59,16 +81,10 @@ impl TestUniverse for ExecutionTestUniverse {
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
-        let (final_state, _, _) = get_sample_state(
-            config.last_start_period,
-            controllers.selector_controller.clone(),
-            mip_store.clone(),
-        )
-        .unwrap();
         let (tx, _) = broadcast::channel(16);
         let (module_manager, module_controller) = start_execution_worker(
             config.clone(),
-            final_state.clone(),
+            controllers.final_state.clone(),
             controllers.selector_controller,
             mip_store,
             ExecutionChannels {
@@ -86,7 +102,7 @@ impl TestUniverse for ExecutionTestUniverse {
         init_execution_worker(&config, &storage, module_controller.clone());
         let universe = Self {
             storage,
-            final_state,
+            final_state: controllers.final_state,
             module_controller,
             module_manager,
         };
