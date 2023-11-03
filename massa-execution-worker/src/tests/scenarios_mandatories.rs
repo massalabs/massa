@@ -2006,6 +2006,7 @@ fn datastore_manipulations() {
                 ExecutionQueryRequestItem::Events(EventFilter::default()),
             ],
         });
+    // Just checking that is works no asserts for now
     universe.module_controller.get_addresses_infos(&[addr]);
 }
 
@@ -2378,6 +2379,7 @@ fn test_rewards() {
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
+    let endorsement_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
@@ -2386,14 +2388,25 @@ fn test_rewards() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // First block
+    let mut endorsements = vec![];
+    for i in 0..ENDORSEMENT_COUNT {
+        if i == 0 || i == 1 {
+            endorsements.push(ExecutionTestUniverse::create_endorsement(
+                &endorsement_producer,
+                Slot::new(1, 0),
+            ));
+        } else {
+            endorsements.push(ExecutionTestUniverse::create_endorsement(
+                &block_producer,
+                Slot::new(1, 0),
+            ));
+        }
+    }
     let block = ExecutionTestUniverse::create_block(
         &block_producer,
         Slot::new(1, 0),
         vec![],
-        vec![
-            ExecutionTestUniverse::create_endorsement(&block_producer, Slot::new(1, 0));
-            ENDORSEMENT_COUNT as usize
-        ],
+        endorsements,
         vec![],
     );
     // store the block in storage
@@ -2429,8 +2442,15 @@ fn test_rewards() {
         .get_final_and_candidate_balance(&[Address::from_public_key(
             &block_producer.get_public_key(),
         )])[0];
-    let first_block_reward = exec_cfg.block_reward.saturating_sub(LEDGER_ENTRY_BASE_COST);
-    println!("{:#?}", candidate_balance);
+    let block_credit_part = exec_cfg
+        .block_reward
+        .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+        .expect("critical: block_credits checked_div factor is 0")
+        .saturating_mul_u64(2);
+    let first_block_reward = exec_cfg
+        .block_reward
+        .saturating_sub(LEDGER_ENTRY_BASE_COST)
+        .saturating_sub(block_credit_part);
     assert_eq!(candidate_balance.unwrap(), first_block_reward);
 
     // Second block
