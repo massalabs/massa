@@ -893,81 +893,14 @@
 <a href="#893" id="893">893</a>
 <a href="#894" id="894">894</a>
 <a href="#895" id="895">895</a>
-<a href="#896" id="896">896</a>
-<a href="#897" id="897">897</a>
-<a href="#898" id="898">898</a>
-<a href="#899" id="899">899</a>
-<a href="#900" id="900">900</a>
-<a href="#901" id="901">901</a>
-<a href="#902" id="902">902</a>
-<a href="#903" id="903">903</a>
-<a href="#904" id="904">904</a>
-<a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
-<a href="#921" id="921">921</a>
-<a href="#922" id="922">922</a>
-<a href="#923" id="923">923</a>
-<a href="#924" id="924">924</a>
-<a href="#925" id="925">925</a>
-<a href="#926" id="926">926</a>
-<a href="#927" id="927">927</a>
-<a href="#928" id="928">928</a>
-<a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
-<a href="#932" id="932">932</a>
-<a href="#933" id="933">933</a>
-<a href="#934" id="934">934</a>
-<a href="#935" id="935">935</a>
-<a href="#936" id="936">936</a>
-<a href="#937" id="937">937</a>
-<a href="#938" id="938">938</a>
-<a href="#939" id="939">939</a>
-<a href="#940" id="940">940</a>
-<a href="#941" id="941">941</a>
-<a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a>
-<a href="#944" id="944">944</a>
-<a href="#945" id="945">945</a>
-<a href="#946" id="946">946</a>
-<a href="#947" id="947">947</a>
-<a href="#948" id="948">948</a>
-<a href="#949" id="949">949</a>
-<a href="#950" id="950">950</a>
-<a href="#951" id="951">951</a>
-<a href="#952" id="952">952</a>
-<a href="#953" id="953">953</a>
-<a href="#954" id="954">954</a>
-<a href="#955" id="955">955</a>
-<a href="#956" id="956">956</a>
-<a href="#957" id="957">957</a>
-<a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
 <span class="kw">use </span>massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
-
 <span class="kw">use </span>massa_db_exports::StreamBatch;
-
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
-
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
@@ -985,7 +918,6 @@
     SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
-
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
 <span class="kw">use </span>nom::multi::{length_count, length_data};
@@ -996,7 +928,6 @@
     IResult,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
-
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -1266,8 +1197,7 @@
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
     state_updates_length_deserializer: U64VarIntDeserializer,
-    datastore_key_deserializer: VecU8Deserializer,
-    datastore_val_deserializer: VecU8Deserializer,
+    vec_u8_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     block_id_set_deserializer: PreHashSetDeserializer&lt;BlockId, BlockIdDeserializer&gt;,
@@ -1276,9 +1206,6 @@
     opt_last_start_period_deserializer: OptionDeserializer&lt;u64, U64VarIntDeserializer&gt;,
     opt_last_slot_before_downtime_deserializer:
         OptionDeserializer&lt;<span class="prelude-ty">Option</span>&lt;Slot&gt;, OptionDeserializer&lt;Slot, SlotDeserializer&gt;&gt;,
-
-    max_final_state_elements_size: u32,
-    max_versioning_elements_size: u32,
 }
 
 <span class="kw">impl </span>BootstrapServerMessageDeserializer {
@@ -1295,11 +1222,7 @@
                 args.max_advertise_length,
                 args.max_listeners_per_peer,
             ),
-            datastore_key_deserializer: VecU8Deserializer::new(
-                Included(<span class="number">0</span>),
-                Included(args.max_datastore_key_length.into()),
-            ),
-            datastore_val_deserializer: VecU8Deserializer::new(
+            vec_u8_deserializer: VecU8Deserializer::new(
                 Included(<span class="number">0</span>),
                 Included(args.max_datastore_value_length),
             ),
@@ -1322,11 +1245,11 @@
             ),
             versioning_part_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(u64::MAX),
+                Included(args.max_versioning_elements_size.into()),
             ),
             state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(u64::MAX),
+                Included(args.max_final_state_elements_size.into()),
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
@@ -1345,56 +1268,7 @@
                     (Included(<span class="number">0</span>), Excluded(args.thread_count)),
                 )),
             ),
-            max_final_state_elements_size: args.max_final_state_elements_size,
-            max_versioning_elements_size: args.max_versioning_elements_size,
         }
-    }
-
-    <span class="comment">// Validate that the message got from deserialization is under the limit set in the
-    // parameters.
-    // Put here everything that cannot be tested inside the parsing process itself.
-    </span><span class="kw">fn </span>validate_result&lt;
-        <span class="lifetime">&#39;a</span>,
-        E: nom::error::ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + nom::error::ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
-    &gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-        msg: <span class="kw-2">&amp;</span>BootstrapServerMessage,
-    ) -&gt; IResult&lt;(), (), E&gt; {
-        <span class="kw">if let </span>BootstrapServerMessage::BootstrapPart {
-            state_part,
-            versioning_part,
-            ..
-        } = msg
-        {
-            <span class="kw">if </span>state_part
-                .new_elements
-                .iter()
-                .map(|(k, v)| k.len() + v.len())
-                .sum::&lt;usize&gt;()
-                &gt; (<span class="self">self</span>.max_final_state_elements_size <span class="kw">as </span>usize)
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ContextError::add_context(
-                    input,
-                    <span class="string">&quot;final_state new_elements total size is exceeding bytes limit&quot;</span>,
-                    ParseError::from_error_kind(input, nom::error::ErrorKind::TooLarge),
-                )));
-            }
-            <span class="kw">if </span>versioning_part
-                .new_elements
-                .iter()
-                .map(|(k, v)| k.len() + v.len())
-                .sum::&lt;usize&gt;()
-                &gt; (<span class="self">self</span>.max_versioning_elements_size <span class="kw">as </span>usize)
-            {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ContextError::add_context(
-                    input,
-                    <span class="string">&quot;versioning_part new_elements total size is exceeding bytes limit&quot;</span>,
-                    ParseError::from_error_kind(input, nom::error::ErrorKind::TooLarge),
-                )));
-            }
-        }
-        <span class="prelude-val">Ok</span>(((), ()))
     }
 }
 
@@ -1446,7 +1320,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BootstrapServerMessage, E&gt; {
-        <span class="kw">let </span>res = context(<span class="string">&quot;Failed BootstrapServerMessage deserialization&quot;</span>, |buffer| {
+        context(<span class="string">&quot;Failed BootstrapServerMessage deserialization&quot;</span>, |buffer| {
             <span class="kw">let </span>(input, id) = context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
                 <span class="self">self</span>.message_id_deserializer.deserialize(input)
             })
@@ -1495,8 +1369,8 @@
                                             .deserialize(input)
                                     }),
                                     tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
                             ),
@@ -1507,7 +1381,7 @@
                                         <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
@@ -1528,8 +1402,8 @@
                                             .deserialize(input)
                                     }),
                                     tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
-                                        |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
                             ),
@@ -1540,7 +1414,7 @@
                                         <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
-                                        |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
+                                        |input| <span class="self">self</span>.vec_u8_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
@@ -1622,9 +1496,7 @@
                 .parse(input),
             }
         })
-        .parse(buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.validate_result(res.<span class="number">0</span>, <span class="kw-2">&amp;</span>res.<span class="number">1</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(res)
+        .parse(buffer)
     }
 }
 
@@ -1785,7 +1657,7 @@
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             id_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
-            length_error_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
+            length_error_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">100000</span>)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(thread_count)),
