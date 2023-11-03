@@ -88,7 +88,6 @@ impl ModuleCache {
 
     /// Set the initialization cost of a cached module
     pub fn set_init_cost(&mut self, bytecode: &[u8], init_cost: u64) {
-        warn!("set_init_cost {}", init_cost);
         let hash = Hash::compute_from(bytecode);
         self.lru_cache.set_init_cost(hash, init_cost);
         self.hd_cache.set_init_cost(hash, init_cost);
@@ -102,6 +101,11 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution
+    ///
+    /// Returns the module information, it can be:
+    /// * `ModuleInfo::Invalid` if the module is invalid
+    /// * `ModuleInfo::Module` if the module is valid and has no delta
+    /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
     fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
         if bytecode.len() > self.cfg.max_module_length as usize {
             info!(
