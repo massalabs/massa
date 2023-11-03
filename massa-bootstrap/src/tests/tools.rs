@@ -770,9 +770,11 @@ impl BootstrapServerMessage {
             }
             2 => {
                 let slot = gen_random_slot(rng);
-                let state_part = gen_random_stream_batch(MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, slot, rng);
+                let state_part =
+                    gen_random_stream_batch(MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, slot, rng);
                 let slot = gen_random_slot(rng);
-                let versioning_part = gen_random_stream_batch(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, slot, rng);
+                let versioning_part =
+                    gen_random_stream_batch(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, slot, rng);
                 let mut final_blocks = vec![];
                 let block_nb = rng.gen_range(5..100); //MAX_BOOTSTRAP_BLOCKS);
                 for _ in 0..block_nb {
@@ -1223,7 +1225,7 @@ impl BootstrapClientMessage {
                 } else {
                     StreamingStep::Started
                 };
-                
+
                 let last_consensus_step = if last_slot.is_some() {
                     let nb = rng.gen_range(0..100);
                     let mut data = PreHashSet::with_capacity(nb);
@@ -1234,7 +1236,7 @@ impl BootstrapClientMessage {
                 } else {
                     StreamingStep::Started
                 };
-                
+
                 let send_last_start_period = if last_slot.is_none() {
                     true
                 } else {
