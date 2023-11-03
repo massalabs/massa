@@ -101,13 +101,13 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciationsChanges;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 
 <span class="doccomment">/// Speculative state of executed denunciations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeExecutedDenunciations {
     <span class="doccomment">/// Thread-safe shared access to the final state. For reading only.
-    </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
 
     <span class="doccomment">/// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -124,7 +124,7 @@
     /// * `final_state`: thread-safe shared access the the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
     </span><span class="kw">pub fn </span>new(
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -175,7 +175,7 @@
         <span class="comment">// check in the final state
         </span><span class="self">self</span>.final_state
             .read()
-            .executed_denunciations
+            .get_executed_denunciations()
             .contains(de_idx)
     }
 
