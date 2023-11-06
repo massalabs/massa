@@ -54,6 +54,7 @@ impl Default for ExecutionConfig {
                 .into(),
             )
             .unwrap(),
+            base_operation_gas_cost: BASE_OPERATION_GAS_COST,
             last_start_period: 0,
             hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
             lru_cache_size: 1000,
