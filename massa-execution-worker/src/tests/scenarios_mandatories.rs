@@ -1,16 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
-use massa_db_exports::DBBatch;
+use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
+use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
+use massa_ledger_exports::MockLedgerControllerWrapper;
+use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE
+    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
 };
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -24,7 +27,6 @@ use massa_models::{
 };
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
 use massa_signature::KeyPair;
-use massa_storage::Storage;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
 use mockall::predicate;
@@ -41,11 +43,110 @@ const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
 
+fn final_state_boilerplate(
+    mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
+    db: ShareableMassaDBController,
+    selector_controller: &mut MockSelectorControllerWrapper,
+    ledger_controller: &mut MockLedgerControllerWrapper,
+    saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
+) {
+    let (rolls_path, _) = get_initials();
+    mock_final_state
+        .write()
+        .expect_get_slot()
+        .times(1)
+        .returning(move || Slot::new(0, 0));
+
+    mock_final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+
+    mock_final_state
+        .write()
+        .expect_get_pos_state()
+        .return_const(
+            PoSFinalState::new(
+                PoSConfig::default(),
+                "",
+                &rolls_path.into_temp_path().to_path_buf(),
+                Box::new(selector_controller.clone()),
+                db.clone(),
+            )
+            .unwrap(),
+        );
+
+    mock_final_state
+        .write()
+        .expect_get_async_pool()
+        .return_const(AsyncPool::new(AsyncPoolConfig::default(), db.clone()));
+
+    mock_final_state
+        .write()
+        .expect_get_executed_ops()
+        .return_const(ExecutedOps::new(
+            ExecutedOpsConfig {
+                thread_count: 2,
+                keep_executed_history_extra_periods: 10,
+            },
+            db.clone(),
+        ));
+
+    ledger_controller.set_expectations(|ledger_controller| {
+        ledger_controller
+            .expect_get_balance()
+            .returning(move |_| Some(Amount::from_str("100").unwrap()));
+        if let Some(saved_bytecode) = saved_bytecode {
+            ledger_controller
+                .expect_get_bytecode()
+                .returning(move |_| saved_bytecode.read().clone());
+        }
+        ledger_controller
+            .expect_entry_exists()
+            .returning(move |_| false);
+    });
+    mock_final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(ledger_controller.clone()));
+}
+
+fn expect_init_and_call(
+    init_sc_slot: Slot,
+    call_sc_slot: Option<Slot>,
+    finalized_waitpoint_trigger_handle: WaitPoint,
+    mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
+) -> Arc<RwLock<Option<Bytecode>>> {
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle_2 =
+        finalized_waitpoint_trigger_handle.get_trigger_handle();
+    mock_final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(init_sc_slot), predicate::always())
+        .returning(move |_, changes| {
+            let mut saved_bytecode = saved_bytecode_edit.write();
+            *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    if let Some(call_sc_slot) = call_sc_slot {
+        mock_final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(call_sc_slot), predicate::always())
+        .returning(move |_, _| {
+            finalized_waitpoint_trigger_handle_2.trigger();
+        });
+    }
+    saved_bytecode
+}
+
 fn selector_boilerplate(
     mock_selector: &mut MockSelectorControllerWrapper,
-    block_creator: &KeyPair,
 ) {
-    let block_creator_address = Address::from_public_key(&block_creator.get_public_key());
     mock_selector.set_expectations(|selector_controller| {
         selector_controller
             .expect_feed_cycle()
@@ -53,75 +154,38 @@ fn selector_boilerplate(
         selector_controller
             .expect_wait_for_draws()
             .returning(move |cycle| Ok(cycle + 1));
-        selector_controller
-            .expect_get_producer()
-            .returning(move |_| Ok(block_creator_address));
-        selector_controller
-            .expect_get_selection()
-            .returning(move |_| {
-                Ok(Selection {
-                    producer: block_creator_address,
-                    endorsements: vec![block_creator_address; ENDORSEMENT_COUNT as usize],
-                })
-            });
     });
 }
 
 #[test]
 fn test_execution_shutdown() {
-    let block_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_slot()
-        .returning(move || Slot::new(0, 0));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_execution_trail_hash()
-        .returning(|| Hash::compute_from("Genesis".as_bytes()));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_async_pool()
-        .return_const(AsyncPool::new(
-            AsyncPoolConfig::default(),
-            foreign_controllers.db.clone(),
-        ));
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
 }
 
 #[test]
 fn test_sending_command() {
-    let block_producer = KeyPair::generate(0).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
     );
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_slot()
-        .returning(move || Slot::new(0, 0));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_execution_trail_hash()
-        .returning(|| Hash::compute_from("Genesis".as_bytes()));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_async_pool()
-        .return_const(AsyncPool::new(
-            AsyncPoolConfig::default(),
-            foreign_controllers.db.clone(),
-        ));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+    );
     let universe = ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
     universe.module_controller.update_blockclique_status(
         Default::default(),
@@ -133,50 +197,18 @@ fn test_sending_command() {
 #[test]
 fn test_readonly_execution() {
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
+    let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
     );
-    let (rolls_path, _) = get_initials();
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_slot()
-        .returning(move || Slot::new(0, 0));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_execution_trail_hash()
-        .returning(|| Hash::compute_from("Genesis".as_bytes()));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_pos_state()
-        .return_const(
-            PoSFinalState::new(
-                PoSConfig::default(),
-                "",
-                &rolls_path.into_temp_path().to_path_buf(),
-                foreign_controllers.selector_controller.clone(),
-                foreign_controllers.db.clone(),
-            )
-            .unwrap(),
-        );
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_async_pool()
-        .return_const(AsyncPool::new(
-            AsyncPoolConfig::default(),
-            foreign_controllers.db.clone(),
-        ));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+    );
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     let mut res = universe
@@ -209,167 +241,40 @@ fn test_readonly_execution() {
 #[test]
 fn test_nested_call_gas_usage() {
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(20),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
+    let exec_cfg =  ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
-    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
-    let finalized_waitpoint_trigger_handle_2 = finalized_waitpoint.get_trigger_handle();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    let saved_bytecode = Arc::new(RwLock::new(None));
-    let saved_bytecode_edit = saved_bytecode.clone();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
     );
-    let (rolls_path, _) = get_initials();
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_slot()
-        .times(1)
-        .returning(move || Slot::new(0, 0));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_execution_trail_hash()
-        .returning(|| Hash::compute_from("Genesis".as_bytes()));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_pos_state()
-        .return_const(
-            PoSFinalState::new(
-                PoSConfig::default(),
-                "",
-                &rolls_path.into_temp_path().to_path_buf(),
-                foreign_controllers.selector_controller.clone(),
-                foreign_controllers.db.clone(),
-            )
-            .unwrap(),
-        );
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_async_pool()
-        .return_const(AsyncPool::new(
-            AsyncPoolConfig::default(),
-            foreign_controllers.db.clone(),
-        ));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_executed_ops()
-        .return_const(ExecutedOps::new(
-            ExecutedOpsConfig {
-                thread_count: 2,
-                keep_executed_history_extra_periods: 10,
-            },
-            foreign_controllers.db.clone(),
-        ));
-    foreign_controllers
-        .ledger_controller
-        .set_expectations(|ledger_controller| {
-            ledger_controller
-                .expect_get_balance()
-                .returning(move |_| Some(Amount::from_str("100").unwrap()));
-
-            ledger_controller
-                .expect_get_bytecode()
-                .returning(move |_| saved_bytecode.read().clone());
-            ledger_controller
-                .expect_entry_exists()
-                .returning(move |_| false);
-        });
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_get_ledger()
-        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_finalize()
-        .times(1)
-        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, changes| {
-            let mut saved_bytecode = saved_bytecode_edit.write();
-            *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
-            finalized_waitpoint_trigger_handle.trigger();
-        });
-
-    foreign_controllers
-        .final_state
-        .write()
-        .expect_finalize()
-        .times(1)
-        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
-        .returning(move |_, _| {
-            finalized_waitpoint_trigger_handle_2.trigger();
-        });
+    let saved_bytecode = expect_init_and_call(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+    );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
-    // get random keypair
-    let keypair_thread_0 = KeyPair::from_str(TEST_SK_1).unwrap();
-    let keypair_thread_1 = KeyPair::from_str(TEST_SK_2).unwrap();
     // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/nested_call.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/test.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block containing the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair_thread_0, bytecode, datastore)
-            .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(
-                &keypair_thread_0.get_public_key(),
-            )),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks.clone(),
-        Default::default(),
-        block_metadata.clone(),
+        include_bytes!("./wasm/nested_call.wasm"),
+        include_bytes!("./wasm/test.wasm"),
     );
     finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
 
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(0, 1)),
-            end: Some(Slot::new(20, 1)),
-            ..Default::default()
-        });
-    // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    let address = events[0].clone().data;
     // Call the function test of the smart contract
     let operation = ExecutionTestUniverse::create_call_sc_operation(
-        &keypair_thread_1,
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
         10000000,
         Amount::from_str("0").unwrap(),
         Amount::from_str("0").unwrap(),
@@ -378,35 +283,10 @@ fn test_nested_call_gas_usage() {
         address.as_bytes().to_vec(),
     )
     .unwrap();
-    // Init new storage for this block
-    let mut storage = Storage::create_root();
-    storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
+    universe.call_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    storage.store_block(block.clone());
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(
-                &keypair_thread_1.get_public_key(),
-            )),
-            storage: Some(storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
+        operation,
     );
     finalized_waitpoint.wait();
 
@@ -438,77 +318,41 @@ fn test_nested_call_gas_usage() {
 #[test]
 fn test_get_call_coins() {
     // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
+    let exec_cfg =  ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
+    );
+    let saved_bytecode = expect_init_and_call(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/get_call_coins_main.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/get_call_coins_test.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block containing the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
+        include_bytes!("./wasm/get_call_coins_main.wasm"),
+        include_bytes!("./wasm/get_call_coins_test.wasm"),
     );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
+    finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
 
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks.clone(),
-        Default::default(),
-        block_metadata.clone(),
-    );
-
-    std::thread::sleep(Duration::from_millis(100));
-
-    // assert_eq!(balance, balance_expected);
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(0, 1)),
-            end: Some(Slot::new(20, 1)),
-            ..Default::default()
-        });
-    // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    let address = events[0].clone().data;
     // Call the function test of the smart contract
     let coins_sent = Amount::from_str("10").unwrap();
     let operation = ExecutionTestUniverse::create_call_sc_operation(
-        &keypair,
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
         10000000,
         Amount::from_str("0").unwrap(),
         coins_sent,
@@ -517,42 +361,19 @@ fn test_get_call_coins() {
         address.as_bytes().to_vec(),
     )
     .unwrap();
-    // Init new storage for this block
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
-        Slot::new(2, 0),
-        vec![operation],
-        vec![],
-        vec![],
+    universe.call_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        operation,
     );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(100));
+    finalized_waitpoint.wait();
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
     let events = universe
         .module_controller
         .get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(2, 0)),
+            start: Some(Slot::new(1, 1)),
             ..Default::default()
         });
-    println!("events {:#?}", events);
     assert!(events[0].data.contains(&format!(
         "tokens sent to the SC during the call : {}",
         coins_sent.to_raw()
@@ -579,61 +400,46 @@ fn test_get_call_coins() {
 #[test]
 fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
         max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
 
+    let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
-        &block_producer,
     );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
+        selector_controller.expect_get_producer().returning(move |_| {
+            Ok(Address::from_public_key(&KeyPair::from_str(TEST_SK_2).unwrap().get_public_key()))
+        });
+    });
+    let saved_bytecode = expect_init_and_call(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/send_message.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block contaning the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
     );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    // sleep for 150ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(150));
-
+    finalized_waitpoint.wait();
+    
+    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on 
+    std::thread::sleep(Duration::from_millis(exec_cfg.t0.to_millis()));
     // retrieve events emitted by smart contracts
     let events = universe
         .module_controller
@@ -642,2035 +448,2032 @@ fn send_and_receive_async_message() {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
-
-    println!("events: {:?}", events);
-
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
 }
 
-/// # Context
-///
-/// Mostly the same as send_and_receive_async_message
-///
-/// Functional test that tests the execution status of an operation is correctly recorded
-///
-/// 1. a block is created containing an `execute_sc` operation
-/// 2. this operation executes the `send_message` of the smart contract
-/// 3. `send_message` stores the `receive_message` of the smart contract on the block
-/// 4. `receive_message` contains the message handler function
-/// 5. `send_message` sends a message to the `receive_message` address
-/// 6. we set the created block as finalized so the message is actually sent
-/// 7. we execute the following slots for 300 milliseconds to reach the message execution period
-/// 8. once the execution period is over we stop the execution controller
-/// 9. we retrieve the status of the executed operation(s)
-/// 10 we check that the monitored operation has been executed
-/// 11 we check that the execution status is the one we expected
-///
-#[test]
-fn test_operation_execution_status() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/send_message.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block contaning the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    let tested_op_id = operation.id;
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    // sleep for 150ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(150));
-
-    let (op_candidate, op_final) = universe
-        .module_controller
-        .get_ops_exec_status(&[tested_op_id])[0];
-
-    // match the events
-    assert!(
-        op_candidate == Some(true) && op_final == Some(true),
-        "Expected operation not found or not successfully executed"
-    );
-}
-
-/// Context
-///
-/// Functional test for local smart-contract execution
-///
-/// 1. a block is created with 2 ExecuteSC operations
-///    it contains 1 local execution and 1 local call
-///    both operation datastores have the bytecode of local_function.wasm
-/// 2. store and set the block as final
-/// 3. wait for execution
-/// 4. retrieve events emitted by the initial an sub functions
-/// 5. match event and call stack to make sure that executions were local
-#[test]
-fn local_execution() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    // load bytecodes
-    // you can check the source code of the following wasm files in massa-unit-tests-src
-    let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
-    let call_bytecode = include_bytes!("./wasm/local_call.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/local_function.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block contaning the operations
-    let local_exec_op = ExecutionTestUniverse::create_execute_sc_operation(
-        &keypair,
-        exec_bytecode,
-        datastore.clone(),
-    )
-    .unwrap();
-    let local_call_op =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, call_bytecode, datastore)
-            .unwrap();
-    universe
-        .storage
-        .store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![local_exec_op, local_call_op],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    // sleep for 100ms to wait for execution
-    std::thread::sleep(Duration::from_millis(100));
-
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            ..Default::default()
-        });
-
-    // match the events, check balance and call stack to make sure the executions were local
-    assert!(events.len() == 8, "8 events were expected");
-    assert_eq!(
-        Amount::from_raw(events[1].data.parse().unwrap()),
-        Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
-    );
-    assert_eq!(events[1].context.call_stack.len(), 1);
-    assert_eq!(
-        events[1].context.call_stack.back().unwrap(),
-        &Address::from_public_key(&keypair.get_public_key())
-    );
-    assert_eq!(events[2].data, "one local execution completed");
-    let amount = Amount::from_raw(events[5].data.parse().unwrap());
-    assert_eq!(Amount::from_str("299979.6713").unwrap(), amount);
-    assert_eq!(events[5].context.call_stack.len(), 1);
-    assert_eq!(
-        events[1].context.call_stack.back().unwrap(),
-        &Address::from_public_key(&keypair.get_public_key())
-    );
-    assert_eq!(events[6].data, "one local call completed");
-}
-
-/// Context
-///
-/// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
-///
-/// 1. a block is created with one ExecuteSC operation containing
-///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
-/// 2. store and set the block as final
-/// 3. wait for execution
-/// 4. retrieve events emitted by the initial an sub functions
-/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
-#[test]
-fn sc_deployment() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    // load bytecodes
-    // you can check the source code of the following wasm files in massa-unit-tests-src
-    let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/init_sc.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block containing the operation
-    let op = ExecutionTestUniverse::create_execute_sc_operation(
-        &keypair,
-        op_bytecode,
-        datastore.clone(),
-    )
-    .unwrap();
-    universe.storage.store_operations(vec![op.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![op],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    // sleep for 100ms to wait for execution
-    std::thread::sleep(Duration::from_millis(100));
-
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            ..Default::default()
-        });
-
-    // match the events
-    if events.len() != 3 {
-        for (i, ev) in events.iter().enumerate() {
-            eprintln!("ev {}: {}", i, ev);
-        }
-        panic!("3 events were expected");
-    }
-    assert_eq!(events[0].data, "sc created");
-    assert_eq!(events[1].data, "constructor exists and will be called");
-    assert_eq!(events[2].data, "constructor called by deployer");
-}
-
-/// # Context
-///
-/// Functional test for asynchronous messages sending and handling with a filter
-///
-/// 1. a block is created containing an `execute_sc` operation
-/// 2. this operation deploy a smart contract and call his function `test`
-/// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `AS12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
-/// 4. we set the created block as finalized so the message is actually sent
-/// 5. we execute the following slots for 300 milliseconds to reach the message execution period
-/// 6. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
-/// 7. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
-/// 8. once the execution period is over we stop the execution controller
-/// 9. we retrieve the events emitted by smart contract
-/// 10. `test` handler function should have emitted a second event
-/// 11. we check if they are events
-/// 12. if they are some, we verify that the data has the correct value
-#[test]
-fn send_and_receive_async_message_with_trigger() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 1_000_000_000,
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-    let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::default();
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/send_message_condition.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    let key = unsafe {
-        String::from("smart-contract")
-            .encode_utf16()
-            .collect::<Vec<u16>>()
-            .align_to::<u8>()
-            .1
-            .to_vec()
-    };
-    datastore.insert(key, datastore_bytecode);
-
-    // create the block containing the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks.clone(),
-        Some(blockclique_blocks.clone()),
-        block_metadata.clone(),
-    );
-    // sleep for 10ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(10));
-
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            ..Default::default()
-        });
-
-    // match the events
-    assert_eq!(events.len(), 2, "2 events were expected");
-    assert_eq!(events[0].data, "Triggered");
-
-    // keypair associated to thread 1
-    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
-    let datastore = BTreeMap::new();
-
-    // create the block containing the smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 1),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks.clone(),
-        None,
-        block_metadata.clone(),
-    );
-    // sleep for 10ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(10));
-
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            ..Default::default()
-        });
-
-    // match the events
-    assert!(events.len() == 3, "3 events were expected");
-
-    // keypair associated to thread 2
-    let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    // This line execute the smart contract that will modify the data entry and then trigger the SC.
-    let bytecode = include_bytes!("./wasm/send_message_trigger.wasm");
-    let datastore = BTreeMap::new();
-
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 2),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block so the message is sent
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    blockclique_blocks.insert(block.content.header.content.slot, block.id);
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks.clone(),
-        None,
-        block_metadata.clone(),
-    );
-    // sleep for 1000ms to reach the message execution period
-    std::thread::sleep(Duration::from_millis(1000));
-
-    // retrieve events emitted by smart contracts
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            ..Default::default()
-        });
-
-    // match the events
-    assert!(events.len() == 4, "4 events were expected");
-}
-
-#[test]
-fn send_and_receive_transaction() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    let recipient_address =
-        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-
-    // create the operation
-    let operation = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::Transaction {
-                recipient_address,
-                amount: Amount::from_str("100").unwrap(),
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    // create the block containing the transaction operation
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block so the transaction is processed
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(10));
-    // check recipient balance
-    //TODO: replace when ledger will be mocked
-    assert_eq!(
-        universe
-            .final_state
-            .read()
-            .get_ledger()
-            .get_balance(&recipient_address)
-            .unwrap(),
-        // Storage cost applied
-        Amount::from_str("100")
-            .unwrap()
-            // Storage cost base
-            .saturating_sub(LEDGER_ENTRY_BASE_COST)
-    );
-}
-
-#[test]
-fn roll_buy() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    // create the operation
-    let operation = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollBuy { roll_count: 10 },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    // create the block containing the roll buy operation
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block so the purchase is processed
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(100));
-    // check roll count of the buyer address and its balance
-    let sample_read = universe.final_state.read();
-    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 110);
-    assert_eq!(
-        sample_read.get_ledger().get_balance(&address).unwrap(),
-        Amount::from_str("299_000").unwrap()
-    );
-}
-
-#[test]
-fn roll_sell() {
-    // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
-    // Check for resulting roll count + resulting deferred credits
-
-    // setup the period duration
-    // turn off roll selling on missed block opportunities
-    // otherwise balance will be credited with those sold roll (and we need to check the balance for
-    // if the deferred credits are reimbursed
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        periods_per_cycle: 2,
-        thread_count: 2,
-        last_start_period: 2,
-        max_miss_ratio: Ratio::new(1, 1),
-        ..Default::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // get initial balance
-    let balance_initial = universe
-        .final_state
-        .read()
-        .get_ledger()
-        .get_balance(&address)
-        .unwrap();
-
-    // get initial roll count
-    let roll_count_initial = universe
-        .final_state
-        .read()
-        .get_pos_state()
-        .get_rolls_for(&address);
-    let roll_sell_1 = 10;
-    let roll_sell_2 = 1;
-    let roll_sell_3 = roll_count_initial.saturating_add(10);
-
-    let initial_deferred_credits = Amount::from_str("100").unwrap();
-
-    let mut batch = DBBatch::new();
-
-    // set initial_deferred_credits that will be reimbursed at first block
-    universe
-        .final_state
-        .write()
-        .get_pos_state()
-        .put_deferred_credits_entry(
-            &Slot::new(1, 0),
-            &address,
-            &initial_deferred_credits,
-            &mut batch,
-        );
-
-    universe
-        .final_state
-        .write()
-        .get_database()
-        .write()
-        .write_batch(batch, Default::default(), None);
-
-    // create operation 1
-    let operation1 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_1,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    let operation2 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_2,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    let operation3 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 10,
-            op: OperationType::RollSell {
-                roll_count: roll_sell_3,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    // create the block containing the roll buy operation
-    universe.storage.store_operations(vec![
-        operation1.clone(),
-        operation2.clone(),
-        operation3.clone(),
-    ]);
-    let block = ExecutionTestUniverse::create_block(
-        &KeyPair::generate(0).unwrap(),
-        Slot::new(3, 0),
-        vec![operation1, operation2, operation3],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set the block as final so the sell and credits are processed
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(address),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(1000));
-
-    // check roll count deferred credits and candidate balance of the seller address
-    let sample_read = universe.final_state.read();
-    let mut credits = PreHashMap::default();
-    let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
-    let roll_sold = roll_sell_1 + roll_sell_2;
-    credits.insert(
-        address,
-        exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-    );
-
-    assert_eq!(
-        sample_read.get_pos_state().get_rolls_for(&address),
-        roll_remaining
-    );
-
-    assert_eq!(
-        sample_read
-            .get_pos_state()
-            .get_deferred_credits_range(..=Slot::new(9, 1))
-            .credits
-            .get(&Slot::new(9, 1))
-            .cloned()
-            .unwrap_or_default(),
-        credits
-    );
-
-    // Check that deferred credit are reimbursed
-    let credits = PreHashMap::default();
-
-    assert_eq!(
-        sample_read
-            .get_pos_state()
-            .get_deferred_credits_range(..=Slot::new(10, 1))
-            .credits
-            .get(&Slot::new(10, 1))
-            .cloned()
-            .unwrap_or_default(),
-        credits
-    );
-
-    // Check that the initial deferred_credits are set to zero
-    assert_eq!(
-        sample_read
-            .get_pos_state()
-            .get_deferred_credits_range(..=Slot::new(10, 1))
-            .credits
-            .get(&Slot::new(1, 0))
-            .cloned()
-            .unwrap_or_default(),
-        credits
-    );
-
-    // Now check balance
-    let balances = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[address]);
-    let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-    assert_eq!(
-        candidate_balance,
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_sell_1 + roll_sell_2)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
-            .checked_add(initial_deferred_credits)
-            .unwrap()
-    );
-}
-
-#[test]
-fn roll_slash() {
-    // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
-    // 3 rolls)
-    // Check for resulting roll & deferred credits & balance
-
-    // setup the period duration
-    // turn off roll selling on missed block opportunities
-    // otherwise balance will be credited with those sold roll (and we need to check the balance for
-    // if the deferred credits are reimbursed
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        periods_per_cycle: 2,
-        thread_count: 2,
-        last_start_period: 2,
-        roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
-        max_miss_ratio: Ratio::new(1, 1),
-        ..Default::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // get initial balance
-    let balance_initial = universe
-        .final_state
-        .read()
-        .get_ledger()
-        .get_balance(&address)
-        .unwrap();
-
-    // get initial roll count
-    let roll_count_initial = universe
-        .final_state
-        .read()
-        .get_pos_state()
-        .get_rolls_for(&address);
-    let roll_to_sell = roll_count_initial
-        .checked_sub(exec_cfg.roll_count_to_slash_on_denunciation)
-        .unwrap();
-
-    // create operation 1
-    let operation1 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 8,
-            op: OperationType::RollSell {
-                roll_count: roll_to_sell,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-
-    // create a denunciation
-    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-        gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
-    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-    // create a denunciation (that will be ignored as it has been created at the last start period)
-    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
-        Some(Slot::new(exec_cfg.last_start_period, 4)),
-        Some(keypair.clone()),
-    );
-    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-    // create the block containing the roll buy operation
-    universe.storage.store_operations(vec![operation1.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(3, 0),
-        vec![operation1],
-        vec![],
-        vec![denunciation.clone(), denunciation, denunciation_2],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set the block as final so the sell and credits are processed
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(
-                &block_producer.get_public_key(),
-            )),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(1000));
-
-    // check roll count deferred credits and candidate balance of the seller address
-    let sample_read = universe.final_state.read();
-    let mut credits = PreHashMap::default();
-    let roll_sold = roll_to_sell;
-    credits.insert(
-        address,
-        exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-    );
-
-    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
-
-    // Check the remaining deferred credits
-    let slot_limit = Slot::new(10, 0);
-    let deferred_credits = sample_read
-        .get_pos_state()
-        .get_deferred_credits_range(..=slot_limit)
-        .credits;
-
-    let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
-
-    assert_eq!(
-        *deferred_credit_amounts.get(&address).unwrap(),
-        exec_cfg.roll_price.checked_mul_u64(roll_to_sell).unwrap()
-    );
-
-    // Now check balance
-    let balances = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[address]);
-    let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-    assert_eq!(
-        candidate_balance,
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_to_sell)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
-    );
-}
-
-#[test]
-fn roll_slash_2() {
-    // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
-    // 4 rolls)
-    // Check for resulting roll & deferred credits & balance
-
-    // setup the period duration
-    // turn off roll selling on missed block opportunities
-    // otherwise balance will be credited with those sold roll (and we need to check the balance for
-    // if the deferred credits are reimbursed
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        periods_per_cycle: 2,
-        thread_count: 2,
-        last_start_period: 2,
-        roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
-        max_miss_ratio: Ratio::new(1, 1),
-        ..Default::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-    let address = Address::from_public_key(&keypair.get_public_key());
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // get initial balance
-    let balance_initial = universe
-        .final_state
-        .read()
-        .get_ledger()
-        .get_balance(&address)
-        .unwrap();
-
-    // get initial roll count
-    let roll_count_initial = universe
-        .final_state
-        .read()
-        .get_pos_state()
-        .get_rolls_for(&address);
-    // sell all rolls so we can check if slash will occur on deferred credits
-    let roll_to_sell_1 = 1;
-    let roll_to_sell_2 = roll_count_initial - 1;
-    let roll_to_sell = roll_to_sell_1 + roll_to_sell_2;
-
-    //
-    let amount_def = exec_cfg
-        .roll_price
-        .checked_mul_u64(exec_cfg.roll_count_to_slash_on_denunciation)
-        .unwrap();
-
-    // create operation 1
-    let operation1 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 8,
-            op: OperationType::RollSell {
-                roll_count: roll_to_sell_1,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-
-    // create operation 2
-    let operation2 = Operation::new_verifiable(
-        Operation {
-            fee: Amount::zero(),
-            expire_period: 8,
-            op: OperationType::RollSell {
-                roll_count: roll_to_sell_2,
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-
-    // create a denunciation
-    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-        gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
-    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-    // create the block containing the roll buy operation
-    universe
-        .storage
-        .store_operations(vec![operation1.clone(), operation2.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(3, 0),
-        vec![operation1, operation2],
-        vec![],
-        vec![denunciation.clone(), denunciation],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set the block as final so the sell and credits are processed
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(1000));
-
-    // check roll count & deferred credits & candidate balance
-    let sample_read = universe.final_state.read();
-    let mut credits = PreHashMap::default();
-    let roll_sold = roll_to_sell;
-    credits.insert(
-        address,
-        exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-    );
-
-    assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
-
-    // Check the remaining deferred credits
-    let slot_limit = Slot::new(10, 0);
-    let deferred_credits = sample_read
-        .get_pos_state()
-        .get_deferred_credits_range(..=slot_limit)
-        .credits;
-
-    let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
-
-    assert_eq!(
-        *deferred_credit_amounts.get(&address).unwrap(),
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_to_sell)
-            .unwrap()
-            .checked_sub(amount_def)
-            .unwrap()
-    );
-
-    // Now check balance
-    let balances = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[address]);
-    let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-    assert_eq!(
-        candidate_balance,
-        exec_cfg
-            .roll_price
-            .checked_mul_u64(roll_to_sell)
-            .unwrap()
-            .checked_sub(amount_def)
-            .unwrap()
-            .checked_add(balance_initial)
-            .unwrap()
-    );
-}
-
-#[test]
-fn sc_execution_error() {
-    // setup the period duration and the maximum gas for asynchronous messages execution
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/execution_error.wasm");
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
-            .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(100));
-
-    // retrieve the event emitted by the execution error
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter {
-            is_error: Some(true),
-            ..Default::default()
-        });
-    // match the events
-    assert!(!events.is_empty(), "2 events were expected");
-    assert_eq!(events[0].data, "event generated before the sc failure");
-    assert!(events[1].data.contains("massa_execution_error"));
-    assert!(events[1]
-        .data
-        .contains("runtime error when executing operation"));
-    assert!(events[1].data.contains("address parsing error"));
-}
-
-#[test]
-fn sc_datastore() {
-    // setup the period duration and the maximum gas for asynchronous messages execution
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/datastore.wasm");
-    let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
-
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Some(Default::default()),
-        block_metadata,
-    );
-    std::thread::sleep(Duration::from_millis(100));
-
-    // retrieve the event emitted by the execution error
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-
-    // match the events
-    assert_eq!(events.len(), 3);
-    assert_eq!(events[0].data, "keys: 9,65,66");
-    assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
-    assert_eq!(events[2].data, "data key 1: 255 - data key 3: 10,11");
-}
-
-#[test]
-fn set_bytecode_error() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // load bytecodes
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
-    let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
-    let mut datastore = BTreeMap::new();
-    datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(10));
-
-    // retrieve the event emitted by the execution error
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    assert!(events[0].data.contains("massa_execution_error"));
-    assert!(events[0]
-        .data
-        .contains("runtime error when executing operation"));
-    assert!(events[0].data.contains("can't set the bytecode of address"));
-}
-
-#[test]
-fn datastore_manipulations() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
-            .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation.clone()],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let block_store = vec![(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-        },
-    )]
-    .into_iter()
-    .collect();
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_store,
-    );
-    std::thread::sleep(
-        exec_cfg
-            .t0
-            .saturating_add(MassaTime::from_millis(50))
-            .into(),
-    );
-
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    // match the events
-    println!("{:?}", events);
-    assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
-    let key_a: Vec<u8> = [1, 0, 4, 255].to_vec();
-    let key_a_str: String = key_a
-        .iter()
-        .map(|b| format!("{}", b))
-        .collect::<Vec<String>>()
-        .join(",");
-
-    let key_b: Vec<u8> = [2, 0, 254, 255].to_vec();
-    let key_b_str: String = key_b
-        .iter()
-        .map(|b| format!("{}", b))
-        .collect::<Vec<String>>()
-        .join(",");
-
-    assert!(
-        events[0].data.contains(&format!("keys: {}", key_a_str)),
-        "{:?}",
-        events[0].data
-    );
-    assert!(
-        events[1].data.contains(&format!("keys2: {}", key_a_str)),
-        "{:?}",
-        events[1].data
-    );
-    assert!(
-        events[2].data.contains(&format!("keys_f: {}", key_b_str)),
-        "{:?}",
-        events[2].data
-    );
-    assert!(
-        events[3].data.contains(&format!("keys2_f: {}", key_a_str)),
-        "{:?}",
-        events[3].data
-    );
-
-    // Length of the key and value left in the datastore. See sources for more context.
-    let key_len = (key_a.len() + key_b.len()) as u64;
-    let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
-
-    let addr = Address::from_public_key(&keypair.get_public_key());
-    let amount = universe
-        .final_state
-        .read()
-        .get_ledger()
-        .get_balance(&addr)
-        .unwrap();
-    assert_eq!(
-        amount,
-        Amount::from_str("300000")
-            .unwrap()
-            // Gas fee
-            .saturating_sub(Amount::const_init(10, 0))
-            // Storage cost base
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(2 * LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
-            )
-            // Storage cost key
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(key_len)
-            )
-            // Storage cost value
-            .saturating_sub(
-                exec_cfg
-                    .storage_costs_constants
-                    .ledger_cost_per_byte
-                    .saturating_mul_u64(value_len)
-            )
-    );
-
-    universe
-        .module_controller
-        .query_state(ExecutionQueryRequest {
-            requests: vec![
-                ExecutionQueryRequestItem::AddressExistsCandidate(addr),
-                ExecutionQueryRequestItem::AddressExistsFinal(addr),
-                ExecutionQueryRequestItem::AddressBalanceCandidate(addr),
-                ExecutionQueryRequestItem::AddressBalanceFinal(addr),
-                ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
-                ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr,
-                    prefix: vec![],
-                },
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr,
-                    prefix: vec![],
-                },
-                ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
-                    addr,
-                    key: key_a.clone(),
-                },
-                ExecutionQueryRequestItem::AddressDatastoreValueFinal {
-                    addr,
-                    key: key_a.clone(),
-                },
-                ExecutionQueryRequestItem::OpExecutionStatusCandidate(operation.id),
-                ExecutionQueryRequestItem::OpExecutionStatusFinal(operation.id),
-                ExecutionQueryRequestItem::AddressRollsCandidate(addr),
-                ExecutionQueryRequestItem::AddressRollsFinal(addr),
-                ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr),
-                ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr),
-                ExecutionQueryRequestItem::CycleInfos {
-                    cycle: 0,
-                    restrict_to_addresses: None,
-                },
-                ExecutionQueryRequestItem::Events(EventFilter::default()),
-            ],
-        });
-    // Just checking that is works no asserts for now
-    universe.module_controller.get_addresses_infos(&[addr]);
-}
-
-/// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
-#[test]
-fn events_from_switching_blockclique() {
-    // setup the period duration and the maximum gas for asynchronous messages execution
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-
-    let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
-
-    // create blockclique block at slot (1,1)
-    {
-        let blockclique_block_slot = Slot::new(1, 1);
-        let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
-        let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = ExecutionTestUniverse::create_execute_sc_operation(
-            &keypair,
-            event_test_data,
-            BTreeMap::default(),
-        )
-        .unwrap();
-        let blockclique_block = ExecutionTestUniverse::create_block(
-            &block_producer,
-            blockclique_block_slot,
-            vec![operation.clone()],
-            vec![],
-            vec![],
-        );
-        blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
-        let mut blockclique_block_storage = universe.storage.clone_without_refs();
-        blockclique_block_storage.store_block(blockclique_block.clone());
-        blockclique_block_storage.store_operations(vec![operation]);
-        block_metadata.insert(
-            blockclique_block.id,
-            ExecutionBlockMetadata {
-                storage: Some(blockclique_block_storage),
-                same_thread_parent_creator: Some(Address::from_public_key(
-                    &keypair.get_public_key(),
-                )),
-            },
-        );
-    }
-    // notify execution about blockclique change
-    universe.module_controller.update_blockclique_status(
-        Default::default(),
-        Some(blockclique_blocks.clone()),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(1000));
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    assert_eq!(events.len(), 1, "wrong event count");
-    assert_eq!(events[0].context.slot, Slot::new(1, 1), "Wrong event slot");
-
-    // create blockclique block at slot (1,0)
-    {
-        let blockclique_block_slot = Slot::new(1, 0);
-        let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-        let event_test_data = include_bytes!("./wasm/event_test.wasm");
-        let operation = ExecutionTestUniverse::create_execute_sc_operation(
-            &keypair,
-            event_test_data,
-            BTreeMap::default(),
-        )
-        .unwrap();
-        let blockclique_block = ExecutionTestUniverse::create_block(
-            &keypair,
-            blockclique_block_slot,
-            vec![operation.clone()],
-            vec![],
-            vec![],
-        );
-        blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
-        let mut blockclique_block_storage = universe.storage.clone_without_refs();
-        blockclique_block_storage.store_block(blockclique_block.clone());
-        blockclique_block_storage.store_operations(vec![operation]);
-        block_metadata.insert(
-            blockclique_block.id,
-            ExecutionBlockMetadata {
-                storage: Some(blockclique_block_storage),
-                same_thread_parent_creator: Some(Address::from_public_key(
-                    &keypair.get_public_key(),
-                )),
-            },
-        );
-    }
-    // notify execution about blockclique change
-    universe.module_controller.update_blockclique_status(
-        Default::default(),
-        Some(blockclique_blocks.clone()),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(1000));
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    assert_eq!(events.len(), 2, "wrong event count");
-    assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
-    assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
-}
-
-#[test]
-fn not_enough_compilation_gas() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
-    // create the block containing the operation
-    let operation = Operation::new_verifiable(
-        Operation {
-            fee: Amount::const_init(10, 0),
-            expire_period: 10,
-            op: OperationType::ExecuteSC {
-                max_coins: Amount::const_init(0, 0),
-                data: bytecode.to_vec(),
-                max_gas: 0,
-                datastore: BTreeMap::default(),
-            },
-        },
-        OperationSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &keypair,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let block_store = vec![(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-        },
-    )]
-    .into_iter()
-    .collect();
-
-    // update blockclique
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_store,
-    );
-    std::thread::sleep(Duration::from_millis(100));
-
-    // assert events
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    assert!(events[0]
-        .data
-        .contains("not enough gas to pay for singlepass compilation"));
-}
-
-#[test]
-fn sc_builtins() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/use_builtins.wasm");
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
-            .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-    block_metadata.insert(
-        block.id,
-        ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-            storage: Some(universe.storage.clone()),
-        },
-    );
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_metadata.clone(),
-    );
-    std::thread::sleep(Duration::from_millis(10));
-
-    // retrieve the event emitted by the execution error
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    // match the events
-    assert!(!events.is_empty(), "One event was expected");
-    assert!(events[0].data.contains("massa_execution_error"));
-    assert!(events[0]
-        .data
-        .contains("runtime error when executing operation"));
-    dbg!(events[0].data.clone());
-    assert!(events[0]
-        .data
-        .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
-
-    assert_eq!(
-        universe
-            .final_state
-            .read()
-            .get_ledger()
-            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap(),
-        Amount::from_str("299990").unwrap()
-    );
-}
-
-#[test]
-fn validate_address() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // load bytecode
-    // you can check the source code of the following wasm file in massa-unit-tests-src
-    let bytecode = include_bytes!("./wasm/validate_address.wasm");
-
-    // create the block containing the erroneous smart contract execution operation
-    let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
-            .unwrap();
-    universe.storage.store_operations(vec![operation.clone()]);
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![operation],
-        vec![],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let block_store = vec![(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-        },
-    )]
-    .into_iter()
-    .collect();
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_store,
-    );
-    std::thread::sleep(
-        exec_cfg
-            .t0
-            .saturating_add(MassaTime::from_millis(50))
-            .into(),
-    );
-
-    let events = universe
-        .module_controller
-        .get_filtered_sc_output_event(EventFilter::default());
-    // match the events
-    assert_eq!(events.len(), 2);
-    assert!(
-        events[0].data.ends_with("true"),
-        "Expected 'true': {:?}",
-        events[0].data
-    );
-    assert!(
-        events[1].data.ends_with("false"),
-        "Expected 'false': {:?}",
-        events[1].data
-    );
-
-    assert_eq!(
-        universe
-            .final_state
-            .read()
-            .get_ledger()
-            .get_balance(&Address::from_public_key(&keypair.get_public_key()))
-            .unwrap(),
-        Amount::from_str("300000")
-            .unwrap()
-            // Gas fee
-            .saturating_sub(Amount::const_init(10, 0))
-    );
-}
-
-#[test]
-fn test_rewards() {
-    // setup the period duration
-    let exec_cfg = ExecutionConfig {
-        t0: MassaTime::from_millis(100),
-        cursor_delay: MassaTime::from_millis(0),
-        ..ExecutionConfig::default()
-    };
-    let block_producer = KeyPair::generate(0).unwrap();
-    let endorsement_producer = KeyPair::generate(0).unwrap();
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-        &block_producer,
-    );
-    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-    // First block
-    let mut endorsements = vec![];
-    for i in 0..ENDORSEMENT_COUNT {
-        if i == 0 || i == 1 {
-            endorsements.push(ExecutionTestUniverse::create_endorsement(
-                &endorsement_producer,
-                Slot::new(1, 0),
-            ));
-        } else {
-            endorsements.push(ExecutionTestUniverse::create_endorsement(
-                &block_producer,
-                Slot::new(1, 0),
-            ));
-        }
-    }
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(1, 0),
-        vec![],
-        endorsements,
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let block_store = vec![(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(
-                &block_producer.get_public_key(),
-            )),
-        },
-    )]
-    .into_iter()
-    .collect();
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_store,
-    );
-    std::thread::sleep(
-        exec_cfg
-            .t0
-            .saturating_add(MassaTime::from_millis(50))
-            .into(),
-    );
-    let (_, candidate_balance) = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[Address::from_public_key(
-            &block_producer.get_public_key(),
-        )])[0];
-    let block_credit_part = exec_cfg
-        .block_reward
-        .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-        .expect("critical: block_credits checked_div factor is 0")
-        .saturating_mul_u64(2);
-    let first_block_reward = exec_cfg
-        .block_reward
-        .saturating_sub(LEDGER_ENTRY_BASE_COST)
-        .saturating_sub(block_credit_part);
-    assert_eq!(candidate_balance.unwrap(), first_block_reward);
-
-    // Second block
-    let block = ExecutionTestUniverse::create_block(
-        &block_producer,
-        Slot::new(2, 0),
-        vec![],
-        vec![
-            ExecutionTestUniverse::create_endorsement(&block_producer, Slot::new(2, 0));
-            ENDORSEMENT_COUNT as usize
-        ],
-        vec![],
-    );
-    // store the block in storage
-    universe.storage.store_block(block.clone());
-
-    // set our block as a final block
-    let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-    finalized_blocks.insert(block.content.header.content.slot, block.id);
-    let block_store = vec![(
-        block.id,
-        ExecutionBlockMetadata {
-            storage: Some(universe.storage.clone()),
-            same_thread_parent_creator: Some(Address::from_public_key(
-                &block_producer.get_public_key(),
-            )),
-        },
-    )]
-    .into_iter()
-    .collect();
-    universe.module_controller.update_blockclique_status(
-        finalized_blocks,
-        Default::default(),
-        block_store,
-    );
-    std::thread::sleep(
-        exec_cfg
-            .t0
-            .saturating_add(MassaTime::from_millis(50))
-            .into(),
-    );
-    let (_, candidate_balance) = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[Address::from_public_key(
-            &block_producer.get_public_key(),
-        )])[0];
-    assert_eq!(
-        candidate_balance.unwrap(),
-        first_block_reward.saturating_add(exec_cfg.block_reward)
-    );
-}
+// /// # Context
+// ///
+// /// Mostly the same as send_and_receive_async_message
+// ///
+// /// Functional test that tests the execution status of an operation is correctly recorded
+// ///
+// /// 1. a block is created containing an `execute_sc` operation
+// /// 2. this operation executes the `send_message` of the smart contract
+// /// 3. `send_message` stores the `receive_message` of the smart contract on the block
+// /// 4. `receive_message` contains the message handler function
+// /// 5. `send_message` sends a message to the `receive_message` address
+// /// 6. we set the created block as finalized so the message is actually sent
+// /// 7. we execute the following slots for 300 milliseconds to reach the message execution period
+// /// 8. once the execution period is over we stop the execution controller
+// /// 9. we retrieve the status of the executed operation(s)
+// /// 10 we check that the monitored operation has been executed
+// /// 11 we check that the execution status is the one we expected
+// ///
+// #[test]
+// fn test_operation_execution_status() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     // load bytecodes
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/send_message.wasm");
+//     let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
+//     let mut datastore = BTreeMap::new();
+//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+//     // create the block contaning the smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     let tested_op_id = operation.id;
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     // sleep for 150ms to reach the message execution period
+//     std::thread::sleep(Duration::from_millis(150));
+
+//     let (op_candidate, op_final) = universe
+//         .module_controller
+//         .get_ops_exec_status(&[tested_op_id])[0];
+
+//     // match the events
+//     assert!(
+//         op_candidate == Some(true) && op_final == Some(true),
+//         "Expected operation not found or not successfully executed"
+//     );
+// }
+
+// /// Context
+// ///
+// /// Functional test for local smart-contract execution
+// ///
+// /// 1. a block is created with 2 ExecuteSC operations
+// ///    it contains 1 local execution and 1 local call
+// ///    both operation datastores have the bytecode of local_function.wasm
+// /// 2. store and set the block as final
+// /// 3. wait for execution
+// /// 4. retrieve events emitted by the initial an sub functions
+// /// 5. match event and call stack to make sure that executions were local
+// #[test]
+// fn local_execution() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     // load bytecodes
+//     // you can check the source code of the following wasm files in massa-unit-tests-src
+//     let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
+//     let call_bytecode = include_bytes!("./wasm/local_call.wasm");
+//     let datastore_bytecode = include_bytes!("./wasm/local_function.wasm").to_vec();
+//     let mut datastore = BTreeMap::new();
+//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+//     // create the block contaning the operations
+//     let local_exec_op = ExecutionTestUniverse::create_execute_sc_operation(
+//         &keypair,
+//         exec_bytecode,
+//         datastore.clone(),
+//     )
+//     .unwrap();
+//     let local_call_op =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, call_bytecode, datastore)
+//             .unwrap();
+//     universe
+//         .storage
+//         .store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![local_exec_op, local_call_op],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     // sleep for 100ms to wait for execution
+//     std::thread::sleep(Duration::from_millis(100));
+
+//     // retrieve events emitted by smart contracts
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             ..Default::default()
+//         });
+
+//     // match the events, check balance and call stack to make sure the executions were local
+//     assert!(events.len() == 8, "8 events were expected");
+//     assert_eq!(
+//         Amount::from_raw(events[1].data.parse().unwrap()),
+//         Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
+//     );
+//     assert_eq!(events[1].context.call_stack.len(), 1);
+//     assert_eq!(
+//         events[1].context.call_stack.back().unwrap(),
+//         &Address::from_public_key(&keypair.get_public_key())
+//     );
+//     assert_eq!(events[2].data, "one local execution completed");
+//     let amount = Amount::from_raw(events[5].data.parse().unwrap());
+//     assert_eq!(Amount::from_str("299979.6713").unwrap(), amount);
+//     assert_eq!(events[5].context.call_stack.len(), 1);
+//     assert_eq!(
+//         events[1].context.call_stack.back().unwrap(),
+//         &Address::from_public_key(&keypair.get_public_key())
+//     );
+//     assert_eq!(events[6].data, "one local call completed");
+// }
+
+// /// Context
+// ///
+// /// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
+// ///
+// /// 1. a block is created with one ExecuteSC operation containing
+// ///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
+// /// 2. store and set the block as final
+// /// 3. wait for execution
+// /// 4. retrieve events emitted by the initial an sub functions
+// /// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
+// #[test]
+// fn sc_deployment() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     // load bytecodes
+//     // you can check the source code of the following wasm files in massa-unit-tests-src
+//     let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
+//     let datastore_bytecode = include_bytes!("./wasm/init_sc.wasm").to_vec();
+//     let mut datastore = BTreeMap::new();
+//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+//     // create the block containing the operation
+//     let op = ExecutionTestUniverse::create_execute_sc_operation(
+//         &keypair,
+//         op_bytecode,
+//         datastore.clone(),
+//     )
+//     .unwrap();
+//     universe.storage.store_operations(vec![op.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![op],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     // sleep for 100ms to wait for execution
+//     std::thread::sleep(Duration::from_millis(100));
+
+//     // retrieve events emitted by smart contracts
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             ..Default::default()
+//         });
+
+//     // match the events
+//     if events.len() != 3 {
+//         for (i, ev) in events.iter().enumerate() {
+//             eprintln!("ev {}: {}", i, ev);
+//         }
+//         panic!("3 events were expected");
+//     }
+//     assert_eq!(events[0].data, "sc created");
+//     assert_eq!(events[1].data, "constructor exists and will be called");
+//     assert_eq!(events[2].data, "constructor called by deployer");
+// }
+
+// /// # Context
+// ///
+// /// Functional test for asynchronous messages sending and handling with a filter
+// ///
+// /// 1. a block is created containing an `execute_sc` operation
+// /// 2. this operation deploy a smart contract and call his function `test`
+// /// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `AS12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
+// /// 4. we set the created block as finalized so the message is actually sent
+// /// 5. we execute the following slots for 300 milliseconds to reach the message execution period
+// /// 6. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
+// /// 7. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
+// /// 8. once the execution period is over we stop the execution controller
+// /// 9. we retrieve the events emitted by smart contract
+// /// 10. `test` handler function should have emitted a second event
+// /// 11. we check if they are events
+// /// 12. if they are some, we verify that the data has the correct value
+// #[test]
+// fn send_and_receive_async_message_with_trigger() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         max_async_gas: 1_000_000_000,
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//     let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::default();
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
+//     let datastore_bytecode = include_bytes!("./wasm/send_message_condition.wasm").to_vec();
+//     let mut datastore = BTreeMap::new();
+//     let key = unsafe {
+//         String::from("smart-contract")
+//             .encode_utf16()
+//             .collect::<Vec<u16>>()
+//             .align_to::<u8>()
+//             .1
+//             .to_vec()
+//     };
+//     datastore.insert(key, datastore_bytecode);
+
+//     // create the block containing the smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks.clone(),
+//         Some(blockclique_blocks.clone()),
+//         block_metadata.clone(),
+//     );
+//     // sleep for 10ms to reach the message execution period
+//     std::thread::sleep(Duration::from_millis(10));
+
+//     // retrieve events emitted by smart contracts
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             ..Default::default()
+//         });
+
+//     // match the events
+//     assert_eq!(events.len(), 2, "2 events were expected");
+//     assert_eq!(events[0].data, "Triggered");
+
+//     // keypair associated to thread 1
+//     let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
+//     let datastore = BTreeMap::new();
+
+//     // create the block containing the smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 1),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks.clone(),
+//         None,
+//         block_metadata.clone(),
+//     );
+//     // sleep for 10ms to reach the message execution period
+//     std::thread::sleep(Duration::from_millis(10));
+
+//     // retrieve events emitted by smart contracts
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             ..Default::default()
+//         });
+
+//     // match the events
+//     assert!(events.len() == 3, "3 events were expected");
+
+//     // keypair associated to thread 2
+//     let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     // This line execute the smart contract that will modify the data entry and then trigger the SC.
+//     let bytecode = include_bytes!("./wasm/send_message_trigger.wasm");
+//     let datastore = BTreeMap::new();
+
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 2),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block so the message is sent
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks.clone(),
+//         None,
+//         block_metadata.clone(),
+//     );
+//     // sleep for 1000ms to reach the message execution period
+//     std::thread::sleep(Duration::from_millis(1000));
+
+//     // retrieve events emitted by smart contracts
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             ..Default::default()
+//         });
+
+//     // match the events
+//     assert!(events.len() == 4, "4 events were expected");
+// }
+
+// #[test]
+// fn send_and_receive_transaction() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     let recipient_address =
+//         Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
+//     // create the operation
+//     let operation = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 10,
+//             op: OperationType::Transaction {
+//                 recipient_address,
+//                 amount: Amount::from_str("100").unwrap(),
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     // create the block containing the transaction operation
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block so the transaction is processed
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(10));
+//     // check recipient balance
+//     //TODO: replace when ledger will be mocked
+//     assert_eq!(
+//         universe
+//             .final_state
+//             .read()
+//             .get_ledger()
+//             .get_balance(&recipient_address)
+//             .unwrap(),
+//         // Storage cost applied
+//         Amount::from_str("100")
+//             .unwrap()
+//             // Storage cost base
+//             .saturating_sub(LEDGER_ENTRY_BASE_COST)
+//     );
+// }
+
+// #[test]
+// fn roll_buy() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//     let address = Address::from_public_key(&keypair.get_public_key());
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+//     // create the operation
+//     let operation = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 10,
+//             op: OperationType::RollBuy { roll_count: 10 },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     // create the block containing the roll buy operation
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block so the purchase is processed
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(100));
+//     // check roll count of the buyer address and its balance
+//     let sample_read = universe.final_state.read();
+//     assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 110);
+//     assert_eq!(
+//         sample_read.get_ledger().get_balance(&address).unwrap(),
+//         Amount::from_str("299_000").unwrap()
+//     );
+// }
+
+// #[test]
+// fn roll_sell() {
+//     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
+//     // Check for resulting roll count + resulting deferred credits
+
+//     // setup the period duration
+//     // turn off roll selling on missed block opportunities
+//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
+//     // if the deferred credits are reimbursed
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         periods_per_cycle: 2,
+//         thread_count: 2,
+//         last_start_period: 2,
+//         max_miss_ratio: Ratio::new(1, 1),
+//         ..Default::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//     let address = Address::from_public_key(&keypair.get_public_key());
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // get initial balance
+//     let balance_initial = universe
+//         .final_state
+//         .read()
+//         .get_ledger()
+//         .get_balance(&address)
+//         .unwrap();
+
+//     // get initial roll count
+//     let roll_count_initial = universe
+//         .final_state
+//         .read()
+//         .get_pos_state()
+//         .get_rolls_for(&address);
+//     let roll_sell_1 = 10;
+//     let roll_sell_2 = 1;
+//     let roll_sell_3 = roll_count_initial.saturating_add(10);
+
+//     let initial_deferred_credits = Amount::from_str("100").unwrap();
+
+//     let mut batch = DBBatch::new();
+
+//     // set initial_deferred_credits that will be reimbursed at first block
+//     universe
+//         .final_state
+//         .write()
+//         .get_pos_state()
+//         .put_deferred_credits_entry(
+//             &Slot::new(1, 0),
+//             &address,
+//             &initial_deferred_credits,
+//             &mut batch,
+//         );
+
+//     universe
+//         .final_state
+//         .write()
+//         .get_database()
+//         .write()
+//         .write_batch(batch, Default::default(), None);
+
+//     // create operation 1
+//     let operation1 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 10,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_sell_1,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     let operation2 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 10,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_sell_2,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     let operation3 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 10,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_sell_3,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     // create the block containing the roll buy operation
+//     universe.storage.store_operations(vec![
+//         operation1.clone(),
+//         operation2.clone(),
+//         operation3.clone(),
+//     ]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &KeyPair::generate(0).unwrap(),
+//         Slot::new(3, 0),
+//         vec![operation1, operation2, operation3],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set the block as final so the sell and credits are processed
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(address),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(1000));
+
+//     // check roll count deferred credits and candidate balance of the seller address
+//     let sample_read = universe.final_state.read();
+//     let mut credits = PreHashMap::default();
+//     let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
+//     let roll_sold = roll_sell_1 + roll_sell_2;
+//     credits.insert(
+//         address,
+//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+//     );
+
+//     assert_eq!(
+//         sample_read.get_pos_state().get_rolls_for(&address),
+//         roll_remaining
+//     );
+
+//     assert_eq!(
+//         sample_read
+//             .get_pos_state()
+//             .get_deferred_credits_range(..=Slot::new(9, 1))
+//             .credits
+//             .get(&Slot::new(9, 1))
+//             .cloned()
+//             .unwrap_or_default(),
+//         credits
+//     );
+
+//     // Check that deferred credit are reimbursed
+//     let credits = PreHashMap::default();
+
+//     assert_eq!(
+//         sample_read
+//             .get_pos_state()
+//             .get_deferred_credits_range(..=Slot::new(10, 1))
+//             .credits
+//             .get(&Slot::new(10, 1))
+//             .cloned()
+//             .unwrap_or_default(),
+//         credits
+//     );
+
+//     // Check that the initial deferred_credits are set to zero
+//     assert_eq!(
+//         sample_read
+//             .get_pos_state()
+//             .get_deferred_credits_range(..=Slot::new(10, 1))
+//             .credits
+//             .get(&Slot::new(1, 0))
+//             .cloned()
+//             .unwrap_or_default(),
+//         credits
+//     );
+
+//     // Now check balance
+//     let balances = universe
+//         .module_controller
+//         .get_final_and_candidate_balance(&[address]);
+//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+//     assert_eq!(
+//         candidate_balance,
+//         exec_cfg
+//             .roll_price
+//             .checked_mul_u64(roll_sell_1 + roll_sell_2)
+//             .unwrap()
+//             .checked_add(balance_initial)
+//             .unwrap()
+//             .checked_add(initial_deferred_credits)
+//             .unwrap()
+//     );
+// }
+
+// #[test]
+// fn roll_slash() {
+//     // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
+//     // 3 rolls)
+//     // Check for resulting roll & deferred credits & balance
+
+//     // setup the period duration
+//     // turn off roll selling on missed block opportunities
+//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
+//     // if the deferred credits are reimbursed
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         periods_per_cycle: 2,
+//         thread_count: 2,
+//         last_start_period: 2,
+//         roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
+//         max_miss_ratio: Ratio::new(1, 1),
+//         ..Default::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//     let address = Address::from_public_key(&keypair.get_public_key());
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // get initial balance
+//     let balance_initial = universe
+//         .final_state
+//         .read()
+//         .get_ledger()
+//         .get_balance(&address)
+//         .unwrap();
+
+//     // get initial roll count
+//     let roll_count_initial = universe
+//         .final_state
+//         .read()
+//         .get_pos_state()
+//         .get_rolls_for(&address);
+//     let roll_to_sell = roll_count_initial
+//         .checked_sub(exec_cfg.roll_count_to_slash_on_denunciation)
+//         .unwrap();
+
+//     // create operation 1
+//     let operation1 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 8,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_to_sell,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+
+//     // create a denunciation
+//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+//         gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
+//     let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+//     // create a denunciation (that will be ignored as it has been created at the last start period)
+//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
+//         Some(Slot::new(exec_cfg.last_start_period, 4)),
+//         Some(keypair.clone()),
+//     );
+//     let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+//     // create the block containing the roll buy operation
+//     universe.storage.store_operations(vec![operation1.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(3, 0),
+//         vec![operation1],
+//         vec![],
+//         vec![denunciation.clone(), denunciation, denunciation_2],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set the block as final so the sell and credits are processed
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(
+//                 &block_producer.get_public_key(),
+//             )),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(1000));
+
+//     // check roll count deferred credits and candidate balance of the seller address
+//     let sample_read = universe.final_state.read();
+//     let mut credits = PreHashMap::default();
+//     let roll_sold = roll_to_sell;
+//     credits.insert(
+//         address,
+//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+//     );
+
+//     assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
+
+//     // Check the remaining deferred credits
+//     let slot_limit = Slot::new(10, 0);
+//     let deferred_credits = sample_read
+//         .get_pos_state()
+//         .get_deferred_credits_range(..=slot_limit)
+//         .credits;
+
+//     let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
+
+//     assert_eq!(
+//         *deferred_credit_amounts.get(&address).unwrap(),
+//         exec_cfg.roll_price.checked_mul_u64(roll_to_sell).unwrap()
+//     );
+
+//     // Now check balance
+//     let balances = universe
+//         .module_controller
+//         .get_final_and_candidate_balance(&[address]);
+//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+//     assert_eq!(
+//         candidate_balance,
+//         exec_cfg
+//             .roll_price
+//             .checked_mul_u64(roll_to_sell)
+//             .unwrap()
+//             .checked_add(balance_initial)
+//             .unwrap()
+//     );
+// }
+
+// #[test]
+// fn roll_slash_2() {
+//     // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
+//     // 4 rolls)
+//     // Check for resulting roll & deferred credits & balance
+
+//     // setup the period duration
+//     // turn off roll selling on missed block opportunities
+//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
+//     // if the deferred credits are reimbursed
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         periods_per_cycle: 2,
+//         thread_count: 2,
+//         last_start_period: 2,
+//         roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
+//         max_miss_ratio: Ratio::new(1, 1),
+//         ..Default::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//     let address = Address::from_public_key(&keypair.get_public_key());
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // get initial balance
+//     let balance_initial = universe
+//         .final_state
+//         .read()
+//         .get_ledger()
+//         .get_balance(&address)
+//         .unwrap();
+
+//     // get initial roll count
+//     let roll_count_initial = universe
+//         .final_state
+//         .read()
+//         .get_pos_state()
+//         .get_rolls_for(&address);
+//     // sell all rolls so we can check if slash will occur on deferred credits
+//     let roll_to_sell_1 = 1;
+//     let roll_to_sell_2 = roll_count_initial - 1;
+//     let roll_to_sell = roll_to_sell_1 + roll_to_sell_2;
+
+//     //
+//     let amount_def = exec_cfg
+//         .roll_price
+//         .checked_mul_u64(exec_cfg.roll_count_to_slash_on_denunciation)
+//         .unwrap();
+
+//     // create operation 1
+//     let operation1 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 8,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_to_sell_1,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+
+//     // create operation 2
+//     let operation2 = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::zero(),
+//             expire_period: 8,
+//             op: OperationType::RollSell {
+//                 roll_count: roll_to_sell_2,
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+
+//     // create a denunciation
+//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+//         gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
+//     let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+//     // create the block containing the roll buy operation
+//     universe
+//         .storage
+//         .store_operations(vec![operation1.clone(), operation2.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(3, 0),
+//         vec![operation1, operation2],
+//         vec![],
+//         vec![denunciation.clone(), denunciation],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set the block as final so the sell and credits are processed
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(1000));
+
+//     // check roll count & deferred credits & candidate balance
+//     let sample_read = universe.final_state.read();
+//     let mut credits = PreHashMap::default();
+//     let roll_sold = roll_to_sell;
+//     credits.insert(
+//         address,
+//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
+//     );
+
+//     assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
+
+//     // Check the remaining deferred credits
+//     let slot_limit = Slot::new(10, 0);
+//     let deferred_credits = sample_read
+//         .get_pos_state()
+//         .get_deferred_credits_range(..=slot_limit)
+//         .credits;
+
+//     let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
+
+//     assert_eq!(
+//         *deferred_credit_amounts.get(&address).unwrap(),
+//         exec_cfg
+//             .roll_price
+//             .checked_mul_u64(roll_to_sell)
+//             .unwrap()
+//             .checked_sub(amount_def)
+//             .unwrap()
+//     );
+
+//     // Now check balance
+//     let balances = universe
+//         .module_controller
+//         .get_final_and_candidate_balance(&[address]);
+//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
+
+//     assert_eq!(
+//         candidate_balance,
+//         exec_cfg
+//             .roll_price
+//             .checked_mul_u64(roll_to_sell)
+//             .unwrap()
+//             .checked_sub(amount_def)
+//             .unwrap()
+//             .checked_add(balance_initial)
+//             .unwrap()
+//     );
+// }
+
+// #[test]
+// fn sc_execution_error() {
+//     // setup the period duration and the maximum gas for asynchronous messages execution
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         max_async_gas: 100_000,
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/execution_error.wasm");
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
+//             .unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &keypair,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(100));
+
+//     // retrieve the event emitted by the execution error
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter {
+//             is_error: Some(true),
+//             ..Default::default()
+//         });
+//     // match the events
+//     assert!(!events.is_empty(), "2 events were expected");
+//     assert_eq!(events[0].data, "event generated before the sc failure");
+//     assert!(events[1].data.contains("massa_execution_error"));
+//     assert!(events[1]
+//         .data
+//         .contains("runtime error when executing operation"));
+//     assert!(events[1].data.contains("address parsing error"));
+// }
+
+// #[test]
+// fn sc_datastore() {
+//     // setup the period duration and the maximum gas for asynchronous messages execution
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         max_async_gas: 100_000,
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/datastore.wasm");
+//     let datastore = BTreeMap::from([(vec![65, 66], vec![255]), (vec![9], vec![10, 11])]);
+
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &keypair,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Some(Default::default()),
+//         block_metadata,
+//     );
+//     std::thread::sleep(Duration::from_millis(100));
+
+//     // retrieve the event emitted by the execution error
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+
+//     // match the events
+//     assert_eq!(events.len(), 3);
+//     assert_eq!(events[0].data, "keys: 9,65,66");
+//     assert_eq!(events[1].data, "has_key_1: true - has_key_2: false");
+//     assert_eq!(events[2].data, "data key 1: 255 - data key 3: 10,11");
+// }
+
+// #[test]
+// fn set_bytecode_error() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         max_async_gas: 100_000,
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+//     // load bytecodes
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/set_bytecode_fail.wasm");
+//     let datastore_bytecode = include_bytes!("./wasm/smart-contract.wasm").to_vec();
+//     let mut datastore = BTreeMap::new();
+//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &keypair,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(10));
+
+//     // retrieve the event emitted by the execution error
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     // match the events
+//     assert!(!events.is_empty(), "One event was expected");
+//     assert!(events[0].data.contains("massa_execution_error"));
+//     assert!(events[0]
+//         .data
+//         .contains("runtime error when executing operation"));
+//     assert!(events[0].data.contains("can't set the bytecode of address"));
+// }
+
+// #[test]
+// fn datastore_manipulations() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
+//             .unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation.clone()],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let block_store = vec![(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             storage: Some(universe.storage.clone()),
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//         },
+//     )]
+//     .into_iter()
+//     .collect();
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_store,
+//     );
+//     std::thread::sleep(
+//         exec_cfg
+//             .t0
+//             .saturating_add(MassaTime::from_millis(50))
+//             .into(),
+//     );
+
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     // match the events
+//     println!("{:?}", events);
+//     assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
+//     let key_a: Vec<u8> = [1, 0, 4, 255].to_vec();
+//     let key_a_str: String = key_a
+//         .iter()
+//         .map(|b| format!("{}", b))
+//         .collect::<Vec<String>>()
+//         .join(",");
+
+//     let key_b: Vec<u8> = [2, 0, 254, 255].to_vec();
+//     let key_b_str: String = key_b
+//         .iter()
+//         .map(|b| format!("{}", b))
+//         .collect::<Vec<String>>()
+//         .join(",");
+
+//     assert!(
+//         events[0].data.contains(&format!("keys: {}", key_a_str)),
+//         "{:?}",
+//         events[0].data
+//     );
+//     assert!(
+//         events[1].data.contains(&format!("keys2: {}", key_a_str)),
+//         "{:?}",
+//         events[1].data
+//     );
+//     assert!(
+//         events[2].data.contains(&format!("keys_f: {}", key_b_str)),
+//         "{:?}",
+//         events[2].data
+//     );
+//     assert!(
+//         events[3].data.contains(&format!("keys2_f: {}", key_a_str)),
+//         "{:?}",
+//         events[3].data
+//     );
+
+//     // Length of the key and value left in the datastore. See sources for more context.
+//     let key_len = (key_a.len() + key_b.len()) as u64;
+//     let value_len = ([21, 0, 49].len() + [5, 12, 241].len()) as u64;
+
+//     let addr = Address::from_public_key(&keypair.get_public_key());
+//     let amount = universe
+//         .final_state
+//         .read()
+//         .get_ledger()
+//         .get_balance(&addr)
+//         .unwrap();
+//     assert_eq!(
+//         amount,
+//         Amount::from_str("300000")
+//             .unwrap()
+//             // Gas fee
+//             .saturating_sub(Amount::const_init(10, 0))
+//             // Storage cost base
+//             .saturating_sub(
+//                 exec_cfg
+//                     .storage_costs_constants
+//                     .ledger_cost_per_byte
+//                     .saturating_mul_u64(2 * LEDGER_ENTRY_DATASTORE_BASE_SIZE as u64)
+//             )
+//             // Storage cost key
+//             .saturating_sub(
+//                 exec_cfg
+//                     .storage_costs_constants
+//                     .ledger_cost_per_byte
+//                     .saturating_mul_u64(key_len)
+//             )
+//             // Storage cost value
+//             .saturating_sub(
+//                 exec_cfg
+//                     .storage_costs_constants
+//                     .ledger_cost_per_byte
+//                     .saturating_mul_u64(value_len)
+//             )
+//     );
+
+//     universe
+//         .module_controller
+//         .query_state(ExecutionQueryRequest {
+//             requests: vec![
+//                 ExecutionQueryRequestItem::AddressExistsCandidate(addr),
+//                 ExecutionQueryRequestItem::AddressExistsFinal(addr),
+//                 ExecutionQueryRequestItem::AddressBalanceCandidate(addr),
+//                 ExecutionQueryRequestItem::AddressBalanceFinal(addr),
+//                 ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
+//                 ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
+//                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+//                     addr,
+//                     prefix: vec![],
+//                 },
+//                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+//                     addr,
+//                     prefix: vec![],
+//                 },
+//                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
+//                     addr,
+//                     key: key_a.clone(),
+//                 },
+//                 ExecutionQueryRequestItem::AddressDatastoreValueFinal {
+//                     addr,
+//                     key: key_a.clone(),
+//                 },
+//                 ExecutionQueryRequestItem::OpExecutionStatusCandidate(operation.id),
+//                 ExecutionQueryRequestItem::OpExecutionStatusFinal(operation.id),
+//                 ExecutionQueryRequestItem::AddressRollsCandidate(addr),
+//                 ExecutionQueryRequestItem::AddressRollsFinal(addr),
+//                 ExecutionQueryRequestItem::AddressDeferredCreditsCandidate(addr),
+//                 ExecutionQueryRequestItem::AddressDeferredCreditsFinal(addr),
+//                 ExecutionQueryRequestItem::CycleInfos {
+//                     cycle: 0,
+//                     restrict_to_addresses: None,
+//                 },
+//                 ExecutionQueryRequestItem::Events(EventFilter::default()),
+//             ],
+//         });
+//     // Just checking that is works no asserts for now
+//     universe.module_controller.get_addresses_infos(&[addr]);
+// }
+
+// /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
+// #[test]
+// fn events_from_switching_blockclique() {
+//     // setup the period duration and the maximum gas for asynchronous messages execution
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+
+//     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::new();
+
+//     // create blockclique block at slot (1,1)
+//     {
+//         let blockclique_block_slot = Slot::new(1, 1);
+//         let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+//         let event_test_data = include_bytes!("./wasm/event_test.wasm");
+//         let operation = ExecutionTestUniverse::create_execute_sc_operation(
+//             &keypair,
+//             event_test_data,
+//             BTreeMap::default(),
+//         )
+//         .unwrap();
+//         let blockclique_block = ExecutionTestUniverse::create_block(
+//             &block_producer,
+//             blockclique_block_slot,
+//             vec![operation.clone()],
+//             vec![],
+//             vec![],
+//         );
+//         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
+//         let mut blockclique_block_storage = universe.storage.clone_without_refs();
+//         blockclique_block_storage.store_block(blockclique_block.clone());
+//         blockclique_block_storage.store_operations(vec![operation]);
+//         block_metadata.insert(
+//             blockclique_block.id,
+//             ExecutionBlockMetadata {
+//                 storage: Some(blockclique_block_storage),
+//                 same_thread_parent_creator: Some(Address::from_public_key(
+//                     &keypair.get_public_key(),
+//                 )),
+//             },
+//         );
+//     }
+//     // notify execution about blockclique change
+//     universe.module_controller.update_blockclique_status(
+//         Default::default(),
+//         Some(blockclique_blocks.clone()),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(1000));
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     assert_eq!(events.len(), 1, "wrong event count");
+//     assert_eq!(events[0].context.slot, Slot::new(1, 1), "Wrong event slot");
+
+//     // create blockclique block at slot (1,0)
+//     {
+//         let blockclique_block_slot = Slot::new(1, 0);
+//         let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+//         let event_test_data = include_bytes!("./wasm/event_test.wasm");
+//         let operation = ExecutionTestUniverse::create_execute_sc_operation(
+//             &keypair,
+//             event_test_data,
+//             BTreeMap::default(),
+//         )
+//         .unwrap();
+//         let blockclique_block = ExecutionTestUniverse::create_block(
+//             &keypair,
+//             blockclique_block_slot,
+//             vec![operation.clone()],
+//             vec![],
+//             vec![],
+//         );
+//         blockclique_blocks.insert(blockclique_block_slot, blockclique_block.id);
+//         let mut blockclique_block_storage = universe.storage.clone_without_refs();
+//         blockclique_block_storage.store_block(blockclique_block.clone());
+//         blockclique_block_storage.store_operations(vec![operation]);
+//         block_metadata.insert(
+//             blockclique_block.id,
+//             ExecutionBlockMetadata {
+//                 storage: Some(blockclique_block_storage),
+//                 same_thread_parent_creator: Some(Address::from_public_key(
+//                     &keypair.get_public_key(),
+//                 )),
+//             },
+//         );
+//     }
+//     // notify execution about blockclique change
+//     universe.module_controller.update_blockclique_status(
+//         Default::default(),
+//         Some(blockclique_blocks.clone()),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(1000));
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     assert_eq!(events.len(), 2, "wrong event count");
+//     assert_eq!(events[0].context.slot, Slot::new(1, 0), "Wrong event slot");
+//     assert_eq!(events[1].context.slot, Slot::new(1, 1), "Wrong event slot");
+// }
+
+// #[test]
+// fn not_enough_compilation_gas() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/datastore_manipulations.wasm");
+//     // create the block containing the operation
+//     let operation = Operation::new_verifiable(
+//         Operation {
+//             fee: Amount::const_init(10, 0),
+//             expire_period: 10,
+//             op: OperationType::ExecuteSC {
+//                 max_coins: Amount::const_init(0, 0),
+//                 data: bytecode.to_vec(),
+//                 max_gas: 0,
+//                 datastore: BTreeMap::default(),
+//             },
+//         },
+//         OperationSerializer::new(),
+//         &keypair,
+//     )
+//     .unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &keypair,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let block_store = vec![(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             storage: Some(universe.storage.clone()),
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//         },
+//     )]
+//     .into_iter()
+//     .collect();
+
+//     // update blockclique
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_store,
+//     );
+//     std::thread::sleep(Duration::from_millis(100));
+
+//     // assert events
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     assert!(events[0]
+//         .data
+//         .contains("not enough gas to pay for singlepass compilation"));
+// }
+
+// #[test]
+// fn sc_builtins() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/use_builtins.wasm");
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
+//             .unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+//     block_metadata.insert(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//             storage: Some(universe.storage.clone()),
+//         },
+//     );
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_metadata.clone(),
+//     );
+//     std::thread::sleep(Duration::from_millis(10));
+
+//     // retrieve the event emitted by the execution error
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     // match the events
+//     assert!(!events.is_empty(), "One event was expected");
+//     assert!(events[0].data.contains("massa_execution_error"));
+//     assert!(events[0]
+//         .data
+//         .contains("runtime error when executing operation"));
+//     dbg!(events[0].data.clone());
+//     assert!(events[0]
+//         .data
+//         .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
+
+//     assert_eq!(
+//         universe
+//             .final_state
+//             .read()
+//             .get_ledger()
+//             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+//             .unwrap(),
+//         Amount::from_str("299990").unwrap()
+//     );
+// }
+
+// #[test]
+// fn validate_address() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // load bytecode
+//     // you can check the source code of the following wasm file in massa-unit-tests-src
+//     let bytecode = include_bytes!("./wasm/validate_address.wasm");
+
+//     // create the block containing the erroneous smart contract execution operation
+//     let operation =
+//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, BTreeMap::default())
+//             .unwrap();
+//     universe.storage.store_operations(vec![operation.clone()]);
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![operation],
+//         vec![],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let block_store = vec![(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             storage: Some(universe.storage.clone()),
+//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+//         },
+//     )]
+//     .into_iter()
+//     .collect();
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_store,
+//     );
+//     std::thread::sleep(
+//         exec_cfg
+//             .t0
+//             .saturating_add(MassaTime::from_millis(50))
+//             .into(),
+//     );
+
+//     let events = universe
+//         .module_controller
+//         .get_filtered_sc_output_event(EventFilter::default());
+//     // match the events
+//     assert_eq!(events.len(), 2);
+//     assert!(
+//         events[0].data.ends_with("true"),
+//         "Expected 'true': {:?}",
+//         events[0].data
+//     );
+//     assert!(
+//         events[1].data.ends_with("false"),
+//         "Expected 'false': {:?}",
+//         events[1].data
+//     );
+
+//     assert_eq!(
+//         universe
+//             .final_state
+//             .read()
+//             .get_ledger()
+//             .get_balance(&Address::from_public_key(&keypair.get_public_key()))
+//             .unwrap(),
+//         Amount::from_str("300000")
+//             .unwrap()
+//             // Gas fee
+//             .saturating_sub(Amount::const_init(10, 0))
+//     );
+// }
+
+// #[test]
+// fn test_rewards() {
+//     // setup the period duration
+//     let exec_cfg = ExecutionConfig {
+//         t0: MassaTime::from_millis(100),
+//         cursor_delay: MassaTime::from_millis(0),
+//         ..ExecutionConfig::default()
+//     };
+//     let block_producer = KeyPair::generate(0).unwrap();
+//     let endorsement_producer = KeyPair::generate(0).unwrap();
+//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+//     selector_boilerplate(
+//         &mut foreign_controllers.selector_controller,
+//         &block_producer,
+//     );
+//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+//     // First block
+//     let mut endorsements = vec![];
+//     for i in 0..ENDORSEMENT_COUNT {
+//         if i == 0 || i == 1 {
+//             endorsements.push(ExecutionTestUniverse::create_endorsement(
+//                 &endorsement_producer,
+//                 Slot::new(1, 0),
+//             ));
+//         } else {
+//             endorsements.push(ExecutionTestUniverse::create_endorsement(
+//                 &block_producer,
+//                 Slot::new(1, 0),
+//             ));
+//         }
+//     }
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(1, 0),
+//         vec![],
+//         endorsements,
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let block_store = vec![(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             storage: Some(universe.storage.clone()),
+//             same_thread_parent_creator: Some(Address::from_public_key(
+//                 &block_producer.get_public_key(),
+//             )),
+//         },
+//     )]
+//     .into_iter()
+//     .collect();
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_store,
+//     );
+//     std::thread::sleep(
+//         exec_cfg
+//             .t0
+//             .saturating_add(MassaTime::from_millis(50))
+//             .into(),
+//     );
+//     let (_, candidate_balance) = universe
+//         .module_controller
+//         .get_final_and_candidate_balance(&[Address::from_public_key(
+//             &block_producer.get_public_key(),
+//         )])[0];
+//     let block_credit_part = exec_cfg
+//         .block_reward
+//         .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+//         .expect("critical: block_credits checked_div factor is 0")
+//         .saturating_mul_u64(2);
+//     let first_block_reward = exec_cfg
+//         .block_reward
+//         .saturating_sub(LEDGER_ENTRY_BASE_COST)
+//         .saturating_sub(block_credit_part);
+//     assert_eq!(candidate_balance.unwrap(), first_block_reward);
+
+//     // Second block
+//     let block = ExecutionTestUniverse::create_block(
+//         &block_producer,
+//         Slot::new(2, 0),
+//         vec![],
+//         vec![
+//             ExecutionTestUniverse::create_endorsement(&block_producer, Slot::new(2, 0));
+//             ENDORSEMENT_COUNT as usize
+//         ],
+//         vec![],
+//     );
+//     // store the block in storage
+//     universe.storage.store_block(block.clone());
+
+//     // set our block as a final block
+//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+//     finalized_blocks.insert(block.content.header.content.slot, block.id);
+//     let block_store = vec![(
+//         block.id,
+//         ExecutionBlockMetadata {
+//             storage: Some(universe.storage.clone()),
+//             same_thread_parent_creator: Some(Address::from_public_key(
+//                 &block_producer.get_public_key(),
+//             )),
+//         },
+//     )]
+//     .into_iter()
+//     .collect();
+//     universe.module_controller.update_blockclique_status(
+//         finalized_blocks,
+//         Default::default(),
+//         block_store,
+//     );
+//     std::thread::sleep(
+//         exec_cfg
+//             .t0
+//             .saturating_add(MassaTime::from_millis(50))
+//             .into(),
+//     );
+//     let (_, candidate_balance) = universe
+//         .module_controller
+//         .get_final_and_candidate_balance(&[Address::from_public_key(
+//             &block_producer.get_public_key(),
+//         )])[0];
+//     assert_eq!(
+//         candidate_balance.unwrap(),
+//         first_block_reward.saturating_add(exec_cfg.block_reward)
+//     );
+// }

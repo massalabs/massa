@@ -1,4 +1,8 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+    sync::Arc,
+};
 
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
@@ -15,6 +19,7 @@ use massa_models::{
     block_id::BlockId,
     config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT},
     datastore::Datastore,
+    execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
     secure_share::SecureShareContent,
@@ -169,6 +174,90 @@ impl ExecutionTestUniverse {
             sender_keypair,
         )?;
         Ok(op)
+    }
+
+    pub fn init_bytecode_block(
+        &mut self,
+        keypair: &KeyPair,
+        slot: Slot,
+        bytes_file_sc_init: &[u8],
+        bytes_file_sc_deployed: &[u8],
+    ) {
+        // load bytecodes
+        // you can check the source code of the following wasm file in massa-unit-tests-src
+        let mut datastore = BTreeMap::new();
+        datastore.insert(b"smart-contract".to_vec(), bytes_file_sc_deployed.to_vec());
+
+        // create the block containing the smart contract execution operation
+        let operation = ExecutionTestUniverse::create_execute_sc_operation(
+            &keypair,
+            bytes_file_sc_init,
+            datastore,
+        )
+        .unwrap();
+        self.storage.store_operations(vec![operation.clone()]);
+        let block =
+            ExecutionTestUniverse::create_block(&keypair, slot, vec![operation], vec![], vec![]);
+        // store the block in storage
+        self.storage.store_block(block.clone());
+
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(Address::from_public_key(
+                    &keypair.get_public_key(),
+                )),
+                storage: Some(self.storage.clone()),
+            },
+        );
+        self.module_controller.update_blockclique_status(
+            finalized_blocks.clone(),
+            Default::default(),
+            block_metadata.clone(),
+        );
+    }
+
+    pub fn get_address_sc_deployed(&self, slot: Slot) -> String {
+        let events = self
+            .module_controller
+            .get_filtered_sc_output_event(EventFilter {
+                start: Some(slot),
+                ..Default::default()
+            });
+        // match the events
+        assert!(!events.is_empty(), "One event was expected");
+        events[0].clone().data
+    }
+
+    pub fn call_block(&mut self, keypair: &KeyPair, slot: Slot, operation: SecureShareOperation) {
+        // Init new storage for this block
+        self.storage.store_operations(vec![operation.clone()]);
+        let block =
+            ExecutionTestUniverse::create_block(&keypair, slot, vec![operation], vec![], vec![]);
+        // store the block in storage
+        self.storage.store_block(block.clone());
+        // set our block as a final block so the message is sent
+        let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
+        finalized_blocks.insert(block.content.header.content.slot, block.id);
+        let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
+        block_metadata.insert(
+            block.id,
+            ExecutionBlockMetadata {
+                same_thread_parent_creator: Some(Address::from_public_key(
+                    &keypair.get_public_key(),
+                )),
+                storage: Some(self.storage.clone()),
+            },
+        );
+        self.module_controller.update_blockclique_status(
+            finalized_blocks,
+            Default::default(),
+            block_metadata.clone(),
+        );
     }
 }
 
