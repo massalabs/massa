@@ -234,7 +234,7 @@ mod tests {
             0x70, 0x30,
         ];
         ModuleInfo::Module(
-            RuntimeModule::new(&bytecode, 10, GasCosts::default(), Compiler::CL).unwrap(),
+            RuntimeModule::new(&bytecode, GasCosts::default(), Compiler::CL).unwrap(),
         )
     }
 

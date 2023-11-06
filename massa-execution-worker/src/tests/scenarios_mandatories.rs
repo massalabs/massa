@@ -2120,7 +2120,7 @@ fn events_from_switching_blockclique() {
 }
 
 #[test]
-fn not_enough_compilation_gas() {
+fn not_enough_instance_gas() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
@@ -2193,7 +2193,7 @@ fn not_enough_compilation_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("Not enough gas to pay SP compilation"));
+        .contains("Provided max gas is below the default instance creation cost"));
 }
 
 #[test]
