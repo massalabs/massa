@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{AsyncPool, AsyncPoolConfig};
+use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
 use massa_execution_exports::{
@@ -49,6 +49,7 @@ fn final_state_boilerplate(
     selector_controller: &mut MockSelectorControllerWrapper,
     ledger_controller: &mut MockLedgerControllerWrapper,
     saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
+    custom_async_pool: Option<AsyncPool>,
 ) {
     let (rolls_path, _) = get_initials();
     mock_final_state
@@ -76,21 +77,12 @@ fn final_state_boilerplate(
             .unwrap(),
         );
 
+    let async_pool =
+        custom_async_pool.unwrap_or(AsyncPool::new(AsyncPoolConfig::default(), db.clone()));
     mock_final_state
         .write()
         .expect_get_async_pool()
-        .return_const(AsyncPool::new(AsyncPoolConfig::default(), db.clone()));
-
-    mock_final_state
-        .write()
-        .expect_get_executed_ops()
-        .return_const(ExecutedOps::new(
-            ExecutedOpsConfig {
-                thread_count: 2,
-                keep_executed_history_extra_periods: 10,
-            },
-            db.clone(),
-        ));
+        .return_const(async_pool);
 
     ledger_controller.set_expectations(|ledger_controller| {
         ledger_controller
@@ -109,6 +101,10 @@ fn final_state_boilerplate(
         .write()
         .expect_get_ledger()
         .return_const(Box::new(ledger_controller.clone()));
+    mock_final_state
+        .write()
+        .expect_executed_ops_contains()
+        .return_const(false);
 }
 
 fn expect_init_and_call(
@@ -133,20 +129,18 @@ fn expect_init_and_call(
         });
     if let Some(call_sc_slot) = call_sc_slot {
         mock_final_state
-        .write()
-        .expect_finalize()
-        .times(1)
-        .with(predicate::eq(call_sc_slot), predicate::always())
-        .returning(move |_, _| {
-            finalized_waitpoint_trigger_handle_2.trigger();
-        });
+            .write()
+            .expect_finalize()
+            .times(1)
+            .with(predicate::eq(call_sc_slot), predicate::always())
+            .returning(move |_, _| {
+                finalized_waitpoint_trigger_handle_2.trigger();
+            });
     }
     saved_bytecode
 }
 
-fn selector_boilerplate(
-    mock_selector: &mut MockSelectorControllerWrapper,
-) {
+fn selector_boilerplate(mock_selector: &mut MockSelectorControllerWrapper) {
     mock_selector.set_expectations(|selector_controller| {
         selector_controller
             .expect_feed_cycle()
@@ -160,14 +154,13 @@ fn selector_boilerplate(
 #[test]
 fn test_execution_shutdown() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
@@ -176,14 +169,13 @@ fn test_execution_shutdown() {
 #[test]
 fn test_sending_command() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
     );
     let universe = ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
@@ -199,14 +191,13 @@ fn test_readonly_execution() {
     // setup the period duration
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
     );
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -241,12 +232,10 @@ fn test_readonly_execution() {
 #[test]
 fn test_nested_call_gas_usage() {
     // setup the period duration
-    let exec_cfg =  ExecutionConfig::default();
+    let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
     let saved_bytecode = expect_init_and_call(
         Slot::new(1, 0),
         Some(Slot::new(1, 1)),
@@ -259,6 +248,7 @@ fn test_nested_call_gas_usage() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -318,12 +308,10 @@ fn test_nested_call_gas_usage() {
 #[test]
 fn test_get_call_coins() {
     // setup the period duration
-    let exec_cfg =  ExecutionConfig::default();
+    let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
     let saved_bytecode = expect_init_and_call(
         Slot::new(1, 0),
         Some(Slot::new(1, 1)),
@@ -336,7 +324,13 @@ fn test_get_call_coins() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
     );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ops_exec_status()
+        .returning(move |_| vec![Some(true)]);
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // load bytecodes
@@ -364,7 +358,7 @@ fn test_get_call_coins() {
     universe.call_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
-        operation,
+        operation.clone(),
     );
     finalized_waitpoint.wait();
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
@@ -378,6 +372,15 @@ fn test_get_call_coins() {
         "tokens sent to the SC during the call : {}",
         coins_sent.to_raw()
     )));
+    let (op_candidate, op_final) = universe
+        .module_controller
+        .get_ops_exec_status(&[operation.id])[0];
+
+    // match the events
+    assert!(
+        op_candidate == Some(true) && op_final == Some(true),
+        "Expected operation not found or not successfully executed"
+    );
 }
 
 /// # Context
@@ -406,26 +409,95 @@ fn send_and_receive_async_message() {
 
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    selector_boilerplate(
-        &mut foreign_controllers.selector_controller,
-    );
-    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
-        selector_controller.expect_get_producer().returning(move |_| {
-            Ok(Address::from_public_key(&KeyPair::from_str(TEST_SK_2).unwrap().get_public_key()))
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
         });
-    });
-    let saved_bytecode = expect_init_and_call(
-        Slot::new(1, 0),
-        None,
-        finalized_waitpoint.get_trigger_handle(),
-        &mut foreign_controllers.final_state,
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let message = AsyncMessage {
+        emission_slot: Slot {
+            period: 1,
+            thread: 0,
+        },
+        emission_index: 0,
+        sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
+        destination: Address::from_str("AS1W5GZrQ9MMmsSQkyqUM1m6ZSY6hxVN3TvdWp6AyiiS6p3qfEJ9")
+            .unwrap(),
+        function: String::from("receive"),
+        max_gas: 100000,
+        fee: Amount::from_raw(1),
+        coins: Amount::from_raw(100),
+        validity_start: Slot {
+            period: 1,
+            thread: 1,
+        },
+        validity_end: Slot {
+            period: 20,
+            thread: 20,
+        },
+        function_params: vec![42, 42, 42, 42],
+        trigger: None,
+        can_be_executed: true,
+    };
+    let message_cloned = message.clone();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                let mut saved_bytecode = saved_bytecode_edit.write();
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
+            assert_eq!(changes.async_pool_changes.0.len(), 1);
+            assert_eq!(
+                changes.async_pool_changes.0.first_key_value().unwrap().1,
+                &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
+            );
+            assert_eq!(
+                changes.async_pool_changes.0.first_key_value().unwrap().0,
+                &message_cloned.compute_id()
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
+    let mut changes = BTreeMap::default();
+    changes.insert(
+        (
+            Reverse(Ratio::new(1, 100000)),
+            Slot {
+                period: 1,
+                thread: 0,
+            },
+            0,
+        ),
+        massa_ledger_exports::SetUpdateOrDelete::Set(message),
     );
+    let mut db_batch = DBBatch::default();
+    async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        Some(async_pool),
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
@@ -437,9 +509,11 @@ fn send_and_receive_async_message() {
         include_bytes!("./wasm/receive_message.wasm"),
     );
     finalized_waitpoint.wait();
-    
-    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on 
-    std::thread::sleep(Duration::from_millis(exec_cfg.t0.to_millis()));
+
+    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on
+    std::thread::sleep(Duration::from_millis(
+        exec_cfg.t0.to_millis().checked_div(2).unwrap(),
+    ));
     // retrieve events emitted by smart contracts
     let events = universe
         .module_controller
@@ -452,93 +526,6 @@ fn send_and_receive_async_message() {
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
 }
-
-// /// # Context
-// ///
-// /// Mostly the same as send_and_receive_async_message
-// ///
-// /// Functional test that tests the execution status of an operation is correctly recorded
-// ///
-// /// 1. a block is created containing an `execute_sc` operation
-// /// 2. this operation executes the `send_message` of the smart contract
-// /// 3. `send_message` stores the `receive_message` of the smart contract on the block
-// /// 4. `receive_message` contains the message handler function
-// /// 5. `send_message` sends a message to the `receive_message` address
-// /// 6. we set the created block as finalized so the message is actually sent
-// /// 7. we execute the following slots for 300 milliseconds to reach the message execution period
-// /// 8. once the execution period is over we stop the execution controller
-// /// 9. we retrieve the status of the executed operation(s)
-// /// 10 we check that the monitored operation has been executed
-// /// 11 we check that the execution status is the one we expected
-// ///
-// #[test]
-// fn test_operation_execution_status() {
-//     // setup the period duration
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         ..ExecutionConfig::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-//     // load bytecodes
-//     // you can check the source code of the following wasm file in massa-unit-tests-src
-//     let bytecode = include_bytes!("./wasm/send_message.wasm");
-//     let datastore_bytecode = include_bytes!("./wasm/receive_message.wasm").to_vec();
-//     let mut datastore = BTreeMap::new();
-//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
-
-//     // create the block contaning the smart contract execution operation
-//     let operation =
-//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-//     let tested_op_id = operation.id;
-//     universe.storage.store_operations(vec![operation.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 0),
-//         vec![operation],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-
-//     // set our block as a final block so the message is sent
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     // sleep for 150ms to reach the message execution period
-//     std::thread::sleep(Duration::from_millis(150));
-
-//     let (op_candidate, op_final) = universe
-//         .module_controller
-//         .get_ops_exec_status(&[tested_op_id])[0];
-
-//     // match the events
-//     assert!(
-//         op_candidate == Some(true) && op_final == Some(true),
-//         "Expected operation not found or not successfully executed"
-//     );
-// }
 
 // /// Context
 // ///

@@ -1,9 +1,9 @@
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
-use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
+use massa_executed_ops::ExecutedDenunciations;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
-use massa_models::slot::Slot;
+use massa_models::{operation::OperationId, slot::Slot};
 use massa_pos_exports::PoSFinalState;
 use massa_versioning::versioning::MipStore;
 
@@ -61,8 +61,11 @@ pub trait FinalStateController: Send + Sync {
     /// Get pos state mut
     fn get_pos_state_mut(&mut self) -> &mut PoSFinalState;
 
-    /// Get the executed ops
-    fn get_executed_ops(&self) -> &ExecutedOps;
+    /// check if an operation is in the executed ops
+    fn executed_ops_contains(&self, op_id: &OperationId) -> bool;
+
+    /// Get the executed status ops
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<Option<bool>>;
 
     /// Get executed denunciations
     fn get_executed_denunciations(&self) -> &ExecutedDenunciations;

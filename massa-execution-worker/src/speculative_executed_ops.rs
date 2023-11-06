@@ -74,7 +74,7 @@ impl SpeculativeExecutedOps {
         }
 
         // check in the final state
-        self.final_state.read().get_executed_ops().contains(op_id)
+        self.final_state.read().executed_ops_contains(op_id)
     }
 
     /// Insert an executed operation.

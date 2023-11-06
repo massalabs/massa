@@ -21,6 +21,7 @@ use massa_executed_ops::ExecutedOps;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
 use massa_ledger_exports::SetOrKeep;
+use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
@@ -838,8 +839,12 @@ impl FinalStateController for FinalState {
         &mut self.pos_state
     }
 
-    fn get_executed_ops(&self) -> &ExecutedOps {
-        &self.executed_ops
+    fn executed_ops_contains(&self, op_id: &OperationId) -> bool {
+        self.executed_ops.contains(op_id)
+    }
+
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<Option<bool>> {
+        self.executed_ops.get_ops_exec_status(batch)
     }
 
     fn get_executed_denunciations(&self) -> &ExecutedDenunciations {

@@ -1848,11 +1848,7 @@ impl ExecutionState {
     /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
     pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
         let speculative_exec = self.active_history.read().get_ops_exec_status(batch);
-        let final_exec = self
-            .final_state
-            .read()
-            .get_executed_ops()
-            .get_ops_exec_status(batch);
+        let final_exec = self.final_state.read().get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
             .zip(final_exec)
