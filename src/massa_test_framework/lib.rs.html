@@ -137,11 +137,6 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
 <span class="kw">use </span>massa_hash::Hash;
@@ -169,11 +164,6 @@
     <span class="kw">fn </span>new(controllers: <span class="self">Self</span>::ForeignControllers, config: <span class="self">Self</span>::Config) -&gt; <span class="self">Self</span>;
 
     <span class="kw">fn </span>initialize(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="kw">let </span>default_panic = std::panic::take_hook();
-        std::panic::set_hook(Box::new(<span class="kw">move </span>|info| {
-            default_panic(info);
-            std::process::exit(<span class="number">1</span>);
-        }));
         <span class="kw">use </span>tracing_subscriber::{prelude::<span class="kw-2">*</span>, EnvFilter};
         <span class="kw">let </span>tracing_layer =
             tracing_subscriber::fmt::layer().with_filter(EnvFilter::from_default_env());
