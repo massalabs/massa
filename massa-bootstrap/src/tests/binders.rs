@@ -26,7 +26,7 @@ use massa_models::node::NodeId;
 use massa_models::version::Version;
 
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSFinalState};
-use massa_protocol_exports::{MockProtocolController, BootstrapPeers};
+use massa_protocol_exports::{BootstrapPeers, MockProtocolController};
 use massa_signature::{KeyPair, PublicKey};
 use massa_time::MassaTime;
 
@@ -373,7 +373,8 @@ fn test_partial_msg() {
 #[test]
 fn test_staying_connected_without_message_trigger_read_timeout() {
     let read_timeout = Duration::from_millis(1000);
-    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) = BOOTSTRAP_CONFIG_KEYPAIR.clone();
+    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
+        BOOTSTRAP_CONFIG_KEYPAIR.clone();
     bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
@@ -442,14 +443,18 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
         .name("test_binders::server_thread".to_string())
         .spawn({
             move || {
-                std::thread::sleep(read_timeout.checked_add(Duration::from_millis(100)).unwrap());
+                std::thread::sleep(
+                    read_timeout
+                        .checked_add(Duration::from_millis(100))
+                        .unwrap(),
+                );
                 client_clone
                     .write_all(b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
                     .unwrap()
             }
         })
         .unwrap();
-    
+
     let res = server_thread.join().unwrap();
     match res {
         Err(BootstrapError::TimedOut(_)) => (),
@@ -461,7 +466,8 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
 #[test]
 fn test_staying_connected_pass_handshake_but_deadline_after() {
     let read_timeout = Duration::from_millis(1000);
-    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) = BOOTSTRAP_CONFIG_KEYPAIR.clone();
+    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
+        BOOTSTRAP_CONFIG_KEYPAIR.clone();
     bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
@@ -542,7 +548,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
             }
         })
         .unwrap();
-    
+
     let res = server_thread.join().unwrap();
     match res {
         Err(BootstrapError::Interupted(_)) => (),
@@ -554,7 +560,8 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
 #[test]
 fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
     let read_timeout = Duration::from_millis(500);
-    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) = BOOTSTRAP_CONFIG_KEYPAIR.clone();
+    let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
+        BOOTSTRAP_CONFIG_KEYPAIR.clone();
     bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
@@ -564,9 +571,9 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
     let timeout: Duration = Duration::from_millis(800);
     let consensus_controller = MockConsensusController::new();
     let mut protocol_controller = MockProtocolController::new();
-    protocol_controller.expect_get_bootstrap_peers().returning(|| {
-        Ok(BootstrapPeers(vec![]))
-    });
+    protocol_controller
+        .expect_get_bootstrap_peers()
+        .returning(|| Ok(BootstrapPeers(vec![])));
     let selector_controller = MockSelectorControllerWrapper::new();
 
     let mut server = BootstrapServerBinder::new(
@@ -633,14 +640,17 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
                 // Pass the bootstrap time sent by server
                 client.next_timeout(Some(read_timeout)).unwrap();
                 for _ in 0..10 {
-                    let _ = client.send_timeout(&BootstrapClientMessage::AskBootstrapPeers, Some(Duration::from_millis(1000)));
+                    let _ = client.send_timeout(
+                        &BootstrapClientMessage::AskBootstrapPeers,
+                        Some(Duration::from_millis(1000)),
+                    );
                     let _ = client.next_timeout(Some(read_timeout));
                     std::thread::sleep(timeout.div_f32(5.0));
                 }
             }
         })
         .unwrap();
-    
+
     let res = server_thread.join().unwrap();
     // if someone doesn't send anything in a data exchange phase the server consider this exchange as finished and so finish without problems
     match res {
@@ -649,7 +659,6 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
     }
     client_thread.join().unwrap();
 }
-
 
 // serial test for time-taken sensitive tests: reduces parallelism noise
 #[test]

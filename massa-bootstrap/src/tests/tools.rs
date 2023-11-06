@@ -1035,7 +1035,7 @@ impl BootstrapServerMessage {
                 parents: parents.clone(),
                 operation_merkle_root: gen_random_hash(rng),
                 endorsements: endorsements.clone(),
-                denunciations: denunciations,
+                denunciations,
             }
             .new_verifiable(BlockHeaderSerializer::new(), &keypair)
             .unwrap();

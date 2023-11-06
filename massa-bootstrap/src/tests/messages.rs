@@ -68,7 +68,7 @@ fn test_serialize_bootstrap_server_message() {
                     if err_str.len() > 550 {
                         err_str = err_str[..550].to_string();
                     }
-                    assert!(false, "Error while deserializing: {}", err_str);
+                    panic!("Error while deserializing: {}", err_str);
                 }
             }
         },
@@ -114,7 +114,7 @@ fn test_serialize_bootstrap_client_message() {
                     if err_str.len() > 550 {
                         err_str = err_str[..550].to_string();
                     }
-                    assert!(false, "Error while deserializing: {}", err_str);
+                    panic!("Error while deserializing: {}", err_str);
                 }
             }
         },
