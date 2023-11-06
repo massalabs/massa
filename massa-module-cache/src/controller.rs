@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{Compiler, RuntimeModule};
@@ -43,8 +41,7 @@ impl ModuleCache {
 
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
-        let start = Instant::now();
-        let module = match RuntimeModule::new(
+        match RuntimeModule::new(
             bytecode,
             self.cfg.gas_costs.max_instance_cost,
             self.cfg.gas_costs.clone(),
@@ -58,11 +55,7 @@ impl ModuleCache {
                 warn!("compilation of module {} failed with: {}", hash, e);
                 ModuleInfo::Invalid
             }
-        };
-        let end = Instant::now();
-        let elapsed = end.duration_since(start).as_micros();
-        debug!("TIMER: cl compilation took {} μs", elapsed);
-        module
+        }
     }
 
     /// Save a new or an already existing module in the cache
@@ -193,16 +186,12 @@ impl ModuleCache {
                 "Provided max gas is below the default instance creation cost".to_string(),
             ))?;
 
-        let start = Instant::now();
         let module = RuntimeModule::new(
             bytecode,
             remaining,
             self.cfg.gas_costs.clone(),
             Compiler::SP,
         )?;
-        let end = Instant::now();
-        let elapsed = end.duration_since(start).as_micros();
-        debug!("TIMER: sp compilation took {} μs", elapsed);
         Ok((module, remaining))
     }
 }
