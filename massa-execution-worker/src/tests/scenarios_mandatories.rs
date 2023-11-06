@@ -108,7 +108,7 @@ fn test_readonly_execution() {
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 1_000_000,
+            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -2198,7 +2198,7 @@ fn not_enough_compilation_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("not enough gas to pay for singlepass compilation"));
+        .contains("Not enough gas to pay SP compilation"));
 }
 
 #[test]

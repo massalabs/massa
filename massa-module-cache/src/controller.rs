@@ -178,7 +178,7 @@ impl ModuleCache {
         let remaining = limit
             .checked_sub(self.cfg.gas_costs.sp_compilation_cost)
             .ok_or(CacheError::LoadError(
-                "Not enough gas to pay compilation".to_string(),
+                "Not enough gas to pay SP compilation".to_string(),
             ))?;
         remaining
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
