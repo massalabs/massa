@@ -150,33 +150,49 @@ fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
 }
 
 /// The server and the client will handshake and then send message in both ways in order
+// How this test works:
+// - A "test controller" (closure inside the parametric_test function) will feed 2 messages for
+//    each thread, one to send, one to receive
+// - A server and client thread is started and listen to the channel to get the messages to send / receive
+// - Each loop, the server will send a message, then listen for a message from the client,
+//    once it gets it, it'll check it's the same as the one he's expecting
+// - Same for the client thread
 #[test]
 fn test_binders_simple() {
-    type Data = (BootstrapServerMessage, BootstrapClientMessage);
+    type Data = (BootstrapServerMessage, BootstrapClientMessage); // Sugar
     let timeout = Duration::from_secs(30);
+
+    // Initialize the tests
     let (mut server, mut client) = init_server_client_pair();
 
     let (srv_send, srv_recv) = channel::<Data>();
     let (cli_send, cli_recv) = channel::<Data>();
+    // Channels used to tell the controller that a test is finished (useful for thread sync)
     let (srv_ready_flag, srv_ready) = channel();
     let (cli_ready_flag, cli_ready) = channel();
 
+    // Build the server thread
     let server_thread = std::thread::Builder::new()
         .name("test_binders_remake::server_thread".to_string())
         .spawn(move || loop {
+            // So that the controller can wait on this thread to reach a new loop
             srv_ready_flag.send(true).unwrap();
+            // Get the message to send, and the message to get, from the controller.
             let (srv_send_msg, cli_recv_msg) = match srv_recv.recv_timeout(timeout) {
                 Ok(data) => data,
                 Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
                 Err(RecvTimeoutError::Disconnected) => break,
             };
+            // Send the message to the client
             server.send_timeout(srv_send_msg, Some(timeout)).unwrap();
+            // Receive the message from the client, and assert its content is correct
             assert_server_got_msg(timeout, &mut server, cli_recv_msg);
         })
         .unwrap();
 
     let client_thread = std::thread::Builder::new()
         .name("test_binders_remake::client_thread".to_string())
+        // Same principle as the server_thread above, only reversed
         .spawn(move || loop {
             cli_ready_flag.send(true).unwrap();
             let (srv_recv_msg, cli_send_msg) = match cli_recv.recv_timeout(timeout) {
@@ -189,6 +205,7 @@ fn test_binders_simple() {
         })
         .unwrap();
 
+    // Expects the loops to start before the first iteration of the tests
     assert_eq!(
         srv_ready.recv_timeout(timeout * 2),
         Ok(true),
@@ -199,25 +216,42 @@ fn test_binders_simple() {
         Ok(true),
         "Error while init client"
     );
+
+    // Parametric test function wrapper, see its definition for details
     parametric_test(
         Duration::from_secs(30),
         (),
+        // Regressions already encountered
         vec![11687948547956751531, 6417627360786923628],
         move |_, rng| {
+            // Generate random messages
             let server_message = BootstrapServerMessage::generate(rng);
             let client_message = BootstrapClientMessage::generate(rng);
+
+            // Send the messages to the threads
             srv_send
                 .send((server_message.clone(), client_message.clone()))
                 .unwrap();
             cli_send.send((server_message, client_message)).unwrap();
+
+            // Wait for the threads to finish
             assert_eq!(cli_ready.recv_timeout(timeout * 2), Ok(true));
             assert_eq!(srv_ready.recv_timeout(timeout * 2), Ok(true));
         },
     );
+
     let _ = server_thread.join();
     let _ = client_thread.join();
 }
 
+// This test uses exactly the same principle as the `test_binders_simple` one
+// Except instead of passing a pair of (ServerMessage, ClientMessage), it will pass a
+//    (bool, Vec<ServerMessage>, Vec<ClientMessage>)
+// - The boolean defines wether the server or the client will transmit data first, or receive first
+// - The first vector is a list of server messages generated that the server has to send
+// - The second vector is a list of client messages generated that the client has to send
+// Because the direction of the first message is randomly assigned, and the number of messages are random,
+//     it will create a scenario of "Client sends 3 msg, Server sends 2 msg, Server sends 6 msg, Client sends 4 msg, etc ..."
 #[test]
 fn test_binders_multiple_send() {
     type Data = (
@@ -396,7 +430,7 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
 
     let mut server = BootstrapServerBinder::new(
         server.0,
-        server_keypair.clone(),
+        server_keypair,
         BootstrapSrvBindCfg {
             rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,
@@ -489,7 +523,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
 
     let mut server = BootstrapServerBinder::new(
         server.0,
-        server_keypair.clone(),
+        server_keypair,
         BootstrapSrvBindCfg {
             rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,
@@ -585,7 +619,7 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
 
     let mut server = BootstrapServerBinder::new(
         server.0,
-        server_keypair.clone(),
+        server_keypair,
         BootstrapSrvBindCfg {
             rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,

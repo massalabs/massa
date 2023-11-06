@@ -317,9 +317,6 @@ pub struct BootstrapServerMessageDeserializer {
     opt_last_start_period_deserializer: OptionDeserializer<u64, U64VarIntDeserializer>,
     opt_last_slot_before_downtime_deserializer:
         OptionDeserializer<Option<Slot>, OptionDeserializer<Slot, SlotDeserializer>>,
-
-    max_final_state_elements_size: u32,
-    max_versioning_elements_size: u32,
 }
 
 impl BootstrapServerMessageDeserializer {
@@ -363,11 +360,11 @@ impl BootstrapServerMessageDeserializer {
             ),
             versioning_part_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(u64::MAX),
+                Included(args.max_versioning_elements_size.into()),
             ),
             state_new_elements_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
-                Included(u64::MAX),
+                Included(args.max_final_state_elements_size.into()),
             ),
             state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
@@ -386,56 +383,7 @@ impl BootstrapServerMessageDeserializer {
                     (Included(0), Excluded(args.thread_count)),
                 )),
             ),
-            max_final_state_elements_size: args.max_final_state_elements_size,
-            max_versioning_elements_size: args.max_versioning_elements_size,
         }
-    }
-
-    // Validate that the message got from deserialization is under the limit set in the
-    // parameters.
-    // Put here everything that cannot be tested inside the parsing process itself.
-    fn validate_result<
-        'a,
-        E: nom::error::ParseError<&'a [u8]> + nom::error::ContextError<&'a [u8]>,
-    >(
-        &self,
-        input: &'a [u8],
-        msg: &BootstrapServerMessage,
-    ) -> IResult<(), (), E> {
-        if let BootstrapServerMessage::BootstrapPart {
-            state_part,
-            versioning_part,
-            ..
-        } = msg
-        {
-            if state_part
-                .new_elements
-                .iter()
-                .map(|(k, v)| k.len() + v.len())
-                .sum::<usize>()
-                > (self.max_final_state_elements_size as usize)
-            {
-                return Err(nom::Err::Error(ContextError::add_context(
-                    input,
-                    "final_state new_elements total size is exceeding bytes limit",
-                    ParseError::from_error_kind(input, nom::error::ErrorKind::TooLarge),
-                )));
-            }
-            if versioning_part
-                .new_elements
-                .iter()
-                .map(|(k, v)| k.len() + v.len())
-                .sum::<usize>()
-                > (self.max_versioning_elements_size as usize)
-            {
-                return Err(nom::Err::Error(ContextError::add_context(
-                    input,
-                    "versioning_part new_elements total size is exceeding bytes limit",
-                    ParseError::from_error_kind(input, nom::error::ErrorKind::TooLarge),
-                )));
-            }
-        }
-        Ok(((), ()))
     }
 }
 
@@ -487,7 +435,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], BootstrapServerMessage, E> {
-        let res = context("Failed BootstrapServerMessage deserialization", |buffer| {
+        context("Failed BootstrapServerMessage deserialization", |buffer| {
             let (input, id) = context("Failed id deserialization", |input| {
                 self.message_id_deserializer.deserialize(input)
             })
@@ -663,9 +611,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                 .parse(input),
             }
         })
-        .parse(buffer)?;
-        self.validate_result(res.0, &res.1)?;
-        Ok(res)
+        .parse(buffer)
     }
 }
 
