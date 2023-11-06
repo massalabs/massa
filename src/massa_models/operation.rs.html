@@ -1700,8 +1700,6 @@
 <a href="#1700" id="1700">1700</a>
 <a href="#1701" id="1701">1701</a>
 <a href="#1702" id="1702">1702</a>
-<a href="#1703" id="1703">1703</a>
-<a href="#1704" id="1704">1704</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -1739,7 +1737,9 @@
 <span class="kw">use </span>std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 <span class="kw">use </span>transition::Versioned;
 
-<span class="doccomment">/// Size in bytes of the serialized operation ID prefix
+<span class="doccomment">/// Size in bytes of the serialized operation ID
+
+/// Size in bytes of the serialized operation ID prefix
 </span><span class="kw">pub const </span>OPERATION_ID_PREFIX_SIZE_BYTES: usize = <span class="number">17</span>;
 
 <span class="doccomment">/// operation id
@@ -2673,11 +2673,8 @@
         start..=<span class="self">self</span>.content.expire_period
     }
 
-    <span class="doccomment">/// Get the maximum amount of gas used by the operation.
-    ///
-    /// base_operation_gas_cost comes from the configuration and
-    /// is the cost of a basic operation (BASE_OPERATION_GAS_COST)
-    </span><span class="kw">pub fn </span>get_gas_usage(<span class="kw-2">&amp;</span><span class="self">self</span>, base_operation_gas_cost: u64) -&gt; u64 {
+    <span class="doccomment">/// Get the max amount of gas used by the operation (`max_gas`)
+    </span><span class="kw">pub fn </span>get_gas_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
             OperationType::ExecuteSC { max_gas, .. } =&gt; <span class="kw-2">*</span>max_gas,
             OperationType::CallSC { max_gas, .. } =&gt; <span class="kw-2">*</span>max_gas,
@@ -2685,7 +2682,6 @@
             OperationType::RollSell { .. } =&gt; <span class="number">0</span>,
             OperationType::Transaction { .. } =&gt; <span class="number">0</span>,
         }
-        .saturating_add(base_operation_gas_cost)
     }
 
     <span class="doccomment">/// get the addresses that are involved in this operation from a ledger point of view

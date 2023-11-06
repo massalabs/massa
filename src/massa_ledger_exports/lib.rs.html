@@ -31,6 +31,9 @@
 <a href="#31" id="31">31</a>
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! # General description
 //!
 //! TODO
@@ -64,4 +67,7 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
 </span><span class="kw">pub mod </span>test_exports;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+</span><span class="kw">pub use </span>controller::{MockLedgerController, MockLedgerControllerWrapper};
 </code></pre></div></section></main></body></html>

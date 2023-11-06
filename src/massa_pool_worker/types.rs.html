@@ -37,8 +37,6 @@
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
 <a href="#39" id="39">39</a>
-<a href="#40" id="40">40</a>
-<a href="#41" id="41">41</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -50,8 +48,7 @@
 </span><span class="kw">pub struct </span>OperationInfo {
     <span class="kw">pub </span>id: OperationId,
     <span class="kw">pub </span>size: usize,
-    <span class="doccomment">/// The maximum amount of gas that can be used by an operation.
-    </span><span class="kw">pub </span>max_gas_usage: u64,
+    <span class="kw">pub </span>max_gas: u64,
     <span class="kw">pub </span>creator_address: Address,
     <span class="kw">pub </span>thread: u8,
     <span class="kw">pub </span>fee: Amount,
@@ -66,12 +63,11 @@
         operation_validity_periods: u64,
         roll_price: Amount,
         thread_count: u8,
-        base_operation_gas_cost: u64,
     ) -&gt; <span class="self">Self </span>{
         OperationInfo {
             id: op.id,
             size: op.serialized_size(),
-            max_gas_usage: op.get_gas_usage(base_operation_gas_cost),
+            max_gas: op.get_gas_usage(),
             creator_address: op.content_creator_address,
             fee: op.content.fee,
             thread: op.content_creator_address.get_thread(thread_count),
