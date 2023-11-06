@@ -471,6 +471,13 @@ async fn launch(
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
 
+    // gas costs
+    let gas_costs = GasCosts::new(
+        SETTINGS.execution.abi_gas_costs_file.clone(),
+        SETTINGS.execution.wasm_gas_costs_file.clone(),
+    )
+    .expect("Failed to load gas costs");
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -493,11 +500,7 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        gas_costs: GasCosts::new(
-            SETTINGS.execution.abi_gas_costs_file.clone(),
-            SETTINGS.execution.wasm_gas_costs_file.clone(),
-        )
-        .expect("Failed to load gas costs"),
+        gas_costs: gas_costs.clone(),
         base_operation_gas_cost: BASE_OPERATION_GAS_COST,
         last_start_period: final_state.read().last_start_period,
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
@@ -538,6 +541,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
         base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost: gas_costs.sp_compilation_cost,
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,

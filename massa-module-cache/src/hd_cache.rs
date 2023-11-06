@@ -138,7 +138,7 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, limit: u64, gas_costs: GasCosts) -> Option<ModuleInfo> {
+    pub fn get(&self, hash: Hash, gas_costs: GasCosts) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
@@ -154,8 +154,9 @@ impl HDCache {
                 if metadata == ModuleMetadata::Invalid {
                     return Some(ModuleInfo::Invalid);
                 }
-                let module = RuntimeModule::deserialize(&ser_module, limit, gas_costs)
-                    .expect(MOD_DESER_ERROR);
+                let module =
+                    RuntimeModule::deserialize(&ser_module, gas_costs.max_instance_cost, gas_costs)
+                        .expect(MOD_DESER_ERROR);
                 let result = match metadata {
                     ModuleMetadata::Invalid => ModuleInfo::Invalid,
                     ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
@@ -249,20 +250,19 @@ mod tests {
         let hash = Hash::compute_from(b"test_hash");
         let module = make_default_module_info();
 
-        let limit = 1;
         let init_cost = 100;
         let gas_costs = GasCosts::default();
 
         cache.insert(hash, module);
-        let cached_module_v1 = cache.get(hash, limit, gas_costs.clone()).unwrap();
+        let cached_module_v1 = cache.get(hash, gas_costs.clone()).unwrap();
         assert!(matches!(cached_module_v1, ModuleInfo::Module(_)));
 
         cache.set_init_cost(hash, init_cost);
-        let cached_module_v2 = cache.get(hash, limit, gas_costs.clone()).unwrap();
+        let cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
         assert!(matches!(cached_module_v2, ModuleInfo::ModuleAndDelta(_)));
 
         cache.set_invalid(hash);
-        let cached_module_v3 = cache.get(hash, limit, gas_costs).unwrap();
+        let cached_module_v3 = cache.get(hash, gas_costs).unwrap();
         assert!(matches!(cached_module_v3, ModuleInfo::Invalid));
     }
 
@@ -295,7 +295,6 @@ mod tests {
         let mut cache = setup();
         let module = make_default_module_info();
 
-        let limit = 1;
         let gas_costs = GasCosts::default();
 
         for count in 0..cache.max_entry_count {
@@ -307,7 +306,7 @@ mod tests {
             let mut rbytes = [0u8; 16];
             thread_rng().fill_bytes(&mut rbytes);
             let get_key = Hash::compute_from(&rbytes);
-            let cached_module = cache.get(get_key, limit, gas_costs.clone());
+            let cached_module = cache.get(get_key, gas_costs.clone());
             assert!(cached_module.is_none());
         }
     }
