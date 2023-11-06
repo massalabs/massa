@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["massa_ledger_worker/test-exports", "massa_async_pool/test-exports", "massa_pos_exports/test-exports"]
+test-exports = ["massa_ledger_worker/test-exports", "massa_async_pool/test-exports", "massa_pos_exports/test-exports", "serde_json", "parking_lot", "tempfile", "massa_db_worker", "massa_signature"]
 sandbox = ["massa_async_pool/sandbox"]
 bootstrap_server = []
 
@@ -31,6 +31,13 @@ massa_versioning = {workspace = true}
 massa_time = {workspace = true}
 massa_hash = {workspace = true}
 
+serde_json = {workspace = true, optional = true}
+parking_lot = {workspace = true, "features" = ["deadlock_detection"], optional = true}
+massa_db_worker = {workspace = true, optional = true}
+massa_signature = {workspace = true, optional = true}
+tempfile = {workspace = true, optional = true}
+
+
 [dev-dependencies]
 massa_async_pool = {workspace = true, "features" = ["test-exports"]}
 massa_ledger_worker = {workspace = true, "features" = ["test-exports"]}
@@ -38,4 +45,4 @@ massa_pos_worker = {workspace = true, "features" = ["test-exports"]}
 massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_db_worker = {workspace = true}
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+tempfile = {workspace = true}

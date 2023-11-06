@@ -65,8 +65,8 @@ async fn get_status() {
     let mut exec_ctrl = MockExecutionController::new();
 
     exec_ctrl.expect_get_stats().returning(|| ExecutionStats {
-        time_window_start: MassaTime::now().unwrap(),
-        time_window_end: MassaTime::now().unwrap(),
+        time_window_start: MassaTime::now(),
+        time_window_end: MassaTime::now(),
         final_block_count: 0,
         final_executed_operations_count: 0,
         active_cursor: Slot::new(0, 0),
@@ -76,8 +76,8 @@ async fn get_status() {
     let mut consensus_ctrl = MockConsensusController::new();
     consensus_ctrl.expect_get_stats().returning(|| {
         Ok(ConsensusStats {
-            start_timespan: MassaTime::now().unwrap(),
-            end_timespan: MassaTime::now().unwrap(),
+            start_timespan: MassaTime::now(),
+            end_timespan: MassaTime::now(),
             final_block_count: 50,
             stale_block_count: 40,
             clique_count: 30,
@@ -433,8 +433,8 @@ async fn get_graph_interval() {
         .unwrap();
 
     let params = rpc_params![TimeInterval {
-        start: Some(MassaTime::now().unwrap()),
-        end: Some(MassaTime::now().unwrap())
+        start: Some(MassaTime::now()),
+        end: Some(MassaTime::now())
     }];
     let response: Vec<BlockSummary> = client
         .request("get_graph_interval", params.clone())

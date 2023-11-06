@@ -8,7 +8,7 @@ impl Default for FactoryConfig {
         use massa_models::config::*;
         FactoryConfig {
             thread_count: THREAD_COUNT,
-            genesis_timestamp: MassaTime::now().expect("failed to get current time"),
+            genesis_timestamp: MassaTime::now(),
             t0: T0,
             initial_delay: MassaTime::from_millis(0),
             max_block_size: MAX_BLOCK_SIZE as u64,

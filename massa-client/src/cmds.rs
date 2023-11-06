@@ -987,7 +987,7 @@ impl Command {
                 let mut res = "".to_string();
                 if let Some(e) = end {
                     let (days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()?).days_hours_mins_secs()?; // compensation milliseconds is zero
+                        e.saturating_sub(MassaTime::now()).days_hours_mins_secs()?; // compensation milliseconds is zero
 
                     let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
                 } else {
@@ -1127,7 +1127,7 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() < 2 || parameters.len() > 4 {
+                if parameters.len() < 2 || parameters.len() > 5 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1165,7 +1165,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() < 4 || parameters.len() > 6 {
+                if parameters.len() < 4 || parameters.len() > 8 {
                     bail!("wrong number of parameters");
                 }
 

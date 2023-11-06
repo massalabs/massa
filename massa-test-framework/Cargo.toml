@@ -8,4 +8,4 @@ edition = "2021"
 massa_hash = { path = "../massa-hash" }
 massa_models = { path = "../massa-models", features = ["test-exports"]}
 massa_signature = { path = "../massa-signature" }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"]}

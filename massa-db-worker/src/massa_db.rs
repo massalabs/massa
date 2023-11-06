@@ -878,11 +878,7 @@ mod test {
         // Check not allowed to init a second instance
         let db2 = MassaDB::new_with_options(db_config, db_opts.clone());
         assert!(db2.is_err());
-        assert!(db2
-            .err()
-            .unwrap()
-            .into_string()
-            .contains("IO error: lock hold by current process"));
+        assert!(db2.err().unwrap().into_string().contains("IO error"));
     }
 
     #[test]

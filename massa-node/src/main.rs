@@ -133,7 +133,7 @@ async fn launch(
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    let now = MassaTime::now().expect("could not get now time");
+    let now = MassaTime::now();
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
     #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]

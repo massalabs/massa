@@ -52,7 +52,7 @@ pub struct ExecutionQueryResponse {
 pub enum ExecutionQueryRequestItem {
     /// checks if address exists (candidate) returns ExecutionQueryResponseItem::Boolean(true) if it does
     AddressExistsCandidate(Address),
-    /// checks if address exists (finak) returns ExecutionQueryResponseItem::Boolean(true) if it does
+    /// checks if address exists (final) returns ExecutionQueryResponseItem::Boolean(true) if it does
     AddressExistsFinal(Address),
     /// gets the balance (candidate) of an address, returns ExecutionQueryResponseItem::Amount(balance) or an error if the address is not found
     AddressBalanceCandidate(Address),

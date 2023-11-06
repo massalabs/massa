@@ -13,7 +13,7 @@ use massa_consensus_exports::events::ConsensusEvent;
 impl ConsensusState {
     /// Calculate and return stats about consensus
     pub fn get_stats(&self) -> Result<ConsensusStats, ConsensusError> {
-        let timespan_end = max(self.launch_time, MassaTime::now()?);
+        let timespan_end = max(self.launch_time, MassaTime::now());
         let timespan_start = max(
             timespan_end.saturating_sub(self.config.stats_timespan),
             self.launch_time,
@@ -54,7 +54,7 @@ impl ConsensusState {
     /// if none => we are probably desync
     /// Ignore if we are before the last_start_period
     fn check_desync(&mut self) -> Result<(), ConsensusError> {
-        let now = MassaTime::now()?;
+        let now = MassaTime::now();
         if now
             > max(
                 self.config
@@ -83,7 +83,7 @@ impl ConsensusState {
 
     /// Remove old stats from consensus storage
     fn prune_stats(&mut self) -> Result<(), ConsensusError> {
-        let start_time = MassaTime::now()?.saturating_sub(self.stats_history_timespan);
+        let start_time = MassaTime::now().saturating_sub(self.stats_history_timespan);
         while let Some((t, _, _)) = self.final_block_stats.front() {
             if t < &start_time {
                 self.final_block_stats.pop_front();

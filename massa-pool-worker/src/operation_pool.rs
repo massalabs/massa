@@ -61,7 +61,7 @@ impl OperationPool {
 
     /// Get the relevant PoS draws of our staking addresses
     fn get_pos_draws(&mut self) -> BTreeSet<Slot> {
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
 
         // min slot for PoS draw search = the earliest final slot
         let min_slot = self
@@ -242,7 +242,7 @@ impl OperationPool {
         _exec_statuses: &PreHashMap<OperationId, bool>,
         pos_draws: &BTreeSet<Slot>,
     ) -> PreHashMap<OperationId, f32> {
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
         let now_period = get_latest_block_slot_at_timestamp(
             self.config.thread_count,
             self.config.t0,

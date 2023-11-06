@@ -22,7 +22,7 @@ fn test_tts_latest_blocks_as_parents() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -204,7 +204,7 @@ fn test_tts_latest_period_blocks_as_parents() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -367,7 +367,7 @@ fn test_tts_mixed_blocks_as_parents() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -554,7 +554,7 @@ fn test_tts_p2_depends_on_p0_1() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -706,7 +706,7 @@ fn test_tts_p2_depends_on_p0_2() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -844,7 +844,7 @@ fn test_tts_p3_depends_on_p0() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -947,7 +947,7 @@ fn test_tts_multiple_blocks_depend_on_p0_no_incomp() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -1132,7 +1132,7 @@ fn test_tts_multiple_blocks_depend_on_p0_parallel_incomp() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -1256,7 +1256,7 @@ fn test_tts_parent_registered_later() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,
@@ -1398,7 +1398,7 @@ fn test_tts_incompatible_parents() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(t0_millis),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 4,

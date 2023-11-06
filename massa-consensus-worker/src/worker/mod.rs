@@ -88,7 +88,7 @@ pub fn start_consensus_worker(
         stale_block_stats: Default::default(),
         protocol_blocks: Default::default(),
         wishlist: Default::default(),
-        launch_time: MassaTime::now().unwrap(),
+        launch_time: MassaTime::now(),
         stats_desync_detection_timespan,
         stats_history_timespan: std::cmp::max(
             stats_desync_detection_timespan,

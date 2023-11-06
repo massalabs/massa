@@ -22,7 +22,7 @@ fn test_fts_latest_blocks_as_parents() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(500),
         thread_count: 4,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 8,
@@ -231,7 +231,7 @@ fn test_fts_multiple_max_cliques_1() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(500),
         thread_count: 3,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 8,
@@ -556,7 +556,7 @@ fn test_fts_multiple_max_cliques_2() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(500),
         thread_count: 4,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 8,

@@ -88,14 +88,25 @@ impl InterfaceImpl {
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
+        use massa_final_state::test_exports::get_sample_state;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
         use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
+        use massa_pos_exports::SelectorConfig;
+        use massa_pos_worker::start_selector_worker;
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
 
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
+            .expect("could not start selector controller");
+        let (final_state, _tempfile, _tempdir) =
+            get_sample_state(config.last_start_period, selector_controller, mip_store).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
@@ -168,7 +179,7 @@ fn massa_time_from_native_time(time: &NativeTime) -> Result<MassaTime> {
 
 /// Helper function that creates a NativeTime from the MassaTime internal representation
 fn massa_time_to_native_time(time: &MassaTime) -> NativeTime {
-    let milliseconds = time.to_millis();
+    let milliseconds = time.as_millis();
     NativeTime { milliseconds }
 }
 
@@ -1095,7 +1106,7 @@ impl Interface for InterfaceImpl {
             self.config.genesis_timestamp,
             slot,
         )?;
-        Ok(ts.to_millis())
+        Ok(ts.as_millis())
     }
 
     /// Returns a pseudo-random deterministic `i64` number
@@ -1881,8 +1892,8 @@ mod tests {
         );
 
         //time
-        let time1 = massa_time_to_native_time(&MassaTime::from_str("1").unwrap());
-        let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
+        let time1 = massa_time_to_native_time(&MassaTime::from_millis(1));
+        let time2 = massa_time_to_native_time(&MassaTime::from_millis(2));
         println!(
             "do some compare with time1 = {}, time2 = {}",
             time1.milliseconds, time2.milliseconds
