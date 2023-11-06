@@ -1227,8 +1227,8 @@ impl BootstrapClientMessage {
                 };
 
                 let last_consensus_step = if last_slot.is_some() {
-                    let nb = rng.gen_range(0..100);
-                    let mut data = PreHashSet::with_capacity(nb);
+                    let nb = rng.gen_range(0..CONSENSUS_BOOTSTRAP_PART_SIZE);
+                    let mut data = PreHashSet::with_capacity(nb as usize);
                     for _ in 0..nb {
                         data.insert(gen_random_block_id(rng));
                     }

@@ -39,7 +39,7 @@ use std::io::Write;
 use std::net::TcpStream;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::mpsc::channel;
+use std::sync::mpsc::{channel, RecvTimeoutError};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -164,7 +164,11 @@ fn test_binders_simple() {
             println!("TIM S0");
             srv_ready_flag.send(true).unwrap();
             println!("TIM S1");
-            let (srv_send_msg, cli_recv_msg) = srv_recv.recv_timeout(timeout).unwrap();
+            let (srv_send_msg, cli_recv_msg) = match srv_recv.recv_timeout(timeout) {
+                Ok(data) => data,
+                Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
+                Err(RecvTimeoutError::Disconnected) => break,
+            };
             println!("TIM S2");
             server.send_timeout(srv_send_msg, Some(timeout)).unwrap();
             println!("TIM S3");
@@ -179,9 +183,11 @@ fn test_binders_simple() {
             println!("TIM C0");
             cli_ready_flag.send(true).unwrap();
             println!("TIM C1");
-            let (srv_recv_msg, cli_send_msg) = cli_recv
-                .recv_timeout(timeout)
-                .expect("Unable to receive next message");
+            let (srv_recv_msg, cli_send_msg) = match cli_recv.recv_timeout(timeout) {
+                Ok(data) => data,
+                Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
+                Err(RecvTimeoutError::Disconnected) => break,
+            };
             println!("TIM C2");
             assert_client_got_msg(timeout, &mut client, srv_recv_msg);
             println!("TIM C3");
@@ -238,7 +244,11 @@ fn test_binders_multiple_send() {
         .name("test_binders_remake::server_thread".to_string())
         .spawn(move || loop {
             srv_ready_flag.send(true).unwrap();
-            let data = srv_recv.recv().expect("Test ended");
+            let data = match srv_recv.recv_timeout(timeout) {
+                Ok(data) => data,
+                Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
+                Err(RecvTimeoutError::Disconnected) => break,
+            };
             if data.0 {
                 for msg in data.1 {
                     server.send_timeout(msg, Some(timeout)).unwrap();
@@ -261,7 +271,11 @@ fn test_binders_multiple_send() {
         .name("test_binders_remake::client_thread".to_string())
         .spawn(move || loop {
             cli_ready_flag.send(true).unwrap();
-            let data = cli_recv.recv().expect("Test ended");
+            let data = match cli_recv.recv_timeout(timeout) {
+                Ok(data) => data,
+                Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
+                Err(RecvTimeoutError::Disconnected) => break,
+            };
             if data.0 {
                 for msg in data.1 {
                     assert_client_got_msg(timeout, &mut client, msg);
