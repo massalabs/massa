@@ -165,7 +165,6 @@ impl ModuleCache {
     }
 
     /// Load a temporary module from arbitrary bytecode.
-    /// Pays the Singlepass compilation cost.
     /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     ///
     /// Returns the module and the remaining gas after compilation.
@@ -175,23 +174,12 @@ impl ModuleCache {
         limit: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
         debug!("load_tmp_module");
-        let remaining = limit
-            .checked_sub(self.cfg.gas_costs.sp_compilation_cost)
-            .ok_or(CacheError::LoadError(
-                "Not enough gas to pay SP compilation".to_string(),
-            ))?;
-        remaining
+        limit
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
             .ok_or(CacheError::LoadError(
                 "Provided max gas is below the default instance creation cost".to_string(),
             ))?;
-
-        let module = RuntimeModule::new(
-            bytecode,
-            remaining,
-            self.cfg.gas_costs.clone(),
-            Compiler::SP,
-        )?;
-        Ok((module, remaining))
+        let module = RuntimeModule::new(bytecode, limit, self.cfg.gas_costs.clone(), Compiler::SP)?;
+        Ok((module, limit))
     }
 }

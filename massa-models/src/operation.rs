@@ -973,9 +973,9 @@ impl SecureShareOperation {
     ///
     /// base_operation_gas_cost comes from the configuration and
     /// is the cost of a basic operation (BASE_OPERATION_GAS_COST)
-    pub fn get_gas_usage(&self, base_operation_gas_cost: u64) -> u64 {
+    pub fn get_gas_usage(&self, base_operation_gas_cost: u64, sp_compilation_cost: u64) -> u64 {
         match &self.content.op {
-            OperationType::ExecuteSC { max_gas, .. } => *max_gas,
+            OperationType::ExecuteSC { max_gas, .. } => sp_compilation_cost + *max_gas,
             OperationType::CallSC { max_gas, .. } => *max_gas,
             OperationType::RollBuy { .. } => 0,
             OperationType::RollSell { .. } => 0,

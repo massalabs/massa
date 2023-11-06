@@ -378,7 +378,10 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.get_gas_usage(self.config.base_operation_gas_cost);
+        let op_gas = operation.get_gas_usage(
+            self.config.base_operation_gas_cost,
+            self.config.gas_costs.sp_compilation_cost,
+        );
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -1420,11 +1423,18 @@ impl ExecutionState {
                     }
                 }
 
+                // pay SP compilation as read only execution has no base cost
+                let post_compil = req
+                    .max_gas
+                    .checked_sub(self.config.gas_costs.sp_compilation_cost)
+                    .ok_or(ExecutionError::NotEnoughGas(
+                        "Not enough gas to pay SP compilation in ReadOnly execution".to_string(),
+                    ))?;
                 // load the tmp module
                 let (module, remaining_gas) = self
                     .module_cache
                     .read()
-                    .load_tmp_module(&bytecode, req.max_gas)?;
+                    .load_tmp_module(&bytecode, post_compil)?;
                 // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,

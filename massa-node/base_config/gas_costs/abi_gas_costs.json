@@ -39,7 +39,7 @@
   "assembly_script_hash_sha256": 198,
   "assembly_script_keccak256_hash": 211,
   "assembly_script_local_call": 15000,
-  "assembly_script_local_execution": 15000,
+  "assembly_script_local_execution": 314000000,
   "assembly_script_print": 171,
   "assembly_script_seed": 72,
   "assembly_script_send_message": 286,
