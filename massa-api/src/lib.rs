@@ -54,11 +54,6 @@ mod api_trait;
 mod private;
 mod public;
 
-#[cfg(feature = "testing")]
-use massa_channel as _;
-#[cfg(feature = "testing")]
-use massa_grpc as _;
-
 #[cfg(test)]
 mod tests;
 
