@@ -87,6 +87,7 @@ impl BootstrapClientBinder {
     }
 }
 
+// Get a message from the remote client, and assert it's the same as the one provided in argument
 fn assert_server_got_msg(
     timeout: Duration,
     server: &mut BootstrapServerBinder,
@@ -101,6 +102,7 @@ fn assert_server_got_msg(
     assert!(eq, "Received BootstrapClientMessage isn't the same");
 }
 
+// Get a message from the remote server, and assert it's the same as the one provided in argument
 fn assert_client_got_msg(
     timeout: Duration,
     client: &mut BootstrapClientBinder,
@@ -115,6 +117,7 @@ fn assert_client_got_msg(
     assert!(eq, "Received BootstrapServerMessage isn't the same");
 }
 
+// Initialize a pair of bootstrap server and client with the given configuration, and handshake done
 fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
     let (bootstrap_config, server_keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
@@ -161,38 +164,28 @@ fn test_binders_simple() {
     let server_thread = std::thread::Builder::new()
         .name("test_binders_remake::server_thread".to_string())
         .spawn(move || loop {
-            println!("TIM S0");
             srv_ready_flag.send(true).unwrap();
-            println!("TIM S1");
             let (srv_send_msg, cli_recv_msg) = match srv_recv.recv_timeout(timeout) {
                 Ok(data) => data,
                 Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
                 Err(RecvTimeoutError::Disconnected) => break,
             };
-            println!("TIM S2");
             server.send_timeout(srv_send_msg, Some(timeout)).unwrap();
-            println!("TIM S3");
             assert_server_got_msg(timeout, &mut server, cli_recv_msg);
-            println!("TIM S4");
         })
         .unwrap();
 
     let client_thread = std::thread::Builder::new()
         .name("test_binders_remake::client_thread".to_string())
         .spawn(move || loop {
-            println!("TIM C0");
             cli_ready_flag.send(true).unwrap();
-            println!("TIM C1");
             let (srv_recv_msg, cli_send_msg) = match cli_recv.recv_timeout(timeout) {
                 Ok(data) => data,
                 Err(RecvTimeoutError::Timeout) => panic!("Timeout while waiting for message"),
                 Err(RecvTimeoutError::Disconnected) => break,
             };
-            println!("TIM C2");
             assert_client_got_msg(timeout, &mut client, srv_recv_msg);
-            println!("TIM C3");
             client.send_timeout(&cli_send_msg, Some(timeout)).unwrap();
-            println!("TIM C4");
         })
         .unwrap();
 

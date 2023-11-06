@@ -102,11 +102,7 @@ fn test_serialize_bootstrap_client_message() {
             );
             match deser.deserialize::<massa_serialization::DeserializeError>(&bytes) {
                 Ok((rest, msg_res)) => {
-                    println!("SER Data:   {bytes:?}");
-                    println!("DESER rest: {rest:?}");
                     assert!(rest.is_empty(), "Data left after deserialization");
-                    println!("Serialized {msg:?}");
-                    println!("Got        {msg_res:?}");
                     assert!(msg_res.equals(&msg), "BootstrapClientMessages doesn't match after serialization / deserialization process")
                 }
                 Err(e) => {
