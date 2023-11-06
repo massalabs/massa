@@ -2133,17 +2133,14 @@
         sender_addr: Address,
         operation_datastore: <span class="prelude-ty">Option</span>&lt;Datastore&gt;,
     ) -&gt; InterfaceImpl {
-        <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
-        <span class="kw">use </span>massa_db_worker::MassaDB;
         <span class="kw">use </span>massa_final_state::test_exports::get_sample_state;
         <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
-        <span class="kw">use </span>massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        <span class="kw">use </span>massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
         <span class="kw">use </span>massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         <span class="kw">use </span>massa_pos_exports::SelectorConfig;
         <span class="kw">use </span>massa_pos_worker::start_selector_worker;
         <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
         <span class="kw">use </span>parking_lot::RwLock;
-        <span class="kw">use </span>tempfile::TempDir;
 
         <span class="kw">let </span>config = ExecutionConfig::default();
         <span class="kw">let </span>mip_stats_config = MipStatsConfig {
@@ -2153,24 +2150,11 @@
         <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, selector_controller) = start_selector_worker(SelectorConfig::default())
             .expect(<span class="string">&quot;could not start selector controller&quot;</span>);
-        <span class="kw">let </span>disk_ledger = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
-        <span class="kw">let </span>db_config = MassaDBConfig {
-            path: disk_ledger.path().to_path_buf(),
-            max_history_length: <span class="number">10</span>,
-            max_final_state_elements_size: <span class="number">100_000</span>,
-            max_versioning_elements_size: <span class="number">100_000</span>,
-            thread_count: THREAD_COUNT,
-        };
-
-        <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
-        ));
         <span class="kw">let </span>(final_state, _tempfile, _tempdir) =
-            get_sample_state(config.last_start_period, selector_controller, mip_store, db).unwrap();
+            get_sample_state(config.last_start_period, selector_controller, mip_store).unwrap();
         <span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
@@ -2348,11 +2332,27 @@
     <span class="doccomment">/// Get the module from cache if possible, compile it if not
     ///
     /// # Returns
-    /// A `massa-sc-runtime` compiled module
-    </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
+    /// A `massa-sc-runtime` CL compiled module &amp; the remaining gas after loading the module
+    </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64)&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>module = context.module_cache.write().load_module(bytecode, limit)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(module)
+        <span class="kw">let </span>(module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_module(bytecode, gas_limit)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((module, remaining_gas))
+    }
+
+    <span class="doccomment">/// Compile and return a temporary module
+    ///
+    /// # Returns
+    /// A `massa-sc-runtime` SP compiled module &amp; the remaining gas after loading the module
+    </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64)&gt; {
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+        <span class="kw">let </span>(module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, gas_limit)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((module, remaining_gas))
     }
 
     <span class="doccomment">/// Gets the balance of the current address address (top of the stack).
