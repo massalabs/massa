@@ -10,7 +10,7 @@ use massa_execution_exports::{
 use massa_final_state::test_exports::get_initials;
 use massa_hash::Hash;
 use massa_models::config::{
-    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE
 };
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -25,10 +25,12 @@ use massa_models::{
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
-use massa_test_framework::TestUniverse;
+use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
-use mockall::Sequence;
+use mockall::predicate;
 use num::rational::Ratio;
+use parking_lot::RwLock;
+use std::sync::Arc;
 use std::{
     cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
 };
@@ -210,28 +212,26 @@ fn test_nested_call_gas_usage() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(20),
-        thread_count: 2,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let finalized_waitpoint_trigger_handle_2 = finalized_waitpoint.get_trigger_handle();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
     selector_boilerplate(
         &mut foreign_controllers.selector_controller,
         &block_producer,
     );
     let (rolls_path, _) = get_initials();
-    let mut seq = Sequence::new();
-    for period in 0..2 {
-        for thread in 0..2 {
-            foreign_controllers
-                .final_state
-                .write()
-                .expect_get_slot()
-                .times(1)
-                .in_sequence(&mut seq)
-                .returning(move || Slot::new(period, thread));
-        }
-    }
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_slot()
+        .times(1)
+        .returning(move || Slot::new(0, 0));
     foreign_controllers
         .final_state
         .write()
@@ -278,18 +278,43 @@ fn test_nested_call_gas_usage() {
                 .returning(move |_| Some(Amount::from_str("100").unwrap()));
 
             ledger_controller
+                .expect_get_bytecode()
+                .returning(move |_| saved_bytecode.read().clone());
+            ledger_controller
                 .expect_entry_exists()
-                .returning(move |_| true);
+                .returning(move |_| false);
         });
     foreign_controllers
         .final_state
         .write()
         .expect_get_ledger()
         .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            let mut saved_bytecode = saved_bytecode_edit.write();
+            *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, _| {
+            finalized_waitpoint_trigger_handle_2.trigger();
+        });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // get random keypair
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let keypair_thread_0 = KeyPair::from_str(TEST_SK_1).unwrap();
+    let keypair_thread_1 = KeyPair::from_str(TEST_SK_2).unwrap();
     // load bytecodes
     // you can check the source code of the following wasm file in massa-unit-tests-src
     let bytecode = include_bytes!("./wasm/nested_call.wasm");
@@ -299,7 +324,8 @@ fn test_nested_call_gas_usage() {
 
     // create the block containing the smart contract execution operation
     let operation =
-        ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
+        ExecutionTestUniverse::create_execute_sc_operation(&keypair_thread_0, bytecode, datastore)
+            .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
     let block = ExecutionTestUniverse::create_block(
         &block_producer,
@@ -318,7 +344,9 @@ fn test_nested_call_gas_usage() {
     block_metadata.insert(
         block.id,
         ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+            same_thread_parent_creator: Some(Address::from_public_key(
+                &keypair_thread_0.get_public_key(),
+            )),
             storage: Some(universe.storage.clone()),
         },
     );
@@ -327,7 +355,8 @@ fn test_nested_call_gas_usage() {
         Default::default(),
         block_metadata.clone(),
     );
-    std::thread::sleep(Duration::from_millis(100));
+    finalized_waitpoint.wait();
+
     let events = universe
         .module_controller
         .get_filtered_sc_output_event(EventFilter {
@@ -340,7 +369,7 @@ fn test_nested_call_gas_usage() {
     let address = events[0].clone().data;
     // Call the function test of the smart contract
     let operation = ExecutionTestUniverse::create_call_sc_operation(
-        &keypair,
+        &keypair_thread_1,
         10000000,
         Amount::from_str("0").unwrap(),
         Amount::from_str("0").unwrap(),
@@ -354,7 +383,7 @@ fn test_nested_call_gas_usage() {
     storage.store_operations(vec![operation.clone()]);
     let block = ExecutionTestUniverse::create_block(
         &block_producer,
-        Slot::new(2, 0),
+        Slot::new(1, 1),
         vec![operation],
         vec![],
         vec![],
@@ -368,7 +397,9 @@ fn test_nested_call_gas_usage() {
     block_metadata.insert(
         block.id,
         ExecutionBlockMetadata {
-            same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
+            same_thread_parent_creator: Some(Address::from_public_key(
+                &keypair_thread_1.get_public_key(),
+            )),
             storage: Some(storage.clone()),
         },
     );
@@ -377,12 +408,13 @@ fn test_nested_call_gas_usage() {
         Default::default(),
         block_metadata.clone(),
     );
-    std::thread::sleep(Duration::from_millis(100));
+    finalized_waitpoint.wait();
+
     // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
     let events = universe
         .module_controller
         .get_filtered_sc_output_event(EventFilter {
-            start: Some(Slot::new(2, 0)),
+            start: Some(Slot::new(1, 1)),
             ..Default::default()
         });
     assert!(!events.is_empty());
