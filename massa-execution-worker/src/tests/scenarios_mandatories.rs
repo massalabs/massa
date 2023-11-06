@@ -409,7 +409,6 @@ fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -784,7 +783,6 @@ fn send_and_receive_async_message_with_trigger() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 1_000_000_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1629,7 +1627,6 @@ fn sc_execution_error() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1699,7 +1696,6 @@ fn sc_datastore() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1765,7 +1761,6 @@ fn set_bytecode_error() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
