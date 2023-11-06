@@ -2677,9 +2677,9 @@
     ///
     /// base_operation_gas_cost comes from the configuration and
     /// is the cost of a basic operation (BASE_OPERATION_GAS_COST)
-    </span><span class="kw">pub fn </span>get_gas_usage(<span class="kw-2">&amp;</span><span class="self">self</span>, base_operation_gas_cost: u64) -&gt; u64 {
+    </span><span class="kw">pub fn </span>get_gas_usage(<span class="kw-2">&amp;</span><span class="self">self</span>, base_operation_gas_cost: u64, sp_compilation_cost: u64) -&gt; u64 {
         <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.content.op {
-            OperationType::ExecuteSC { max_gas, .. } =&gt; <span class="kw-2">*</span>max_gas,
+            OperationType::ExecuteSC { max_gas, .. } =&gt; sp_compilation_cost + <span class="kw-2">*</span>max_gas,
             OperationType::CallSC { max_gas, .. } =&gt; <span class="kw-2">*</span>max_gas,
             OperationType::RollBuy { .. } =&gt; <span class="number">0</span>,
             OperationType::RollSell { .. } =&gt; <span class="number">0</span>,
