@@ -1859,6 +1859,18 @@
 <a href="#1859" id="1859">1859</a>
 <a href="#1860" id="1860">1860</a>
 <a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1990,6 +2002,7 @@
         </span><span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
+            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
@@ -2206,6 +2219,9 @@
         // save a snapshot of the context to revert any further changes on error
         </span><span class="kw">let </span>context_snapshot = context.get_snapshot();
 
+        <span class="comment">// set the context max gas to match the one defined in the operation
+        </span>context.max_gas = operation.get_gas_usage();
+
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
 
@@ -2239,7 +2255,7 @@
         }
 
         <span class="comment">// check remaining block gas
-        </span><span class="kw">let </span>op_gas = operation.get_gas_usage(<span class="self">self</span>.config.base_operation_gas_cost);
+        </span><span class="kw">let </span>op_gas = operation.get_gas_usage();
         <span class="kw">let </span>new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 <span class="string">&quot;not enough remaining block gas to execute operation&quot;</span>.to_string(),
@@ -2662,10 +2678,16 @@
         };
 
         <span class="comment">// load the tmp module
-        </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self
+        </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .read()
             .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas)<span class="question-mark">?</span>;
+        <span class="comment">// sub tmp module compilation cost
+        </span><span class="kw">let </span>remaining_gas = max_gas
+            .checked_sub(<span class="self">self</span>.config.gas_costs.sp_compilation_cost)
+            .ok_or(ExecutionError::RuntimeError(
+                <span class="string">&quot;not enough gas to pay for singlepass compilation&quot;</span>.to_string(),
+            ))<span class="question-mark">?</span>;
         <span class="comment">// run the VM
         </span>massa_sc_runtime::run_main(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
@@ -2759,13 +2781,13 @@
 
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas)<span class="question-mark">?</span>;
         <span class="kw">let </span>response = massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
             target_func,
             param,
-            remaining_gas,
+            max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
         );
         <span class="kw">match </span>response {
@@ -2800,6 +2822,7 @@
         <span class="kw">let </span>bytecode = {
             <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             context_snapshot = context.get_snapshot();
+            context.max_gas = message.max_gas;
             context.creator_address = <span class="prelude-val">None</span>;
             context.creator_min_balance = <span class="prelude-val">None</span>;
             context.stack = <span class="macro">vec!</span>[
@@ -2857,7 +2880,7 @@
 
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self
+        </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
             .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
@@ -2866,7 +2889,7 @@
             module,
             <span class="kw-2">&amp;</span>message.function,
             <span class="kw-2">&amp;</span>message.function_params,
-            remaining_gas,
+            message.max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
         );
         <span class="kw">match </span>response {
@@ -3259,6 +3282,7 @@
         </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
             <span class="self">self</span>.config.clone(),
             slot,
+            req.max_gas,
             req.call_stack,
             <span class="self">self</span>.final_state.clone(),
             <span class="self">self</span>.active_history.clone(),
@@ -3282,7 +3306,7 @@
                 }
 
                 <span class="comment">// load the tmp module
-                </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self
+                </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
                     .read()
                     .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
@@ -3290,7 +3314,7 @@
                 </span>massa_sc_runtime::run_main(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module,
-                    remaining_gas,
+                    req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
@@ -3330,7 +3354,7 @@
 
                 <span class="comment">// load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self
+                </span><span class="kw">let </span>module = <span class="self">self
                     </span>.module_cache
                     .write()
                     .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
@@ -3339,7 +3363,7 @@
                     module,
                     <span class="kw-2">&amp;</span>target_func,
                     <span class="kw-2">&amp;</span>parameter,
-                    remaining_gas,
+                    req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
                 );
                 <span class="kw">match </span>response {
