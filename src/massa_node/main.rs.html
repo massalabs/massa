@@ -1455,10 +1455,6 @@
 <a href="#1455" id="1455">1455</a>
 <a href="#1456" id="1456">1456</a>
 <a href="#1457" id="1457">1457</a>
-<a href="#1458" id="1458">1458</a>
-<a href="#1459" id="1459">1459</a>
-<a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1932,13 +1928,6 @@
             .expect(<span class="string">&quot;Overflow when creating constant ledger_entry_datastore_base_size&quot;</span>),
     };
 
-    <span class="comment">// gas costs
-    </span><span class="kw">let </span>gas_costs = GasCosts::new(
-        SETTINGS.execution.abi_gas_costs_file.clone(),
-        SETTINGS.execution.wasm_gas_costs_file.clone(),
-    )
-    .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>);
-
     <span class="comment">// launch execution module
     </span><span class="kw">let </span>execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -1961,7 +1950,11 @@
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        gas_costs: gas_costs.clone(),
+        gas_costs: GasCosts::new(
+            SETTINGS.execution.abi_gas_costs_file.clone(),
+            SETTINGS.execution.wasm_gas_costs_file.clone(),
+        )
+        .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>),
         base_operation_gas_cost: BASE_OPERATION_GAS_COST,
         last_start_period: final_state.read().last_start_period,
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
@@ -2002,7 +1995,6 @@
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
         base_operation_gas_cost: BASE_OPERATION_GAS_COST,
-        sp_compilation_cost: gas_costs.sp_compilation_cost,
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
