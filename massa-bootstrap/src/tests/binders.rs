@@ -413,10 +413,11 @@ fn test_partial_msg() {
 
 #[test]
 fn test_staying_connected_without_message_trigger_read_timeout() {
-    let read_timeout = Duration::from_millis(1000);
+    let read_timeout_number = 1000;
+    let read_timeout = Duration::from_millis(read_timeout_number);
     let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
         BOOTSTRAP_CONFIG_KEYPAIR.clone();
-    bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
+    bootstrap_config.read_timeout = MassaTime::from_millis(read_timeout_number);
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
@@ -506,10 +507,10 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
 
 #[test]
 fn test_staying_connected_pass_handshake_but_deadline_after() {
-    let read_timeout = Duration::from_millis(1000);
+    let read_timeout_number = 1000;
     let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
         BOOTSTRAP_CONFIG_KEYPAIR.clone();
-    bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
+    bootstrap_config.read_timeout = MassaTime::from_millis(read_timeout_number);
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
@@ -600,10 +601,11 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
 
 #[test]
 fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
-    let read_timeout = Duration::from_millis(500);
+    let read_timeout_number = 500;
+    let read_timeout = Duration::from_millis(read_timeout_number);
     let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
         BOOTSTRAP_CONFIG_KEYPAIR.clone();
-    bootstrap_config.read_timeout = MassaTime::try_from(read_timeout).unwrap();
+    bootstrap_config.read_timeout = MassaTime::from_millis(read_timeout_number);
     let server = std::net::TcpListener::bind("localhost:0").unwrap();
     let addr = server.local_addr().unwrap();
     let client = std::net::TcpStream::connect(addr).unwrap();
