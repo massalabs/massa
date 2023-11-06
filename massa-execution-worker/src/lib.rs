@@ -107,10 +107,5 @@ pub use interface_impl::InterfaceImpl;
 #[cfg(feature = "benchmarking")]
 use criterion as _;
 
-#[cfg(any(
-    test,
-    feature = "gas_calibration",
-    feature = "benchmarking",
-    feature = "test-exports"
-))]
+#[cfg(test)]
 mod tests;

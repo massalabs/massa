@@ -27,6 +27,7 @@ def coverage_for_pkg(package: str, capture_output: bool = False):
         "test",
         # "--open",
         f"--package {package_}",
+        f"--features test-exports"
     ]
 
     ignore_flag = ["--ignore-filename-regex"]

@@ -266,7 +266,7 @@ mod test {
         assert!(matches!(addr_, Err(FactoryError::OnStateNotReady(2))));
 
         // Advance state 1 to Active
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let vs_1_new = advance_state_until(ComponentState::active(_time), &vi_1);
         // Create a new factory
         let info = BTreeMap::from([(vi_1.clone(), vs_1_new.clone()), (vi_2.clone(), vs_2)]);
@@ -282,7 +282,7 @@ mod test {
             vec![0, 1, 2]
         );
         // assert_eq!(fa.get_latest_component_version(), 1);
-        let addr_b = fa.create(&args, FactoryStrategy::At(MassaTime::now().unwrap()));
+        let addr_b = fa.create(&args, FactoryStrategy::At(MassaTime::now()));
         assert!(matches!(addr_b, Ok(TestAddress::V1(_))));
 
         // Error if not enough args
@@ -299,7 +299,7 @@ mod test {
     fn test_factory_strategy_at() {
         // Test factory & FactoryStrategy::At(...)
 
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let vi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 1,

@@ -43,7 +43,7 @@ pub(crate) fn execute_read_only_call(
     let caller_address = match call.caller_address {
         Some(addr) => Address::from_str(&addr)?,
         None => {
-            let now = MassaTime::now()?;
+            let now = MassaTime::now();
             let keypair = grpc.keypair_factory.create(&(), FactoryStrategy::At(now))?;
             Address::from_public_key(&keypair.get_public_key())
         }
@@ -398,7 +398,7 @@ pub(crate) fn get_stakers(
         });
 
     // Get the current cycle and slot.
-    let now: MassaTime = MassaTime::now()?;
+    let now: MassaTime = MassaTime::now();
 
     let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -685,7 +685,7 @@ pub(crate) fn get_status(
     _request: tonic::Request<grpc_api::GetStatusRequest>,
 ) -> Result<grpc_api::GetStatusResponse, GrpcError> {
     let config = CompactConfig::default();
-    let now = MassaTime::now()?;
+    let now = MassaTime::now();
     let last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
         grpc.grpc_config.t0,

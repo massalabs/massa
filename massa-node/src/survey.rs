@@ -47,7 +47,7 @@ impl MassaSurvey {
         config: (u8, MassaTime, MassaTime, u64, u64),
     ) -> MassaSurveyStopper {
         if massa_metrics.is_enabled() {
-            #[cfg(not(feature = "sandbox"))]
+            #[cfg(all(not(feature = "sandbox"), not(test)))]
             {
                 let mut data_sent = 0;
                 let mut data_received = 0;
@@ -82,13 +82,7 @@ impl MassaSurvey {
 
                                 {
                                            // update stakers / rolls
-                                    let now = match MassaTime::now() {
-                                        Ok(now) => now,
-                                        Err(e) => {
-                                            warn!("MassaSurvey | Failed to get current time: {:?}", e);
-                                            continue;
-                                        }
-                                    };
+                                    let now = MassaTime::now();
 
                                     let curr_cycle =
                                         match get_latest_block_slot_at_timestamp(config.0, config.1, config.2, now)
@@ -141,7 +135,7 @@ impl MassaSurvey {
                 }
             }
 
-            #[cfg(feature = "sandbox")]
+            #[cfg(any(feature = "sandbox", test))]
             {
                 MassaSurveyStopper {
                     handle: None,

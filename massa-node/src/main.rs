@@ -73,10 +73,10 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
@@ -133,7 +133,7 @@ async fn launch(
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    let now = MassaTime::now().expect("could not get now time");
+    let now = MassaTime::now();
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
     #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
@@ -498,6 +498,7 @@ async fn launch(
             SETTINGS.execution.wasm_gas_costs_file.clone(),
         )
         .expect("Failed to load gas costs"),
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
         last_start_period: final_state.read().last_start_period,
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
         lru_cache_size: SETTINGS.execution.lru_cache_size,
@@ -536,6 +537,7 @@ async fn launch(
         thread_count: THREAD_COUNT,
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,

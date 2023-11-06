@@ -29,7 +29,7 @@ fn test_genesis_block_creation() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(1000),
         thread_count,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods: 50,
         force_keep_final_periods_without_ops: 128,
         max_future_processing_blocks: 10,
@@ -66,7 +66,7 @@ fn test_unsorted_block() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(1000),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods: 50,
         force_keep_final_periods_without_ops: 128,
         max_future_processing_blocks: 10,
@@ -187,7 +187,7 @@ fn test_parallel_incompatibility() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(100),
         thread_count,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods_without_ops: 128,
         force_keep_final_periods: 10,
         delta_f0: 32,
@@ -312,7 +312,7 @@ fn test_parent_in_the_future() {
     let cfg = ConsensusConfig {
         t0: MassaTime::from_millis(1000),
         thread_count: 2,
-        genesis_timestamp: MassaTime::now().unwrap(),
+        genesis_timestamp: MassaTime::now(),
         force_keep_final_periods: 50,
         force_keep_final_periods_without_ops: 128,
         max_future_processing_blocks: 2,

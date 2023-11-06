@@ -749,7 +749,7 @@ pub(crate) fn manage_bootstrap(
     server.send_msg(
         next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
-            server_time: MassaTime::now()?,
+            server_time: MassaTime::now(),
             version,
         },
     )?;

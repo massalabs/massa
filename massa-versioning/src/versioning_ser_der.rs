@@ -1050,7 +1050,7 @@ mod test {
             activation_delay: MassaTime::from_millis(2),
         };
 
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let state_2 = advance_state_until(ComponentState::active(_time), &mi_2);
         let state_3 = advance_state_until(ComponentState::started(Ratio::new_raw(42, 100)), &mi_3);
 
@@ -1093,7 +1093,7 @@ mod test {
 
         let mut all_state_size = 0;
 
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let store_raw_: Vec<(MipInfo, MipState)> = (0..MIP_STORE_MAX_ENTRIES)
             .map(|_i| {
                 mi_base.version += 1;

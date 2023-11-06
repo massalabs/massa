@@ -51,7 +51,6 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| MassaTime::from_millis(timestamp.parse::<u64>().unwrap())).unwrap_or_else(|_|
             MassaTime::now()
-                .unwrap()
                 .saturating_sub(
                     T0.checked_mul(get_period_from_args()).unwrap()
                 )
@@ -240,6 +239,8 @@ pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
+/// Gas used by a base operation (transaction, roll buy, roll sell)
+pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes
 pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
 
@@ -324,6 +325,6 @@ pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
     assert!(THREAD_COUNT > 1);
-    assert!((T0).to_millis() >= 1);
-    assert!((T0).to_millis() % (THREAD_COUNT as u64) == 0);
+    assert!((T0).as_millis() >= 1);
+    assert!((T0).as_millis() % (THREAD_COUNT as u64) == 0);
 };

@@ -127,9 +127,6 @@ pub struct ExecutionContext {
     /// speculative list of executed denunciations
     speculative_executed_denunciations: SpeculativeExecutedDenunciations,
 
-    /// max gas for this execution
-    pub max_gas: u64,
-
     /// minimal balance allowed for the creator of the operation after its execution
     pub creator_min_balance: Option<Amount>,
 
@@ -220,7 +217,6 @@ impl ExecutionContext {
                 final_state,
                 active_history,
             ),
-            max_gas: Default::default(),
             creator_min_balance: Default::default(),
             slot: Slot::new(0, 0),
             created_addr_index: Default::default(),
@@ -313,7 +309,6 @@ impl ExecutionContext {
     pub(crate) fn readonly(
         config: ExecutionConfig,
         slot: Slot,
-        max_gas: u64,
         call_stack: Vec<ExecutionStackElement>,
         final_state: Arc<RwLock<FinalState>>,
         active_history: Arc<RwLock<ActiveHistory>>,
@@ -331,7 +326,6 @@ impl ExecutionContext {
 
         // return readonly context
         ExecutionContext {
-            max_gas,
             slot,
             stack: call_stack,
             read_only: true,

@@ -65,7 +65,7 @@ impl std::fmt::Display for Hash {
 
 impl std::fmt::Debug for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        std::fmt::Display::fmt(self, f)
     }
 }
 
