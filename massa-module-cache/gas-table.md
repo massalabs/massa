@@ -41,13 +41,13 @@ It contains:
 
 ### Singlepass compilation
 
-1. Paid in `massa-module-cache` > `controller.rs` > `load_tmp_module`
-2. Called in `massa-execution-worker` > `execution.rs` > `execute_executesc_op` & `execute_readonly_request`
-3. Called in `massa-execution-worker` > `interface_impl.rs` > `get_tmp_module`, later called by `massa-sc-runtime` `assembly_script_local_execution`
+1. Paid for ExecuteSC operations as OP cost in `massa-execution-worker` > `execution.rs` > `execute_operation` by `get_gas_usage`
+2. Paid for ReadOnly requests in `massa-execution-worker` > `execution.rs` > `execute_readonly_request`
+3. Paid in `massa-sc-runtime` ABI cost by `assembly_script_local_execution`. This ABI gives rise to Singlepass compilations and must have according costs to pay for it.
 
 ### Cranelift compilation
 
-Paid in `massa-sc-runtime` ABIs costs by `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`. These ABIs produce Cranelift compilations and must have according costs to pay for it.
+Paid in `massa-sc-runtime` ABI costs by `assembly_script_create_sc`, `assembly_script_set_bytecode` & `assembly_script_set_bytecode_for`. These ABIs give rise to Cranelift compilations and must have according costs to pay for it.
 
 ### VM & Module instantiation
 
