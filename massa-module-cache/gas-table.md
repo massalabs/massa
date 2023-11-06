@@ -8,34 +8,34 @@ It contains:
 
 # Gas table
 
-| TYPE                     | PAYMENT                             |
-| ------------------------ | ----------------------------------- |
-| **CallSC (OP)**          |                                     |
-| compilation              | NOT PAID                            |
-| VM instantiation         | PAID IN MAX_GAS (UNIFIED CONSTANT)  |
-| module instantiation     | PAID IN MAX_GAS                     |
-| execution                | PAID IN MAX_GAS                     |
-| **ExecuteSC (OP)**       |                                     |
-| compilation              | PAID IN MAX_GAS                     |
-| VM instantiation         | PAID IN MAX_GAS (UNIFIED CONSTANT)  |
-| module instantiation     | PAID IN MAX_GAS                     |
-| execution                | PAID IN MAX_GAS                     |
-| **Call (ABI)**           |                                     |
-| compilation              | NOT PAID                            |
-| VM instantiation         | PAID IN CALL GAS (UNIFIED CONSTANT) |
-| module instantiation     | PAID IN CALL GAS                    |
-| execution                | PAID IN CALL GAS                    |
-| base gas cost of the ABI | PAID IN ABI GAS                     |
-| **LocalExecution (ABI)** |                                     |
-| compilation              | PAID IN CALL GAS                    |
-| VM instantiation         | PAID IN CALL GAS (UNIFIED CONSTANT) |
-| module instantiation     | PAID IN CALL GAS                    |
-| execution                | PAID IN CALL GAS                    |
-| base gas cost of the ABI | PAID IN ABI GAS                     |
-| **CreateSC (ABI)**       |                                     |
-| compilation              | PAID IN ABI GAS                     |
-| **SetBytecode (ABI)**    |                                     |
-| compilation              | PAID IN ABI GAS                     |
+| TYPE                     | PAYMENT          |
+| ------------------------ | ---------------- |
+| **CallSC (OP)**          |                  |
+| compilation              | NOT PAID         |
+| VM instantiation         | PAID IN MAX_GAS  |
+| module instantiation     | PAID IN MAX_GAS  |
+| execution                | PAID IN MAX_GAS  |
+| **ExecuteSC (OP)**       |                  |
+| compilation              | PAID IN OP GAS   |
+| VM instantiation         | PAID IN MAX_GAS  |
+| module instantiation     | PAID IN MAX_GAS  |
+| execution                | PAID IN MAX_GAS  |
+| **Call (ABI)**           |                  |
+| compilation              | NOT PAID         |
+| VM instantiation         | PAID IN CALL GAS |
+| module instantiation     | PAID IN CALL GAS |
+| execution                | PAID IN CALL GAS |
+| base gas cost of the ABI | PAID IN ABI GAS  |
+| **LocalExecution (ABI)** |                  |
+| compilation              | PAID IN ABI GAS  |
+| VM instantiation         | PAID IN CALL GAS |
+| module instantiation     | PAID IN CALL GAS |
+| execution                | PAID IN CALL GAS |
+| base gas cost of the ABI | PAID IN ABI GAS  |
+| **CreateSC (ABI)**       |                  |
+| compilation              | PAID IN ABI GAS  |
+| **SetBytecode (ABI)**    |                  |
+| compilation              | PAID IN ABI GAS  |
 
 # Functions
 
