@@ -16,6 +16,7 @@ use massa_metrics::MassaMetrics;
 use massa_models::{
     address::Address,
     amount::Amount,
+    block::SecureShareBlock,
     block_id::BlockId,
     config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT},
     datastore::Datastore,
@@ -23,7 +24,7 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
     secure_share::SecureShareContent,
-    slot::Slot, block::SecureShareBlock,
+    slot::Slot,
 };
 use massa_pos_exports::MockSelectorControllerWrapper;
 use massa_signature::KeyPair;
@@ -185,19 +186,19 @@ impl ExecutionTestUniverse {
     ) {
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
-        let mut datastore = BTreeMap::new(); 
+        let mut datastore = BTreeMap::new();
         datastore.insert(b"smart-contract".to_vec(), bytes_file_sc_deployed.to_vec());
 
         // create the block containing the smart contract execution operation
         let operation = ExecutionTestUniverse::create_execute_sc_operation(
-            &keypair,
+            keypair,
             bytes_file_sc_init,
             datastore,
         )
         .unwrap();
         self.storage.store_operations(vec![operation.clone()]);
         let block =
-            ExecutionTestUniverse::create_block(&keypair, slot, vec![operation], vec![], vec![]);
+            ExecutionTestUniverse::create_block(keypair, slot, vec![operation], vec![], vec![]);
 
         // set our block as a final block so the message is sent
         self.send_and_finalize(keypair, block);
@@ -241,7 +242,7 @@ impl ExecutionTestUniverse {
         // Init new storage for this block
         self.storage.store_operations(vec![operation.clone()]);
         let block =
-            ExecutionTestUniverse::create_block(&keypair, slot, vec![operation], vec![], vec![]);
+            ExecutionTestUniverse::create_block(keypair, slot, vec![operation], vec![], vec![]);
         // store the block in storage
         self.storage.store_block(block.clone());
         // set our block as a final block so the message is sent
