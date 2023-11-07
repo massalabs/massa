@@ -433,6 +433,7 @@ impl OperationPool {
                     self.config.roll_price,
                     self.config.thread_count,
                     self.config.base_operation_gas_cost,
+                    self.config.sp_compilation_cost,
                 ));
             }
         }

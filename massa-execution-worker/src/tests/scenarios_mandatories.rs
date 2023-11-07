@@ -108,7 +108,7 @@ fn test_readonly_execution() {
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 1_000_000,
+            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -409,7 +409,6 @@ fn send_and_receive_async_message() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -784,7 +783,6 @@ fn send_and_receive_async_message_with_trigger() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 1_000_000_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1629,7 +1627,6 @@ fn sc_execution_error() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1699,7 +1696,6 @@ fn sc_datastore() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -1765,7 +1761,6 @@ fn set_bytecode_error() {
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
         cursor_delay: MassaTime::from_millis(0),
-        max_async_gas: 100_000,
         ..ExecutionConfig::default()
     };
     let block_producer = KeyPair::generate(0).unwrap();
@@ -2125,7 +2120,7 @@ fn events_from_switching_blockclique() {
 }
 
 #[test]
-fn not_enough_compilation_gas() {
+fn not_enough_instance_gas() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
         t0: MassaTime::from_millis(100),
@@ -2198,7 +2193,7 @@ fn not_enough_compilation_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("not enough gas to pay for singlepass compilation"));
+        .contains("Provided max gas is below the default instance creation cost"));
 }
 
 #[test]
