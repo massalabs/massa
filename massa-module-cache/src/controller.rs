@@ -125,13 +125,15 @@ impl ModuleCache {
         bytecode: &[u8],
         execution_gas: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
-        // TODO: interesting but unimportant optim
-        // remove max_instance_cost hard check if module is cached and has a delta
+        // Do not actually debit the instance creation cost from the provided gas
+        // This is only supposed to be a check
         execution_gas
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
             .ok_or(CacheError::LoadError(
                 "Provided max gas is below the default instance creation cost".to_string(),
             ))?;
+        // TODO: interesting but unimportant optim
+        // remove max_instance_cost hard check if module is cached and has a delta
         let module_info = self.load_module_info(bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {
@@ -161,6 +163,8 @@ impl ModuleCache {
         limit: u64,
     ) -> Result<(RuntimeModule, u64), CacheError> {
         debug!("load_tmp_module");
+        // Do not actually debit the instance creation cost from the provided gas
+        // This is only supposed to be a check
         limit
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
             .ok_or(CacheError::LoadError(
