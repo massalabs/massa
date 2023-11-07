@@ -198,14 +198,14 @@ impl ExecutionTestUniverse {
         self.storage.store_operations(vec![operation.clone()]);
         let block =
             ExecutionTestUniverse::create_block(&keypair, slot, vec![operation], vec![], vec![]);
-        // store the block in storage
-        self.storage.store_block(block.clone());
 
         // set our block as a final block so the message is sent
         self.send_and_finalize(keypair, block);
     }
 
     pub fn send_and_finalize(&mut self, keypair: &KeyPair, block: SecureShareBlock) {
+        // store the block in storage
+        self.storage.store_block(block.clone());
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
         let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
