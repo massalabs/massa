@@ -124,7 +124,9 @@ fn expect_init_and_call(
         .with(predicate::eq(init_sc_slot), predicate::always())
         .returning(move |_, changes| {
             let mut saved_bytecode = saved_bytecode_edit.write();
-            *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            if !changes.ledger_changes.get_bytecode_updates().is_empty() {
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
             finalized_waitpoint_trigger_handle.trigger();
         });
     if let Some(call_sc_slot) = call_sc_slot {
@@ -148,6 +150,13 @@ fn selector_boilerplate(mock_selector: &mut MockSelectorControllerWrapper) {
         selector_controller
             .expect_wait_for_draws()
             .returning(move |cycle| Ok(cycle + 1));
+        selector_controller
+            .expect_get_producer()
+            .returning(move |_| {
+                Ok(Address::from_public_key(
+                    &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                ))
+            });
     });
 }
 
@@ -527,476 +536,346 @@ fn send_and_receive_async_message() {
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
 }
 
-// /// Context
-// ///
-// /// Functional test for local smart-contract execution
-// ///
-// /// 1. a block is created with 2 ExecuteSC operations
-// ///    it contains 1 local execution and 1 local call
-// ///    both operation datastores have the bytecode of local_function.wasm
-// /// 2. store and set the block as final
-// /// 3. wait for execution
-// /// 4. retrieve events emitted by the initial an sub functions
-// /// 5. match event and call stack to make sure that executions were local
-// #[test]
-// fn local_execution() {
-//     // setup the period duration
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         ..ExecutionConfig::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+/// Context
+///
+/// Functional test for local smart-contract execution
+///
+/// 1. a block is created with 2 ExecuteSC operations
+///    it contains 1 local execution and 1 local call
+///    both operation datastores have the bytecode of local_function.wasm
+/// 2. store and set the block as final
+/// 3. wait for execution
+/// 4. retrieve events emitted by the initial an sub functions
+/// 5. match event and call stack to make sure that executions were local
+#[test]
+fn local_execution() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_init_and_call(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    expect_init_and_call(
+        Slot::new(1, 1),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    // load bytecodes
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/local_execution.wasm"),
+        include_bytes!("./wasm/local_function.wasm"),
+    );
+    finalized_waitpoint.wait();
 
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-//     // load bytecodes
-//     // you can check the source code of the following wasm files in massa-unit-tests-src
-//     let exec_bytecode = include_bytes!("./wasm/local_execution.wasm");
-//     let call_bytecode = include_bytes!("./wasm/local_call.wasm");
-//     let datastore_bytecode = include_bytes!("./wasm/local_function.wasm").to_vec();
-//     let mut datastore = BTreeMap::new();
-//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        include_bytes!("./wasm/local_call.wasm"),
+        include_bytes!("./wasm/local_function.wasm"),
+    );
+    finalized_waitpoint.wait();
 
-//     // create the block contaning the operations
-//     let local_exec_op = ExecutionTestUniverse::create_execute_sc_operation(
-//         &keypair,
-//         exec_bytecode,
-//         datastore.clone(),
-//     )
-//     .unwrap();
-//     let local_call_op =
-//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, call_bytecode, datastore)
-//             .unwrap();
-//     universe
-//         .storage
-//         .store_operations(vec![local_exec_op.clone(), local_call_op.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 0),
-//         vec![local_exec_op, local_call_op],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            ..Default::default()
+        });
 
-//     // set our block as a final block so the message is sent
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     // sleep for 100ms to wait for execution
-//     std::thread::sleep(Duration::from_millis(100));
+    // match the events, check balance and call stack to make sure the executions were local
+    assert!(events.len() == 8, "8 events were expected");
+    assert_eq!(
+        Amount::from_raw(events[1].data.parse().unwrap()),
+        Amount::from_str("90").unwrap() // start (100) - fee (10)
+    );
+    assert_eq!(events[1].context.call_stack.len(), 1);
+    assert_eq!(
+        events[1].context.call_stack.back().unwrap(),
+        &Address::from_public_key(&KeyPair::from_str(TEST_SK_1).unwrap().get_public_key())
+    );
+    assert_eq!(events[2].data, "one local execution completed");
+    let amount = Amount::from_raw(events[5].data.parse().unwrap());
+    assert_eq!(Amount::from_str("89.6713").unwrap(), amount);
+    assert_eq!(events[5].context.call_stack.len(), 1);
+    assert_eq!(
+        events[1].context.call_stack.back().unwrap(),
+        &Address::from_public_key(&KeyPair::from_str(TEST_SK_1).unwrap().get_public_key())
+    );
+    assert_eq!(events[6].data, "one local call completed");
+}
 
-//     // retrieve events emitted by smart contracts
-//     let events = universe
-//         .module_controller
-//         .get_filtered_sc_output_event(EventFilter {
-//             ..Default::default()
-//         });
+/// Context
+///
+/// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
+///
+/// 1. a block is created with one ExecuteSC operation containing
+///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
+/// 2. store and set the block as final
+/// 3. wait for execution
+/// 4. retrieve events emitted by the initial an sub functions
+/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
+#[test]
+fn sc_deployment() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    let saved_bytecode = expect_init_and_call(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    // load bytecodes
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/deploy_sc.wasm"),
+        include_bytes!("./wasm/init_sc.wasm"),
+    );
+    finalized_waitpoint.wait();
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            ..Default::default()
+        });
 
-//     // match the events, check balance and call stack to make sure the executions were local
-//     assert!(events.len() == 8, "8 events were expected");
-//     assert_eq!(
-//         Amount::from_raw(events[1].data.parse().unwrap()),
-//         Amount::from_str("299990").unwrap() // start (300_000) - fee (1000)
-//     );
-//     assert_eq!(events[1].context.call_stack.len(), 1);
-//     assert_eq!(
-//         events[1].context.call_stack.back().unwrap(),
-//         &Address::from_public_key(&keypair.get_public_key())
-//     );
-//     assert_eq!(events[2].data, "one local execution completed");
-//     let amount = Amount::from_raw(events[5].data.parse().unwrap());
-//     assert_eq!(Amount::from_str("299979.6713").unwrap(), amount);
-//     assert_eq!(events[5].context.call_stack.len(), 1);
-//     assert_eq!(
-//         events[1].context.call_stack.back().unwrap(),
-//         &Address::from_public_key(&keypair.get_public_key())
-//     );
-//     assert_eq!(events[6].data, "one local call completed");
-// }
+    // match the events
+    if events.len() != 3 {
+        for (i, ev) in events.iter().enumerate() {
+            eprintln!("ev {}: {}", i, ev);
+        }
+        panic!("3 events were expected");
+    }
+    assert_eq!(events[0].data, "sc created");
+    assert_eq!(events[1].data, "constructor exists and will be called");
+    assert_eq!(events[2].data, "constructor called by deployer");
+}
 
-// /// Context
-// ///
-// /// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
-// ///
-// /// 1. a block is created with one ExecuteSC operation containing
-// ///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
-// /// 2. store and set the block as final
-// /// 3. wait for execution
-// /// 4. retrieve events emitted by the initial an sub functions
-// /// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
-// #[test]
-// fn sc_deployment() {
-//     // setup the period duration
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         ..ExecutionConfig::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+/// # Context
+///
+/// Functional test for asynchronous messages sending and handling with a filter
+///
+/// 1. a block is created containing an `execute_sc` operation
+/// 2. this operation deploy a smart contract and call his function `test`
+/// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `AS12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
+/// 4. we set the created block as finalized so the message is actually sent
+/// 5. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
+/// 6. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
+/// 7. once the execution period is over we stop the execution controller
+/// 8. we retrieve the events emitted by smart contract
+/// 9. `test` handler function should have emitted a second event
+/// 10. we check if they are events
+/// 11. if they are some, we verify that the data has the correct value
+#[test]
+fn send_and_receive_async_message_with_trigger() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_init_and_call(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    expect_init_and_call(
+        Slot::new(1, 1),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    expect_init_and_call(
+        Slot::new(1, 2),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    foreign_controllers.ledger_controller.set_expectations(|ledger_controller| {
+        ledger_controller.expect_get_data_entry().returning(move |_, _| None);
+    });
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    // TODO: Fix key opData in massa-unit-test-src to be standard with the others
+    let mut datastore = BTreeMap::new();
+    let key = unsafe {
+        String::from("smart-contract")
+            .encode_utf16()
+            .collect::<Vec<u16>>()
+            .align_to::<u8>()
+            .1
+            .to_vec()
+    };
+    datastore.insert(key, include_bytes!("./wasm/send_message_condition.wasm").to_vec());
 
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-//     // load bytecodes
-//     // you can check the source code of the following wasm files in massa-unit-tests-src
-//     let op_bytecode = include_bytes!("./wasm/deploy_sc.wasm");
-//     let datastore_bytecode = include_bytes!("./wasm/init_sc.wasm").to_vec();
-//     let mut datastore = BTreeMap::new();
-//     datastore.insert(b"smart-contract".to_vec(), datastore_bytecode);
+    // create the block containing the smart contract execution operation
+    let operation =
+        ExecutionTestUniverse::create_execute_sc_operation(&KeyPair::from_str(TEST_SK_1).unwrap(), include_bytes!("./wasm/send_message_deploy_condition.wasm"), datastore).unwrap();
+    universe.storage.store_operations(vec![operation.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        vec![operation],
+        vec![],
+        vec![],
+    );
+    universe.storage.store_block(block.clone());
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    finalized_waitpoint.wait();
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            ..Default::default()
+        });
 
-//     // create the block containing the operation
-//     let op = ExecutionTestUniverse::create_execute_sc_operation(
-//         &keypair,
-//         op_bytecode,
-//         datastore.clone(),
-//     )
-//     .unwrap();
-//     universe.storage.store_operations(vec![op.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 0),
-//         vec![op],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
+    // match the events
+    println!("events: {:?}", events);
+    assert_eq!(events.len(), 2, "2 events were expected");
+    assert_eq!(events[0].data, "Triggered");
 
-//     // set our block as a final block so the message is sent
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     // sleep for 100ms to wait for execution
-//     std::thread::sleep(Duration::from_millis(100));
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        include_bytes!("./wasm/send_message_wrong_trigger.wasm"),
+        //unused in this case
+        include_bytes!("./wasm/send_message_condition.wasm"),
+    );
+    finalized_waitpoint.wait();
 
-//     // retrieve events emitted by smart contracts
-//     let events = universe
-//         .module_controller
-//         .get_filtered_sc_output_event(EventFilter {
-//             ..Default::default()
-//         });
+    // retrieve events emitted by smart contracts (no new because we made the wrong trigger)
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            ..Default::default()
+        });
 
-//     // match the events
-//     if events.len() != 3 {
-//         for (i, ev) in events.iter().enumerate() {
-//             eprintln!("ev {}: {}", i, ev);
-//         }
-//         panic!("3 events were expected");
-//     }
-//     assert_eq!(events[0].data, "sc created");
-//     assert_eq!(events[1].data, "constructor exists and will be called");
-//     assert_eq!(events[2].data, "constructor called by deployer");
-// }
+    // match the events
+    assert!(events.len() == 3, "3 events were expected");
 
-// /// # Context
-// ///
-// /// Functional test for asynchronous messages sending and handling with a filter
-// ///
-// /// 1. a block is created containing an `execute_sc` operation
-// /// 2. this operation deploy a smart contract and call his function `test`
-// /// 3. `test` generates an event and place a message to be triggered once again if `test2` datastore key of address `AS12DDxjqtBVshdQ4nLqYg6GwRddY5LzEC7bnatVxB5SFtpbCFj8E` is created/modify
-// /// 4. we set the created block as finalized so the message is actually sent
-// /// 5. we execute the following slots for 300 milliseconds to reach the message execution period
-// /// 6. We send a new operation with a smart contract that modify `test` datastore key and so doesn't trigger the message.
-// /// 7. We send a new operation with a smart contract that create `test2` datastore key and so trigger the message.
-// /// 8. once the execution period is over we stop the execution controller
-// /// 9. we retrieve the events emitted by smart contract
-// /// 10. `test` handler function should have emitted a second event
-// /// 11. we check if they are events
-// /// 12. if they are some, we verify that the data has the correct value
-// #[test]
-// fn send_and_receive_async_message_with_trigger() {
-//     // setup the period duration
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         max_async_gas: 1_000_000_000,
-//         ..ExecutionConfig::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-//     let mut blockclique_blocks: HashMap<Slot, BlockId> = HashMap::default();
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-//     // load bytecode
-//     // you can check the source code of the following wasm file in massa-unit-tests-src
-//     let bytecode = include_bytes!("./wasm/send_message_deploy_condition.wasm");
-//     let datastore_bytecode = include_bytes!("./wasm/send_message_condition.wasm").to_vec();
-//     let mut datastore = BTreeMap::new();
-//     let key = unsafe {
-//         String::from("smart-contract")
-//             .encode_utf16()
-//             .collect::<Vec<u16>>()
-//             .align_to::<u8>()
-//             .1
-//             .to_vec()
-//     };
-//     datastore.insert(key, datastore_bytecode);
+    // load bytecode
+    // you can check the source code of the following wasm file in massa-unit-tests-src
+    // This line execute the smart contract that will modify the data entry and then trigger the SC.
+    universe.init_bytecode_block(
+        &KeyPair::from_str(TEST_SK_3).unwrap(),
+        Slot::new(1, 2),
+        include_bytes!("./wasm/send_message_trigger.wasm"),
+        //unused in this case
+        include_bytes!("./wasm/send_message_condition.wasm"),
+    );
+    finalized_waitpoint.wait();
 
-//     // create the block containing the smart contract execution operation
-//     let operation =
-//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-//     universe.storage.store_operations(vec![operation.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 0),
-//         vec![operation],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
+    // Pass few slots as candidate (no way for now to catch this in a mock)
+    std::thread::sleep(Duration::from_millis(exec_cfg.t0.to_millis().checked_div(2).unwrap()));
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            ..Default::default()
+        });
 
-//     // set our block as a final block so the message is sent
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks.clone(),
-//         Some(blockclique_blocks.clone()),
-//         block_metadata.clone(),
-//     );
-//     // sleep for 10ms to reach the message execution period
-//     std::thread::sleep(Duration::from_millis(10));
+    // match the events
+    assert!(events.len() == 4, "4 events were expected");
+}
 
-//     // retrieve events emitted by smart contracts
-//     let events = universe
-//         .module_controller
-//         .get_filtered_sc_output_event(EventFilter {
-//             ..Default::default()
-//         });
-
-//     // match the events
-//     assert_eq!(events.len(), 2, "2 events were expected");
-//     assert_eq!(events[0].data, "Triggered");
-
-//     // keypair associated to thread 1
-//     let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
-//     // load bytecode
-//     // you can check the source code of the following wasm file in massa-unit-tests-src
-//     let bytecode = include_bytes!("./wasm/send_message_wrong_trigger.wasm");
-//     let datastore = BTreeMap::new();
-
-//     // create the block containing the smart contract execution operation
-//     let operation =
-//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-//     universe.storage.store_operations(vec![operation.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 1),
-//         vec![operation],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-
-//     // set our block as a final block so the message is sent
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks.clone(),
-//         None,
-//         block_metadata.clone(),
-//     );
-//     // sleep for 10ms to reach the message execution period
-//     std::thread::sleep(Duration::from_millis(10));
-
-//     // retrieve events emitted by smart contracts
-//     let events = universe
-//         .module_controller
-//         .get_filtered_sc_output_event(EventFilter {
-//             ..Default::default()
-//         });
-
-//     // match the events
-//     assert!(events.len() == 3, "3 events were expected");
-
-//     // keypair associated to thread 2
-//     let keypair = KeyPair::from_str(TEST_SK_3).unwrap();
-//     // load bytecode
-//     // you can check the source code of the following wasm file in massa-unit-tests-src
-//     // This line execute the smart contract that will modify the data entry and then trigger the SC.
-//     let bytecode = include_bytes!("./wasm/send_message_trigger.wasm");
-//     let datastore = BTreeMap::new();
-
-//     let operation =
-//         ExecutionTestUniverse::create_execute_sc_operation(&keypair, bytecode, datastore).unwrap();
-//     universe.storage.store_operations(vec![operation.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 2),
-//         vec![operation],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-
-//     // set our block as a final block so the message is sent
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     blockclique_blocks.insert(block.content.header.content.slot, block.id);
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks.clone(),
-//         None,
-//         block_metadata.clone(),
-//     );
-//     // sleep for 1000ms to reach the message execution period
-//     std::thread::sleep(Duration::from_millis(1000));
-
-//     // retrieve events emitted by smart contracts
-//     let events = universe
-//         .module_controller
-//         .get_filtered_sc_output_event(EventFilter {
-//             ..Default::default()
-//         });
-
-//     // match the events
-//     assert!(events.len() == 4, "4 events were expected");
-// }
-
-// #[test]
-// fn send_and_receive_transaction() {
-//     // setup the period duration
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         ..ExecutionConfig::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-//     let recipient_address =
-//         Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-
-//     // create the operation
-//     let operation = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 10,
-//             op: OperationType::Transaction {
-//                 recipient_address,
-//                 amount: Amount::from_str("100").unwrap(),
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-//     // create the block containing the transaction operation
-//     universe.storage.store_operations(vec![operation.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(1, 0),
-//         vec![operation],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-//     // set our block as a final block so the transaction is processed
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     std::thread::sleep(Duration::from_millis(10));
-//     // check recipient balance
-//     //TODO: replace when ledger will be mocked
-//     assert_eq!(
-//         universe
-//             .final_state
-//             .read()
-//             .get_ledger()
-//             .get_balance(&recipient_address)
-//             .unwrap(),
-//         // Storage cost applied
-//         Amount::from_str("100")
-//             .unwrap()
-//             // Storage cost base
-//             .saturating_sub(LEDGER_ENTRY_BASE_COST)
-//     );
-// }
+#[test]
+fn send_and_receive_transaction() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let recipient_address =
+    Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+    );
+    foreign_controllers.final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            // 200 because 100 in the get_balance in the `final_state_boilerplate` and 100 from the transfer.
+            assert_eq!(changes.ledger_changes.get_balance_or_else(&recipient_address, || None), Some(Amount::from_str("200").unwrap()));
+            // 1.02 for the block rewards
+            assert_eq!(changes.ledger_changes.get_balance_or_else(&Address::from_public_key(&KeyPair::from_str(TEST_SK_1).unwrap().get_public_key()), || None), Some(exec_cfg.block_reward));
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+    // create the operation
+    let operation = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::Transaction {
+                recipient_address,
+                amount: Amount::from_str("100").unwrap(),
+            },
+        },
+        OperationSerializer::new(),
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+    )
+    .unwrap();
+    // create the block containing the transaction operation
+    universe.storage.store_operations(vec![operation.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        vec![operation],
+        vec![],
+        vec![],
+    );
+    // store the block in storage
+    universe.storage.store_block(block.clone());
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    finalized_waitpoint.wait();
+}
 
 // #[test]
 // fn roll_buy() {

@@ -23,7 +23,7 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType, SecureShareOperation},
     prehash::PreHashMap,
     secure_share::SecureShareContent,
-    slot::Slot,
+    slot::Slot, block::SecureShareBlock,
 };
 use massa_pos_exports::MockSelectorControllerWrapper;
 use massa_signature::KeyPair;
@@ -185,7 +185,7 @@ impl ExecutionTestUniverse {
     ) {
         // load bytecodes
         // you can check the source code of the following wasm file in massa-unit-tests-src
-        let mut datastore = BTreeMap::new();
+        let mut datastore = BTreeMap::new(); 
         datastore.insert(b"smart-contract".to_vec(), bytes_file_sc_deployed.to_vec());
 
         // create the block containing the smart contract execution operation
@@ -202,6 +202,10 @@ impl ExecutionTestUniverse {
         self.storage.store_block(block.clone());
 
         // set our block as a final block so the message is sent
+        self.send_and_finalize(keypair, block);
+    }
+
+    pub fn send_and_finalize(&mut self, keypair: &KeyPair, block: SecureShareBlock) {
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
         finalized_blocks.insert(block.content.header.content.slot, block.id);
         let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
