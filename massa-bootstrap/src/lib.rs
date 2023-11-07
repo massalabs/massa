@@ -26,7 +26,8 @@ pub use error::BootstrapError;
 mod listener;
 mod messages;
 mod server;
-mod settings;
+/// bootstrap settings (pub for external tools)
+pub mod settings;
 mod tools;
 /// white/black list
 pub mod white_black_list;
