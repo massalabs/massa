@@ -8,8 +8,6 @@ pub struct ModuleCacheConfig {
     /// * setup `massa-sc-runtime` metering on compilation
     /// * debit compilation costs
     pub gas_costs: GasCosts,
-    /// Default gas for compilation
-    pub compilation_gas: u64,
     /// Maximum number of entries we want to keep in the LRU cache
     pub lru_cache_size: u32,
     /// Maximum number of entries we want to keep in the HD cache

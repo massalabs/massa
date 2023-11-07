@@ -15,6 +15,7 @@ impl Default for PoolConfig {
             thread_count: THREAD_COUNT,
             operation_validity_periods: OPERATION_VALIDITY_PERIODS,
             max_block_gas: MAX_GAS_PER_BLOCK,
+            sp_compilation_cost: 314_000_000,
             roll_price: ROLL_PRICE,
             max_block_size: MAX_BLOCK_SIZE,
             base_operation_gas_cost: BASE_OPERATION_GAS_COST,

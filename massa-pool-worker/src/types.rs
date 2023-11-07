@@ -26,11 +26,12 @@ impl OperationInfo {
         roll_price: Amount,
         thread_count: u8,
         base_operation_gas_cost: u64,
+        sp_compilation_cost: u64,
     ) -> Self {
         OperationInfo {
             id: op.id,
             size: op.serialized_size(),
-            max_gas_usage: op.get_gas_usage(base_operation_gas_cost),
+            max_gas_usage: op.get_gas_usage(base_operation_gas_cost, sp_compilation_cost),
             creator_address: op.content_creator_address,
             fee: op.content.fee,
             thread: op.content_creator_address.get_thread(thread_count),

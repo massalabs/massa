@@ -15,6 +15,8 @@ pub struct PoolConfig {
     pub max_block_gas: u64,
     /// Gas used by any operation
     pub base_operation_gas_cost: u64,
+    /// Amount required for a SinglePass compilation (ExecuteSC operation)
+    pub sp_compilation_cost: u64,
     /// cost (in coins) of a single roll
     pub roll_price: Amount,
     /// operation validity periods

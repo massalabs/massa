@@ -41,12 +41,7 @@ impl ModuleCache {
 
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
-        match RuntimeModule::new(
-            bytecode,
-            self.cfg.compilation_gas,
-            self.cfg.gas_costs.clone(),
-            Compiler::CL,
-        ) {
+        match RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::CL) {
             Ok(module) => {
                 debug!("compilation of module {} succeeded", hash);
                 ModuleInfo::Module(module)
@@ -61,10 +56,7 @@ impl ModuleCache {
     /// Save a new or an already existing module in the cache
     pub fn save_module(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) =
-            self.hd_cache
-                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
-        {
+        if let Some(hd_module_info) = self.hd_cache.get(hash, self.cfg.gas_costs.clone()) {
             debug!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
         } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -93,6 +85,11 @@ impl ModuleCache {
     }
 
     /// Load a cached module for execution
+    ///
+    /// Returns the module information, it can be:
+    /// * `ModuleInfo::Invalid` if the module is invalid
+    /// * `ModuleInfo::Module` if the module is valid and has no delta
+    /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
     fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
         if bytecode.len() > self.cfg.max_module_length as usize {
             info!(
@@ -106,10 +103,7 @@ impl ModuleCache {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);
             lru_module_info
-        } else if let Some(hd_module_info) =
-            self.hd_cache
-                .get(hash, self.cfg.compilation_gas, self.cfg.gas_costs.clone())
-        {
+        } else if let Some(hd_module_info) = self.hd_cache.get(hash, self.cfg.gas_costs.clone()) {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
@@ -122,12 +116,24 @@ impl ModuleCache {
         }
     }
 
-    /// Load a cached module for execution and check its validity for execution
+    /// Load a cached module for execution and check its validity for execution.
+    /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
+    ///
+    /// Returns the module and the remaining gas after loading.
     pub fn load_module(
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,
-    ) -> Result<RuntimeModule, CacheError> {
+    ) -> Result<(RuntimeModule, u64), CacheError> {
+        // Do not actually debit the instance creation cost from the provided gas
+        // This is only supposed to be a check
+        execution_gas
+            .checked_sub(self.cfg.gas_costs.max_instance_cost)
+            .ok_or(CacheError::LoadError(
+                "Provided max gas is below the default instance creation cost".to_string(),
+            ))?;
+        // TODO: interesting but unimportant optim
+        // remove max_instance_cost hard check if module is cached and has a delta
         let module_info = self.load_module_info(bytecode);
         let module = match module_info {
             ModuleInfo::Invalid => {
@@ -144,21 +150,27 @@ impl ModuleCache {
                 }
             }
         };
-        Ok(module)
+        Ok((module, execution_gas))
     }
 
-    /// Load a temporary module from arbitrary bytecode
+    /// Load a temporary module from arbitrary bytecode.
+    /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
+    ///
+    /// Returns the module and the remaining gas after compilation.
     pub fn load_tmp_module(
         &self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<RuntimeModule, CacheError> {
+    ) -> Result<(RuntimeModule, u64), CacheError> {
         debug!("load_tmp_module");
-        Ok(RuntimeModule::new(
-            bytecode,
-            limit,
-            self.cfg.gas_costs.clone(),
-            Compiler::SP,
-        )?)
+        // Do not actually debit the instance creation cost from the provided gas
+        // This is only supposed to be a check
+        limit
+            .checked_sub(self.cfg.gas_costs.max_instance_cost)
+            .ok_or(CacheError::LoadError(
+                "Provided max gas is below the default instance creation cost".to_string(),
+            ))?;
+        let module = RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::SP)?;
+        Ok((module, limit))
     }
 }
