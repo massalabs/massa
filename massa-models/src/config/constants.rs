@@ -121,7 +121,7 @@ pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
+pub const MAX_BLOCK_SIZE: u32 = 300_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
