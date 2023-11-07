@@ -61,8 +61,6 @@
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
-<a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -80,8 +78,6 @@
     </span><span class="kw">pub </span>max_block_gas: u64,
     <span class="doccomment">/// Gas used by any operation
     </span><span class="kw">pub </span>base_operation_gas_cost: u64,
-    <span class="doccomment">/// Amount required for a SinglePass compilation (ExecuteSC operation)
-    </span><span class="kw">pub </span>sp_compilation_cost: u64,
     <span class="doccomment">/// cost (in coins) of a single roll
     </span><span class="kw">pub </span>roll_price: Amount,
     <span class="doccomment">/// operation validity periods
