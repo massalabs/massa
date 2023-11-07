@@ -680,6 +680,12 @@ impl FinalState {
             self.db.read().backup_db(slot);
         }
 
+        // Dump final state if needed:
+
+        if slot.thread == 0 {
+            self.db.read().backup_db(slot);
+        }
+
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
