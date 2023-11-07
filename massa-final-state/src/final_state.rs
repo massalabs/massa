@@ -681,8 +681,12 @@ impl FinalState {
         }
 
         // Dump final state if needed:
-
-        if slot.thread == 0 {
+        if slot.thread == 0 && slot.period % 10 == 0 {
+            info!(
+                "LEO - Backuping db for slot {}, state hash: {}",
+                slot,
+                final_state_hash
+            );
             self.db.read().backup_db(slot);
         }
 
