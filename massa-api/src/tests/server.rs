@@ -19,7 +19,7 @@ async fn max_conn() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -45,7 +45,7 @@ async fn max_conn() {
 #[tokio::test]
 async fn max_request_size() {
     let addr: SocketAddr = "[::]:5038".parse().unwrap();
-    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr.clone());
+    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr);
 
     api_config.max_request_body_size = 10;
     api_server.0.api_settings.max_request_body_size = 10;
@@ -58,7 +58,7 @@ async fn max_request_size() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
     let params = rpc_params![vec![
@@ -104,7 +104,7 @@ async fn ws_disabled() {
 
     let uri = Url::parse(&format!(
         "ws://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     ))
     .unwrap();
 
@@ -125,7 +125,7 @@ async fn ws_disabled() {
 #[tokio::test]
 async fn http_disabled() {
     let addr: SocketAddr = "[::]:5040".parse().unwrap();
-    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr.clone());
+    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr);
 
     api_server.0.api_settings.enable_http = false;
     api_config.enable_http = false;
@@ -138,7 +138,7 @@ async fn http_disabled() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -156,11 +156,11 @@ async fn http_disabled() {
 #[tokio::test]
 async fn host_allowed() {
     let addr: SocketAddr = "[::]:5041".parse().unwrap();
-    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr.clone());
+    let (mut api_server, mut api_config) = crate::tests::mock::start_public_api(addr);
 
     let hosts = vec![format!(
         "http://localhost:{}",
-        addr.to_string().split(':').into_iter().last().unwrap()
+        addr.to_string().split(':').last().unwrap()
     )];
 
     api_server.0.api_settings.allow_hosts = hosts.clone();
@@ -174,7 +174,7 @@ async fn host_allowed() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr.to_string().split(':').into_iter().last().unwrap()
+            addr.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
@@ -186,7 +186,7 @@ async fn host_allowed() {
 
     // now start new server with different host allowed
     let addr2: SocketAddr = "[::]:5042".parse().unwrap();
-    let (mut api_server2, mut api_config2) = crate::tests::mock::start_public_api(addr2.clone());
+    let (mut api_server2, mut api_config2) = crate::tests::mock::start_public_api(addr2);
 
     let hosts2 = vec!["http://123.456.789.1".to_string()];
 
@@ -201,7 +201,7 @@ async fn host_allowed() {
     let client = HttpClientBuilder::default()
         .build(format!(
             "http://localhost:{}",
-            addr2.to_string().split(':').into_iter().last().unwrap()
+            addr2.to_string().split(':').last().unwrap()
         ))
         .unwrap();
 
