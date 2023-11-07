@@ -328,6 +328,7 @@
 <a href="#328" id="328">328</a>
 <a href="#329" id="329">329</a>
 <a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -521,9 +522,10 @@
 //
 
 </span><span class="doccomment">/// Max message size for bootstrap
+/// Note: Update sizes are not limited, the 190Mb constant is to take them into account.
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
     .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
-    + <span class="number">900_000_000</span>;
+    .saturating_add(<span class="number">190_000_000_u32</span>);
 <span class="doccomment">/// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
     u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
@@ -540,9 +542,9 @@
 <span class="doccomment">/// Max async pool changes
 </span><span class="kw">pub const </span>MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = <span class="number">100_000</span>;
 <span class="doccomment">/// Max bytes in final states parts
-</span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = <span class="number">1_000_000_000</span>;
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = <span class="number">100_000_000</span>;
 <span class="doccomment">/// Max bytes in final states parts
-</span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = <span class="number">100_000_000</span>;
+</span><span class="kw">pub const </span>MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = <span class="number">10_000_000</span>;
 <span class="doccomment">/// Max size of the IP list
 </span><span class="kw">pub const </span>IP_LIST_MAX_SIZE: usize = <span class="number">10000</span>;
 <span class="doccomment">/// Size of the random bytes array used for the bootstrap, safe to import
