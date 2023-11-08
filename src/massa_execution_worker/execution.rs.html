@@ -1869,6 +1869,14 @@
 <a href="#1869" id="1869">1869</a>
 <a href="#1870" id="1870">1870</a>
 <a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -1890,7 +1898,7 @@
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
@@ -1944,7 +1952,7 @@
     <span class="comment">// store containing execution events that became final
     </span>final_events: EventStore,
     <span class="comment">// final state with atomic R/W access
-    </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     <span class="comment">// execution context (see documentation in context.rs)
     </span>execution_context: Arc&lt;Mutex&lt;ExecutionContext&gt;&gt;,
     <span class="comment">// execution interface allowing the VM runtime to access the Massa context
@@ -1976,7 +1984,7 @@
     /// A new `ExecutionState`
     </span><span class="kw">pub fn </span>new(
         config: ExecutionConfig,
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         mip_store: MipStore,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
         channels: ExecutionChannels,
@@ -2117,7 +2125,11 @@
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.<span class="number">0</span>.len());
 
         <span class="self">self</span>.massa_metrics.set_async_message_pool_size(
-            <span class="self">self</span>.final_state.read().async_pool.message_info_cache.len(),
+            <span class="self">self</span>.final_state
+                .read()
+                .get_async_pool()
+                .message_info_cache
+                .len(),
         );
 
         <span class="self">self</span>.massa_metrics.inc_executed_final_slot();
@@ -3392,7 +3404,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
     ) -&gt; (<span class="prelude-ty">Option</span>&lt;Amount&gt;, <span class="prelude-ty">Option</span>&lt;Amount&gt;) {
-        <span class="kw">let </span>final_balance = <span class="self">self</span>.final_state.read().ledger.get_balance(address);
+        <span class="kw">let </span>final_balance = <span class="self">self</span>.final_state.read().get_ledger().get_balance(address);
         <span class="kw">let </span>search_result = <span class="self">self</span>.active_history.read().fetch_balance(address);
         (
             final_balance,
@@ -3409,7 +3421,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
     ) -&gt; (<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, <span class="prelude-ty">Option</span>&lt;Bytecode&gt;) {
-        <span class="kw">let </span>final_bytecode = <span class="self">self</span>.final_state.read().ledger.get_bytecode(address);
+        <span class="kw">let </span>final_bytecode = <span class="self">self</span>.final_state.read().get_ledger().get_bytecode(address);
         <span class="kw">let </span>search_result = <span class="self">self</span>.active_history.read().fetch_bytecode(address);
         <span class="kw">let </span>speculative_v = <span class="kw">match </span>search_result {
             HistorySearchResult::Present(active_bytecode) =&gt; <span class="prelude-val">Some</span>(active_bytecode),
@@ -3421,7 +3433,11 @@
 
     <span class="doccomment">/// Gets roll counts both at the latest final and active executed slots
     </span><span class="kw">pub fn </span>get_final_and_candidate_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; (u64, u64) {
-        <span class="kw">let </span>final_rolls = <span class="self">self</span>.final_state.read().pos_state.get_rolls_for(address);
+        <span class="kw">let </span>final_rolls = <span class="self">self
+            </span>.final_state
+            .read()
+            .get_pos_state()
+            .get_rolls_for(address);
         <span class="kw">let </span>active_rolls = <span class="self">self
             </span>.active_history
             .read()
@@ -3436,7 +3452,11 @@
         address: <span class="kw-2">&amp;</span>Address,
         key: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; (<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;) {
-        <span class="kw">let </span>final_entry = <span class="self">self</span>.final_state.read().ledger.get_data_entry(address, key);
+        <span class="kw">let </span>final_entry = <span class="self">self
+            </span>.final_state
+            .read()
+            .get_ledger()
+            .get_data_entry(address, key);
         <span class="kw">let </span>search_result = <span class="self">self
             </span>.active_history
             .read()
@@ -3463,7 +3483,7 @@
         </span><span class="kw">let </span>final_keys = <span class="self">self
             </span>.final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_datastore_keys(addr, prefix);
 
         <span class="kw">let </span><span class="kw-2">mut </span>candidate_keys = final_keys.clone();
@@ -3523,7 +3543,7 @@
     </span><span class="kw">pub fn </span>get_cycle_active_rolls(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; BTreeMap&lt;Address, u64&gt; {
         <span class="self">self</span>.final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_all_active_rolls(cycle)
     }
 
@@ -3575,7 +3595,7 @@
         </span><span class="kw">let </span>executed_final = <span class="self">self
             </span>.final_state
             .read()
-            .executed_denunciations
+            .get_executed_denunciations()
             .contains(denunciation_index);
         <span class="kw">if </span>executed_final {
             <span class="kw">return </span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>);
@@ -3603,7 +3623,7 @@
         <span class="kw">let </span>final_state_lock = <span class="self">self</span>.final_state.read();
 
         <span class="comment">// check if cycle is complete
-        </span><span class="kw">let </span>is_final = <span class="kw">match </span>final_state_lock.pos_state.is_cycle_complete(cycle) {
+        </span><span class="kw">let </span>is_final = <span class="kw">match </span>final_state_lock.get_pos_state().is_cycle_complete(cycle) {
             <span class="prelude-val">Some</span>(v) =&gt; v,
             <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
         };
@@ -3616,11 +3636,11 @@
                 .map(|addr| {
                     <span class="kw">let </span>staker_info = ExecutionQueryStakerInfo {
                         active_rolls: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_address_active_rolls(addr, cycle)
                             .unwrap_or(<span class="number">0</span>),
                         production_stats: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_production_stats_for_address(cycle, addr)
                             .unwrap_or_default(),
                     };
@@ -3628,9 +3648,9 @@
                 })
                 .collect()
         } <span class="kw">else </span>{
-            <span class="kw">let </span>active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            <span class="kw">let </span>active_rolls = final_state_lock.get_pos_state().get_all_roll_counts(cycle);
             <span class="kw">let </span>production_stats = final_state_lock
-                .pos_state
+                .get_pos_state()
                 .get_all_production_stats(cycle)
                 .unwrap_or_default();
             <span class="kw">let </span>all_addrs: BTreeSet&lt;Address&gt; = active_rolls
@@ -3673,7 +3693,7 @@
         </span><span class="kw">let </span>res_final = <span class="self">self
             </span>.final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_address_deferred_credits(address);
 
         <span class="comment">// get values from active history, backwards
@@ -3705,11 +3725,7 @@
     /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
     </span><span class="kw">pub fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;bool&gt;, <span class="prelude-ty">Option</span>&lt;bool&gt;)&gt; {
         <span class="kw">let </span>speculative_exec = <span class="self">self</span>.active_history.read().get_ops_exec_status(batch);
-        <span class="kw">let </span>final_exec = <span class="self">self
-            </span>.final_state
-            .read()
-            .executed_ops
-            .get_ops_exec_status(batch);
+        <span class="kw">let </span>final_exec = <span class="self">self</span>.final_state.read().get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
             .zip(final_exec)
