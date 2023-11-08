@@ -62,7 +62,9 @@ lazy_static::lazy_static! {
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
+    pub static ref END_TIMESTAMP: Option<MassaTime> =
+    #[allow(clippy::if_same_then_else)]
+    if cfg!(feature = "sandbox") {
         None
     } else {
         None
