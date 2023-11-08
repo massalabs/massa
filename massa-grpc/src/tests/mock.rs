@@ -7,7 +7,7 @@ use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
 use massa_execution_exports::{ExecutionChannels, MockExecutionController};
 use massa_models::{
     config::{
-        ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+        ENDORSEMENT_COUNT, MAX_DATASTORE_VALUE_LENGTH,
         MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_FUNCTION_NAME_LENGTH,
         MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
@@ -20,6 +20,7 @@ use massa_pool_exports::{MockPoolController, PoolBroadcasts};
 use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::{MockProtocolController, ProtocolConfig};
 use massa_signature::KeyPair;
+use massa_time::MassaTime;
 use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 // use massa_wallet::test_exports::create_test_wallet;
@@ -86,7 +87,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: 2,
-        genesis_timestamp: *GENESIS_TIMESTAMP,
+        genesis_timestamp: MassaTime::from_millis(1694170800000),
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         keypair: keypair.clone(),
