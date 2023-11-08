@@ -586,16 +586,11 @@
 <a href="#586" id="586">586</a>
 <a href="#587" id="587">587</a>
 <a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
-<span class="kw">use </span>massa_final_state::FinalStateController;
+<span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
@@ -611,7 +606,7 @@
 </span><span class="attr">#[allow(dead_code)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeRollState {
     <span class="doccomment">/// Thread-safe shared access to the final state. For reading only.
-    </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+    </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
 
     <span class="doccomment">/// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -627,7 +622,7 @@
     /// # Arguments
     /// * `active_history`: thread-safe shared access the speculative execution history
     </span><span class="kw">pub fn </span>new(
-        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         SpeculativeRollState {
@@ -663,7 +658,7 @@
                 <span class="self">self</span>.active_history
                     .read()
                     .fetch_roll_count(addr)
-                    .unwrap_or_else(|| <span class="self">self</span>.final_state.read().get_pos_state().get_rolls_for(addr))
+                    .unwrap_or_else(|| <span class="self">self</span>.final_state.read().pos_state.get_rolls_for(addr))
             })
     }
 
@@ -682,12 +677,7 @@
                 <span class="self">self</span>.active_history
                     .read()
                     .fetch_roll_count(buyer_addr)
-                    .unwrap_or_else(|| {
-                        <span class="self">self</span>.final_state
-                            .read()
-                            .get_pos_state()
-                            .get_rolls_for(buyer_addr)
-                    })
+                    .unwrap_or_else(|| <span class="self">self</span>.final_state.read().pos_state.get_rolls_for(buyer_addr))
             });
         <span class="kw-2">*</span>count = count.saturating_add(roll_count);
     }
@@ -928,7 +918,7 @@
         </span>{
             <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
             <span class="kw">for </span>(slot, addr_amount) <span class="kw">in </span>final_state
-                .get_pos_state()
+                .pos_state
                 .get_deferred_credits_range(min_slot..)
                 .credits
             {
@@ -965,7 +955,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self
             </span>.final_state
             .read()
-            .get_pos_state()
+            .pos_state
             .get_address_credits_for_slot(addr, slot)
         {
             <span class="kw">return </span><span class="prelude-val">Some</span>(v);
@@ -988,7 +978,7 @@
 
         <span class="comment">// add finals
         </span>final_state
-            .get_pos_state()
+            .pos_state
             .cycle_history_cache
             .iter()
             .for_each(|c| {
@@ -1000,7 +990,7 @@
                     active_rolls: <span class="prelude-val">None</span>, <span class="comment">// will be filled afterwards
                 </span>};
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(prod_stats) = final_state
-                    .get_pos_state()
+                    .pos_state
                     .get_production_stats_for_address(c.<span class="number">0</span>, address)
                 {
                     cur_item.ok_count = prod_stats.block_success_count;
@@ -1073,7 +1063,7 @@
         <span class="comment">// add active roll counts
         </span><span class="kw">for </span>itm <span class="kw">in </span>res.iter_mut() {
             itm.active_rolls = final_state
-                .get_pos_state()
+                .pos_state
                 .get_address_active_rolls(address, itm.cycle);
         }
 
@@ -1131,7 +1121,7 @@
         <span class="comment">// on underflow, accumulate final state
         </span><span class="kw">if </span>underflow {
             <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(final_stats) = final_state.get_pos_state().get_all_production_stats(cycle) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(final_stats) = final_state.pos_state.get_all_production_stats(cycle) {
                 <span class="kw">for </span>(addr, stats) <span class="kw">in </span>final_stats {
                     accumulated_stats
                         .entry(addr)
@@ -1157,7 +1147,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>credits = <span class="self">self
             </span>.final_state
             .read()
-            .get_pos_state()
+            .pos_state
             .get_deferred_credits_range(..=slot);
 
         <span class="comment">// fetch active history deferred credits
