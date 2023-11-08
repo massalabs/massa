@@ -73,10 +73,10 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
@@ -133,7 +133,7 @@ async fn launch(
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    let now = MassaTime::now().expect("could not get now time");
+    let now = MassaTime::now();
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
     #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
@@ -471,6 +471,13 @@ async fn launch(
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
 
+    // gas costs
+    let gas_costs = GasCosts::new(
+        SETTINGS.execution.abi_gas_costs_file.clone(),
+        SETTINGS.execution.wasm_gas_costs_file.clone(),
+    )
+    .expect("Failed to load gas costs");
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -493,11 +500,8 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        gas_costs: GasCosts::new(
-            SETTINGS.execution.abi_gas_costs_file.clone(),
-            SETTINGS.execution.wasm_gas_costs_file.clone(),
-        )
-        .expect("Failed to load gas costs"),
+        gas_costs: gas_costs.clone(),
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
         last_start_period: final_state.read().get_last_start_period(),
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
         lru_cache_size: SETTINGS.execution.lru_cache_size,
@@ -536,6 +540,8 @@ async fn launch(
         thread_count: THREAD_COUNT,
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost: gas_costs.sp_compilation_cost,
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,

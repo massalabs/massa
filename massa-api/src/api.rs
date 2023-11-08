@@ -66,10 +66,7 @@ impl MassaApiServer for API<ApiV2> {
     ) -> RpcResult<PagedVecV2<(Address, u64)>> {
         let cfg = self.0.api_settings.clone();
 
-        let now = match MassaTime::now() {
-            Ok(now) => now,
-            Err(e) => return Err(ApiError::TimeError(e).into()),
-        };
+        let now = MassaTime::now();
 
         let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
             cfg.thread_count,

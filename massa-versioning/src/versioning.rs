@@ -1909,7 +1909,7 @@ mod test {
             activation_delay: MassaTime::from_millis(2),
         };
 
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
         assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
@@ -1966,7 +1966,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
         assert!(matches!(ms_1.state, ComponentState::Active(_)));
 
@@ -2149,7 +2149,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
         assert!(matches!(ms_1.state, ComponentState::Active(_)));
         {
@@ -2604,9 +2604,7 @@ mod test {
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let activation_delay = MassaTime::from_millis(100);
-        let timeout = MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
+        let timeout = MassaTime::now().saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
         let mi_1 = MipInfo {
             name: "MIP-0001".to_string(),
             version: 1,
@@ -2634,7 +2632,7 @@ mod test {
         assert_eq!(*mi_, mi_1);
         assert_matches!(ms_.state, ComponentState::LockedIn(..));
 
-        let mut at = MassaTime::now().unwrap();
+        let mut at = MassaTime::now();
         at = at.saturating_add(activation_delay);
         assert_eq!(
             ms_.state_at(at, mi_1.start, mi_1.timeout, mi_1.activation_delay),

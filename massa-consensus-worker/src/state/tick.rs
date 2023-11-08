@@ -53,7 +53,7 @@ impl ConsensusState {
             DOWNTIME_END_TIMESTAMP, DOWNTIME_END_TIMESTAMP_BOOTSTRAP, DOWNTIME_START_TIMESTAMP,
         };
 
-        let now = massa_time::MassaTime::now().expect("could not get now time");
+        let now = massa_time::MassaTime::now();
 
         // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
         let start_time = DOWNTIME_START_TIMESTAMP;

@@ -132,7 +132,10 @@ impl ExecutionTestUniverse {
     ) -> Result<SecureShareOperation, ExecutionError> {
         let op = OperationType::ExecuteSC {
             data: data.to_vec(),
-            max_gas: 100_000_000,
+            // MAX_GAS MUST BE AT LEAST 314_000_000 (SP COMPIL)
+            // here we use 1.5B as most of the tests perform a SC creation:
+            // 314_000_000 (SP COMPIL) + 745_000_000 (CL COMPIL) + margin
+            max_gas: 1_500_000_000,
             max_coins: Amount::from_str("5000000").unwrap(),
             datastore,
         };

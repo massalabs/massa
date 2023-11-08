@@ -51,7 +51,6 @@ lazy_static::lazy_static! {
     pub static ref GENESIS_TIMESTAMP: MassaTime = if cfg!(feature = "sandbox") {
         std::env::var("GENESIS_TIMESTAMP").map(|timestamp| MassaTime::from_millis(timestamp.parse::<u64>().unwrap())).unwrap_or_else(|_|
             MassaTime::now()
-                .unwrap()
                 .saturating_sub(
                     T0.checked_mul(get_period_from_args()).unwrap()
                 )
@@ -59,14 +58,16 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1694170800000) // Friday, September 8, 2023 11:00:00 AM UTC
+        MassaTime::from_millis(1699450200000) // Wednesday, November 8, 2023 13:30:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
-    pub static ref END_TIMESTAMP: Option<MassaTime> = if cfg!(feature = "sandbox") {
+    pub static ref END_TIMESTAMP: Option<MassaTime> =
+    #[allow(clippy::if_same_then_else)]
+    if cfg!(feature = "sandbox") {
         None
     } else {
-        Some(MassaTime::from_millis(1696096800000))  // Saturday, September 30, 2023 06:00:00 PM UTC
+        None
     };
     /// `KeyPair` to sign genesis blocks.
     pub static ref GENESIS_KEY: KeyPair = KeyPair::from_str("S1UxdCJv5ckDK8z87E5Jq5fEfSVLi2cTHgtpfZy7iURs3KpPns8")
@@ -78,7 +79,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.26.1"
         } else {
-            "TEST.26.1"
+            "SECU.27.0"
         }
         .parse()
         .unwrap()
@@ -122,7 +123,7 @@ pub const DELTA_F0: u64 = 64 * (ENDORSEMENT_COUNT as u64 + 1);
 /// Maximum number of operations per block
 pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
-pub const MAX_BLOCK_SIZE: u32 = 1_000_000;
+pub const MAX_BLOCK_SIZE: u32 = 300_000;
 /// Maximum capacity of the asynchronous messages pool
 pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
 /// Maximum operation validity period count
@@ -192,9 +193,10 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 //
 
 /// Max message size for bootstrap
+/// Note: Update sizes are not limited, the 190Mb constant is to take them into account.
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
     .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
-    + 900_000_000;
+    .saturating_add(190_000_000_u32);
 /// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
     u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
@@ -211,9 +213,9 @@ pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 1_000_000_000;
+pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 100_000_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 100_000_000;
+pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 10_000_000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
@@ -240,6 +242,8 @@ pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
+/// Gas used by a base operation (transaction, roll buy, roll sell)
+pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes
 pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
 
@@ -324,6 +328,6 @@ pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
     assert!(THREAD_COUNT > 1);
-    assert!((T0).to_millis() >= 1);
-    assert!((T0).to_millis() % (THREAD_COUNT as u64) == 0);
+    assert!((T0).as_millis() >= 1);
+    assert!((T0).as_millis() % (THREAD_COUNT as u64) == 0);
 };

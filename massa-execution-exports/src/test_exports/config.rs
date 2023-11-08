@@ -32,7 +32,7 @@ impl Default for ExecutionConfig {
             operation_validity_period: OPERATION_VALIDITY_PERIODS,
             periods_per_cycle: PERIODS_PER_CYCLE,
             // reset genesis timestamp because we are in test mode that can take a while to process
-            genesis_timestamp: MassaTime::now().expect("Impossible to reset the timestamp in test"),
+            genesis_timestamp: MassaTime::now(),
             t0: MassaTime::from_millis(64),
             stats_time_window_duration: MassaTime::from_millis(30000),
             max_miss_ratio: *POS_MISS_RATE_DEACTIVATION_THRESHOLD,
@@ -40,7 +40,7 @@ impl Default for ExecutionConfig {
             max_bytecode_size: MAX_BYTECODE_LENGTH,
             max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
             storage_costs_constants,
-            max_read_only_gas: 100_000_000,
+            max_read_only_gas: 1_000_000_000,
             gas_costs: GasCosts::new(
                 concat!(
                     env!("CARGO_MANIFEST_DIR"),
@@ -54,6 +54,7 @@ impl Default for ExecutionConfig {
                 .into(),
             )
             .unwrap(),
+            base_operation_gas_cost: BASE_OPERATION_GAS_COST,
             last_start_period: 0,
             hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
             lru_cache_size: 1000,

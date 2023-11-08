@@ -148,7 +148,7 @@ impl ExecutionThread {
             // Compute when the next slot will be
             // This is useful to wait for the next speculative miss to append to active slots.
             let wakeup_deadline = self.slot_sequencer.get_next_slot_deadline();
-            let now = MassaTime::now().expect("could not get current time");
+            let now = MassaTime::now();
             if wakeup_deadline <= now {
                 // next slot is right now: the loop needs to iterate
                 return (input_data, false);

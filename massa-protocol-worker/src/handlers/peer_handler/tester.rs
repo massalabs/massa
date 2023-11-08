@@ -327,7 +327,7 @@ impl Tester {
                                     true
                                 }).count());
                                 {
-                                    let now = MassaTime::now().unwrap();
+                                    let now = MassaTime::now();
                                     let db = db.clone();
                                     // receive new listener to test
                                     for (addr, _) in listener.1.iter() {
@@ -421,7 +421,7 @@ impl Tester {
                                 db_write.get_peers_in_test(),
                             ) {
                                 db_write.insert_peer_in_test(&listener);
-                                db_write.insert_tested_address(&listener, MassaTime::now().unwrap());
+                                db_write.insert_tested_address(&listener, MassaTime::now());
                                 listener
                             } else {
                                 continue;

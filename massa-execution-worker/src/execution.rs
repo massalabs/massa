@@ -129,7 +129,6 @@ impl ExecutionState {
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
@@ -350,9 +349,6 @@ impl ExecutionState {
         // save a snapshot of the context to revert any further changes on error
         let context_snapshot = context.get_snapshot();
 
-        // set the context max gas to match the one defined in the operation
-        context.max_gas = operation.get_gas_usage();
-
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
 
@@ -386,7 +382,10 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.get_gas_usage();
+        let op_gas = operation.get_gas_usage(
+            self.config.base_operation_gas_cost,
+            self.config.gas_costs.sp_compilation_cost,
+        );
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -809,16 +808,10 @@ impl ExecutionState {
         };
 
         // load the tmp module
-        let module = self
+        let (module, remaining_gas) = self
             .module_cache
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
-        // sub tmp module compilation cost
-        let remaining_gas = max_gas
-            .checked_sub(self.config.gas_costs.sp_compilation_cost)
-            .ok_or(ExecutionError::RuntimeError(
-                "not enough gas to pay for singlepass compilation".to_string(),
-            ))?;
         // run the VM
         massa_sc_runtime::run_main(
             &*self.execution_interface,
@@ -912,13 +905,13 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let (module, remaining_gas) = self.module_cache.write().load_module(&bytecode, max_gas)?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             target_func,
             param,
-            max_gas,
+            remaining_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -953,7 +946,6 @@ impl ExecutionState {
         let bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
-            context.max_gas = message.max_gas;
             context.creator_address = None;
             context.creator_min_balance = None;
             context.stack = vec![
@@ -1011,7 +1003,7 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self
+        let (module, remaining_gas) = self
             .module_cache
             .write()
             .load_module(&bytecode, message.max_gas)?;
@@ -1020,7 +1012,7 @@ impl ExecutionState {
             module,
             &message.function,
             &message.function_params,
-            message.max_gas,
+            remaining_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -1413,7 +1405,6 @@ impl ExecutionState {
         let execution_context = ExecutionContext::readonly(
             self.config.clone(),
             slot,
-            req.max_gas,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
@@ -1436,16 +1427,23 @@ impl ExecutionState {
                     }
                 }
 
+                // pay SP compilation as read only execution has no base cost
+                let post_compil = req
+                    .max_gas
+                    .checked_sub(self.config.gas_costs.sp_compilation_cost)
+                    .ok_or(ExecutionError::NotEnoughGas(
+                        "Not enough gas to pay SP compilation in ReadOnly execution".to_string(),
+                    ))?;
                 // load the tmp module
-                let module = self
+                let (module, remaining_gas) = self
                     .module_cache
                     .read()
-                    .load_tmp_module(&bytecode, req.max_gas)?;
+                    .load_tmp_module(&bytecode, post_compil)?;
                 // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
-                    req.max_gas,
+                    remaining_gas,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
@@ -1485,7 +1483,7 @@ impl ExecutionState {
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let module = self
+                let (module, remaining_gas) = self
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
@@ -1494,7 +1492,7 @@ impl ExecutionState {
                     module,
                     &target_func,
                     &parameter,
-                    req.max_gas,
+                    remaining_gas,
                     self.config.gas_costs.clone(),
                 );
                 match response {

@@ -82,13 +82,7 @@ impl MassaSurvey {
 
                                 {
                                            // update stakers / rolls
-                                    let now = match MassaTime::now() {
-                                        Ok(now) => now,
-                                        Err(e) => {
-                                            warn!("MassaSurvey | Failed to get current time: {:?}", e);
-                                            continue;
-                                        }
-                                    };
+                                    let now = MassaTime::now();
 
                                     let curr_cycle =
                                         match get_latest_block_slot_at_timestamp(config.0, config.1, config.2, now)

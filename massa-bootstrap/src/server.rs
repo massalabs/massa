@@ -701,7 +701,7 @@ fn step_timeout_duration(bs_deadline: &Instant, step_timeout: &Duration) -> Opti
     Some(std::cmp::min(remaining, *step_timeout))
 }
 #[allow(clippy::too_many_arguments)]
-fn manage_bootstrap(
+pub(crate) fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -749,7 +749,7 @@ fn manage_bootstrap(
     server.send_msg(
         next_step_timeout,
         BootstrapServerMessage::BootstrapTime {
-            server_time: MassaTime::now()?,
+            server_time: MassaTime::now(),
             version,
         },
     )?;

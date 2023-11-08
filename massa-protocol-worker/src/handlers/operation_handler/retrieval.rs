@@ -369,7 +369,7 @@ pub(crate) fn note_operations_from_peer(
     pool_controller: &mut Box<dyn PoolController>,
 ) -> Result<(), ProtocolError> {
     massa_trace!("protocol.protocol_worker.note_operations_from_peer", { "peer": source_peer_id, "operations": operations });
-    let now = MassaTime::now().expect("could not get current time");
+    let now = MassaTime::now();
 
     let mut new_operations = PreHashMap::with_capacity(operations.len());
     for operation in operations {

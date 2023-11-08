@@ -225,12 +225,12 @@ fn bootstrap_from_server(
     };
 
     // handshake
-    let send_time_uncompensated = MassaTime::now()?;
+    let send_time_uncompensated = MassaTime::now();
     // client.handshake() is not cancel-safe but we drop the whole client object if cancelled => it's OK
     client.handshake(our_version)?;
 
     // compute ping
-    let ping = MassaTime::now()?.saturating_sub(send_time_uncompensated);
+    let ping = MassaTime::now().saturating_sub(send_time_uncompensated);
     if ping > cfg.max_ping {
         return Err(BootstrapError::GeneralError(
             "bootstrap ping too high".into(),
@@ -260,7 +260,7 @@ fn bootstrap_from_server(
     };
 
     // get the time of reception
-    let recv_time = MassaTime::now()?;
+    let recv_time = MassaTime::now();
 
     // compute ping
     let ping = recv_time.saturating_sub(send_time_uncompensated);
@@ -414,7 +414,7 @@ pub fn get_state(
     }
 
     // if we are before genesis, do not bootstrap
-    if MassaTime::now()? < genesis_timestamp {
+    if MassaTime::now() < genesis_timestamp {
         massa_trace!("bootstrap.lib.get_state.init_from_scratch", {});
         // init final state
         {
@@ -498,7 +498,7 @@ pub fn get_state(
         }
         for (addr, node_id) in filtered_bootstrap_list.iter() {
             if let Some(end) = end_timestamp {
-                if MassaTime::now().expect("could not get now time") > end {
+                if MassaTime::now() > end {
                     panic!("This episode has come to an end, please get the latest testnet node version to continue");
                 }
             }
@@ -607,7 +607,7 @@ fn get_bootstrap_list_iter(
 fn warn_user_about_versioning_updates(updated: Vec<MipInfo>, added: BTreeMap<MipInfo, MipState>) {
     if !added.is_empty() {
         for (mip_info, mip_state) in added.iter() {
-            let now = MassaTime::now().expect("Cannot get current time");
+            let now = MassaTime::now();
             match mip_state.state_at(
                 now,
                 mip_info.start,

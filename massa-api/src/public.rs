@@ -142,9 +142,7 @@ impl MassaRpcServer for API<Public> {
             let address = if let Some(addr) = address {
                 addr
             } else {
-                let now = MassaTime::now().map_err(|e| {
-                    ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
-                })?;
+                let now = MassaTime::now();
                 let keypair = self
                     .0
                     .keypair_factory
@@ -244,9 +242,7 @@ impl MassaRpcServer for API<Public> {
             let caller_address = if let Some(addr) = caller_address {
                 addr
             } else {
-                let now = MassaTime::now().map_err(|e| {
-                    ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
-                })?;
+                let now = MassaTime::now();
                 let keypair = self
                     .0
                     .keypair_factory
@@ -344,10 +340,7 @@ impl MassaRpcServer for API<Public> {
         let protocol_config = self.0.protocol_config.clone();
         let node_id = self.0.node_id;
         let config = CompactConfig::default();
-        let now = match MassaTime::now() {
-            Ok(now) => now,
-            Err(e) => return Err(ApiError::TimeError(e).into()),
-        };
+        let now = MassaTime::now();
 
         let last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
@@ -459,10 +452,7 @@ impl MassaRpcServer for API<Public> {
     ) -> RpcResult<PagedVec<(Address, u64)>> {
         let cfg = self.0.api_settings.clone();
 
-        let now = match MassaTime::now() {
-            Ok(now) => now,
-            Err(e) => return Err(ApiError::TimeError(e).into()),
-        };
+        let now = MassaTime::now();
 
         let latest_block_slot_at_timestamp_result = get_latest_block_slot_at_timestamp(
             cfg.thread_count,
@@ -1030,9 +1020,7 @@ impl MassaRpcServer for API<Public> {
             api_cfg.max_op_datastore_key_length,
             api_cfg.max_op_datastore_value_length,
         ));
-        let now = MassaTime::now().map_err(|e| {
-            ApiError::InconsistencyError(format!("Unable to get current time: {}", e))
-        })?;
+        let now = MassaTime::now();
         let last_slot = get_latest_block_slot_at_timestamp(
             api_cfg.thread_count,
             api_cfg.t0,

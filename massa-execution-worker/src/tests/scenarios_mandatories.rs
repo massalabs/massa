@@ -4,17 +4,15 @@ use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfi
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::{
-    ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
-};
+use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -30,9 +28,7 @@ use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use std::{
-    cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration,
-};
+use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
 
@@ -72,9 +68,7 @@ fn final_state_boilerplate(
         )
         .unwrap();
         pos_final_state.create_initial_cycle(&mut batch);
-        db
-        .write()
-        .write_batch(batch, Default::default(), None);
+        db.write().write_batch(batch, Default::default(), None);
         pos_final_state
     });
 
@@ -111,8 +105,10 @@ fn final_state_boilerplate(
         .write()
         .expect_executed_ops_contains()
         .return_const(false);
-    mock_final_state.write().expect_get_executed_denunciations().return_const(
-        ExecutedDenunciations::new(
+    mock_final_state
+        .write()
+        .expect_get_executed_denunciations()
+        .return_const(ExecutedDenunciations::new(
             ExecutedDenunciationsConfig {
                 denunciation_expire_periods: 10,
                 thread_count: THREAD_COUNT,
@@ -120,8 +116,7 @@ fn final_state_boilerplate(
                 keep_executed_history_extra_periods: 10,
             },
             db.clone(),
-        )
-    );
+        ));
 }
 
 fn expect_init_and_call(
@@ -234,7 +229,7 @@ fn test_readonly_execution() {
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 1_000_000,
+            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
@@ -433,11 +428,7 @@ fn test_get_call_coins() {
 ///
 #[test]
 fn send_and_receive_async_message() {
-    let exec_cfg = ExecutionConfig {
-        max_async_gas: 100_000,
-        ..ExecutionConfig::default()
-    };
-
+    let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
@@ -462,10 +453,10 @@ fn send_and_receive_async_message() {
         },
         emission_index: 0,
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
-        destination: Address::from_str("AS1W5GZrQ9MMmsSQkyqUM1m6ZSY6hxVN3TvdWp6AyiiS6p3qfEJ9")
+        destination: Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
             .unwrap(),
         function: String::from("receive"),
-        max_gas: 100000,
+        max_gas: 3000000,
         fee: Amount::from_raw(1),
         coins: Amount::from_raw(100),
         validity_start: Slot {
@@ -543,9 +534,7 @@ fn send_and_receive_async_message() {
     finalized_waitpoint.wait();
 
     // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
-    std::thread::sleep(Duration::from_millis(
-        exec_cfg.t0.to_millis(),
-    ));
+    std::thread::sleep(Duration::from_millis(exec_cfg.t0.as_millis()));
     // retrieve events emitted by smart contracts
     let events = universe
         .module_controller
@@ -804,7 +793,6 @@ fn send_and_receive_async_message_with_trigger() {
         });
 
     // match the events
-    println!("events: {:?}", events);
     assert_eq!(events.len(), 2, "2 events were expected");
     assert_eq!(events[0].data, "Triggered");
 
@@ -843,7 +831,7 @@ fn send_and_receive_async_message_with_trigger() {
 
     // Pass few slots as candidate (no way for now to catch this in a mock)
     std::thread::sleep(Duration::from_millis(
-        exec_cfg.t0.to_millis().checked_div(2).unwrap(),
+        exec_cfg.t0.as_millis().checked_div(2).unwrap(),
     ));
     // retrieve events emitted by smart contracts
     let events = universe
@@ -987,7 +975,6 @@ fn roll_buy() {
     finalized_waitpoint.wait();
 }
 
-
 #[test]
 fn roll_sell() {
     // setup
@@ -1050,14 +1037,22 @@ fn roll_sell() {
                 .unwrap();
             assert_eq!(
                 amount,
-                Amount::from_mantissa_scale(100, 0).unwrap()
-                // + deferred credits set above
-                .saturating_add(initial_deferred_credits)
-                // + block rewards
-                .saturating_add(exec_cfg.block_reward)
+                Amount::from_mantissa_scale(100, 0)
+                    .unwrap()
+                    // + deferred credits set above
+                    .saturating_add(initial_deferred_credits)
+                    // + block rewards
+                    .saturating_add(exec_cfg.block_reward)
             );
-            let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
-            assert_eq!(deferred_credits, Amount::from_mantissa_scale(1100, 0).unwrap());
+            let deferred_credits = changes
+                .pos_changes
+                .deferred_credits
+                .get_address_credits_for_slot(&address, &Slot::new(9, 1))
+                .unwrap();
+            assert_eq!(
+                deferred_credits,
+                Amount::from_mantissa_scale(1100, 0).unwrap()
+            );
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -1129,27 +1124,51 @@ fn roll_slash() {
     let waitpoint = WaitPoint::new();
     let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
-        selector_controller.expect_get_selection().returning(move |_| {
-            Ok(Selection {
-                endorsements: vec![address; ENDORSEMENT_COUNT as usize],
-                producer: address
-            })
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_selection()
+                .returning(move |_| {
+                    Ok(Selection {
+                        endorsements: vec![address; ENDORSEMENT_COUNT as usize],
+                        producer: address,
+                    })
+                });
         });
-    });
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    foreign_controllers.final_state.write().expect_finalize().returning(move |_, changes| {
-        let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
-        // 97 sold and 3 slashed
-        assert_eq!(rolls, &0);
-        let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
-        // Only the 97 sold
-        assert_eq!(deferred_credits, Amount::from_mantissa_scale(9700, 0).unwrap());
-        let balance = changes.ledger_changes.get_balance_or_else(&address, || None).unwrap();
-        // 100 base + reward of the 3 slash (50%) + block reward
-        assert_eq!(balance, Amount::from_mantissa_scale(100, 0).unwrap().saturating_add(exec_cfg.block_reward).saturating_add(Amount::from_mantissa_scale(150, 0).unwrap()));
-        waitpoint_trigger_handle.trigger()
-    });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .returning(move |_, changes| {
+            let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
+            // 97 sold and 3 slashed
+            assert_eq!(rolls, &0);
+            let deferred_credits = changes
+                .pos_changes
+                .deferred_credits
+                .get_address_credits_for_slot(&address, &Slot::new(9, 1))
+                .unwrap();
+            // Only the 97 sold
+            assert_eq!(
+                deferred_credits,
+                Amount::from_mantissa_scale(9700, 0).unwrap()
+            );
+            let balance = changes
+                .ledger_changes
+                .get_balance_or_else(&address, || None)
+                .unwrap();
+            // 100 base + reward of the 3 slash (50%) + block reward
+            assert_eq!(
+                balance,
+                Amount::from_mantissa_scale(100, 0)
+                    .unwrap()
+                    .saturating_add(exec_cfg.block_reward)
+                    .saturating_add(Amount::from_mantissa_scale(150, 0).unwrap())
+            );
+            waitpoint_trigger_handle.trigger()
+        });
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -1167,9 +1186,7 @@ fn roll_slash() {
         Operation {
             fee: Amount::zero(),
             expire_period: 8,
-            op: OperationType::RollSell {
-                roll_count: 97,
-            },
+            op: OperationType::RollSell { roll_count: 97 },
         },
         OperationSerializer::new(),
         &keypair,
@@ -1224,27 +1241,51 @@ fn roll_slash_2() {
     let waitpoint = WaitPoint::new();
     let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
-        selector_controller.expect_get_selection().returning(move |_| {
-            Ok(Selection {
-                endorsements: vec![address; ENDORSEMENT_COUNT as usize],
-                producer: address
-            })
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_selection()
+                .returning(move |_| {
+                    Ok(Selection {
+                        endorsements: vec![address; ENDORSEMENT_COUNT as usize],
+                        producer: address,
+                    })
+                });
         });
-    });
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    foreign_controllers.final_state.write().expect_finalize().returning(move |_, changes| {
-        let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
-        // 100 sold
-        assert_eq!(rolls, &0);
-        let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
-        // Only amount of 96 sold as 4 are slashed
-        assert_eq!(deferred_credits, Amount::from_mantissa_scale(9600, 0).unwrap());
-        let balance = changes.ledger_changes.get_balance_or_else(&address, || None).unwrap();
-        // 100 base + reward of the 4 slash (50%) + block reward
-        assert_eq!(balance, Amount::from_mantissa_scale(100, 0).unwrap().saturating_add(exec_cfg.block_reward).saturating_add(Amount::from_mantissa_scale(200, 0).unwrap()));
-        waitpoint_trigger_handle.trigger()
-    });
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .returning(move |_, changes| {
+            let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
+            // 100 sold
+            assert_eq!(rolls, &0);
+            let deferred_credits = changes
+                .pos_changes
+                .deferred_credits
+                .get_address_credits_for_slot(&address, &Slot::new(9, 1))
+                .unwrap();
+            // Only amount of 96 sold as 4 are slashed
+            assert_eq!(
+                deferred_credits,
+                Amount::from_mantissa_scale(9600, 0).unwrap()
+            );
+            let balance = changes
+                .ledger_changes
+                .get_balance_or_else(&address, || None)
+                .unwrap();
+            // 100 base + reward of the 4 slash (50%) + block reward
+            assert_eq!(
+                balance,
+                Amount::from_mantissa_scale(100, 0)
+                    .unwrap()
+                    .saturating_add(exec_cfg.block_reward)
+                    .saturating_add(Amount::from_mantissa_scale(200, 0).unwrap())
+            );
+            waitpoint_trigger_handle.trigger()
+        });
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -1262,9 +1303,7 @@ fn roll_slash_2() {
         Operation {
             fee: Amount::zero(),
             expire_period: 8,
-            op: OperationType::RollSell {
-                roll_count: 100,
-            },
+            op: OperationType::RollSell { roll_count: 100 },
         },
         OperationSerializer::new(),
         &keypair,
@@ -1300,10 +1339,10 @@ fn roll_slash_2() {
 fn sc_execution_error() {
     let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
-    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    expect_init_and_call(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1314,7 +1353,7 @@ fn sc_execution_error() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
-        Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -1587,7 +1626,6 @@ fn datastore_manipulations() {
         .module_controller
         .get_filtered_sc_output_event(EventFilter::default());
     // match the events
-    println!("{:?}", events);
     assert_eq!(events.len(), 4, "Got {} events, expected 4", events.len());
 
     assert!(
@@ -1715,7 +1753,7 @@ fn events_from_switching_blockclique() {
 }
 
 #[test]
-fn not_enough_compilation_gas() {
+fn not_enough_instance_gas() {
     // setup the period duration
     let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
@@ -1776,7 +1814,7 @@ fn not_enough_compilation_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("not enough gas to pay for singlepass compilation"));
+        .contains("Provided max gas is below the default instance creation cost"));
 }
 
 #[test]
@@ -1887,16 +1925,10 @@ fn test_rewards() {
     let endorsement_producer = KeyPair::generate(0).unwrap();
     let endorsement_producer_address =
         Address::from_public_key(&endorsement_producer.get_public_key());
-    println!(
-        "endorsement_producer_address: {}",
-        endorsement_producer_address
-    );
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     let keypair_address = Address::from_public_key(&keypair.get_public_key());
-    println!("keypair_address: {}", keypair_address);
     let keypair2 = KeyPair::from_str(TEST_SK_2).unwrap();
     let keypair2_address = Address::from_public_key(&keypair2.get_public_key());
-    println!("keypair2_address: {}", keypair2_address);
     selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
