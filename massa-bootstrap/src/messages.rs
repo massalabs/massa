@@ -4,8 +4,11 @@ use crate::settings::BootstrapServerMessageDeserializerArgs;
 use massa_consensus_exports::bootstrapable_graph::{
     BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
 };
+
 use massa_db_exports::StreamBatch;
+
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
+
 use massa_models::prehash::PreHashSet;
 use massa_models::serialization::{
     PreHashSetDeserializer, PreHashSetSerializer, VecU8Deserializer, VecU8Serializer,
@@ -23,6 +26,7 @@ use massa_serialization::{
     SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
 use nom::multi::{length_count, length_data};
@@ -33,6 +37,7 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
+
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -302,7 +307,8 @@ pub struct BootstrapServerMessageDeserializer {
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
     state_updates_length_deserializer: U64VarIntDeserializer,
-    vec_u8_deserializer: VecU8Deserializer,
+    datastore_key_deserializer: VecU8Deserializer,
+    datastore_val_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
     bootstrapable_graph_deserializer: BootstrapableGraphDeserializer,
     block_id_set_deserializer: PreHashSetDeserializer<BlockId, BlockIdDeserializer>,
@@ -327,7 +333,11 @@ impl BootstrapServerMessageDeserializer {
                 args.max_advertise_length,
                 args.max_listeners_per_peer,
             ),
-            vec_u8_deserializer: VecU8Deserializer::new(
+            datastore_key_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(args.max_datastore_key_length.into()),
+            ),
+            datastore_val_deserializer: VecU8Deserializer::new(
                 Included(0),
                 Included(args.max_datastore_value_length),
             ),
@@ -474,8 +484,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                             .deserialize(input)
                                     }),
                                     tuple((
-                                        |input| self.vec_u8_deserializer.deserialize(input),
-                                        |input| self.vec_u8_deserializer.deserialize(input),
+                                        |input| self.datastore_key_deserializer.deserialize(input),
+                                        |input| self.datastore_val_deserializer.deserialize(input),
                                     )),
                                 ),
                             ),
@@ -486,7 +496,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
-                                        |input| self.vec_u8_deserializer.deserialize(input),
+                                        |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.opt_vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
@@ -507,8 +517,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                             .deserialize(input)
                                     }),
                                     tuple((
-                                        |input| self.vec_u8_deserializer.deserialize(input),
-                                        |input| self.vec_u8_deserializer.deserialize(input),
+                                        |input| self.datastore_key_deserializer.deserialize(input),
+                                        |input| self.datastore_val_deserializer.deserialize(input),
                                     )),
                                 ),
                             ),
@@ -519,7 +529,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.state_updates_length_deserializer.deserialize(input)
                                     }),
                                     tuple((
-                                        |input| self.vec_u8_deserializer.deserialize(input),
+                                        |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.opt_vec_u8_deserializer.deserialize(input),
                                     )),
                                 ),
@@ -762,7 +772,7 @@ impl BootstrapClientMessageDeserializer {
     ) -> Self {
         Self {
             id_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
-            length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(100000)),
+            length_error_deserializer: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
             slot_deserializer: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),

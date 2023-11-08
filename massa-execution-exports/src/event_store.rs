@@ -77,12 +77,12 @@ impl EventStore {
                         return false;
                     }
                 }
-                match (filter.emitter_address, x.context.call_stack.front()) {
+                match (filter.original_caller_address, x.context.call_stack.front()) {
                     (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
                     (Some(_), None) => return false,
                     _ => (),
                 }
-                match (filter.original_caller_address, x.context.call_stack.back()) {
+                match (filter.emitter_address, x.context.call_stack.back()) {
                     (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
                     (Some(_), None) => return false,
                     _ => (),

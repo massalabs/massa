@@ -1,12 +1,13 @@
 [package]
 name = "massa_bootstrap"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
 test-exports = ["massa_final_state/test-exports", "massa_ledger_worker/test-exports", "massa_consensus_exports/test-exports", "massa_async_pool/test-exports"]
 sandbox = ["massa_async_pool/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
+heavy_testing = []
 
 [dependencies]
 displaydoc = {workspace = true}
