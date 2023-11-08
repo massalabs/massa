@@ -25,11 +25,12 @@ pub trait TestUniverse {
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self;
 
     fn initialize(&self) {
-        let default_panic = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            default_panic(info);
-            std::process::exit(1);
-        }));
+        //TODO: unusable now when launching multiple tests. need a fix
+        // let default_panic = std::panic::take_hook();
+        // std::panic::set_hook(Box::new(move |info| {
+        //     default_panic(info);
+        //     std::process::exit(1);
+        // }));
         use tracing_subscriber::{prelude::*, EnvFilter};
         let tracing_layer =
             tracing_subscriber::fmt::layer().with_filter(EnvFilter::from_default_env());

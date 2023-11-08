@@ -2,9 +2,9 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
-use massa_executed_ops::{ExecutedOps, ExecutedOpsConfig};
+use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionBlockMetadata, ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem,
     ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
@@ -13,13 +13,11 @@ use massa_hash::Hash;
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    ENDORSEMENT_COUNT, LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
-use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
-    block_id::BlockId,
     denunciation::Denunciation,
     execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType},
@@ -28,13 +26,12 @@ use massa_models::{
 use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
-use massa_time::MassaTime;
 use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::sync::Arc;
 use std::{
-    cmp::Reverse, collections::BTreeMap, collections::HashMap, str::FromStr, time::Duration,
+    cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration,
 };
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
@@ -50,8 +47,8 @@ fn final_state_boilerplate(
     ledger_controller: &mut MockLedgerControllerWrapper,
     saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
     custom_async_pool: Option<AsyncPool>,
+    custom_pos_state: Option<PoSFinalState>,
 ) {
-    let (rolls_path, _) = get_initials();
     mock_final_state
         .write()
         .expect_get_slot()
@@ -63,14 +60,24 @@ fn final_state_boilerplate(
         .expect_get_execution_trail_hash()
         .returning(|| Hash::compute_from("Genesis".as_bytes()));
 
-    let pos_final_state = PoSFinalState::new(
-        PoSConfig::default(),
-        "",
-        &rolls_path.into_temp_path().to_path_buf(),
-        Box::new(selector_controller.clone()),
-        db.clone(),
-    )
-    .unwrap();
+    let pos_final_state = custom_pos_state.unwrap_or_else(|| {
+        let (rolls_path, _) = get_initials();
+        let mut batch = DBBatch::default();
+        let mut pos_final_state = PoSFinalState::new(
+            PoSConfig::default(),
+            "",
+            &rolls_path.into_temp_path().to_path_buf(),
+            Box::new(selector_controller.clone()),
+            db.clone(),
+        )
+        .unwrap();
+        pos_final_state.create_initial_cycle(&mut batch);
+        db
+        .write()
+        .write_batch(batch, Default::default(), None);
+        pos_final_state
+    });
+
     mock_final_state
         .write()
         .expect_get_pos_state()
@@ -104,6 +111,17 @@ fn final_state_boilerplate(
         .write()
         .expect_executed_ops_contains()
         .return_const(false);
+    mock_final_state.write().expect_get_executed_denunciations().return_const(
+        ExecutedDenunciations::new(
+            ExecutedDenunciationsConfig {
+                denunciation_expire_periods: 10,
+                thread_count: THREAD_COUNT,
+                endorsement_count: ENDORSEMENT_COUNT,
+                keep_executed_history_extra_periods: 10,
+            },
+            db.clone(),
+        )
+    );
 }
 
 fn expect_init_and_call(
@@ -170,6 +188,7 @@ fn test_execution_shutdown() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
 }
@@ -183,6 +202,7 @@ fn test_sending_command() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -205,6 +225,7 @@ fn test_readonly_execution() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -256,6 +277,7 @@ fn test_nested_call_gas_usage() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -332,6 +354,7 @@ fn test_get_call_coins() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
     );
     foreign_controllers
@@ -506,6 +529,7 @@ fn send_and_receive_async_message() {
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         Some(async_pool),
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
@@ -520,7 +544,7 @@ fn send_and_receive_async_message() {
 
     // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
     std::thread::sleep(Duration::from_millis(
-        exec_cfg.t0.to_millis().checked_div(2).unwrap(),
+        exec_cfg.t0.to_millis(),
     ));
     // retrieve events emitted by smart contracts
     let events = universe
@@ -569,6 +593,7 @@ fn local_execution() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -648,6 +673,7 @@ fn sc_deployment() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -730,6 +756,7 @@ fn send_and_receive_async_message_with_trigger() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -846,6 +873,7 @@ fn send_and_receive_transaction() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -904,7 +932,7 @@ fn send_and_receive_transaction() {
 
 #[test]
 fn roll_buy() {
-    // setup the period duration
+    // setup
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let finalized_waitpoint = WaitPoint::new();
@@ -919,6 +947,7 @@ fn roll_buy() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -928,7 +957,8 @@ fn roll_buy() {
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
             assert_eq!(changes.pos_changes.roll_changes.len(), 1);
-            assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&1));
+            // 100 base + 1 bought
+            assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -957,6 +987,315 @@ fn roll_buy() {
     finalized_waitpoint.wait();
 }
 
+
+#[test]
+fn roll_sell() {
+    // setup
+    let exec_cfg = ExecutionConfig {
+        thread_count: 2,
+        periods_per_cycle: 2,
+        last_start_period: 2,
+        max_miss_ratio: Ratio::new(1, 1),
+        ..Default::default()
+    };
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    let (rolls_path, _) = get_initials();
+    let mut batch = DBBatch::new();
+    let initial_deferred_credits = Amount::from_str("100").unwrap();
+    let mut pos_final_state = PoSFinalState::new(
+        PoSConfig::default(),
+        "",
+        &rolls_path.into_temp_path().to_path_buf(),
+        foreign_controllers.selector_controller.clone(),
+        foreign_controllers.db.clone(),
+    )
+    .unwrap();
+    pos_final_state.create_initial_cycle(&mut batch);
+    pos_final_state.put_deferred_credits_entry(
+        &Slot::new(1, 0),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
+    pos_final_state.recompute_pos_state_caches();
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        Some(pos_final_state),
+    );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(3, 0)), predicate::always())
+        .returning(move |_, changes| {
+            let amount = changes
+                .ledger_changes
+                .get_balance_or_else(&address, || None)
+                .unwrap();
+            assert_eq!(
+                amount,
+                Amount::from_mantissa_scale(100, 0).unwrap()
+                // + deferred credits set above
+                .saturating_add(initial_deferred_credits)
+                // + block rewards
+                .saturating_add(exec_cfg.block_reward)
+            );
+            let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
+            assert_eq!(deferred_credits, Amount::from_mantissa_scale(1100, 0).unwrap());
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+    // create the operations
+    let roll_sell_1 = 10;
+    let roll_sell_2 = 1;
+
+    // create operation 1
+    let operation1 = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell {
+                roll_count: roll_sell_1,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    let operation2 = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 10,
+            op: OperationType::RollSell {
+                roll_count: roll_sell_2,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+    // create the block containing the roll buy operation
+    universe
+        .storage
+        .store_operations(vec![operation1.clone(), operation2.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &keypair,
+        Slot::new(3, 0),
+        vec![operation1, operation2],
+        vec![],
+        vec![],
+    );
+    // set our block as a final block so the purchase is processed
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
+}
+
+#[test]
+fn roll_slash() {
+    // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
+    // 3 rolls)
+    // Check for resulting roll & deferred credits & balance
+
+    // setup the period duration
+    // turn off roll selling on missed block opportunities
+    // otherwise balance will be credited with those sold roll (and we need to check the balance for
+    // if the deferred credits are reimbursed
+    let exec_cfg = ExecutionConfig {
+        periods_per_cycle: 2,
+        thread_count: 2,
+        last_start_period: 2,
+        roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
+        max_miss_ratio: Ratio::new(1, 1),
+        ..Default::default()
+    };
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
+        selector_controller.expect_get_selection().returning(move |_| {
+            Ok(Selection {
+                endorsements: vec![address; ENDORSEMENT_COUNT as usize],
+                producer: address
+            })
+        });
+    });
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers.final_state.write().expect_finalize().returning(move |_, changes| {
+        let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
+        // 97 sold and 3 slashed
+        assert_eq!(rolls, &0);
+        let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
+        // Only the 97 sold
+        assert_eq!(deferred_credits, Amount::from_mantissa_scale(9700, 0).unwrap());
+        let balance = changes.ledger_changes.get_balance_or_else(&address, || None).unwrap();
+        // 100 base + reward of the 3 slash (50%) + block reward
+        assert_eq!(balance, Amount::from_mantissa_scale(100, 0).unwrap().saturating_add(exec_cfg.block_reward).saturating_add(Amount::from_mantissa_scale(150, 0).unwrap()));
+        waitpoint_trigger_handle.trigger()
+    });
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // create operation 1
+    let operation1 = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 8,
+            op: OperationType::RollSell {
+                roll_count: 97,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+
+    // create a denunciation
+    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+        gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
+    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    // create a denunciation (that will be ignored as it has been created at the last start period)
+    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
+        Some(Slot::new(exec_cfg.last_start_period, 4)),
+        Some(keypair.clone()),
+    );
+    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    // create the block containing the roll buy operation
+    universe.storage.store_operations(vec![operation1.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &keypair,
+        Slot::new(3, 0),
+        vec![operation1],
+        vec![],
+        vec![denunciation, denunciation_2],
+    );
+    universe.send_and_finalize(&keypair, block);
+    waitpoint.wait();
+}
+
+#[test]
+fn roll_slash_2() {
+    // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
+    // 4 rolls)
+    // Check for resulting roll & deferred credits & balance
+
+    // setup the period duration
+    // turn off roll selling on missed block opportunities
+    // otherwise balance will be credited with those sold roll (and we need to check the balance for
+    // if the deferred credits are reimbursed
+    let exec_cfg = ExecutionConfig {
+        periods_per_cycle: 2,
+        thread_count: 2,
+        last_start_period: 2,
+        roll_count_to_slash_on_denunciation: 4, // Set to 4 to check if config is taken into account
+        max_miss_ratio: Ratio::new(1, 1),
+        ..Default::default()
+    };
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    foreign_controllers.selector_controller.set_expectations(|selector_controller| {
+        selector_controller.expect_get_selection().returning(move |_| {
+            Ok(Selection {
+                endorsements: vec![address; ENDORSEMENT_COUNT as usize],
+                producer: address
+            })
+        });
+    });
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers.final_state.write().expect_finalize().returning(move |_, changes| {
+        let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
+        // 100 sold
+        assert_eq!(rolls, &0);
+        let deferred_credits = changes.pos_changes.deferred_credits.get_address_credits_for_slot(&address, &Slot::new(9, 1)).unwrap();
+        // Only amount of 96 sold as 4 are slashed
+        assert_eq!(deferred_credits, Amount::from_mantissa_scale(9600, 0).unwrap());
+        let balance = changes.ledger_changes.get_balance_or_else(&address, || None).unwrap();
+        // 100 base + reward of the 4 slash (50%) + block reward
+        assert_eq!(balance, Amount::from_mantissa_scale(100, 0).unwrap().saturating_add(exec_cfg.block_reward).saturating_add(Amount::from_mantissa_scale(200, 0).unwrap()));
+        waitpoint_trigger_handle.trigger()
+    });
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &mut foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // create operation 1
+    let operation1 = Operation::new_verifiable(
+        Operation {
+            fee: Amount::zero(),
+            expire_period: 8,
+            op: OperationType::RollSell {
+                roll_count: 100,
+            },
+        },
+        OperationSerializer::new(),
+        &keypair,
+    )
+    .unwrap();
+
+    // create a denunciation
+    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
+        gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
+    let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    // create a denunciation (that will be ignored as it has been created at the last start period)
+    let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
+        Some(Slot::new(exec_cfg.last_start_period, 4)),
+        Some(keypair.clone()),
+    );
+    let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
+
+    // create the block containing the roll buy operation
+    universe.storage.store_operations(vec![operation1.clone()]);
+    let block = ExecutionTestUniverse::create_block(
+        &keypair,
+        Slot::new(3, 0),
+        vec![operation1],
+        vec![],
+        vec![denunciation, denunciation_2],
+    );
+    universe.send_and_finalize(&keypair, block);
+    waitpoint.wait();
+}
+
 #[test]
 fn sc_execution_error() {
     let exec_cfg = ExecutionConfig::default();
@@ -976,6 +1315,7 @@ fn sc_execution_error() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -1034,6 +1374,7 @@ fn sc_datastore() {
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecode
@@ -1086,6 +1427,7 @@ fn set_bytecode_error() {
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -1163,6 +1505,7 @@ fn datastore_manipulations() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -1341,6 +1684,7 @@ fn events_from_switching_blockclique() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -1389,6 +1733,7 @@ fn not_enough_compilation_gas() {
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -1455,6 +1800,7 @@ fn sc_builtins() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     universe.init_bytecode_block(
@@ -1502,6 +1848,7 @@ fn validate_address() {
         &mut foreign_controllers.ledger_controller,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     universe.init_bytecode_block(
@@ -1536,15 +1883,27 @@ fn test_rewards() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let finalized_waitpoint = WaitPoint::new();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let finalized_waitpoint_trigger_handle_2 = finalized_waitpoint.get_trigger_handle();
     let endorsement_producer = KeyPair::generate(0).unwrap();
+    let endorsement_producer_address =
+        Address::from_public_key(&endorsement_producer.get_public_key());
+    println!(
+        "endorsement_producer_address: {}",
+        endorsement_producer_address
+    );
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let keypair_address = Address::from_public_key(&keypair.get_public_key());
+    println!("keypair_address: {}", keypair_address);
     let keypair2 = KeyPair::from_str(TEST_SK_2).unwrap();
+    let keypair2_address = Address::from_public_key(&keypair2.get_public_key());
+    println!("keypair2_address: {}", keypair2_address);
     selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &mut foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
     );
@@ -1554,8 +1913,84 @@ fn test_rewards() {
         .expect_finalize()
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
-        .returning(move |_, _changes| {
+        .returning(move |_, changes| {
+            let block_credit_part = exec_cfg
+                .block_reward
+                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .expect("critical: block_credits checked_div factor is 0")
+                .saturating_mul_u64(2);
+            let first_block_reward = exec_cfg.block_reward.saturating_sub(block_credit_part);
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&keypair_address, || None),
+                Some(
+                    first_block_reward.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                )
+            );
+
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&endorsement_producer_address, || None),
+                Some(
+                    block_credit_part.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                )
+            );
             finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            let block_credit_part_parent_in_thread = exec_cfg
+                .block_reward
+                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .expect("critical: block_credits checked_div factor is 0")
+                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
+            let block_credit_part_endorsement_producer = exec_cfg
+                .block_reward
+                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
+                .expect("critical: block_credits checked_div factor is 0")
+                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
+            let creator_block_reward = exec_cfg
+                .block_reward
+                .saturating_sub(block_credit_part_endorsement_producer)
+                .saturating_sub(block_credit_part_parent_in_thread);
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&keypair2_address, || None),
+                Some(
+                    creator_block_reward
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                )
+            );
+
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&endorsement_producer_address, || None),
+                Some(
+                    block_credit_part_endorsement_producer
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                )
+            );
+
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&keypair_address, || None),
+                Some(
+                    block_credit_part_parent_in_thread
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                )
+            );
+            finalized_waitpoint_trigger_handle_2.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
@@ -1582,559 +2017,19 @@ fn test_rewards() {
         vec![],
     );
     universe.send_and_finalize(&keypair, block);
-    let (_, candidate_balance) = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[Address::from_public_key(&keypair.get_public_key())])[0];
-    let block_credit_part = exec_cfg
-        .block_reward
-        .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-        .expect("critical: block_credits checked_div factor is 0")
-        .saturating_mul_u64(2);
-    let first_block_reward = exec_cfg
-        .block_reward
-        .saturating_sub(LEDGER_ENTRY_BASE_COST)
-        .saturating_sub(block_credit_part);
-    assert_eq!(candidate_balance.unwrap(), first_block_reward);
+    finalized_waitpoint.wait();
 
     // Second block
     let block = ExecutionTestUniverse::create_block(
         &keypair2,
-        Slot::new(2, 0),
+        Slot::new(1, 1),
         vec![],
         vec![
-            ExecutionTestUniverse::create_endorsement(&keypair, Slot::new(2, 0));
+            ExecutionTestUniverse::create_endorsement(&endorsement_producer, Slot::new(1, 1));
             ENDORSEMENT_COUNT as usize
         ],
         vec![],
     );
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
-    let (_, candidate_balance) = universe
-        .module_controller
-        .get_final_and_candidate_balance(&[Address::from_public_key(&keypair.get_public_key())])[0];
-    assert_eq!(
-        candidate_balance.unwrap(),
-        first_block_reward.saturating_add(exec_cfg.block_reward)
-    );
 }
-
-// #[test]
-// fn roll_sell() {
-//     // Try to sell 10 rolls (operation 1) then 1 rolls (operation 2)
-//     // Check for resulting roll count + resulting deferred credits
-
-//     // setup the period duration
-//     // turn off roll selling on missed block opportunities
-//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
-//     // if the deferred credits are reimbursed
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         periods_per_cycle: 2,
-//         thread_count: 2,
-//         last_start_period: 2,
-//         max_miss_ratio: Ratio::new(1, 1),
-//         ..Default::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-//     let address = Address::from_public_key(&keypair.get_public_key());
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(
-//         &mut foreign_controllers.selector_controller,
-//         &block_producer,
-//     );
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-//     // get initial balance
-//     let balance_initial = universe
-//         .final_state
-//         .read()
-//         .get_ledger()
-//         .get_balance(&address)
-//         .unwrap();
-
-//     // get initial roll count
-//     let roll_count_initial = universe
-//         .final_state
-//         .read()
-//         .get_pos_state()
-//         .get_rolls_for(&address);
-//     let roll_sell_1 = 10;
-//     let roll_sell_2 = 1;
-//     let roll_sell_3 = roll_count_initial.saturating_add(10);
-
-//     let initial_deferred_credits = Amount::from_str("100").unwrap();
-
-//     let mut batch = DBBatch::new();
-
-//     // set initial_deferred_credits that will be reimbursed at first block
-//     universe
-//         .final_state
-//         .write()
-//         .get_pos_state()
-//         .put_deferred_credits_entry(
-//             &Slot::new(1, 0),
-//             &address,
-//             &initial_deferred_credits,
-//             &mut batch,
-//         );
-
-//     universe
-//         .final_state
-//         .write()
-//         .get_database()
-//         .write()
-//         .write_batch(batch, Default::default(), None);
-
-//     // create operation 1
-//     let operation1 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 10,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_sell_1,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-//     let operation2 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 10,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_sell_2,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-//     let operation3 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 10,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_sell_3,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-//     // create the block containing the roll buy operation
-//     universe.storage.store_operations(vec![
-//         operation1.clone(),
-//         operation2.clone(),
-//         operation3.clone(),
-//     ]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &KeyPair::generate(0).unwrap(),
-//         Slot::new(3, 0),
-//         vec![operation1, operation2, operation3],
-//         vec![],
-//         vec![],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-//     // set the block as final so the sell and credits are processed
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(address),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     std::thread::sleep(Duration::from_millis(1000));
-
-//     // check roll count deferred credits and candidate balance of the seller address
-//     let sample_read = universe.final_state.read();
-//     let mut credits = PreHashMap::default();
-//     let roll_remaining = roll_count_initial - roll_sell_1 - roll_sell_2;
-//     let roll_sold = roll_sell_1 + roll_sell_2;
-//     credits.insert(
-//         address,
-//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-//     );
-
-//     assert_eq!(
-//         sample_read.get_pos_state().get_rolls_for(&address),
-//         roll_remaining
-//     );
-
-//     assert_eq!(
-//         sample_read
-//             .get_pos_state()
-//             .get_deferred_credits_range(..=Slot::new(9, 1))
-//             .credits
-//             .get(&Slot::new(9, 1))
-//             .cloned()
-//             .unwrap_or_default(),
-//         credits
-//     );
-
-//     // Check that deferred credit are reimbursed
-//     let credits = PreHashMap::default();
-
-//     assert_eq!(
-//         sample_read
-//             .get_pos_state()
-//             .get_deferred_credits_range(..=Slot::new(10, 1))
-//             .credits
-//             .get(&Slot::new(10, 1))
-//             .cloned()
-//             .unwrap_or_default(),
-//         credits
-//     );
-
-//     // Check that the initial deferred_credits are set to zero
-//     assert_eq!(
-//         sample_read
-//             .get_pos_state()
-//             .get_deferred_credits_range(..=Slot::new(10, 1))
-//             .credits
-//             .get(&Slot::new(1, 0))
-//             .cloned()
-//             .unwrap_or_default(),
-//         credits
-//     );
-
-//     // Now check balance
-//     let balances = universe
-//         .module_controller
-//         .get_final_and_candidate_balance(&[address]);
-//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-//     assert_eq!(
-//         candidate_balance,
-//         exec_cfg
-//             .roll_price
-//             .checked_mul_u64(roll_sell_1 + roll_sell_2)
-//             .unwrap()
-//             .checked_add(balance_initial)
-//             .unwrap()
-//             .checked_add(initial_deferred_credits)
-//             .unwrap()
-//     );
-// }
-
-// #[test]
-// fn roll_slash() {
-//     // Try to sell 97 rolls (operation 1) then process a Denunciation (with config set to slash
-//     // 3 rolls)
-//     // Check for resulting roll & deferred credits & balance
-
-//     // setup the period duration
-//     // turn off roll selling on missed block opportunities
-//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
-//     // if the deferred credits are reimbursed
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         periods_per_cycle: 2,
-//         thread_count: 2,
-//         last_start_period: 2,
-//         roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
-//         max_miss_ratio: Ratio::new(1, 1),
-//         ..Default::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-//     let address = Address::from_public_key(&keypair.get_public_key());
-
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-//     // get initial balance
-//     let balance_initial = universe
-//         .final_state
-//         .read()
-//         .get_ledger()
-//         .get_balance(&address)
-//         .unwrap();
-
-//     // get initial roll count
-//     let roll_count_initial = universe
-//         .final_state
-//         .read()
-//         .get_pos_state()
-//         .get_rolls_for(&address);
-//     let roll_to_sell = roll_count_initial
-//         .checked_sub(exec_cfg.roll_count_to_slash_on_denunciation)
-//         .unwrap();
-
-//     // create operation 1
-//     let operation1 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 8,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_to_sell,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-
-//     // create a denunciation
-//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-//         gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
-//     let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-//     // create a denunciation (that will be ignored as it has been created at the last start period)
-//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) = gen_endorsements_for_denunciation(
-//         Some(Slot::new(exec_cfg.last_start_period, 4)),
-//         Some(keypair.clone()),
-//     );
-//     let denunciation_2 = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-//     // create the block containing the roll buy operation
-//     universe.storage.store_operations(vec![operation1.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(3, 0),
-//         vec![operation1],
-//         vec![],
-//         vec![denunciation.clone(), denunciation, denunciation_2],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-//     // set the block as final so the sell and credits are processed
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(
-//                 &block_producer.get_public_key(),
-//             )),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     std::thread::sleep(Duration::from_millis(1000));
-
-//     // check roll count deferred credits and candidate balance of the seller address
-//     let sample_read = universe.final_state.read();
-//     let mut credits = PreHashMap::default();
-//     let roll_sold = roll_to_sell;
-//     credits.insert(
-//         address,
-//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-//     );
-
-//     assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
-
-//     // Check the remaining deferred credits
-//     let slot_limit = Slot::new(10, 0);
-//     let deferred_credits = sample_read
-//         .get_pos_state()
-//         .get_deferred_credits_range(..=slot_limit)
-//         .credits;
-
-//     let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
-
-//     assert_eq!(
-//         *deferred_credit_amounts.get(&address).unwrap(),
-//         exec_cfg.roll_price.checked_mul_u64(roll_to_sell).unwrap()
-//     );
-
-//     // Now check balance
-//     let balances = universe
-//         .module_controller
-//         .get_final_and_candidate_balance(&[address]);
-//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-//     assert_eq!(
-//         candidate_balance,
-//         exec_cfg
-//             .roll_price
-//             .checked_mul_u64(roll_to_sell)
-//             .unwrap()
-//             .checked_add(balance_initial)
-//             .unwrap()
-//     );
-// }
-
-// #[test]
-// fn roll_slash_2() {
-//     // Try to sell all rolls (operation 1) then process a Denunciation (with config set to slash
-//     // 4 rolls)
-//     // Check for resulting roll & deferred credits & balance
-
-//     // setup the period duration
-//     // turn off roll selling on missed block opportunities
-//     // otherwise balance will be credited with those sold roll (and we need to check the balance for
-//     // if the deferred credits are reimbursed
-//     let exec_cfg = ExecutionConfig {
-//         t0: MassaTime::from_millis(100),
-//         cursor_delay: MassaTime::from_millis(0),
-//         periods_per_cycle: 2,
-//         thread_count: 2,
-//         last_start_period: 2,
-//         roll_count_to_slash_on_denunciation: 3, // Set to 3 to check if config is taken into account
-//         max_miss_ratio: Ratio::new(1, 1),
-//         ..Default::default()
-//     };
-//     let block_producer = KeyPair::generate(0).unwrap();
-//     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
-//     let address = Address::from_public_key(&keypair.get_public_key());
-
-//     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-//     selector_boilerplate(&mut foreign_controllers.selector_controller, &keypair);
-//     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-
-//     // get initial balance
-//     let balance_initial = universe
-//         .final_state
-//         .read()
-//         .get_ledger()
-//         .get_balance(&address)
-//         .unwrap();
-
-//     // get initial roll count
-//     let roll_count_initial = universe
-//         .final_state
-//         .read()
-//         .get_pos_state()
-//         .get_rolls_for(&address);
-//     // sell all rolls so we can check if slash will occur on deferred credits
-//     let roll_to_sell_1 = 1;
-//     let roll_to_sell_2 = roll_count_initial - 1;
-//     let roll_to_sell = roll_to_sell_1 + roll_to_sell_2;
-
-//     //
-//     let amount_def = exec_cfg
-//         .roll_price
-//         .checked_mul_u64(exec_cfg.roll_count_to_slash_on_denunciation)
-//         .unwrap();
-
-//     // create operation 1
-//     let operation1 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 8,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_to_sell_1,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-
-//     // create operation 2
-//     let operation2 = Operation::new_verifiable(
-//         Operation {
-//             fee: Amount::zero(),
-//             expire_period: 8,
-//             op: OperationType::RollSell {
-//                 roll_count: roll_to_sell_2,
-//             },
-//         },
-//         OperationSerializer::new(),
-//         &keypair,
-//     )
-//     .unwrap();
-
-//     // create a denunciation
-//     let (_slot, _keypair, s_endorsement_1, s_endorsement_2, _) =
-//         gen_endorsements_for_denunciation(Some(Slot::new(3, 0)), Some(keypair.clone()));
-//     let denunciation = Denunciation::try_from((&s_endorsement_1, &s_endorsement_2)).unwrap();
-
-//     // create the block containing the roll buy operation
-//     universe
-//         .storage
-//         .store_operations(vec![operation1.clone(), operation2.clone()]);
-//     let block = ExecutionTestUniverse::create_block(
-//         &block_producer,
-//         Slot::new(3, 0),
-//         vec![operation1, operation2],
-//         vec![],
-//         vec![denunciation.clone(), denunciation],
-//     );
-//     // store the block in storage
-//     universe.storage.store_block(block.clone());
-//     // set the block as final so the sell and credits are processed
-//     let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
-//     finalized_blocks.insert(block.content.header.content.slot, block.id);
-//     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = Default::default();
-//     block_metadata.insert(
-//         block.id,
-//         ExecutionBlockMetadata {
-//             same_thread_parent_creator: Some(Address::from_public_key(&keypair.get_public_key())),
-//             storage: Some(universe.storage.clone()),
-//         },
-//     );
-//     universe.module_controller.update_blockclique_status(
-//         finalized_blocks,
-//         Default::default(),
-//         block_metadata.clone(),
-//     );
-//     std::thread::sleep(Duration::from_millis(1000));
-
-//     // check roll count & deferred credits & candidate balance
-//     let sample_read = universe.final_state.read();
-//     let mut credits = PreHashMap::default();
-//     let roll_sold = roll_to_sell;
-//     credits.insert(
-//         address,
-//         exec_cfg.roll_price.checked_mul_u64(roll_sold).unwrap(),
-//     );
-
-//     assert_eq!(sample_read.get_pos_state().get_rolls_for(&address), 0);
-
-//     // Check the remaining deferred credits
-//     let slot_limit = Slot::new(10, 0);
-//     let deferred_credits = sample_read
-//         .get_pos_state()
-//         .get_deferred_credits_range(..=slot_limit)
-//         .credits;
-
-//     let (_slot, deferred_credit_amounts) = deferred_credits.last_key_value().unwrap();
-
-//     assert_eq!(
-//         *deferred_credit_amounts.get(&address).unwrap(),
-//         exec_cfg
-//             .roll_price
-//             .checked_mul_u64(roll_to_sell)
-//             .unwrap()
-//             .checked_sub(amount_def)
-//             .unwrap()
-//     );
-
-//     // Now check balance
-//     let balances = universe
-//         .module_controller
-//         .get_final_and_candidate_balance(&[address]);
-//     let candidate_balance = balances.get(0).unwrap().1.unwrap();
-
-//     assert_eq!(
-//         candidate_balance,
-//         exec_cfg
-//             .roll_price
-//             .checked_mul_u64(roll_to_sell)
-//             .unwrap()
-//             .checked_sub(amount_def)
-//             .unwrap()
-//             .checked_add(balance_initial)
-//             .unwrap()
-//     );
-// }
