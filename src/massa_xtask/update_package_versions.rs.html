@@ -158,7 +158,7 @@
     <span class="macro">println!</span>(<span class="string">&quot;Updating package versions&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>to_string = VERSION.to_string();
 
-    <span class="kw">if </span>to_string.contains(<span class="string">&quot;TEST&quot;</span>) || to_string.contains(<span class="string">&quot;SAND&quot;</span>) {
+    <span class="kw">if </span>to_string.contains(<span class="string">&quot;SECU&quot;</span>) || to_string.contains(<span class="string">&quot;SAND&quot;</span>) {
         <span class="comment">// TestNet and Sandbox versions &lt; 1.0.0
         </span>to_string.replace_range(..<span class="number">4</span>, <span class="string">&quot;0&quot;</span>);
     } <span class="kw">else </span>{
