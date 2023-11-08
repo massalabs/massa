@@ -180,11 +180,11 @@ impl ExecutionTestUniverse {
         Ok(op)
     }
 
-    pub fn init_bytecode_block(
+    pub fn deploy_bytecode_block(
         &mut self,
         keypair: &KeyPair,
         slot: Slot,
-        bytes_file_sc_init: &[u8],
+        bytes_file_sc_deployer: &[u8],
         bytes_file_sc_deployed: &[u8],
     ) {
         // load bytecodes
@@ -195,7 +195,7 @@ impl ExecutionTestUniverse {
         // create the block containing the smart contract execution operation
         let operation = ExecutionTestUniverse::create_execute_sc_operation(
             keypair,
-            bytes_file_sc_init,
+            bytes_file_sc_deployer,
             datastore,
         )
         .unwrap();
@@ -241,7 +241,12 @@ impl ExecutionTestUniverse {
         events[0].clone().data
     }
 
-    pub fn call_block(&mut self, keypair: &KeyPair, slot: Slot, operation: SecureShareOperation) {
+    pub fn call_sc_block(
+        &mut self,
+        keypair: &KeyPair,
+        slot: Slot,
+        operation: SecureShareOperation,
+    ) {
         // Init new storage for this block
         self.storage.store_operations(vec![operation.clone()]);
         let block =

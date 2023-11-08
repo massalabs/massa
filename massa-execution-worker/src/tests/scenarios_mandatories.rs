@@ -119,8 +119,8 @@ fn final_state_boilerplate(
         ));
 }
 
-fn expect_init_and_call(
-    init_sc_slot: Slot,
+fn expect_finalize_deploy_and_call_blocks(
+    deploy_sc_slot: Slot,
     call_sc_slot: Option<Slot>,
     finalized_waitpoint_trigger_handle: WaitPoint,
     mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
@@ -133,7 +133,7 @@ fn expect_init_and_call(
         .write()
         .expect_finalize()
         .times(1)
-        .with(predicate::eq(init_sc_slot), predicate::always())
+        .with(predicate::eq(deploy_sc_slot), predicate::always())
         .returning(move |_, changes| {
             let mut saved_bytecode = saved_bytecode_edit.write();
             if !changes.ledger_changes.get_bytecode_updates().is_empty() {
@@ -260,7 +260,7 @@ fn test_nested_call_gas_usage() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         Some(Slot::new(1, 1)),
         finalized_waitpoint.get_trigger_handle(),
@@ -278,7 +278,7 @@ fn test_nested_call_gas_usage() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // load bytecodes
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/nested_call.wasm"),
@@ -298,7 +298,7 @@ fn test_nested_call_gas_usage() {
         address.as_bytes().to_vec(),
     )
     .unwrap();
-    universe.call_block(
+    universe.call_sc_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
         operation,
@@ -337,7 +337,7 @@ fn test_get_call_coins() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         Some(Slot::new(1, 1)),
         finalized_waitpoint.get_trigger_handle(),
@@ -360,7 +360,7 @@ fn test_get_call_coins() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // load bytecodes
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/get_call_coins_main.wasm"),
@@ -381,7 +381,7 @@ fn test_get_call_coins() {
         address.as_bytes().to_vec(),
     )
     .unwrap();
-    universe.call_block(
+    universe.call_sc_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
         operation.clone(),
@@ -525,7 +525,7 @@ fn send_and_receive_async_message() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // load bytecodes
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/send_message.wasm"),
@@ -565,13 +565,13 @@ fn local_execution() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 1),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -588,7 +588,7 @@ fn local_execution() {
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecodes
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/local_execution.wasm"),
@@ -596,7 +596,7 @@ fn local_execution() {
     );
     finalized_waitpoint.wait();
 
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
         include_bytes!("./wasm/local_call.wasm"),
@@ -650,7 +650,7 @@ fn sc_deployment() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -667,7 +667,7 @@ fn sc_deployment() {
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecodes
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/deploy_sc.wasm"),
@@ -715,19 +715,19 @@ fn send_and_receive_async_message_with_trigger() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 1),
         None,
         finalized_waitpoint.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 2),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -798,7 +798,7 @@ fn send_and_receive_async_message_with_trigger() {
 
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
         include_bytes!("./wasm/send_message_wrong_trigger.wasm"),
@@ -820,7 +820,7 @@ fn send_and_receive_async_message_with_trigger() {
     // load bytecode
     // you can check the source code of the following wasm file in massa-unit-tests-src
     // This line execute the smart contract that will modify the data entry and then trigger the SC.
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_3).unwrap(),
         Slot::new(1, 2),
         include_bytes!("./wasm/send_message_trigger.wasm"),
@@ -1342,7 +1342,7 @@ fn sc_execution_error() {
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1400,7 +1400,7 @@ fn sc_datastore() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1454,7 +1454,7 @@ fn set_bytecode_error() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    let saved_bytecode = expect_init_and_call(
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1703,13 +1703,13 @@ fn events_from_switching_blockclique() {
     let finalized_waitpoint2 = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint2.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 1),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1727,7 +1727,7 @@ fn events_from_switching_blockclique() {
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // create blockclique block at slot (1,1)
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         Slot::new(1, 1),
         include_bytes!("./wasm/event_test.wasm"),
@@ -1735,7 +1735,7 @@ fn events_from_switching_blockclique() {
         include_bytes!("./wasm/event_test.wasm"),
     );
 
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/event_test.wasm"),
@@ -1760,7 +1760,7 @@ fn not_enough_instance_gas() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1825,7 +1825,7 @@ fn sc_builtins() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1841,7 +1841,7 @@ fn sc_builtins() {
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &keypair,
         Slot::new(1, 0),
         include_bytes!("./wasm/use_builtins.wasm"),
@@ -1873,7 +1873,7 @@ fn validate_address() {
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-    expect_init_and_call(
+    expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         None,
         finalized_waitpoint.get_trigger_handle(),
@@ -1889,7 +1889,7 @@ fn validate_address() {
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
-    universe.init_bytecode_block(
+    universe.deploy_bytecode_block(
         &keypair,
         Slot::new(1, 0),
         include_bytes!("./wasm/validate_address.wasm"),
