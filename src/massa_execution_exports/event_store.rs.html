@@ -206,12 +206,12 @@
                         <span class="kw">return </span><span class="bool-val">false</span>;
                     }
                 }
-                <span class="kw">match </span>(filter.emitter_address, x.context.call_stack.front()) {
+                <span class="kw">match </span>(filter.original_caller_address, x.context.call_stack.front()) {
                     (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
                     (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
                     <span class="kw">_ </span>=&gt; (),
                 }
-                <span class="kw">match </span>(filter.original_caller_address, x.context.call_stack.back()) {
+                <span class="kw">match </span>(filter.emitter_address, x.context.call_stack.back()) {
                     (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
                     (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
                     <span class="kw">_ </span>=&gt; (),
