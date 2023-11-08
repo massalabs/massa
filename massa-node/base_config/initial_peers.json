@@ -30,18 +30,6 @@
         },
         "category": "Bootstrap"
     },
-    "P1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH": {
-        "listeners": {
-            "198.27.74.52:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7": {
-        "listeners": {
-            "54.36.174.177:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
     "P13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5": {
         "listeners": {
             "51.75.60.228:31244": "Tcp"
