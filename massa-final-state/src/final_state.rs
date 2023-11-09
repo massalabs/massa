@@ -680,6 +680,25 @@ impl FinalState {
             self.db.read().backup_db(slot);
         }
 
+        // Dump Cycle History
+        use std::fs::File;
+        use std::io::prelude::*;
+        
+        let subpath = format!("backup_{}_{}.txt", slot.period, slot.thread);
+
+        let mut file = File::create(self.config.ledger_config.disk_ledger_path.join(subpath))?;
+        
+        for (serialized_key, serialized_value) in self
+            .db
+            .read()
+            .prefix_iterator_cf(STATE_CF, CYCLE_HISTORY_PREFIX.as_bytes())
+        {
+            if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                break;
+            }
+            writeln!(file, "{:?}: {:?}", serialized_key, serialized_value)?;
+        }
+
         // feed final_state_hash to the last cycle
         let cycle = slot.get_cycle(self.config.periods_per_cycle);
         self.pos_state
