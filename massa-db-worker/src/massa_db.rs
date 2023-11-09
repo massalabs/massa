@@ -2,7 +2,7 @@ use massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
     CHANGE_ID_SER_ERROR, CRUD_ERROR, METADATA_CF, OPEN_ERROR, STATE_CF, STATE_HASH_ERROR,
-    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF,
+    STATE_HASH_INITIAL_BYTES, STATE_HASH_KEY, VERSIONING_CF, CYCLE_HISTORY_PREFIX,
 };
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{
@@ -184,6 +184,22 @@ where
                 } else {
                     break;
                 }
+            }
+        }
+
+        let mut changes = BTreeMap::new();
+        changes.extend(updates_on_previous_elements.clone());
+        changes.extend(new_elements.iter()
+                .map(|(k, v)| (k.clone(), Some(v.clone()))),
+        );
+
+        let cycle_history_changes: Vec<_> = changes.iter()
+        .filter(|(k,_v)| k.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())).collect();
+
+        if !cycle_history_changes.is_empty() {
+            for (serialized_key, serialized_value) in cycle_history_changes
+            {
+                println!("LEO BOOTSTRAP SERVER CYCLE HISTORY: SLOT {:?}: {:?}: {:?}", self.get_change_id().expect(CHANGE_ID_DESER_ERROR), serialized_key, serialized_value);
             }
         }
 
@@ -497,6 +513,35 @@ where
                 .iter()
                 .map(|(k, v)| (k.clone(), Some(v.clone()))),
         );
+
+        let cycle_history_changes: Vec<_> = changes.iter()
+        .filter(|(k,_v)| k.starts_with(CYCLE_HISTORY_PREFIX.as_bytes())).collect();
+
+        if !cycle_history_changes.is_empty() {
+
+            /*use std::fs::File;
+            use std::io::prelude::*;
+            
+            let subpath = format!("bootstrap_{:?}.txt", stream_changes.change_id);
+    
+            let mut file = File::create(self.config.ledger_config.disk_ledger_path.join(subpath))?;
+            
+            for (serialized_key, serialized_value) in self
+                .db
+                .read()
+                .prefix_iterator_cf(STATE_CF, CYCLE_HISTORY_PREFIX.as_bytes())
+            {
+                if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
+                    break;
+                }
+                writeln!(file, "{:?}: {:?}", serialized_key, serialized_value)?;
+            }*/
+
+            for (serialized_key, serialized_value) in cycle_history_changes
+            {
+                println!("LEO BOOTSTRAP CYCLE HISTORY: SLOT {:?}: {:?}: {:?}", stream_changes.change_id, serialized_key, serialized_value);
+            }
+        }
 
         let mut versioning_changes = BTreeMap::new();
 
