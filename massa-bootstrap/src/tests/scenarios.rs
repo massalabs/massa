@@ -3,6 +3,8 @@
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
 };
+use super::universe_client::{BootstrapClientForeignControllers, BootstrapClientTestUniverse};
+use super::universe_server::{BootstrapServerForeignControllers, BootstrapServerTestUniverse};
 use crate::listener::PollEvent;
 use crate::tests::tools::{
     assert_eq_bootstrap_graph, get_random_async_pool_changes, get_random_executed_de_changes,
@@ -52,6 +54,7 @@ use massa_pos_exports::{
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
+use massa_test_framework::TestUniverse;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
@@ -211,18 +214,14 @@ fn mock_bootstrap_manager(
 #[test]
 #[serial]
 fn test_bootstrap_whitelist() {
-    let addr: SocketAddr = "127.0.0.1:8082".parse().unwrap();
-    let (config, _keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let (bs_manager, mut selector_manager) = mock_bootstrap_manager(addr, config.clone());
-
-    let conn = TcpStream::connect(addr);
-    let mut stream = conn.unwrap();
-    let mut buf = vec![0; 0];
-    stream.read_exact(&mut buf).unwrap();
-    stream.shutdown(std::net::Shutdown::Both).unwrap();
-
-    bs_manager.stop().unwrap();
-    selector_manager.stop();
+    let server_foreign_controllers = BootstrapServerForeignControllers::new_with_mocks();
+    let bootstrap_server_config = BootstrapConfig::default();
+    let server_universe =
+        BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
+    let client_foreign_controllers = BootstrapClientForeignControllers::new_with_mocks();
+    let bootstrap_client_config = BootstrapConfig::default();
+    let client_universe =
+        BootstrapClientTestUniverse::new(client_foreign_controllers, bootstrap_client_config);
 }
 
 #[test]

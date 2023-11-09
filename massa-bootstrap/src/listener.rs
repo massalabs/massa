@@ -17,7 +17,7 @@ pub struct BootstrapTcpListener {
     server: TcpListener,
 }
 
-pub struct BootstrapListenerStopHandle(Waker);
+pub struct BootstrapListenerStopHandle(pub(crate) Waker);
 
 pub enum PollEvent {
     NewConnections(Vec<(TcpStream, SocketAddr)>),
