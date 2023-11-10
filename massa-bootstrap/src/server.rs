@@ -247,7 +247,6 @@ impl BootstrapServer<'_> {
         let limit = self.bootstrap_config.rate_limit;
         loop {
             // block until we have a connection to work with, or break out of main-loop
-
             let connections = match self.ev_poller.poll() {
                 Ok(PollEvent::Stop) => return Ok(()),
                 Ok(PollEvent::NewConnections(connections)) => connections,
@@ -269,17 +268,6 @@ impl BootstrapServer<'_> {
                     Some(limit),
                 );
 
-                // check whether incoming peer IP is allowed.
-                if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                    server_binding.close_and_send_error(
-                        error_msg.to_string(),
-                        remote_addr,
-                        move || {},
-                    );
-                    self.massa_metrics.inc_bootstrap_peers_failed();
-                    continue;
-                };
-
                 // the `- 1` is to account for the top-level Arc that is created at the top
                 // of this method. subsequent counts correspond to each `clone` that is passed
                 // into a thread
@@ -287,6 +275,17 @@ impl BootstrapServer<'_> {
                 //       a dedicated wrapper-type with doc-comments, manual drop impl that
                 //       integrates logging, etc...
                 if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                    // check whether incoming peer IP is allowed.
+                    if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
+                        server_binding.close_and_send_error(
+                            error_msg.to_string(),
+                            remote_addr,
+                            move || {},
+                        );
+                        self.massa_metrics.inc_bootstrap_peers_failed();
+                        continue;
+                    };
                     massa_trace!("bootstrap.lib.run.select.accept", {
                         "remote_addr": remote_addr
                     });
@@ -336,7 +335,6 @@ impl BootstrapServer<'_> {
                     let protocol_controller = self.protocol_controller.clone();
                     let config = self.bootstrap_config.clone();
 
-                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
                     let massa_metrics = self.massa_metrics.clone();
 
                     let _ = thread::Builder::new()

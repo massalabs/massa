@@ -40,12 +40,8 @@ impl Default for BootstrapConfig {
             max_listeners_per_peer: 100,
             bootstrap_list: vec![(SocketAddr::new(BASE_BOOTSTRAP_IP, 8069), node_id)],
             keep_ledger: false,
-            bootstrap_whitelist_path: PathBuf::from(
-                "../massa-node/base_config/bootstrap_whitelist.json",
-            ),
-            bootstrap_blacklist_path: PathBuf::from(
-                "../massa-node/base_config/bootstrap_blacklist.json",
-            ),
+            bootstrap_whitelist_path: PathBuf::from("bootstrap_whitelist.json"),
+            bootstrap_blacklist_path: PathBuf::from("bootstrap_blacklist.json"),
             max_clock_delta: MassaTime::from_millis(1000),
             cache_duration: MassaTime::from_millis(10000),
             max_simultaneous_bootstraps: 2,

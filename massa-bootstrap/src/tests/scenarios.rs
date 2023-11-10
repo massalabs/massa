@@ -2,6 +2,7 @@
 
 use super::tools::{
     get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
+    BASE_BOOTSTRAP_IP,
 };
 use super::universe_client::{BootstrapClientForeignControllers, BootstrapClientTestUniverse};
 use super::universe_server::{BootstrapServerForeignControllers, BootstrapServerTestUniverse};
@@ -54,12 +55,12 @@ use massa_pos_exports::{
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
-use massa_test_framework::TestUniverse;
+use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::io::Read;
+use std::io::{self, Read};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Condvar, Mutex};
 use std::vec;
@@ -213,15 +214,73 @@ fn mock_bootstrap_manager(
 
 #[test]
 #[serial]
-fn test_bootstrap_whitelist() {
-    let server_foreign_controllers = BootstrapServerForeignControllers::new_with_mocks();
-    let bootstrap_server_config = BootstrapConfig::default();
-    let server_universe =
-        BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
-    let client_foreign_controllers = BootstrapClientForeignControllers::new_with_mocks();
-    let bootstrap_client_config = BootstrapConfig::default();
-    let client_universe =
+fn test_bootstrap_not_whitelisted() {
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+
+    // Setup the server/client connection
+    // Bind a TcpListener to localhost on a specific port
+    let socket_addr = SocketAddr::new(BASE_BOOTSTRAP_IP, 8069);
+    let listener = std::net::TcpListener::bind(socket_addr).unwrap();
+
+    // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
+    // thread. We use a channel to make the connection available in the mocked `accept` method
+    let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
+    std::thread::Builder::new()
+        .name("mock-listen-loop".to_string())
+        .spawn(move || loop {
+            conn_tx.send(listener.accept().unwrap()).unwrap()
+        })
+        .unwrap();
+
+    let mut server_sequence = Sequence::new();
+    let mut server_foreign_controllers = BootstrapServerForeignControllers::new_with_mocks();
+    server_foreign_controllers
+        .listener
+        .expect_poll()
+        .times(1)
+        // Mock the `accept` method here by receiving from the listen-loop thread
+        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
+        .in_sequence(&mut server_sequence);
+    server_foreign_controllers
+        .listener
+        .expect_poll()
+        .times(1)
+        .in_sequence(&mut server_sequence)
+        .returning(|| Ok(PollEvent::Stop));
+    let mut bootstrap_server_config = BootstrapConfig::default();
+    bootstrap_server_config.bootstrap_whitelist_path =
+        PathBuf::from("../massa-node/base_config/bootstrap_whitelist.json");
+    let mut client_sequence = Sequence::new();
+    let mut client_foreign_controllers = BootstrapClientForeignControllers::new_with_mocks();
+    client_foreign_controllers
+        .bs_connector
+        .expect_connect_timeout()
+        .times(1)
+        .returning(move |_, _| Ok(std::net::TcpStream::connect(socket_addr).unwrap()))
+        .in_sequence(&mut client_sequence);
+    client_foreign_controllers
+        .bs_connector
+        .expect_connect_timeout()
+        .times(1)
+        .in_sequence(&mut client_sequence)
+        .returning(move |_, _| {
+            println!("trigger handle");
+            waitpoint_trigger_handle.trigger();
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                "second connection just to waitpoint",
+            ))
+        });
+    let node_id = NodeId::new(server_foreign_controllers.server_keypair.get_public_key());
+    let mut bootstrap_client_config = BootstrapConfig::default();
+    bootstrap_client_config.bootstrap_list = vec![(socket_addr, node_id)];
+
+    BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
+    let mut client_universe =
         BootstrapClientTestUniverse::new(client_foreign_controllers, bootstrap_client_config);
+    waitpoint.wait();
+    client_universe.stop();
 }
 
 #[test]
