@@ -179,7 +179,7 @@ fn test_execution_shutdown() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -195,7 +195,7 @@ fn test_sending_command() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -218,7 +218,7 @@ fn test_readonly_execution() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -269,7 +269,7 @@ fn test_nested_call_gas_usage() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
@@ -346,7 +346,7 @@ fn test_get_call_coins() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
@@ -516,7 +516,7 @@ fn send_and_receive_async_message() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         Some(async_pool),
@@ -580,7 +580,7 @@ fn local_execution() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -659,7 +659,7 @@ fn sc_deployment() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
@@ -743,7 +743,7 @@ fn send_and_receive_async_message_with_trigger() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -857,7 +857,7 @@ fn send_and_receive_transaction() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -931,7 +931,7 @@ fn roll_buy() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1018,7 +1018,7 @@ fn roll_sell() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1173,7 +1173,7 @@ fn roll_slash() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1290,7 +1290,7 @@ fn roll_slash_2() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1352,7 +1352,7 @@ fn sc_execution_error() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1410,7 +1410,7 @@ fn sc_datastore() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
@@ -1464,7 +1464,7 @@ fn set_bytecode_error() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         None,
@@ -1543,7 +1543,7 @@ fn datastore_manipulations() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1720,7 +1720,7 @@ fn events_from_switching_blockclique() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1771,7 +1771,7 @@ fn not_enough_instance_gas() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1836,7 +1836,7 @@ fn sc_builtins() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1884,7 +1884,7 @@ fn validate_address() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
@@ -1935,7 +1935,7 @@ fn test_rewards() {
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
-        &mut foreign_controllers.selector_controller,
+        &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         None,
         None,
