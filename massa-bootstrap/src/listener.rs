@@ -74,7 +74,8 @@ impl BootstrapTcpListener {
         ))
     }
 
-    pub(crate) fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
+    /// Poll the listener for new connections
+    pub fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         let mut results = Vec::with_capacity(self.events.iter().count());

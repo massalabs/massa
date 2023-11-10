@@ -4,7 +4,7 @@ use massa_consensus_exports::MockConsensusControllerWrapper;
 use massa_final_state::MockFinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::config::THREAD_COUNT;
-use massa_protocol_exports::{MockProtocolController, MockProtocolControllerWrapper};
+use massa_protocol_exports::MockProtocolControllerWrapper;
 use massa_signature::KeyPair;
 use massa_test_framework::TestUniverse;
 use mio::{Poll, Token, Waker};
@@ -36,7 +36,7 @@ impl BootstrapServerForeignControllers {
 }
 
 pub struct BootstrapServerTestUniverse {
-    pub module_manager: Box<BootstrapManager>,
+    pub module_manager: Option<Box<BootstrapManager>>,
 }
 
 impl TestUniverse for BootstrapServerTestUniverse {
@@ -66,7 +66,7 @@ impl TestUniverse for BootstrapServerTestUniverse {
         )
         .unwrap();
         let universe = Self {
-            module_manager: Box::new(module_manager),
+            module_manager: Some(Box::new(module_manager)),
         };
         universe.initialize();
         universe
@@ -75,7 +75,6 @@ impl TestUniverse for BootstrapServerTestUniverse {
 
 impl Drop for BootstrapServerTestUniverse {
     fn drop(&mut self) {
-        //TODO: stop
-        //self.module_manager.stop().unwrap()
+        self.module_manager.take().unwrap().stop().unwrap();
     }
 }

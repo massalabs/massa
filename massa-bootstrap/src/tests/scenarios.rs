@@ -16,9 +16,7 @@ use crate::BootstrapError;
 use crate::{
     client::MockBSConnector, get_state, start_bootstrap_server, tests::tools::get_bootstrap_config,
 };
-use crate::{
-    listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapManager, BootstrapTcpListener,
-};
+use crate::{listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapTcpListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, MockConsensusController};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
@@ -50,18 +48,16 @@ use massa_models::{
 
 use massa_pos_exports::{
     test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
-    SelectorManager,
 };
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::MockProtocolController;
 use massa_signature::KeyPair;
-use massa_test_framework::{TestUniverse, WaitPoint};
+use massa_test_framework::TestUniverse;
 use massa_time::MassaTime;
 use mockall::Sequence;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::io::{self, Read};
-use std::net::{SocketAddr, TcpStream};
+use std::net::SocketAddr;
 use std::sync::{Condvar, Mutex};
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
@@ -74,150 +70,9 @@ lazy_static::lazy_static! {
     };
 }
 
-fn mock_bootstrap_manager(
-    addr: SocketAddr,
-    bootstrap_config: BootstrapConfig,
-) -> (BootstrapManager, Box<dyn SelectorManager>) {
-    // TODO from config
-    let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
-    let thread_count = 2;
-    let periods_per_cycle = 2;
-    let genesis_address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-    // setup selector local config
-    let selector_local_config = SelectorConfig {
-        thread_count,
-        periods_per_cycle,
-        genesis_address,
-        ..Default::default()
-    };
-
-    // start bootstrap manager
-    let (_, keypair): &(BootstrapConfig, KeyPair) = &BOOTSTRAP_CONFIG_KEYPAIR;
-    let mut mocked1 = Box::new(MockProtocolController::new());
-    let mocked2 = Box::new(MockProtocolController::new());
-    mocked1.expect_clone_box().return_once(move || mocked2);
-
-    // start proof-of-stake selectors
-    let (server_selector_manager, server_selector_controller) =
-        start_selector_worker(selector_local_config)
-            .expect("could not start server selector controller");
-
-    // setup final state local config
-    let temp_dir = TempDir::new().unwrap();
-    let db_config = MassaDBConfig {
-        path: temp_dir.path().to_path_buf(),
-        max_history_length: 10,
-        max_final_state_elements_size: 100_000_000,
-        max_versioning_elements_size: 100_000_000,
-        thread_count: 2,
-    };
-    let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
-    ));
-    let final_state_local_config = FinalStateConfig {
-        ledger_config: LedgerConfig {
-            thread_count,
-            initial_ledger_path: "".into(),
-            disk_ledger_path: temp_dir.path().to_path_buf(),
-            max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        },
-        async_pool_config: AsyncPoolConfig {
-            thread_count,
-            max_length: MAX_ASYNC_POOL_LENGTH,
-            max_function_length: MAX_FUNCTION_NAME_LENGTH,
-            max_function_params_length: MAX_PARAMETERS_SIZE as u64,
-            max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
-        },
-        pos_config: PoSConfig {
-            periods_per_cycle,
-            thread_count,
-            cycle_history_length: POS_SAVED_CYCLES,
-            max_rolls_length: MAX_ROLLS_COUNT_LENGTH,
-            max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
-            max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
-            initial_deferred_credits_path: None,
-        },
-        executed_ops_config: ExecutedOpsConfig {
-            thread_count,
-            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-        },
-        final_history_length: 100,
-        initial_seed_string: "".into(),
-        initial_rolls_path: "".into(),
-        thread_count,
-        periods_per_cycle,
-        executed_denunciations_config: ExecutedDenunciationsConfig {
-            denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
-            thread_count,
-            endorsement_count: ENDORSEMENT_COUNT,
-            keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-        },
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_executed_denunciations_length: 1000,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        t0: T0,
-        genesis_timestamp: *GENESIS_TIMESTAMP,
-    };
-
-    let final_state_server = Arc::new(RwLock::new(get_random_final_state_bootstrap(
-        PoSFinalState::new(
-            final_state_local_config.pos_config.clone(),
-            "",
-            &rolls_path,
-            server_selector_controller.clone(),
-            db.clone(),
-        )
-        .unwrap(),
-        final_state_local_config,
-        db.clone(),
-    )));
-    let mut stream_mock1 = Box::new(MockConsensusController::new());
-    let mut stream_mock2 = Box::new(MockConsensusController::new());
-    let stream_mock3 = Box::new(MockConsensusController::new());
-    stream_mock2
-        .expect_clone_box()
-        .return_once(move || stream_mock3);
-    stream_mock1
-        .expect_clone_box()
-        .return_once(move || stream_mock2);
-
-    let (listener_stopper, mut _listener) = BootstrapTcpListener::create(&addr).unwrap();
-    let mut listener = MockBootstrapTcpListener::new();
-    listener
-        .expect_poll()
-        .times(1)
-        .returning(move || _listener.poll());
-    listener.expect_poll().return_once(|| Ok(PollEvent::Stop));
-    (
-        start_bootstrap_server(
-            listener,
-            listener_stopper,
-            stream_mock1,
-            mocked1,
-            final_state_server,
-            bootstrap_config,
-            keypair.clone(),
-            Version::from_str("TEST.1.10").unwrap(),
-            MassaMetrics::new(
-                false,
-                "0.0.0.0:31248".parse().unwrap(),
-                thread_count,
-                Duration::from_secs(5),
-            )
-            .0,
-        )
-        .unwrap(),
-        server_selector_manager,
-    )
-}
-
 #[test]
 #[serial]
 fn test_bootstrap_not_whitelisted() {
-    let waitpoint = WaitPoint::new();
-    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
-
     // Setup the server/client connection
     // Bind a TcpListener to localhost on a specific port
     let socket_addr = SocketAddr::new(BASE_BOOTSTRAP_IP, 8069);
@@ -259,28 +114,22 @@ fn test_bootstrap_not_whitelisted() {
         .times(1)
         .returning(move |_, _| Ok(std::net::TcpStream::connect(socket_addr).unwrap()))
         .in_sequence(&mut client_sequence);
-    client_foreign_controllers
-        .bs_connector
-        .expect_connect_timeout()
-        .times(1)
-        .in_sequence(&mut client_sequence)
-        .returning(move |_, _| {
-            println!("trigger handle");
-            waitpoint_trigger_handle.trigger();
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "second connection just to waitpoint",
-            ))
-        });
     let node_id = NodeId::new(server_foreign_controllers.server_keypair.get_public_key());
     let mut bootstrap_client_config = BootstrapConfig::default();
     bootstrap_client_config.bootstrap_list = vec![(socket_addr, node_id)];
 
-    BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
+    let server_universe =
+        BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
     let mut client_universe =
         BootstrapClientTestUniverse::new(client_foreign_controllers, bootstrap_client_config);
-    waitpoint.wait();
-    client_universe.stop();
+    match client_universe.launch_bootstrap() {
+        Ok(()) => panic!("Bootstrap should have failed"),
+        Err(BootstrapError::ReceivedError(err)) => {
+            assert_eq!(err, String::from("IP 127.0.0.1 is not in the whitelist"))
+        }
+        Err(err) => panic!("Unexpected error: {:?}", err),
+    }
+    drop(server_universe);
 }
 
 #[test]

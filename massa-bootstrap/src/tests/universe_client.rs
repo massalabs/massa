@@ -1,16 +1,14 @@
-use std::{
-    sync::{Arc, Condvar, Mutex},
-    time::Duration,
-};
+use std::sync::Arc;
 
 use massa_final_state::MockFinalStateController;
-use massa_metrics::MassaMetrics;
-use massa_models::config::THREAD_COUNT;
+use massa_models::streaming_step::StreamingStep;
 use massa_test_framework::TestUniverse;
-use massa_time::MassaTime;
 use parking_lot::RwLock;
 
-use crate::{client::MockBSConnector, get_state, BootstrapConfig};
+use crate::{
+    client::{bootstrap_from_server, connect_to_server, MockBSConnector},
+    BootstrapClientMessage, BootstrapConfig, BootstrapError, GlobalBootstrapState,
+};
 
 pub struct BootstrapClientForeignControllers {
     pub final_state_controller: Arc<RwLock<MockFinalStateController>>,
@@ -27,7 +25,8 @@ impl BootstrapClientForeignControllers {
 }
 
 pub struct BootstrapClientTestUniverse {
-    pub interrupt: Arc<(Mutex<bool>, Condvar)>,
+    controllers: BootstrapClientForeignControllers,
+    config: BootstrapConfig,
 }
 
 impl TestUniverse for BootstrapClientTestUniverse {
@@ -35,43 +34,44 @@ impl TestUniverse for BootstrapClientTestUniverse {
     type ForeignControllers = BootstrapClientForeignControllers;
 
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self {
-        let version = "BOOT.1.0".parse().unwrap();
-        let interrupt = Arc::new((Mutex::new(false), Condvar::new()));
-        let interrupt_clone = interrupt.clone();
-        std::thread::Builder::new()
-            .spawn(move || {
-                get_state(
-                    &config,
-                    controllers.final_state_controller,
-                    controllers.bs_connector,
-                    version,
-                    MassaTime::now().saturating_sub(MassaTime::from_millis(1000)),
-                    None,
-                    None,
-                    interrupt_clone,
-                    MassaMetrics::new(
-                        false,
-                        "0.0.0.0:31248".parse().unwrap(),
-                        THREAD_COUNT,
-                        Duration::from_secs(5),
-                    )
-                    .0,
-                )
-            })
-            .unwrap();
-        let universe = Self { interrupt };
+        let universe = Self {
+            controllers,
+            config,
+        };
         universe.initialize();
         universe
     }
 }
 
 impl BootstrapClientTestUniverse {
-    pub fn stop(&mut self) {
-        println!("Dropping BootstrapClientTestUniverse");
-        let (lock, cvar) = &*self.interrupt;
-        let mut started = lock.lock().unwrap();
-        *started = true;
-        // We notify the condvar that the value has changed.
-        cvar.notify_one();
+    pub fn launch_bootstrap(&mut self) -> Result<(), BootstrapError> {
+        //TODO: Maybe move it out of this
+        let version = "BOOT.1.0".parse().unwrap();
+        let mut next_bootstrap_message: BootstrapClientMessage =
+            BootstrapClientMessage::AskBootstrapPart {
+                last_slot: None,
+                last_state_step: StreamingStep::Started,
+                last_versioning_step: StreamingStep::Started,
+                last_consensus_step: StreamingStep::Started,
+                send_last_start_period: true,
+            };
+        let mut global_bootstrap_state =
+            GlobalBootstrapState::new(self.controllers.final_state_controller.clone());
+
+        let mut conn = connect_to_server(
+            &mut self.controllers.bs_connector,
+            &self.config,
+            &self.config.bootstrap_list[0].0,
+            &self.config.bootstrap_list[0].1.get_public_key(),
+            Some(self.config.rate_limit),
+        )
+        .unwrap();
+        bootstrap_from_server(
+            &self.config,
+            &mut conn,
+            &mut next_bootstrap_message,
+            &mut global_bootstrap_state,
+            version,
+        )
     }
 }

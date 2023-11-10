@@ -199,7 +199,7 @@ fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-fn bootstrap_from_server(
+pub(crate) fn bootstrap_from_server(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -347,7 +347,7 @@ fn send_client_message(
         })
 }
 
-fn connect_to_server(
+pub(crate) fn connect_to_server(
     connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
