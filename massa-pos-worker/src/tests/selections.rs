@@ -1,6 +1,7 @@
 use massa_hash::Hash;
 use massa_models::address::Address;
 use massa_models::slot::Slot;
+use massa_pos_exports::PosError;
 use massa_pos_exports::SelectorConfig;
 use rand::thread_rng;
 use rand::RngCore;
@@ -9,7 +10,7 @@ use std::{collections::BTreeMap, str::FromStr};
 use crate::start_selector_worker;
 
 #[test]
-fn basic() {
+fn test_standalone_selection() {
     // initialize the selector configuration and the test inputs
     let cfg = SelectorConfig::default();
     let mut lookback_rolls: BTreeMap<Address, u64> = std::collections::BTreeMap::new();
@@ -55,6 +56,15 @@ fn basic() {
     // 2 slots as inclusive range so 32 * 2 + 1 = 65
     // we expect 65 selections
     assert_eq!(two_slot_selection.len(), 65);
+
+    // period 127 is the last of cycle 0
+    // draws for this slot have been computed
+    controller.get_selection(Slot { period: 127, thread: 0 }).unwrap();
+
+    // period 128 is the first of cycle 1
+    // draws for this slot have not been computed yet
+    let result = controller.get_selection(Slot { period: 128, thread: 0 });
+    assert!(matches!(result, Err(PosError::CycleUnavailable(1))));
 
     // stop worker
     manager.stop();
