@@ -809,8 +809,6 @@
 <a href="#809" id="809">809</a>
 <a href="#810" id="810">810</a>
 <a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -1060,7 +1058,6 @@
         </span><span class="kw">let </span>limit = <span class="self">self</span>.bootstrap_config.rate_limit;
         <span class="kw">loop </span>{
             <span class="comment">// block until we have a connection to work with, or break out of main-loop
-
             </span><span class="kw">let </span>connections = <span class="kw">match </span><span class="self">self</span>.ev_poller.poll() {
                 <span class="prelude-val">Ok</span>(PollEvent::Stop) =&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(()),
                 <span class="prelude-val">Ok</span>(PollEvent::NewConnections(connections)) =&gt; connections,
@@ -1082,17 +1079,6 @@
                     <span class="prelude-val">Some</span>(limit),
                 );
 
-                <span class="comment">// check whether incoming peer IP is allowed.
-                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
-                    server_binding.close_and_send_error(
-                        error_msg.to_string(),
-                        remote_addr,
-                        <span class="kw">move </span>|| {},
-                    );
-                    <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
-                    <span class="kw">continue</span>;
-                };
-
                 <span class="comment">// the `- 1` is to account for the top-level Arc that is created at the top
                 // of this method. subsequent counts correspond to each `clone` that is passed
                 // into a thread
@@ -1100,6 +1086,17 @@
                 //       a dedicated wrapper-type with doc-comments, manual drop impl that
                 //       integrates logging, etc...
                 </span><span class="kw">if </span>Arc::strong_count(<span class="kw-2">&amp;</span>bootstrap_sessions_counter) - <span class="number">1 </span>&lt; max_bootstraps {
+                    <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
+                    <span class="comment">// check whether incoming peer IP is allowed.
+                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(error_msg) = <span class="self">self</span>.white_black_list.is_ip_allowed(<span class="kw-2">&amp;</span>remote_addr) {
+                        server_binding.close_and_send_error(
+                            error_msg.to_string(),
+                            remote_addr,
+                            <span class="kw">move </span>|| {},
+                        );
+                        <span class="self">self</span>.massa_metrics.inc_bootstrap_peers_failed();
+                        <span class="kw">continue</span>;
+                    };
                     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.run.select.accept&quot;</span>, {
                         <span class="string">&quot;remote_addr&quot;</span>: remote_addr
                     });
@@ -1149,7 +1146,6 @@
                     <span class="kw">let </span>protocol_controller = <span class="self">self</span>.protocol_controller.clone();
                     <span class="kw">let </span>config = <span class="self">self</span>.bootstrap_config.clone();
 
-                    <span class="kw">let </span>bootstrap_count_token = bootstrap_sessions_counter.clone();
                     <span class="kw">let </span>massa_metrics = <span class="self">self</span>.massa_metrics.clone();
 
                     <span class="kw">let _ </span>= thread::Builder::new()

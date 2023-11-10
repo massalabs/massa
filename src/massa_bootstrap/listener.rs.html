@@ -135,7 +135,7 @@
     server: TcpListener,
 }
 
-<span class="kw">pub struct </span>BootstrapListenerStopHandle(Waker);
+<span class="kw">pub struct </span>BootstrapListenerStopHandle(<span class="kw">pub</span>(<span class="kw">crate</span>) Waker);
 
 <span class="kw">pub enum </span>PollEvent {
     NewConnections(Vec&lt;(TcpStream, SocketAddr)&gt;),

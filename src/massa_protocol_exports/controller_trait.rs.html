@@ -99,6 +99,9 @@
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::HashMap;
@@ -114,7 +117,10 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>peernet::peer::PeerConnectionType;
 
-<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+</span><span class="kw">use </span>std::sync::{Arc, RwLock};
+
+<span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall_wrap::wrap, mockall::automock)]
 </span><span class="kw">pub trait </span>ProtocolController: Send + Sync {
     <span class="doccomment">/// Perform all operations needed to stop the ProtocolController
     /// without dropping it completely yet.
