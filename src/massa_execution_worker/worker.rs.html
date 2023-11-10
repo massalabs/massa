@@ -309,7 +309,7 @@
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
-<span class="kw">use </span>massa_final_state::FinalStateController;
+<span class="kw">use </span>massa_final_state::FinalState;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::block_id::BlockId;
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -543,7 +543,7 @@
 /// * `execution_controller`: allows sending requests and notifications to the worker
 </span><span class="kw">pub fn </span>start_execution_worker(
     config: ExecutionConfig,
-    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
     selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
     mip_store: MipStore,
     channels: ExecutionChannels,
