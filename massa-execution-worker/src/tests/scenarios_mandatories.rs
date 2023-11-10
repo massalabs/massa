@@ -39,7 +39,7 @@ const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
 fn final_state_boilerplate(
     mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
     db: ShareableMassaDBController,
-    selector_controller: &mut MockSelectorControllerWrapper,
+    selector_controller: &MockSelectorControllerWrapper,
     ledger_controller: &mut MockLedgerControllerWrapper,
     saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
     custom_async_pool: Option<AsyncPool>,
@@ -1037,6 +1037,7 @@ fn roll_sell() {
                 .unwrap();
             assert_eq!(
                 amount,
+                // 100 from the boilerplate
                 Amount::from_mantissa_scale(100, 0)
                     .unwrap()
                     // + deferred credits set above
@@ -1568,6 +1569,7 @@ fn datastore_manipulations() {
                 .unwrap();
             assert_eq!(
                 amount,
+                // Base from the boilerplate
                 Amount::from_str("100")
                     .unwrap()
                     .saturating_sub(Amount::const_init(10, 0))
@@ -1956,6 +1958,7 @@ fn test_rewards() {
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair_address, || None),
+                // Reward + 100 base from boilerplate
                 Some(
                     first_block_reward.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
@@ -1965,6 +1968,7 @@ fn test_rewards() {
                 changes
                     .ledger_changes
                     .get_balance_or_else(&endorsement_producer_address, || None),
+                // Reward + 100 base from boilerplate
                 Some(
                     block_credit_part.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
@@ -1997,6 +2001,7 @@ fn test_rewards() {
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair2_address, || None),
+                // Reward + 100 base from boilerplate
                 Some(
                     creator_block_reward
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
@@ -2007,6 +2012,7 @@ fn test_rewards() {
                 changes
                     .ledger_changes
                     .get_balance_or_else(&endorsement_producer_address, || None),
+                // Reward + 100 base from boilerplate
                 Some(
                     block_credit_part_endorsement_producer
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
@@ -2017,6 +2023,7 @@ fn test_rewards() {
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair_address, || None),
+                // Reward + 100 base from boilerplate
                 Some(
                     block_credit_part_parent_in_thread
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
