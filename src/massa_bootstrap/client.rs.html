@@ -882,7 +882,7 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bootstrap_from_server(
+</span><span class="kw">fn </span>bootstrap_from_server(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
@@ -1030,7 +1030,7 @@
         })
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>connect_to_server(
+<span class="kw">fn </span>connect_to_server(
     connector: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSConnector,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
