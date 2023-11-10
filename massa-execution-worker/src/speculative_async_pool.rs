@@ -8,7 +8,7 @@ use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
     AsyncPoolChanges,
 };
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 use massa_models::slot::Slot;
 use parking_lot::RwLock;
@@ -18,7 +18,7 @@ use std::{
 };
 
 pub(crate) struct SpeculativeAsyncPool {
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
@@ -31,10 +31,14 @@ impl SpeculativeAsyncPool {
     ///
     /// # Arguments
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
-        let mut message_infos = final_state.read().async_pool.message_info_cache.clone();
+        let mut message_infos = final_state
+            .read()
+            .get_async_pool()
+            .message_info_cache
+            .clone();
 
         for history_item in active_history.read().0.iter() {
             for change in history_item.state_changes.async_pool_changes.0.iter() {
@@ -188,7 +192,7 @@ impl SpeculativeAsyncPool {
         let excess_count = self
             .message_infos
             .len()
-            .saturating_sub(self.final_state.read().async_pool.config.max_length as usize);
+            .saturating_sub(self.final_state.read().get_async_pool().config.max_length as usize);
 
         eliminated_infos.reserve_exact(excess_count);
         for _ in 0..excess_count {
@@ -283,7 +287,7 @@ impl SpeculativeAsyncPool {
         let fetched_msgs = self
             .final_state
             .read()
-            .async_pool
+            .get_async_pool()
             .fetch_messages(wanted_ids);
 
         for (message_id, message) in fetched_msgs {

@@ -5,6 +5,7 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
+use crate::controller_trait::FinalStateController;
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use anyhow::{anyhow, Result as AnyResult};
@@ -17,8 +18,10 @@ use massa_db_exports::{
 };
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
+use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
 use massa_ledger_exports::SetOrKeep;
+use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
@@ -139,133 +142,6 @@ impl FinalState {
         );
 
         // create the final state
-        Ok(final_state)
-    }
-
-    /// Get the fingerprint (hash) of the final state.
-    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
-    pub fn get_fingerprint(&self) -> massa_hash::Hash {
-        let internal_hash = self.db.read().get_xof_db_hash();
-        massa_hash::Hash::compute_from(internal_hash.to_bytes())
-    }
-
-    /// Get the slot at the end of which the final state is attached
-    pub fn get_slot(&self) -> Slot {
-        self.db
-            .read()
-            .get_change_id()
-            .expect("Critical error: Final state has no slot attached")
-    }
-
-    /// Gets the hash of the execution trail
-    pub fn get_execution_trail_hash(&self) -> massa_hash::Hash {
-        let hash_bytes = self
-            .db
-            .read()
-            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
-            .expect("could not read execution trail hash from state DB")
-            .expect("could not find execution trail hash in state DB");
-        massa_hash::Hash::from_bytes(
-            hash_bytes
-                .as_slice()
-                .try_into()
-                .expect("invalid execution trail hash in state DB"),
-        )
-    }
-
-    /// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
-    /// we just create a new one. This will be changed in the follow-up.
-    ///
-    /// # Arguments
-    /// * `config`: the configuration of the final state to use for initialization
-    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
-    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
-    /// * `last_start_period`: at what period we should attach the final_state
-    pub fn new_derived_from_snapshot(
-        db: ShareableMassaDBController,
-        config: FinalStateConfig,
-        ledger: Box<dyn LedgerController>,
-        selector: Box<dyn SelectorController>,
-        mip_store: MipStore,
-        last_start_period: u64,
-    ) -> Result<Self, FinalStateError> {
-        info!("Restarting from snapshot");
-
-        let mut final_state =
-            FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
-
-        let recovered_slot =
-            final_state.db.read().get_change_id().map_err(|_| {
-                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
-            })?;
-
-        // This is needed for `test_bootstrap_server` to work
-        if cfg!(feature = "test-exports") {
-            let mut batch = DBBatch::new();
-            final_state.pos_state.create_initial_cycle(&mut batch);
-            final_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), Some(recovered_slot));
-        }
-
-        final_state.last_slot_before_downtime = Some(recovered_slot);
-
-        // Check that MIP store is consistent with the network shutdown time range
-        // Assume that the final state has been edited during network shutdown
-        let shutdown_start = recovered_slot
-            .get_next_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(format!(
-                    "Unable to get next slot from recovered slot: {:?}",
-                    e
-                ))
-            })?;
-        let shutdown_end = Slot::new(last_start_period, 0)
-            .get_prev_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(format!(
-                    "Unable to compute prev slot from last start period: {:?}",
-                    e
-                ))
-            })?;
-        debug!(
-            "Checking if MIP store is consistent against shutdown period: {} - {}",
-            shutdown_start, shutdown_end
-        );
-
-        final_state
-            .mip_store
-            .is_consistent_with_shutdown_period(
-                shutdown_start,
-                shutdown_end,
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-            )
-            .map_err(FinalStateError::from)?;
-
-        debug!(
-            "Latest consistent slot found in snapshot data: {}",
-            recovered_slot
-        );
-
-        info!(
-            "final_state hash at slot {}: {}",
-            recovered_slot,
-            final_state.db.read().get_xof_db_hash()
-        );
-
-        // Then, interpolate the downtime, to attach at end_slot;
-        final_state.last_start_period = last_start_period;
-
-        final_state.recompute_caches();
-
-        // We compute the draws here because we need to feed_cycles when interpolating
-        final_state.compute_initial_draws()?;
-
-        final_state.interpolate_downtime()?;
-
         Ok(final_state)
     }
 
@@ -550,39 +426,6 @@ impl FinalState {
         Ok(())
     }
 
-    /// Reset the final state to the initial state.
-    ///
-    /// USED ONLY FOR BOOTSTRAP
-    pub fn reset(&mut self) {
-        let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
-        self.db.write().reset(slot);
-        self.ledger.reset();
-        self.async_pool.reset();
-        self.pos_state.reset();
-        self.executed_ops.reset();
-        self.executed_denunciations.reset();
-        self.mip_store.reset_db(self.db.clone());
-        // delete the execution trail hash
-        self.db
-            .write()
-            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
-    }
-
-    /// Performs the initial draws.
-    pub fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
-        self.pos_state
-            .compute_initial_draws()
-            .map_err(|err| FinalStateError::PosError(err.to_string()))
-    }
-
-    /// Applies changes to the execution state at a given slot, and settles that slot forever.
-    /// Once this is called, the state is attached at the output of the provided slot.
-    ///
-    /// Panics if the new slot is not the one coming just after the current one.
-    pub fn finalize(&mut self, slot: Slot, changes: StateChanges) {
-        self._finalize(slot, changes).unwrap()
-    }
-
     fn _finalize(&mut self, slot: Slot, changes: StateChanges) -> AnyResult<()> {
         let cur_slot = self.db.read().get_change_id()?;
         // check slot consistency
@@ -686,19 +529,6 @@ impl FinalState {
             .feed_cycle_state_hash(cycle, final_state_hash);
 
         Ok(())
-    }
-
-    /// After bootstrap or load from disk, recompute all the caches.
-    pub fn recompute_caches(&mut self) {
-        self.async_pool.recompute_message_info_cache();
-        self.executed_ops.recompute_sorted_ops_and_op_exec_status();
-        self.executed_denunciations.recompute_sorted_denunciations();
-        self.pos_state.recompute_pos_state_caches();
-    }
-
-    /// Deserialize the entire DB and check the data. Useful to check after bootstrap.
-    pub fn is_db_valid(&self) -> bool {
-        self._is_db_valid().is_ok()
     }
 
     /// Internal function called by is_db_valid
@@ -821,12 +651,232 @@ impl FinalState {
         Ok(())
     }
 
-    /// Initialize the execution trail hash to zero.
-    pub fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch) {
+    /// Initializes a `FinalState` from a snapshot.
+    ///
+    /// # Arguments
+    /// * `db`: A type that implements the `MassaDBController` trait. Used to read and write to the database.
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
+    /// * `last_start_period`: at what period we should attach the final_state
+    pub fn new_derived_from_snapshot(
+        db: ShareableMassaDBController,
+        config: FinalStateConfig,
+        ledger: Box<dyn LedgerController>,
+        selector: Box<dyn SelectorController>,
+        mip_store: MipStore,
+        last_start_period: u64,
+    ) -> Result<Self, FinalStateError> {
+        info!("Restarting from snapshot");
+
+        let mut final_state =
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, false)?;
+
+        let recovered_slot =
+            final_state.db.read().get_change_id().map_err(|_| {
+                FinalStateError::InvalidSlot(String::from("Could not get slot in db"))
+            })?;
+
+        // This is needed for `test_bootstrap_server` to work
+        if cfg!(feature = "test-exports") {
+            let mut batch = DBBatch::new();
+            final_state.pos_state.create_initial_cycle(&mut batch);
+            final_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), Some(recovered_slot));
+        }
+
+        final_state.last_slot_before_downtime = Some(recovered_slot);
+
+        // Check that MIP store is consistent with the network shutdown time range
+        // Assume that the final state has been edited during network shutdown
+        let shutdown_start = recovered_slot
+            .get_next_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to get next slot from recovered slot: {:?}",
+                    e
+                ))
+            })?;
+        let shutdown_end = Slot::new(last_start_period, 0)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(format!(
+                    "Unable to compute prev slot from last start period: {:?}",
+                    e
+                ))
+            })?;
+        debug!(
+            "Checking if MIP store is consistent against shutdown period: {} - {}",
+            shutdown_start, shutdown_end
+        );
+
+        final_state
+            .mip_store
+            .is_consistent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            )
+            .map_err(FinalStateError::from)?;
+
+        debug!(
+            "Latest consistent slot found in snapshot data: {}",
+            recovered_slot
+        );
+
+        info!(
+            "final_state hash at slot {}: {}",
+            recovered_slot,
+            final_state.db.read().get_xof_db_hash()
+        );
+
+        // Then, interpolate the downtime, to attach at end_slot;
+        final_state.last_start_period = last_start_period;
+
+        final_state.recompute_caches();
+
+        // We compute the draws here because we need to feed_cycles when interpolating
+        final_state.compute_initial_draws()?;
+
+        final_state.interpolate_downtime()?;
+
+        Ok(final_state)
+    }
+}
+
+impl FinalStateController for FinalState {
+    fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
+        self.pos_state
+            .compute_initial_draws()
+            .map_err(|err| FinalStateError::PosError(err.to_string()))
+    }
+
+    fn finalize(&mut self, slot: Slot, changes: StateChanges) {
+        self._finalize(slot, changes).unwrap()
+    }
+
+    fn get_execution_trail_hash(&self) -> Hash {
+        let hash_bytes = self
+            .db
+            .read()
+            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
+            .expect("could not read execution trail hash from state DB")
+            .expect("could not find execution trail hash in state DB");
+        Hash::from_bytes(
+            hash_bytes
+                .as_slice()
+                .try_into()
+                .expect("invalid execution trail hash in state DB"),
+        )
+    }
+
+    fn get_fingerprint(&self) -> Hash {
+        let internal_hash = self.db.read().get_xof_db_hash();
+        Hash::compute_from(internal_hash.to_bytes())
+    }
+
+    fn get_slot(&self) -> Slot {
+        self.db
+            .read()
+            .get_change_id()
+            .expect("Critical error: Final state has no slot attached")
+    }
+
+    fn init_execution_trail_hash_to_batch(&mut self, batch: &mut DBBatch) {
         batch.insert(
             EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
             Some(massa_hash::Hash::zero().to_bytes().to_vec()),
         );
+    }
+
+    fn is_db_valid(&self) -> bool {
+        self._is_db_valid().is_ok()
+    }
+
+    fn recompute_caches(&mut self) {
+        self.async_pool.recompute_message_info_cache();
+        self.executed_ops.recompute_sorted_ops_and_op_exec_status();
+        self.executed_denunciations.recompute_sorted_denunciations();
+        self.pos_state.recompute_pos_state_caches();
+    }
+
+    fn reset(&mut self) {
+        let slot = Slot::new(0, self.config.thread_count.saturating_sub(1));
+        self.db.write().reset(slot);
+        self.ledger.reset();
+        self.async_pool.reset();
+        self.pos_state.reset();
+        self.executed_ops.reset();
+        self.executed_denunciations.reset();
+        self.mip_store.reset_db(self.db.clone());
+        // delete the execution trail hash
+        self.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, None);
+    }
+
+    fn get_ledger(&self) -> &Box<dyn LedgerController> {
+        &self.ledger
+    }
+
+    fn get_ledger_mut(&mut self) -> &mut Box<dyn LedgerController> {
+        &mut self.ledger
+    }
+
+    fn get_async_pool(&self) -> &AsyncPool {
+        &self.async_pool
+    }
+
+    fn get_pos_state(&self) -> &PoSFinalState {
+        &self.pos_state
+    }
+
+    fn get_pos_state_mut(&mut self) -> &mut PoSFinalState {
+        &mut self.pos_state
+    }
+
+    fn executed_ops_contains(&self, op_id: &OperationId) -> bool {
+        self.executed_ops.contains(op_id)
+    }
+
+    fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<Option<bool>> {
+        self.executed_ops.get_ops_exec_status(batch)
+    }
+
+    fn get_executed_denunciations(&self) -> &ExecutedDenunciations {
+        &self.executed_denunciations
+    }
+
+    fn get_database(&self) -> &ShareableMassaDBController {
+        &self.db
+    }
+
+    fn get_last_start_period(&self) -> u64 {
+        self.last_start_period
+    }
+
+    fn set_last_start_period(&mut self, last_start_period: u64) {
+        self.last_start_period = last_start_period;
+    }
+
+    fn get_last_slot_before_downtime(&self) -> &Option<Slot> {
+        &self.last_slot_before_downtime
+    }
+
+    fn set_last_slot_before_downtime(&mut self, last_slot_before_downtime: Option<Slot>) {
+        self.last_slot_before_downtime = last_slot_before_downtime;
+    }
+
+    fn get_mip_store_mut(&mut self) -> &mut MipStore {
+        &mut self.mip_store
+    }
+
+    fn get_mip_store(&self) -> &MipStore {
+        &self.mip_store
     }
 }
 

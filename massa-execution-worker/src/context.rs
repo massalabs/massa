@@ -20,7 +20,7 @@ use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
 };
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -186,7 +186,7 @@ impl ExecutionContext {
     /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
         config: ExecutionConfig,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,
@@ -310,7 +310,7 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         call_stack: Vec<ExecutionStackElement>,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,
@@ -375,7 +375,7 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,

@@ -17,7 +17,7 @@ use massa_executed_ops::{
     ExecutedOpsConfig,
 };
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{FinalState, FinalStateConfig};
+use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
 use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrKeep, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;

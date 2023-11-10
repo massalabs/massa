@@ -29,7 +29,7 @@ use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
 use massa_db_exports::CHANGE_ID_DESER_ERROR;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{
@@ -136,7 +136,7 @@ pub fn start_bootstrap_server(
     listener_stopper: BootstrapListenerStopHandle,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     config: BootstrapConfig,
     keypair: KeyPair,
     version: Version,
@@ -208,7 +208,7 @@ pub fn start_bootstrap_server(
 struct BootstrapServer<'a> {
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     ev_poller: BootstrapTcpListener,
     white_black_list: SharedWhiteBlackList<'a>,
     keypair: KeyPair,
@@ -412,7 +412,7 @@ fn run_bootstrap_session(
     arc_counter: Arc<()>,
     config: BootstrapConfig,
     remote_addr: SocketAddr,
-    data_execution: Arc<RwLock<FinalState>>,
+    data_execution: Arc<RwLock<dyn FinalStateController>>,
     version: Version,
     consensus_command_sender: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,
@@ -472,7 +472,7 @@ fn run_bootstrap_session(
 #[allow(clippy::too_many_arguments)]
 pub fn stream_bootstrap_information(
     server: &mut BootstrapServerBinder,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     consensus_controller: Box<dyn ConsensusController>,
     mut last_slot: Option<Slot>,
     mut last_state_step: StreamingStep<Vec<u8>>,
@@ -502,18 +502,18 @@ pub fn stream_bootstrap_information(
             let final_state_read = final_state.read();
 
             last_start_period = if send_last_start_period {
-                Some(final_state_read.last_start_period)
+                Some(final_state_read.get_last_start_period())
             } else {
                 None
             };
             last_slot_before_downtime = if send_last_start_period {
-                Some(final_state_read.last_slot_before_downtime)
+                Some(*final_state_read.get_last_slot_before_downtime())
             } else {
                 None
             };
 
             state_part = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_batch_to_stream(&last_state_step, last_slot)
                 .map_err(|e| {
@@ -554,7 +554,7 @@ pub fn stream_bootstrap_information(
             };
 
             versioning_part = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_versioning_batch_to_stream(&last_versioning_step, last_slot)
                 .map_err(|e| {
@@ -600,7 +600,7 @@ pub fn stream_bootstrap_information(
             };
 
             let db_slot = final_state_read
-                .db
+                .get_database()
                 .read()
                 .get_change_id()
                 .expect(CHANGE_ID_DESER_ERROR);
@@ -704,7 +704,7 @@ fn step_timeout_duration(bs_deadline: &Instant, step_timeout: &Duration) -> Opti
 pub(crate) fn manage_bootstrap(
     bootstrap_config: &BootstrapConfig,
     server: &mut BootstrapServerBinder,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     version: Version,
     consensus_controller: Box<dyn ConsensusController>,
     protocol_controller: Box<dyn ProtocolController>,

@@ -11,10 +11,8 @@ use std::{
 
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
-    DBBatch, MassaDBConfig, MassaDBController, MassaIteratorMode, ShareableMassaDBController,
-    METADATA_CF, STATE_CF, STATE_HASH_KEY,
+    DBBatch, MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
 };
-use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
@@ -29,7 +27,7 @@ use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use tempfile::{NamedTempFile, TempDir};
 
-use crate::{FinalState, FinalStateConfig};
+use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
 
 #[allow(clippy::too_many_arguments)]
 /// Create a `FinalState` from pre-set values
@@ -138,8 +136,9 @@ pub fn assert_eq_final_state_hash(v1: &FinalState, v2: &FinalState) {
     );
 }
 
-fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
-    let file = NamedTempFile::new().unwrap();
+/// New initials
+pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
+    let file: NamedTempFile = NamedTempFile::new().unwrap();
     let mut rolls: BTreeMap<Address, u64> = BTreeMap::new();
     let mut ledger: HashMap<Address, LedgerEntry> = HashMap::new();
 
@@ -173,23 +172,22 @@ fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
 }
 
 /// Get a final state
+#[allow(clippy::type_complexity)]
 pub fn get_sample_state(
     last_start_period: u64,
     selector_controller: Box<dyn SelectorController>,
     mip_store: MipStore,
-) -> Result<(Arc<RwLock<FinalState>>, NamedTempFile, TempDir), LedgerError> {
+    db: ShareableMassaDBController,
+) -> Result<
+    (
+        Arc<RwLock<dyn FinalStateController>>,
+        NamedTempFile,
+        TempDir,
+    ),
+    LedgerError,
+> {
     let (rolls_file, ledger) = get_initials();
     let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
-    let db_config = MassaDBConfig {
-        path: tempdir.path().to_path_buf(),
-        max_history_length: 10,
-        max_final_state_elements_size: 100_000,
-        max_versioning_elements_size: 100_000,
-        thread_count: THREAD_COUNT,
-    };
-    let db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
-    ));
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
