@@ -1939,10 +1939,10 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
-    /// we just create a new one. This will be changed in the follow-up.
+    <span class="doccomment">/// Initializes a `FinalState` from a snapshot.
     ///
     /// # Arguments
+    /// * `db`: A type that implements the `MassaDBController` trait. Used to read and write to the database.
     /// * `config`: the configuration of the final state to use for initialization
     /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
     /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
