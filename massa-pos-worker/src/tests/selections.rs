@@ -87,10 +87,6 @@ fn test_invalid_roll_distribution() {
         Address::from_str("AU12Cyu2f7C7isA3ADAhoNuq9ZUFPKP24jmiGj3sh9D1pHoAWKDYY").unwrap(),
         0,
     );
-    lookback_rolls.insert(
-        Address::from_str("AU12BTfZ7k1z6PsLEUZeHYNirz6WJ3NdrWto9H4TkVpkV9xE2TJg2").unwrap(),
-        0,
-    );
     let mut seed_bytes = [0u8; 16];
     thread_rng().fill_bytes(&mut seed_bytes);
     let lookback_seed = Hash::compute_from(&seed_bytes);
