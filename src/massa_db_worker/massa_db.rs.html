@@ -1615,8 +1615,6 @@
 <a href="#1615" id="1615">1615</a>
 <a href="#1616" id="1616">1616</a>
 <a href="#1617" id="1617">1617</a>
-<a href="#1618" id="1618">1618</a>
-<a href="#1619" id="1619">1619</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1738,12 +1736,6 @@
                             </span>.change_history
                             .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Bound::Unbounded));
 
-                        <span class="kw">if </span>cursor.next().is_none() {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                                <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
-                            )));
-                        }
-
                         <span class="kw">match </span>cursor.next() {
                             <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
@@ -1753,6 +1745,7 @@
                                 <span class="kw">let </span>iter = <span class="self">self
                                     </span>.change_history
                                     .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+
                                 <span class="kw">for </span>(_change_id, changes) <span class="kw">in </span>iter {
                                     updates.extend(
                                         changes
@@ -1765,8 +1758,12 @@
                                 }
                                 updates
                             }
-                            <span class="prelude-val">None </span>=&gt; BTreeMap::new(), <span class="comment">// no new updates
-                        </span>}
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                                    <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                                )));
+                            }
+                        }
                     }
                 }
             }
@@ -1850,12 +1847,6 @@
                             </span>.change_history_versioning
                             .range((Bound::Included(<span class="kw-2">&amp;</span>last_change_id), Unbounded));
 
-                        <span class="kw">if </span>cursor.next().is_none() {
-                            <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                                <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
-                            )));
-                        }
-
                         <span class="kw">match </span>cursor.next() {
                             <span class="prelude-val">Some</span>((cursor_change_id, <span class="kw">_</span>)) =&gt; {
                                 <span class="comment">// We have to send all the updates since cursor_change_id
@@ -1877,8 +1868,12 @@
                                 }
                                 updates
                             }
-                            <span class="prelude-val">None </span>=&gt; BTreeMap::new(), <span class="comment">// no new updates
-                        </span>}
+                            <span class="prelude-val">None </span>=&gt; {
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
+                                    <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                                )));
+                            }
+                        }
                     }
                 }
             }
@@ -3181,7 +3176,7 @@
         <span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
             BTreeMap::from([
-                (batch_key_1, batch_value_1),
+                (batch_key_1.clone(), batch_value_1.clone()),
                 (batch_key_2.clone(), batch_value_2)
             ])
         );
@@ -3207,7 +3202,6 @@
         drop(guard);
 
         <span class="comment">// Stream using StreamingStep::Finished
-
         </span><span class="kw">let </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt; =
             StreamingStep::Finished(<span class="prelude-val">Some</span>(batch_key_2.clone()));
         <span class="kw">let </span>stream_batch_ = db
@@ -3215,11 +3209,13 @@
             .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_1));
         <span class="kw">let </span>stream_batch = stream_batch_.unwrap();
 
-        <span class="comment">// FIXME?: new_elements is empty, everything is on updates_on_previous_elements
+        <span class="comment">// Note: new_elements is empty, everything is on updates_on_previous_elements
+        //       new_elements are fulfilled only if StreamingStep != StreamingStep::Finished
         </span><span class="macro">assert!</span>(stream_batch.new_elements.is_empty());
         <span class="macro">assert_eq!</span>(
             stream_batch.updates_on_previous_elements,
             BTreeMap::from([
+                (batch_key_1, <span class="prelude-val">Some</span>(batch_value_1)),
                 (batch_key_2, <span class="prelude-val">Some</span>(batch_value_2b)),
                 (batch_key_3.clone(), <span class="prelude-val">Some</span>(batch_value_3))
             ])
