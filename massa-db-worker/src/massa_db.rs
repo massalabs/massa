@@ -119,12 +119,6 @@ where
                             .change_history
                             .range((Bound::Included(&last_change_id), Bound::Unbounded));
 
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
                         match cursor.next() {
                             Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
@@ -134,6 +128,7 @@ where
                                 let iter = self
                                     .change_history
                                     .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -146,7 +141,11 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            None => {
+                                return Err(MassaDBError::TimeError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -231,12 +230,6 @@ where
                             .change_history_versioning
                             .range((Bound::Included(&last_change_id), Unbounded));
 
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
                         match cursor.next() {
                             Some((cursor_change_id, _)) => {
                                 // We have to send all the updates since cursor_change_id
@@ -258,7 +251,11 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            None => {
+                                return Err(MassaDBError::TimeError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -1562,7 +1559,7 @@ mod test {
         assert_eq!(
             stream_batch.new_elements,
             BTreeMap::from([
-                (batch_key_1, batch_value_1),
+                (batch_key_1.clone(), batch_value_1.clone()),
                 (batch_key_2.clone(), batch_value_2)
             ])
         );
@@ -1588,7 +1585,6 @@ mod test {
         drop(guard);
 
         // Stream using StreamingStep::Finished
-
         let last_state_step: StreamingStep<Vec<u8>> =
             StreamingStep::Finished(Some(batch_key_2.clone()));
         let stream_batch_ = db
@@ -1596,11 +1592,13 @@ mod test {
             .get_batch_to_stream(&last_state_step, Some(slot_1));
         let stream_batch = stream_batch_.unwrap();
 
-        // FIXME?: new_elements is empty, everything is on updates_on_previous_elements
+        // Note: new_elements is empty, everything is on updates_on_previous_elements
+        //       new_elements are fulfilled only if StreamingStep != StreamingStep::Finished
         assert!(stream_batch.new_elements.is_empty());
         assert_eq!(
             stream_batch.updates_on_previous_elements,
             BTreeMap::from([
+                (batch_key_1, Some(batch_value_1)),
                 (batch_key_2, Some(batch_value_2b)),
                 (batch_key_3.clone(), Some(batch_value_3))
             ])
