@@ -678,9 +678,12 @@
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
 <a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db_exports::DBBatch;
-<span class="kw">use </span>massa_final_state::{FinalState, FinalStateError};
+<span class="kw">use </span>massa_final_state::{FinalStateController, FinalStateError};
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -773,14 +776,14 @@
 
                     <span class="comment">// We only need to receive the initial_state once
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(last_start_period) = last_start_period {
-                        write_final_state.last_start_period = last_start_period;
+                        write_final_state.set_last_start_period(last_start_period);
                     }
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(last_slot_before_downtime) = last_slot_before_downtime {
-                        write_final_state.last_slot_before_downtime = last_slot_before_downtime;
+                        write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);
                     }
 
                     <span class="kw">let </span>(last_state_step, last_versioning_step) = write_final_state
-                        .db
+                        .get_database()
                         .write()
                         .write_batch_bootstrap_client(state_part, versioning_part)
                         .map_err(|e| {
@@ -835,9 +838,9 @@
 
                     <span class="comment">// Update MIP store by reading from the disk
                     </span><span class="kw">let </span><span class="kw-2">mut </span>guard = global_bootstrap_state.final_state.write();
-                    <span class="kw">let </span>db = guard.db.clone();
+                    <span class="kw">let </span>db = guard.get_database().clone();
                     <span class="kw">let </span>(updated, added) = guard
-                        .mip_store
+                        .get_mip_store_mut()
                         .extend_from_db(db)
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))<span class="question-mark">?</span>;
 
@@ -879,7 +882,7 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-</span><span class="kw">fn </span>bootstrap_from_server(
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bootstrap_from_server(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
@@ -1027,7 +1030,7 @@
         })
 }
 
-<span class="kw">fn </span>connect_to_server(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>connect_to_server(
     connector: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSConnector,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
@@ -1076,7 +1079,7 @@
 </span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>get_state(
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     <span class="kw-2">mut </span>connector: <span class="kw">impl </span>BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
@@ -1103,7 +1106,7 @@
             <span class="kw">if </span>!bootstrap_config.keep_ledger {
                 <span class="comment">// load ledger from initial ledger file
                 </span>final_state_guard
-                    .ledger
+                    .get_ledger_mut()
                     .load_initial_ledger()
                     .map_err(|err| {
                         BootstrapError::GeneralError(<span class="macro">format!</span>(
@@ -1114,21 +1117,23 @@
             }
 
             <span class="kw">let </span>slot = Slot::new(
-                final_state_guard.last_start_period,
+                final_state_guard.get_last_start_period(),
                 bootstrap_config.thread_count.saturating_sub(<span class="number">1</span>),
             );
 
             <span class="comment">// create the initial cycle of PoS cycle_history
             </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             <span class="kw">let </span><span class="kw-2">mut </span>db_versioning_batch: BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; = DBBatch::new();
-            final_state_guard.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
+            final_state_guard
+                .get_pos_state_mut()
+                .create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
 
             <span class="comment">// set initial execution trail hash
             </span>final_state_guard.init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span>batch);
 
             <span class="comment">// load initial deferred credits
             </span>final_state_guard
-                .pos_state
+                .get_pos_state_mut()
                 .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(<span class="macro">format!</span>(
@@ -1139,14 +1144,15 @@
 
             <span class="comment">// Need to write MIP store to Db if we want to bootstrap it to others
             </span>final_state_guard
-                .mip_store
+                .get_mip_store()
                 .update_batches(<span class="kw-2">&amp;mut </span>batch, <span class="kw-2">&amp;mut </span>db_versioning_batch, <span class="prelude-val">None</span>)
                 .map_err(|e| BootstrapError::GeneralError(e.to_string()))<span class="question-mark">?</span>;
 
-            final_state_guard
-                .db
-                .write()
-                .write_batch(batch, db_versioning_batch, <span class="prelude-val">Some</span>(slot));
+            final_state_guard.get_database().write().write_batch(
+                batch,
+                db_versioning_batch,
+                <span class="prelude-val">Some</span>(slot),
+            );
         }
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }

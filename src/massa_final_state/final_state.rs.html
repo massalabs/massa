@@ -1236,6 +1236,56 @@
 <a href="#1236" id="1236">1236</a>
 <a href="#1237" id="1237">1237</a>
 <a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1243,7 +1293,8 @@
 //! the output of a given final slot (the latest executed final slot),
 //! and need to be bootstrapped by nodes joining the network.
 
-</span><span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
+</span><span class="kw">use </span><span class="kw">crate</span>::controller_trait::FinalStateController;
+<span class="kw">use crate</span>::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 <span class="kw">use </span>anyhow::{anyhow, <span class="prelude-ty">Result </span><span class="kw">as </span>AnyResult};
 <span class="kw">use </span>massa_async_pool::AsyncPool;
@@ -1255,8 +1306,10 @@
 };
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
+<span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
 <span class="kw">use </span>massa_ledger_exports::SetOrKeep;
+<span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
@@ -1378,133 +1431,6 @@
 
         <span class="comment">// create the final state
         </span><span class="prelude-val">Ok</span>(final_state)
-    }
-
-    <span class="doccomment">/// Get the fingerprint (hash) of the final state.
-    /// Note that only one atomic write per final slot occurs, so this can be safely queried at any time.
-    </span><span class="kw">pub fn </span>get_fingerprint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; massa_hash::Hash {
-        <span class="kw">let </span>internal_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
-        massa_hash::Hash::compute_from(internal_hash.to_bytes())
-    }
-
-    <span class="doccomment">/// Get the slot at the end of which the final state is attached
-    </span><span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Slot {
-        <span class="self">self</span>.db
-            .read()
-            .get_change_id()
-            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>)
-    }
-
-    <span class="doccomment">/// Gets the hash of the execution trail
-    </span><span class="kw">pub fn </span>get_execution_trail_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; massa_hash::Hash {
-        <span class="kw">let </span>hash_bytes = <span class="self">self
-            </span>.db
-            .read()
-            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
-            .expect(<span class="string">&quot;could not read execution trail hash from state DB&quot;</span>)
-            .expect(<span class="string">&quot;could not find execution trail hash in state DB&quot;</span>);
-        massa_hash::Hash::from_bytes(
-            hash_bytes
-                .as_slice()
-                .try_into()
-                .expect(<span class="string">&quot;invalid execution trail hash in state DB&quot;</span>),
-        )
-    }
-
-    <span class="doccomment">/// Initializes a `FinalState` from a snapshot. Currently, we do not use the final_state from the ledger,
-    /// we just create a new one. This will be changed in the follow-up.
-    ///
-    /// # Arguments
-    /// * `config`: the configuration of the final state to use for initialization
-    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
-    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
-    /// * `last_start_period`: at what period we should attach the final_state
-    </span><span class="kw">pub fn </span>new_derived_from_snapshot(
-        db: ShareableMassaDBController,
-        config: FinalStateConfig,
-        ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
-        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
-        mip_store: MipStore,
-        last_start_period: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
-        <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>final_state =
-            FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>recovered_slot =
-            final_state.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
-                FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>))
-            })<span class="question-mark">?</span>;
-
-        <span class="comment">// This is needed for `test_bootstrap_server` to work
-        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;test-exports&quot;</span>) {
-            <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
-            final_state.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
-            final_state
-                .db
-                .write()
-                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(recovered_slot));
-        }
-
-        final_state.last_slot_before_downtime = <span class="prelude-val">Some</span>(recovered_slot);
-
-        <span class="comment">// Check that MIP store is consistent with the network shutdown time range
-        // Assume that the final state has been edited during network shutdown
-        </span><span class="kw">let </span>shutdown_start = recovered_slot
-            .get_next_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Unable to get next slot from recovered slot: {:?}&quot;</span>,
-                    e
-                ))
-            })<span class="question-mark">?</span>;
-        <span class="kw">let </span>shutdown_end = Slot::new(last_start_period, <span class="number">0</span>)
-            .get_prev_slot(config.thread_count)
-            .map_err(|e| {
-                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Unable to compute prev slot from last start period: {:?}&quot;</span>,
-                    e
-                ))
-            })<span class="question-mark">?</span>;
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;Checking if MIP store is consistent against shutdown period: {} - {}&quot;</span>,
-            shutdown_start, shutdown_end
-        );
-
-        final_state
-            .mip_store
-            .is_consistent_with_shutdown_period(
-                shutdown_start,
-                shutdown_end,
-                config.thread_count,
-                config.t0,
-                config.genesis_timestamp,
-            )
-            .map_err(FinalStateError::from)<span class="question-mark">?</span>;
-
-        <span class="macro">debug!</span>(
-            <span class="string">&quot;Latest consistent slot found in snapshot data: {}&quot;</span>,
-            recovered_slot
-        );
-
-        <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
-            recovered_slot,
-            final_state.db.read().get_xof_db_hash()
-        );
-
-        <span class="comment">// Then, interpolate the downtime, to attach at end_slot;
-        </span>final_state.last_start_period = last_start_period;
-
-        final_state.recompute_caches();
-
-        <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
-        </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
-
-        final_state.interpolate_downtime()<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(final_state)
     }
 
     <span class="doccomment">/// Once we created a FinalState from a snapshot, we need to edit it to attach at the end_slot and handle the downtime.
@@ -1788,39 +1714,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Reset the final state to the initial state.
-    ///
-    /// USED ONLY FOR BOOTSTRAP
-    </span><span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
-        <span class="self">self</span>.db.write().reset(slot);
-        <span class="self">self</span>.ledger.reset();
-        <span class="self">self</span>.async_pool.reset();
-        <span class="self">self</span>.pos_state.reset();
-        <span class="self">self</span>.executed_ops.reset();
-        <span class="self">self</span>.executed_denunciations.reset();
-        <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone());
-        <span class="comment">// delete the execution trail hash
-        </span><span class="self">self</span>.db
-            .write()
-            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
-    }
-
-    <span class="doccomment">/// Performs the initial draws.
-    </span><span class="kw">pub fn </span>compute_initial_draws(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
-        <span class="self">self</span>.pos_state
-            .compute_initial_draws()
-            .map_err(|err| FinalStateError::PosError(err.to_string()))
-    }
-
-    <span class="doccomment">/// Applies changes to the execution state at a given slot, and settles that slot forever.
-    /// Once this is called, the state is attached at the output of the provided slot.
-    ///
-    /// Panics if the new slot is not the one coming just after the current one.
-    </span><span class="kw">pub fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) {
-        <span class="self">self</span>._finalize(slot, changes).unwrap()
-    }
-
     <span class="kw">fn </span>_finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) -&gt; AnyResult&lt;()&gt; {
         <span class="kw">let </span>cur_slot = <span class="self">self</span>.db.read().get_change_id()<span class="question-mark">?</span>;
         <span class="comment">// check slot consistency
@@ -1924,19 +1817,6 @@
             .feed_cycle_state_hash(cycle, final_state_hash);
 
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// After bootstrap or load from disk, recompute all the caches.
-    </span><span class="kw">pub fn </span>recompute_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.async_pool.recompute_message_info_cache();
-        <span class="self">self</span>.executed_ops.recompute_sorted_ops_and_op_exec_status();
-        <span class="self">self</span>.executed_denunciations.recompute_sorted_denunciations();
-        <span class="self">self</span>.pos_state.recompute_pos_state_caches();
-    }
-
-    <span class="doccomment">/// Deserialize the entire DB and check the data. Useful to check after bootstrap.
-    </span><span class="kw">pub fn </span>is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>._is_db_valid().is_ok()
     }
 
     <span class="doccomment">/// Internal function called by is_db_valid
@@ -2059,12 +1939,232 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Initialize the execution trail hash to zero.
-    </span><span class="kw">pub fn </span>init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    <span class="doccomment">/// Initializes a `FinalState` from a snapshot.
+    ///
+    /// # Arguments
+    /// * `db`: A type that implements the `MassaDBController` trait. Used to read and write to the database.
+    /// * `config`: the configuration of the final state to use for initialization
+    /// * `ledger`: the instance of the ledger on disk. Used to apply changes to the ledger.
+    /// * `selector`: the pos selector. Used to send draw inputs when a new cycle is completed.
+    /// * `last_start_period`: at what period we should attach the final_state
+    </span><span class="kw">pub fn </span>new_derived_from_snapshot(
+        db: ShareableMassaDBController,
+        config: FinalStateConfig,
+        ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
+        selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
+        mip_store: MipStore,
+        last_start_period: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
+        <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>final_state =
+            FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>recovered_slot =
+            final_state.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
+                FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>))
+            })<span class="question-mark">?</span>;
+
+        <span class="comment">// This is needed for `test_bootstrap_server` to work
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;test-exports&quot;</span>) {
+            <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+            final_state.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
+            final_state
+                .db
+                .write()
+                .write_batch(batch, Default::default(), <span class="prelude-val">Some</span>(recovered_slot));
+        }
+
+        final_state.last_slot_before_downtime = <span class="prelude-val">Some</span>(recovered_slot);
+
+        <span class="comment">// Check that MIP store is consistent with the network shutdown time range
+        // Assume that the final state has been edited during network shutdown
+        </span><span class="kw">let </span>shutdown_start = recovered_slot
+            .get_next_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                    <span class="string">&quot;Unable to get next slot from recovered slot: {:?}&quot;</span>,
+                    e
+                ))
+            })<span class="question-mark">?</span>;
+        <span class="kw">let </span>shutdown_end = Slot::new(last_start_period, <span class="number">0</span>)
+            .get_prev_slot(config.thread_count)
+            .map_err(|e| {
+                FinalStateError::InvalidSlot(<span class="macro">format!</span>(
+                    <span class="string">&quot;Unable to compute prev slot from last start period: {:?}&quot;</span>,
+                    e
+                ))
+            })<span class="question-mark">?</span>;
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Checking if MIP store is consistent against shutdown period: {} - {}&quot;</span>,
+            shutdown_start, shutdown_end
+        );
+
+        final_state
+            .mip_store
+            .is_consistent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                config.thread_count,
+                config.t0,
+                config.genesis_timestamp,
+            )
+            .map_err(FinalStateError::from)<span class="question-mark">?</span>;
+
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Latest consistent slot found in snapshot data: {}&quot;</span>,
+            recovered_slot
+        );
+
+        <span class="macro">info!</span>(
+            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            recovered_slot,
+            final_state.db.read().get_xof_db_hash()
+        );
+
+        <span class="comment">// Then, interpolate the downtime, to attach at end_slot;
+        </span>final_state.last_start_period = last_start_period;
+
+        final_state.recompute_caches();
+
+        <span class="comment">// We compute the draws here because we need to feed_cycles when interpolating
+        </span>final_state.compute_initial_draws()<span class="question-mark">?</span>;
+
+        final_state.interpolate_downtime()<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(final_state)
+    }
+}
+
+<span class="kw">impl </span>FinalStateController <span class="kw">for </span>FinalState {
+    <span class="kw">fn </span>compute_initial_draws(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
+        <span class="self">self</span>.pos_state
+            .compute_initial_draws()
+            .map_err(|err| FinalStateError::PosError(err.to_string()))
+    }
+
+    <span class="kw">fn </span>finalize(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, changes: StateChanges) {
+        <span class="self">self</span>._finalize(slot, changes).unwrap()
+    }
+
+    <span class="kw">fn </span>get_execution_trail_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="kw">let </span>hash_bytes = <span class="self">self
+            </span>.db
+            .read()
+            .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
+            .expect(<span class="string">&quot;could not read execution trail hash from state DB&quot;</span>)
+            .expect(<span class="string">&quot;could not find execution trail hash in state DB&quot;</span>);
+        Hash::from_bytes(
+            hash_bytes
+                .as_slice()
+                .try_into()
+                .expect(<span class="string">&quot;invalid execution trail hash in state DB&quot;</span>),
+        )
+    }
+
+    <span class="kw">fn </span>get_fingerprint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Hash {
+        <span class="kw">let </span>internal_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
+        Hash::compute_from(internal_hash.to_bytes())
+    }
+
+    <span class="kw">fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Slot {
+        <span class="self">self</span>.db
+            .read()
+            .get_change_id()
+            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>)
+    }
+
+    <span class="kw">fn </span>init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         batch.insert(
             EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
             <span class="prelude-val">Some</span>(massa_hash::Hash::zero().to_bytes().to_vec()),
         );
+    }
+
+    <span class="kw">fn </span>is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>._is_db_valid().is_ok()
+    }
+
+    <span class="kw">fn </span>recompute_caches(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.async_pool.recompute_message_info_cache();
+        <span class="self">self</span>.executed_ops.recompute_sorted_ops_and_op_exec_status();
+        <span class="self">self</span>.executed_denunciations.recompute_sorted_denunciations();
+        <span class="self">self</span>.pos_state.recompute_pos_state_caches();
+    }
+
+    <span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, <span class="self">self</span>.config.thread_count.saturating_sub(<span class="number">1</span>));
+        <span class="self">self</span>.db.write().reset(slot);
+        <span class="self">self</span>.ledger.reset();
+        <span class="self">self</span>.async_pool.reset();
+        <span class="self">self</span>.pos_state.reset();
+        <span class="self">self</span>.executed_ops.reset();
+        <span class="self">self</span>.executed_denunciations.reset();
+        <span class="self">self</span>.mip_store.reset_db(<span class="self">self</span>.db.clone());
+        <span class="comment">// delete the execution trail hash
+        </span><span class="self">self</span>.db
+            .write()
+            .delete_prefix(EXECUTION_TRAIL_HASH_PREFIX, STATE_CF, <span class="prelude-val">None</span>);
+    }
+
+    <span class="kw">fn </span>get_ledger(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>LedgerController&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.ledger
+    }
+
+    <span class="kw">fn </span>get_ledger_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>LedgerController&gt; {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.ledger
+    }
+
+    <span class="kw">fn </span>get_async_pool(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>AsyncPool {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.async_pool
+    }
+
+    <span class="kw">fn </span>get_pos_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PoSFinalState {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.pos_state
+    }
+
+    <span class="kw">fn </span>get_pos_state_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>PoSFinalState {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.pos_state
+    }
+
+    <span class="kw">fn </span>executed_ops_contains(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
+        <span class="self">self</span>.executed_ops.contains(op_id)
+    }
+
+    <span class="kw">fn </span>get_ops_exec_status(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[OperationId]) -&gt; Vec&lt;<span class="prelude-ty">Option</span>&lt;bool&gt;&gt; {
+        <span class="self">self</span>.executed_ops.get_ops_exec_status(batch)
+    }
+
+    <span class="kw">fn </span>get_executed_denunciations(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ExecutedDenunciations {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.executed_denunciations
+    }
+
+    <span class="kw">fn </span>get_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>ShareableMassaDBController {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.db
+    }
+
+    <span class="kw">fn </span>get_last_start_period(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.last_start_period
+    }
+
+    <span class="kw">fn </span>set_last_start_period(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_start_period: u64) {
+        <span class="self">self</span>.last_start_period = last_start_period;
+    }
+
+    <span class="kw">fn </span>get_last_slot_before_downtime(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Slot&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.last_slot_before_downtime
+    }
+
+    <span class="kw">fn </span>set_last_slot_before_downtime(<span class="kw-2">&amp;mut </span><span class="self">self</span>, last_slot_before_downtime: <span class="prelude-ty">Option</span>&lt;Slot&gt;) {
+        <span class="self">self</span>.last_slot_before_downtime = last_slot_before_downtime;
+    }
+
+    <span class="kw">fn </span>get_mip_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MipStore {
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.mip_store
+    }
+
+    <span class="kw">fn </span>get_mip_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MipStore {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store
     }
 }
 
