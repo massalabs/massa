@@ -59,12 +59,56 @@ fn test_standalone_selection() {
 
     // period 127 is the last of cycle 0
     // draws for this slot have been computed
-    controller.get_selection(Slot { period: 127, thread: 0 }).unwrap();
+    controller
+        .get_selection(Slot {
+            period: 127,
+            thread: 0,
+        })
+        .unwrap();
 
     // period 128 is the first of cycle 1
     // draws for this slot have not been computed yet
-    let result = controller.get_selection(Slot { period: 128, thread: 0 });
+    let result = controller.get_selection(Slot {
+        period: 128,
+        thread: 0,
+    });
     assert!(matches!(result, Err(PosError::CycleUnavailable(1))));
+
+    // stop worker
+    manager.stop();
+}
+
+#[test]
+fn test_invalid_roll_distribution() {
+    // initialize the selector configuration and the test inputs
+    let cfg = SelectorConfig::default();
+    let mut lookback_rolls: BTreeMap<Address, u64> = std::collections::BTreeMap::new();
+    lookback_rolls.insert(
+        Address::from_str("AU12Cyu2f7C7isA3ADAhoNuq9ZUFPKP24jmiGj3sh9D1pHoAWKDYY").unwrap(),
+        0,
+    );
+    lookback_rolls.insert(
+        Address::from_str("AU12BTfZ7k1z6PsLEUZeHYNirz6WJ3NdrWto9H4TkVpkV9xE2TJg2").unwrap(),
+        0,
+    );
+    let mut seed_bytes = [0u8; 16];
+    thread_rng().fill_bytes(&mut seed_bytes);
+    let lookback_seed = Hash::compute_from(&seed_bytes);
+
+    // start the selector thread, get the controller and manager
+    let (mut manager, controller) = start_selector_worker(cfg).unwrap();
+
+    // feed lookback_rolls with invalid roll distribution
+    // everything is set to 0
+    controller
+        .feed_cycle(0, lookback_rolls, lookback_seed)
+        .unwrap();
+
+    // wait for the draws to compute
+    let result = controller.wait_for_draws(0);
+
+    // match the expected error
+    assert!(matches!(result, Err(PosError::InvalidRollDistribution(_))));
 
     // stop worker
     manager.stop();
