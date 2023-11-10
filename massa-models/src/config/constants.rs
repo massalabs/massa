@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1699450200000) // Wednesday, November 8, 2023 13:30:00 AM UTC
+        MassaTime::from_millis(1699453800000) // Wednesday, November 8, 2023 14:30:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
