@@ -196,7 +196,7 @@ pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COU
 /// Note: Update sizes are not limited, the 190Mb constant is to take them into account.
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE: u32 = MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE
     .saturating_add(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE)
-    .saturating_add(190_000_000_u32);
+    .saturating_add(1_900_000_000_u32);
 /// The number of bytes needed to encode [`MAX_BOOTSTRAP_MESSAGE_SIZE`]
 pub const MAX_BOOTSTRAP_MESSAGE_SIZE_BYTES: usize =
     u32_be_bytes_min_length(MAX_BOOTSTRAP_MESSAGE_SIZE);
@@ -213,9 +213,9 @@ pub const MAX_BOOTSTRAP_POS_CYCLES: u32 = 5;
 /// Max async pool changes
 pub const MAX_BOOTSTRAP_ASYNC_POOL_CHANGES: u64 = 100_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 100_000_000;
+pub const MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE: u32 = 1_000_000_000;
 /// Max bytes in final states parts
-pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 10_000_000;
+pub const MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE: u32 = 100_000_000;
 /// Max size of the IP list
 pub const IP_LIST_MAX_SIZE: usize = 10000;
 /// Size of the random bytes array used for the bootstrap, safe to import
