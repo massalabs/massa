@@ -117,7 +117,7 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          # - macOS-latest
+          - macOS-latest
           # - windows-latest
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -201,8 +201,8 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --features testing --doc
+          command: install
+          args: cargo-nextest
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
@@ -218,13 +218,6 @@ jobs:
         with:
           files: lcov.info
           fail_ci_if_error: false
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clean
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features testing --doc
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
