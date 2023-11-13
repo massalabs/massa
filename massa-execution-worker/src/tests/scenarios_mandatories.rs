@@ -89,9 +89,11 @@ fn final_state_boilerplate(
             .expect_get_balance()
             .returning(move |_| Some(Amount::from_str("100").unwrap()));
 
-        ledger_controller
-            .expect_get_bytecode()
-            .returning(move |_| Some(Bytecode(include_bytes!("./wasm/helloworld.wasm").to_vec())));
+        ledger_controller.expect_get_bytecode().returning(move |_| {
+            Some(Bytecode(
+                include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
+            ))
+        });
 
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
@@ -938,12 +940,12 @@ fn send_and_receive_transaction() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // 200 because 100 in the get_balance in the `final_state_boilerplate` and 100 from the transfer.
+            // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&recipient_address, || None),
-                Some(Amount::from_str("200").unwrap())
+                Some(Amount::from_str("190").unwrap())
             );
             // 1.02 for the block rewards
             assert_eq!(
@@ -953,7 +955,11 @@ fn send_and_receive_transaction() {
                     ),
                     || None
                 ),
-                Some(exec_cfg.block_reward)
+                Some(
+                    exec_cfg
+                        .block_reward
+                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
+                )
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -961,11 +967,11 @@ fn send_and_receive_transaction() {
     // create the operation
     let operation = Operation::new_verifiable(
         Operation {
-            fee: Amount::zero(),
+            fee: Amount::from_str("10").unwrap(),
             expire_period: 10,
             op: OperationType::Transaction {
                 recipient_address,
-                amount: Amount::from_str("100").unwrap(),
+                amount: Amount::from_str("90").unwrap(),
             },
         },
         OperationSerializer::new(),
