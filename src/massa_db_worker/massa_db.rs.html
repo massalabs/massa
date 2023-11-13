@@ -1723,12 +1723,6 @@
 <a href="#1723" id="1723">1723</a>
 <a href="#1724" id="1724">1724</a>
 <a href="#1725" id="1725">1725</a>
-<a href="#1726" id="1726">1726</a>
-<a href="#1727" id="1727">1727</a>
-<a href="#1728" id="1728">1728</a>
-<a href="#1729" id="1729">1729</a>
-<a href="#1730" id="1730">1730</a>
-<a href="#1731" id="1731">1731</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2144,11 +2138,6 @@
         <span class="kw">while </span><span class="self">self</span>.change_history_versioning.len() &gt; <span class="self">self</span>.config.max_history_length {
             <span class="self">self</span>.change_history_versioning.pop_first();
         }
-
-        <span class="macro">println!</span>(
-            <span class="string">&quot;change_history keys: {:?}&quot;</span>,
-            <span class="self">self</span>.change_history.keys().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-        );
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -3431,7 +3420,6 @@
         <span class="kw">let </span>stream_batch_ = db
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_1));
-        <span class="macro">println!</span>(<span class="string">&quot;stream_batch_: {:?}&quot;</span>, stream_batch_);
         <span class="macro">assert!</span>(stream_batch_.is_ok());
 
         <span class="comment">// Now updates some values for each slot until slot 2 (included)
