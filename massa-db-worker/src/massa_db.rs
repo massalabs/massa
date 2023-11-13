@@ -414,11 +414,6 @@ where
             self.change_history_versioning.pop_first();
         }
 
-        println!(
-            "change_history keys: {:?}",
-            self.change_history.keys().collect::<Vec<_>>()
-        );
-
         Ok(())
     }
 
@@ -1700,7 +1695,6 @@ mod test {
         let stream_batch_ = db
             .read()
             .get_batch_to_stream(&last_state_step, Some(slot_1));
-        println!("stream_batch_: {:?}", stream_batch_);
         assert!(stream_batch_.is_ok());
 
         // Now updates some values for each slot until slot 2 (included)
