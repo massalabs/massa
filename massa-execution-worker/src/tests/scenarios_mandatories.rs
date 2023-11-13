@@ -1015,6 +1015,18 @@ fn roll_buy() {
             assert_eq!(changes.pos_changes.roll_changes.len(), 1);
             // 100 base + 1 bought
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
+
+            assert_eq!(
+                changes.ledger_changes.0.get(&address).unwrap(),
+                &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    balance: massa_ledger_exports::SetOrKeep::Set(
+                        Amount::from_str("1.02").unwrap()
+                    ),
+                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    datastore: BTreeMap::new()
+                })
+            );
+
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
