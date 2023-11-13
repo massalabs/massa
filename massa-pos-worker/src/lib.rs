@@ -1,5 +1,8 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+#[cfg(test)]
+mod tests;
+
 mod controller;
 mod draw;
 mod worker;
