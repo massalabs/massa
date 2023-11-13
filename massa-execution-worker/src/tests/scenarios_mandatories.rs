@@ -1016,12 +1016,12 @@ fn roll_buy() {
             // 100 base + 1 bought
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
 
+            // address has 100 coins before buying roll
+            // -> (100 (balance) - 100 (roll price)) + 1.02 (block reward)
             assert_eq!(
                 changes.ledger_changes.0.get(&address).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(
-                        Amount::from_str("1.02").unwrap()
-                    ),
+                    balance: massa_ledger_exports::SetOrKeep::Set(exec_cfg.block_reward),
                     bytecode: massa_ledger_exports::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
