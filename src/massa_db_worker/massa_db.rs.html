@@ -3350,8 +3350,8 @@
         // Stream Slot 1, should succeed
         // Add changes for N slots, N &lt;= max_history_length
         // Stream Slot 2, should succeed
-        // Add changes for M slots, N &gt; max_history_length
-        // Stream Slot 3, should return error
+        // Add changes for M slots, M &gt; max_history_length
+        // Stream Slot 3, should return error because we don&#39;t have changes for slot 2
 
         </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
