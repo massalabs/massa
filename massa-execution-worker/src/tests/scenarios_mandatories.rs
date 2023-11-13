@@ -269,12 +269,23 @@ fn test_readonly_execution() {
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
-            call_stack: vec![ExecutionStackElement {
-                address: addr.clone(),
-                coins: Amount::zero(),
-                owned_addresses: vec![],
-                operation_datastore: None,
-            }],
+            call_stack: vec![
+                ExecutionStackElement {
+                    address: addr.clone(),
+                    coins: Amount::zero(),
+                    owned_addresses: vec![],
+                    operation_datastore: None,
+                },
+                ExecutionStackElement {
+                    address: Address::from_str(
+                        "AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs",
+                    )
+                    .unwrap(),
+                    coins: Amount::zero(),
+                    owned_addresses: vec![],
+                    operation_datastore: None,
+                },
+            ],
             target: ReadOnlyExecutionTarget::FunctionCall {
                 target_addr: Address::from_str(
                     "AS1Q992iHngezxrYW2H67AGR9raHhJT5K8RkhbX3krP53SnRw5da",
@@ -284,7 +295,7 @@ fn test_readonly_execution() {
                 parameter: vec![],
             },
             is_final: true,
-            coins: None,
+            coins: Some(Amount::from_str("20").unwrap()),
             fee: Some(Amount::from_str("30").unwrap()),
         })
         .expect("readonly execution failed");
@@ -295,7 +306,7 @@ fn test_readonly_execution() {
     assert_eq!(
         res2.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
         &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("70").unwrap()),
+            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("50").unwrap()),
             bytecode: massa_ledger_exports::SetOrKeep::Keep,
             datastore: BTreeMap::new()
         })
