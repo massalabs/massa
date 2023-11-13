@@ -116,6 +116,7 @@
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>mio::net::TcpListener;
 <span class="kw">use </span>mio::{Events, Interest, Poll, Token, Waker};
 <span class="kw">use </span>std::io::ErrorKind;
@@ -135,7 +136,7 @@
     server: TcpListener,
 }
 
-<span class="kw">pub struct </span>BootstrapListenerStopHandle(Waker);
+<span class="kw">pub struct </span>BootstrapListenerStopHandle(<span class="kw">pub</span>(<span class="kw">crate</span>) Waker);
 
 <span class="kw">pub enum </span>PollEvent {
     NewConnections(Vec&lt;(TcpStream, SocketAddr)&gt;),
@@ -192,7 +193,8 @@
         ))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
+    <span class="doccomment">/// Poll the listener for new connections
+    </span><span class="kw">pub fn </span>poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;PollEvent, BootstrapError&gt; {
         <span class="self">self</span>.poll.poll(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events, <span class="prelude-val">None</span>).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::with_capacity(<span class="self">self</span>.events.iter().count());

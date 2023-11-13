@@ -1615,6 +1615,7 @@
 <a href="#1615" id="1615">1615</a>
 <a href="#1616" id="1616">1616</a>
 <a href="#1617" id="1617">1617</a>
+<a href="#1618" id="1618">1618</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1795,7 +1796,8 @@
 
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_final_state_elements_size {
+                new_elements_size += serialized_key.len();
+                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
