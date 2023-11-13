@@ -481,12 +481,6 @@ pub fn stream_bootstrap_information(
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
-        #[cfg(test)]
-        {
-            // Necessary for test_bootstrap_server in tests/scenarios.rs
-            std::thread::sleep(Duration::from_millis(500));
-        }
-
         let current_slot;
         let state_part;
         let versioning_part;
@@ -666,7 +660,7 @@ pub fn stream_bootstrap_information(
         }
 
         let Some(write_timeout) = step_timeout_duration(bs_deadline, &write_timeout) else {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "insufficient time left to provide next bootstrap part".to_string(),
             ));
         };
@@ -714,7 +708,7 @@ pub(crate) fn manage_bootstrap(
     let Some(hs_timeout) =
         step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
     else {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time left to begin handshake".to_string(),
         ));
     };
@@ -723,7 +717,7 @@ pub(crate) fn manage_bootstrap(
 
     // Check for error from client
     if Instant::now() + read_error_timeout >= deadline {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time to check for error from client".to_string(),
         ));
     };
@@ -740,7 +734,7 @@ pub(crate) fn manage_bootstrap(
     let send_time_timeout =
         step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration());
     let Some(next_step_timeout) = send_time_timeout else {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time left to send server time".to_string(),
         ));
     };
@@ -756,7 +750,7 @@ pub(crate) fn manage_bootstrap(
         let Some(read_timeout) =
             step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
         else {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "insufficient time left to process next message".to_string(),
             ));
         };
@@ -769,7 +763,7 @@ pub(crate) fn manage_bootstrap(
                         &deadline,
                         &bootstrap_config.write_timeout.to_duration(),
                     ) else {
-                        return Err(BootstrapError::Interupted(
+                        return Err(BootstrapError::Interrupted(
                             "insufficient time left to respond te request for peers".to_string(),
                         ));
                     };

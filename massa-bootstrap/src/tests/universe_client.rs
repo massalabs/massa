@@ -27,6 +27,7 @@ impl BootstrapClientForeignControllers {
 pub struct BootstrapClientTestUniverse {
     controllers: BootstrapClientForeignControllers,
     config: BootstrapConfig,
+    pub(crate) global_bootstrap_state: GlobalBootstrapState,
 }
 
 impl TestUniverse for BootstrapClientTestUniverse {
@@ -34,9 +35,12 @@ impl TestUniverse for BootstrapClientTestUniverse {
     type ForeignControllers = BootstrapClientForeignControllers;
 
     fn new(controllers: Self::ForeignControllers, config: Self::Config) -> Self {
+        let global_bootstrap_state =
+            GlobalBootstrapState::new(controllers.final_state_controller.clone());
         let universe = Self {
             controllers,
             config,
+            global_bootstrap_state,
         };
         universe.initialize();
         universe
@@ -55,8 +59,6 @@ impl BootstrapClientTestUniverse {
                 last_consensus_step: StreamingStep::Started,
                 send_last_start_period: true,
             };
-        let mut global_bootstrap_state =
-            GlobalBootstrapState::new(self.controllers.final_state_controller.clone());
 
         let mut conn = connect_to_server(
             &mut self.controllers.bs_connector,
@@ -70,7 +72,7 @@ impl BootstrapClientTestUniverse {
             &self.config,
             &mut conn,
             &mut next_bootstrap_message,
-            &mut global_bootstrap_state,
+            &mut self.global_bootstrap_state,
             version,
         )
     }
