@@ -1,32 +1,21 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use super::tools::{
-    get_boot_state, get_peers, get_random_final_state_bootstrap, get_random_ledger_changes,
-    BASE_BOOTSTRAP_IP,
-};
+use super::tools::{get_random_final_state_bootstrap, BASE_BOOTSTRAP_IP};
 use super::universe_client::{BootstrapClientForeignControllers, BootstrapClientTestUniverse};
-use super::universe_server::{BootstrapServerForeignControllers, BootstrapServerTestUniverse};
+use super::universe_server::{
+    BootstrapServerForeignControllers, BootstrapServerTestUniverse,
+    BootstrapServerTestUniverseBuilder,
+};
 use crate::listener::PollEvent;
-use crate::tests::tools::{
-    assert_eq_bootstrap_graph, get_random_async_pool_changes, get_random_executed_de_changes,
-    get_random_executed_ops_changes, get_random_execution_trail_hash_change,
-    get_random_pos_changes,
-};
 use crate::BootstrapError;
-use crate::{
-    client::MockBSConnector, get_state, start_bootstrap_server, tests::tools::get_bootstrap_config,
-};
+use crate::{client::MockBSConnector, start_bootstrap_server, tests::tools::get_bootstrap_config};
 use crate::{listener::MockBootstrapTcpListener, BootstrapConfig, BootstrapTcpListener};
 use massa_async_pool::AsyncPoolConfig;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, MockConsensusController};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
-use massa_final_state::FinalStateController;
-use massa_final_state::{
-    test_exports::{assert_eq_final_state, assert_eq_final_state_hash},
-    FinalState, FinalStateConfig, StateChanges,
-};
+use massa_final_state::FinalStateConfig;
 use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerController};
 use massa_ledger_worker::FinalLedger;
 use massa_metrics::MassaMetrics;
@@ -39,7 +28,7 @@ use massa_models::config::{
     THREAD_COUNT,
 };
 use massa_models::{
-    address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId, slot::Slot,
+    address::Address, config::MAX_DATASTORE_VALUE_LENGTH, node::NodeId,
     streaming_step::StreamingStep, version::Version,
 };
 use massa_models::{
@@ -50,21 +39,18 @@ use massa_models::{
     prehash::PreHashSet,
 };
 
-use massa_pos_exports::{
-    test_exports::assert_eq_pos_selection, PoSConfig, PoSFinalState, SelectorConfig,
-};
+use massa_pos_exports::{PoSConfig, PoSFinalState, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use massa_protocol_exports::{BootstrapPeers, MockProtocolController};
 use massa_signature::KeyPair;
 use massa_test_framework::TestUniverse;
-use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use mockall::Sequence;
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use serial_test::serial;
-use std::net::SocketAddr;
-use std::sync::{Condvar, Mutex};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::sync::mpsc::Receiver;
 use std::vec;
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempfile::{NamedTempFile, TempDir};
@@ -79,56 +65,21 @@ lazy_static::lazy_static! {
 #[test]
 #[serial]
 fn test_bootstrap_not_whitelisted() {
-    // Setup the server/client connection
-    // Bind a TcpListener to localhost on a specific port
-    let socket_addr = SocketAddr::new(BASE_BOOTSTRAP_IP, 8069);
-    let listener = std::net::TcpListener::bind(socket_addr).unwrap();
-
-    // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
-    // thread. We use a channel to make the connection available in the mocked `accept` method
-    let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
-    std::thread::Builder::new()
-        .name("mock-listen-loop".to_string())
-        .spawn(move || loop {
-            conn_tx.send(listener.accept().unwrap()).unwrap()
-        })
-        .unwrap();
-
-    let mut server_sequence = Sequence::new();
-    let mut server_foreign_controllers = BootstrapServerForeignControllers::new_with_mocks();
-    server_foreign_controllers
-        .listener
-        .expect_poll()
-        .times(1)
-        // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
-        .in_sequence(&mut server_sequence);
-    server_foreign_controllers
-        .listener
-        .expect_poll()
-        .times(1)
-        .in_sequence(&mut server_sequence)
-        .returning(|| Ok(PollEvent::Stop));
+    let port = 8069;
+    let server_keypair = KeyPair::generate(0).unwrap();
     let mut bootstrap_server_config = BootstrapConfig::default();
     bootstrap_server_config.bootstrap_whitelist_path =
         PathBuf::from("../massa-node/base_config/bootstrap_whitelist.json");
-    let mut client_sequence = Sequence::new();
-    let mut client_foreign_controllers = BootstrapClientForeignControllers::new_with_mocks();
-    client_foreign_controllers
-        .bs_connector
-        .expect_connect_timeout()
-        .times(1)
-        .returning(move |_, _| Ok(std::net::TcpStream::connect(socket_addr).unwrap()))
-        .in_sequence(&mut client_sequence);
-    let node_id = NodeId::new(server_foreign_controllers.server_keypair.get_public_key());
-    let mut bootstrap_client_config = BootstrapConfig::default();
-    bootstrap_client_config.bootstrap_list = vec![(socket_addr, node_id)];
-
-    let server_universe =
-        BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
-    let mut client_universe =
-        BootstrapClientTestUniverse::new(client_foreign_controllers, bootstrap_client_config);
-    match client_universe.launch_bootstrap() {
+    let server_universe = BootstrapServerTestUniverseBuilder::new()
+        .set_port(port)
+        .set_config(bootstrap_server_config)
+        .set_keypair(&server_keypair)
+        .build();
+    let mut client_universe = BootstrapClientTestUniverse::new(
+        BootstrapClientForeignControllers::new_with_mocks(),
+        BootstrapConfig::default(),
+    );
+    match client_universe.launch_bootstrap(port, NodeId::new(server_keypair.get_public_key())) {
         Ok(()) => panic!("Bootstrap should have failed"),
         Err(BootstrapError::ReceivedError(err)) => {
             assert_eq!(err, String::from("IP 127.0.0.1 is not in the whitelist"))
@@ -141,184 +92,24 @@ fn test_bootstrap_not_whitelisted() {
 #[test]
 #[serial]
 fn test_bootstrap_server() {
-    // Setup the server/client connection
-    // Bind a TcpListener to localhost on a specific port
-    let socket_addr = SocketAddr::new(BASE_BOOTSTRAP_IP, 8069);
-    let listener = std::net::TcpListener::bind(socket_addr).unwrap();
-    let address = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-
-    // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
-    // thread. We use a channel to make the connection available in the mocked `accept` method
-    let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
-    std::thread::Builder::new()
-        .name("mock-listen-loop".to_string())
-        .spawn(move || loop {
-            conn_tx.send(listener.accept().unwrap()).unwrap()
-        })
-        .unwrap();
-
-    let mut server_sequence = Sequence::new();
-    let mut server_foreign_controllers = BootstrapServerForeignControllers::new_with_mocks();
-    server_foreign_controllers
-        .listener
-        .expect_poll()
-        .times(1)
-        // Mock the `accept` method here by receiving from the listen-loop thread
-        .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
-        .in_sequence(&mut server_sequence);
-    server_foreign_controllers
-        .listener
-        .expect_poll()
-        .times(1)
-        .in_sequence(&mut server_sequence)
-        .returning(|| Ok(PollEvent::Stop));
-    server_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_get_last_start_period()
-        .returning(move || 0);
-    server_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_get_last_slot_before_downtime()
-        .return_const(None);
-    //TODO: Go in universe
-    let disk_ledger_server = TempDir::new().expect("cannot create temp directory");
-    let database_server = Arc::new(RwLock::new(Box::new(MassaDB::new(MassaDBConfig {
-        path: disk_ledger_server.path().to_path_buf(),
-        max_history_length: 100,
-        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
-        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
-        thread_count: THREAD_COUNT,
-    }))
-        as Box<(dyn MassaDBController + 'static)>));
-    let file: NamedTempFile = NamedTempFile::new().unwrap();
-    let mut ledger_db = FinalLedger::new(
-        LedgerConfig {
-            thread_count: THREAD_COUNT,
-            initial_ledger_path: file.path().to_path_buf(),
-            max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        },
-        database_server.clone(),
+    let port = 8070;
+    let server_keypair = KeyPair::generate(0).unwrap();
+    let address = Address::from_public_key(&server_keypair.get_public_key());
+    let server_universe = BootstrapServerTestUniverseBuilder::new()
+        .set_port(port)
+        .set_keypair(&server_keypair)
+        .set_address_balance(&address, Amount::from_mantissa_scale(100, 0).unwrap())
+        // FUTURE: set_ledger_changes or add a slot param to methods like `set_address_balance`
+        .build();
+    let mut client_universe = BootstrapClientTestUniverse::new(
+        BootstrapClientForeignControllers::new_with_mocks(),
+        BootstrapConfig::default(),
     );
-    let mut ledger_changes = LedgerChanges::default();
-    ledger_changes.set_balance(address, Amount::from_mantissa_scale(100, 0).unwrap());
-    let mut batch = DBBatch::default();
-    let versioning_batch = DBBatch::default();
-    ledger_db.apply_changes_to_batch(ledger_changes, &mut batch);
-    database_server
-        .write()
-        .write_batch(batch, versioning_batch, None);
-    server_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_get_database()
-        .return_const(database_server);
-    server_foreign_controllers
-        .consensus_controller
-        .set_expectations(|consensus_controller| {
-            consensus_controller
-                .expect_get_bootstrap_part()
-                .times(2)
-                .returning(
-                    move |last_consensus_step, _slot| match last_consensus_step {
-                        StreamingStep::Started => Ok((
-                            BootstrapableGraph {
-                                final_blocks: vec![],
-                            },
-                            PreHashSet::default(),
-                            StreamingStep::Ongoing(PreHashSet::default()),
-                        )),
-                        _ => Ok((
-                            BootstrapableGraph {
-                                final_blocks: vec![],
-                            },
-                            PreHashSet::default(),
-                            StreamingStep::Finished(None),
-                        )),
-                    },
-                );
-        });
-    server_foreign_controllers
-        .protocol_controller
-        .set_expectations(|protocol_controller| {
-            protocol_controller
-                .expect_get_bootstrap_peers()
-                .times(1)
-                .returning(|| Ok(BootstrapPeers(vec![])));
-        });
-    let bootstrap_server_config = BootstrapConfig::default();
-    let mut client_sequence = Sequence::new();
-    let mut client_foreign_controllers = BootstrapClientForeignControllers::new_with_mocks();
-    //TODO: Go in universe
-    let disk_ledger_client = TempDir::new().expect("cannot create temp directory");
-    let database_client = Arc::new(RwLock::new(Box::new(MassaDB::new(MassaDBConfig {
-        path: disk_ledger_client.path().to_path_buf(),
-        max_history_length: 100,
-        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE as usize,
-        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
-        thread_count: THREAD_COUNT,
-    }))
-        as Box<(dyn MassaDBController + 'static)>));
-    client_foreign_controllers
-        .bs_connector
-        .expect_connect_timeout()
-        .times(1)
-        .returning(move |_, _| Ok(std::net::TcpStream::connect(socket_addr).unwrap()))
-        .in_sequence(&mut client_sequence);
-    client_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_set_last_start_period()
-        .returning(move |_| ());
-    client_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_set_last_slot_before_downtime()
-        .returning(move |_| ());
-    client_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_get_database()
-        .return_const(database_client.clone());
-    let client_mip_store = MipStore::try_from_db(
-        database_client.clone(),
-        MipStatsConfig {
-            block_count_considered: 100,
-            warn_announced_version_ratio: Ratio::new(1, 2),
-        },
-    )
-    .unwrap();
-    client_foreign_controllers
-        .final_state_controller
-        .write()
-        .expect_get_mip_store_mut()
-        .returning(move || client_mip_store.clone());
-    let ledger_db = FinalLedger::new(
-        LedgerConfig {
-            thread_count: THREAD_COUNT,
-            initial_ledger_path: file.path().to_path_buf(),
-            max_key_length: MAX_DATASTORE_KEY_LENGTH,
-            max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
-        },
-        database_client.clone(),
-    );
-    let node_id = NodeId::new(server_foreign_controllers.server_keypair.get_public_key());
-    let mut bootstrap_client_config = BootstrapConfig::default();
-    bootstrap_client_config.bootstrap_list = vec![(socket_addr, node_id)];
-
-    let server_universe =
-        BootstrapServerTestUniverse::new(server_foreign_controllers, bootstrap_server_config);
-    let mut client_universe =
-        BootstrapClientTestUniverse::new(client_foreign_controllers, bootstrap_client_config);
-    match client_universe.launch_bootstrap() {
+    match client_universe.launch_bootstrap(port, NodeId::new(server_keypair.get_public_key())) {
         Ok(()) => (),
         Err(err) => panic!("Unexpected error: {:?}", err),
     }
-    println!("{:#?}", ledger_db.get_balance(&address).unwrap());
-
-    drop(server_universe);
+    client_universe.compare_ledger(server_universe.database.clone());
 }
 
 // Regression test for Issue #3932

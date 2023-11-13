@@ -179,7 +179,8 @@ where
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_final_state_elements_size {
+                new_elements_size += serialized_key.len();
+                if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
