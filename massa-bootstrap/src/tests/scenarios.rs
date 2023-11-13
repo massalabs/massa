@@ -105,11 +105,10 @@ fn test_bootstrap_server() {
         BootstrapClientForeignControllers::new_with_mocks(),
         BootstrapConfig::default(),
     );
-    match client_universe.launch_bootstrap(port, NodeId::new(server_keypair.get_public_key())) {
-        Ok(()) => (),
-        Err(err) => panic!("Unexpected error: {:?}", err),
-    }
-    client_universe.compare_ledger(server_universe.database.clone());
+    client_universe
+        .launch_bootstrap(port, NodeId::new(server_keypair.get_public_key()))
+        .unwrap();
+    client_universe.compare_database(server_universe.database.clone());
 }
 
 // Regression test for Issue #3932

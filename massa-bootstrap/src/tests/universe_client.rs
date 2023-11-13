@@ -6,7 +6,6 @@ use std::{
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_final_state::MockFinalStateController;
-use massa_ledger_worker::FinalLedger;
 use massa_models::{
     config::{
         MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, THREAD_COUNT,
@@ -141,7 +140,11 @@ impl BootstrapClientTestUniverse {
         )
     }
 
-    pub fn compare_ledger(&self, other_database: ShareableMassaDBController) {
-        //TODO
+    //TODO: Add consensus blocks and peers
+    pub fn compare_database(&self, other_database: ShareableMassaDBController) {
+        assert_eq!(
+            self.database.read().get_entire_ledger(),
+            other_database.read().get_entire_ledger()
+        );
     }
 }

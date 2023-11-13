@@ -55,5 +55,5 @@ massa_executed_ops = {workspace = true}
 massa_pos_worker = {workspace = true, "features" = ["test-exports"]}
 massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_consensus_exports = {workspace = true, "features" = ["test-exports"]}
-massa_db_worker = {workspace = true}
+massa_db_worker = {workspace = true, "features" = ["test-exports"]}
 massa_test_framework = {workspace = true}

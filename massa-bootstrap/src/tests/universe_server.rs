@@ -113,13 +113,6 @@ impl Drop for BootstrapServerTestUniverse {
     }
 }
 
-impl BootstrapServerTestUniverse {
-    // This method will help users to discover the builder
-    pub fn builder() -> BootstrapServerTestUniverseBuilder {
-        BootstrapServerTestUniverseBuilder::default()
-    }
-}
-
 pub struct BootstrapServerTestUniverseBuilder {
     controllers: BootstrapServerForeignControllers,
     config: BootstrapConfig,

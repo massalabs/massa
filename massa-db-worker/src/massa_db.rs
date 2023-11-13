@@ -814,6 +814,22 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
+
+    #[cfg(feature = "test-exports")]
+    fn get_entire_ledger(&self) -> BTreeMap<Vec<u8>, Vec<u8>> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
+        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
+        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let iter = iter_state.chain(iter_metadata).chain(iter_versioning);
+        let mut entire_database = BTreeMap::new();
+        for (k, v) in iter.flatten() {
+            entire_database.insert(k.to_vec(), v.to_vec());
+        }
+        entire_database
+    }
 }
 
 #[cfg(test)]
