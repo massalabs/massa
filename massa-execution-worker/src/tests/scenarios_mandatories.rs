@@ -4,13 +4,13 @@ use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfi
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::MockLedgerControllerWrapper;
+use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -88,6 +88,11 @@ fn final_state_boilerplate(
         ledger_controller
             .expect_get_balance()
             .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+        ledger_controller
+            .expect_get_bytecode()
+            .returning(move |_| Some(Bytecode(include_bytes!("./wasm/helloworld.wasm").to_vec())));
+
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
                 .expect_get_bytecode()
@@ -97,6 +102,7 @@ fn final_state_boilerplate(
             .expect_entry_exists()
             .returning(move |_| false);
     });
+
     mock_final_state
         .write()
         .expect_get_ledger()
@@ -226,23 +232,74 @@ fn test_readonly_execution() {
     );
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
+    let addr = Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
+
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
-            call_stack: vec![],
+            call_stack: vec![ExecutionStackElement {
+                address: addr.clone(),
+                coins: Amount::zero(),
+                owned_addresses: vec![],
+                operation_datastore: None,
+            }],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
             is_final: true,
             coins: None,
-            fee: None,
+            fee: Some(Amount::from_str("40").unwrap()),
         })
         .expect("readonly execution failed");
 
     assert_eq!(res.out.slot, Slot::new(0, 1));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
+    assert_eq!(
+        res.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
+        &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("60").unwrap()),
+            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            datastore: BTreeMap::new()
+        })
+    );
+
+    let mut res2 = universe
+        .module_controller
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
+            call_stack: vec![ExecutionStackElement {
+                address: addr.clone(),
+                coins: Amount::zero(),
+                owned_addresses: vec![],
+                operation_datastore: None,
+            }],
+            target: ReadOnlyExecutionTarget::FunctionCall {
+                target_addr: Address::from_str(
+                    "AS1Q992iHngezxrYW2H67AGR9raHhJT5K8RkhbX3krP53SnRw5da",
+                )
+                .unwrap(),
+                target_func: "test".to_string(),
+                parameter: vec![],
+            },
+            is_final: true,
+            coins: None,
+            fee: Some(Amount::from_str("30").unwrap()),
+        })
+        .expect("readonly execution failed");
+
+    assert_eq!(res2.out.slot, Slot::new(0, 1));
+    assert!(res2.gas_cost > 0);
+    assert_eq!(res2.out.events.take().len(), 1, "wrong number of events");
+    assert_eq!(
+        res2.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
+        &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("70").unwrap()),
+            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            datastore: BTreeMap::new()
+        })
+    );
 }
 
 /// Test the gas usage in nested calls using call SC operation
