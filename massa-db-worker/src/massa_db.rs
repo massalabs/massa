@@ -1619,8 +1619,8 @@ mod test {
         // Stream Slot 1, should succeed
         // Add changes for N slots, N <= max_history_length
         // Stream Slot 2, should succeed
-        // Add changes for M slots, N > max_history_length
-        // Stream Slot 3, should return error
+        // Add changes for M slots, M > max_history_length
+        // Stream Slot 3, should return error because we don't have changes for slot 2
 
         let temp_dir_db = tempdir().expect("Unable to create a temp folder");
         // println!("temp_dir_db: {:?}", temp_dir_db);
