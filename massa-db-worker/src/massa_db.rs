@@ -114,21 +114,15 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history
-                            .range((Bound::Included(&last_change_id), Bound::Unbounded));
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history.keys().next() {
+                            Some(first_change_id_in_history) if first_change_id_in_history <= &last_change_id => {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let iter = self
                                     .change_history
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
-
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -140,8 +134,8 @@ where
                                     );
                                 }
                                 updates
-                            }
-                            None => {
+                            },
+                            _ => {
                                 return Err(MassaDBError::TimeError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
@@ -225,20 +219,15 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history_versioning
-                            .range((Bound::Included(&last_change_id), Unbounded));
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history_versioning.keys().next() {
+                            Some(first_change_id_in_history) if first_change_id_in_history <= &last_change_id => {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
                                 let iter = self
                                     .change_history_versioning
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -250,8 +239,8 @@ where
                                     );
                                 }
                                 updates
-                            }
-                            None => {
+                            },
+                            _ => {
                                 return Err(MassaDBError::TimeError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
@@ -420,6 +409,8 @@ where
         while self.change_history_versioning.len() > self.config.max_history_length {
             self.change_history_versioning.pop_first();
         }
+
+        println!("change_history keys: {:?}", self.change_history.keys().collect::<Vec<_>>());
 
         Ok(())
     }
@@ -1613,5 +1604,116 @@ mod test {
         // No more updates and new elements -> all empty
         assert!(stream_batch.new_elements.is_empty());
         assert!(stream_batch.updates_on_previous_elements.is_empty());
+    }
+
+    #[test]
+    fn test_db_err_if_changes_not_available() {
+        // Init db + add data
+        // Stream Slot 1, should succeed
+        // Add changes for N slots, N <= max_history_length
+        // Stream Slot 2, should succeed
+        // Add changes for M slots, N > max_history_length
+        // Stream Slot 3, should return error
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 4,
+            max_final_state_elements_size: 7,
+            max_versioning_elements_size: 7,
+            thread_count: THREAD_COUNT,
+        };
+        
+        let slot_1 = Slot::new(1, 0);
+        let slot_2 = Slot::new(1, 2);
+        let slot_3 = Slot::new(1, 8);
+
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2)
+            ])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Now updates some values for each slot until slot 2 (included)
+        let mut cur_slot = slot_1.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_2 {
+            let batch_key = vec![(cur_slot.period % 256) as u8];
+            let batch_value = vec![cur_slot.thread as u8];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(vec![(cur_slot.period % 256) as u8], Some(vec![cur_slot.thread as u8]))]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+        
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        println!("stream_batch_: {:?}", stream_batch_);
+        assert!(stream_batch_.is_ok());
+
+        // Now updates some values for each slot until slot 2 (included)
+        let mut cur_slot = slot_2.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_3 {
+            let batch_key = vec![(cur_slot.period % 256) as u8];
+            let batch_value = vec![cur_slot.thread as u8];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(vec![(cur_slot.period % 256) as u8], Some(vec![cur_slot.thread as u8]))]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+        
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
+
     }
 }
