@@ -116,7 +116,9 @@ where
                         // We should send all the new updates since last_change_id
                         // We check that last_change_id is in our history
                         match self.change_history.keys().next() {
-                            Some(first_change_id_in_history) if first_change_id_in_history <= &last_change_id => {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
@@ -134,7 +136,7 @@ where
                                     );
                                 }
                                 updates
-                            },
+                            }
                             _ => {
                                 return Err(MassaDBError::TimeError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
@@ -221,7 +223,9 @@ where
                         // We should send all the new updates since last_change_id
                         // We check that last_change_id is in our history
                         match self.change_history_versioning.keys().next() {
-                            Some(first_change_id_in_history) if first_change_id_in_history <= &last_change_id => {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
                                 // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
@@ -239,7 +243,7 @@ where
                                     );
                                 }
                                 updates
-                            },
+                            }
                             _ => {
                                 return Err(MassaDBError::TimeError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
@@ -410,7 +414,10 @@ where
             self.change_history_versioning.pop_first();
         }
 
-        println!("change_history keys: {:?}", self.change_history.keys().collect::<Vec<_>>());
+        println!(
+            "change_history keys: {:?}",
+            self.change_history.keys().collect::<Vec<_>>()
+        );
 
         Ok(())
     }
@@ -1624,7 +1631,7 @@ mod test {
             max_versioning_elements_size: 7,
             thread_count: THREAD_COUNT,
         };
-        
+
         let slot_1 = Slot::new(1, 0);
         let slot_2 = Slot::new(1, 2);
         let slot_3 = Slot::new(1, 8);
@@ -1675,15 +1682,18 @@ mod test {
         let mut cur_slot = slot_1.get_next_slot(THREAD_COUNT).unwrap();
         while cur_slot <= slot_2 {
             let batch_key = vec![(cur_slot.period % 256) as u8];
-            let batch_value = vec![cur_slot.thread as u8];
+            let batch_value = vec![cur_slot.thread];
             let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
-            let versioning_batch = DBBatch::from([(vec![(cur_slot.period % 256) as u8], Some(vec![cur_slot.thread as u8]))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % 256) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
             let mut guard = db.write();
             guard.write_batch(batch, versioning_batch, Some(cur_slot));
             drop(guard);
             cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
         }
-        
+
         // Stream using StreamingStep::Finished
         let last_state_step: StreamingStep<Vec<u8>> =
             StreamingStep::Finished(Some(batch_key_2.clone()));
@@ -1697,15 +1707,18 @@ mod test {
         let mut cur_slot = slot_2.get_next_slot(THREAD_COUNT).unwrap();
         while cur_slot <= slot_3 {
             let batch_key = vec![(cur_slot.period % 256) as u8];
-            let batch_value = vec![cur_slot.thread as u8];
+            let batch_value = vec![cur_slot.thread];
             let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
-            let versioning_batch = DBBatch::from([(vec![(cur_slot.period % 256) as u8], Some(vec![cur_slot.thread as u8]))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % 256) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
             let mut guard = db.write();
             guard.write_batch(batch, versioning_batch, Some(cur_slot));
             drop(guard);
             cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
         }
-        
+
         // Stream using StreamingStep::Finished
         let last_state_step: StreamingStep<Vec<u8>> =
             StreamingStep::Finished(Some(batch_key_2.clone()));
@@ -1714,6 +1727,5 @@ mod test {
             .get_batch_to_stream(&last_state_step, Some(slot_2));
         assert!(stream_batch_.is_err());
         assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
-
     }
 }
