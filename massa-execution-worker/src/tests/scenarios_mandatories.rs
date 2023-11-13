@@ -89,12 +89,6 @@ fn final_state_boilerplate(
             .expect_get_balance()
             .returning(move |_| Some(Amount::from_str("100").unwrap()));
 
-        ledger_controller.expect_get_bytecode().returning(move |_| {
-            Some(Bytecode(
-                include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
-            ))
-        });
-
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
                 .expect_get_bytecode()
@@ -223,6 +217,17 @@ fn test_readonly_execution() {
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller.expect_get_bytecode().returning(move |_| {
+                Some(Bytecode(
+                    include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
+                ))
+            });
+        });
+
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -290,7 +295,7 @@ fn test_readonly_execution() {
             ],
             target: ReadOnlyExecutionTarget::FunctionCall {
                 target_addr: Address::from_str(
-                    "AS1Q992iHngezxrYW2H67AGR9raHhJT5K8RkhbX3krP53SnRw5da",
+                    "AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA",
                 )
                 .unwrap(),
                 target_func: "test".to_string(),
@@ -613,6 +618,7 @@ fn send_and_receive_async_message() {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
+    dbg!(&events);
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
