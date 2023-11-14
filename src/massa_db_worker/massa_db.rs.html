@@ -3078,7 +3078,7 @@
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>StreamingStep::Ongoing(<span class="macro">vec!</span>[]), <span class="prelude-val">Some</span>(Slot::new(<span class="number">5</span>, <span class="number">0</span>)));
         <span class="comment">// println!(&quot;stream_batch: {:?}&quot;, stream_batch);
-        </span><span class="macro">assert_matches!</span>(stream_batch, <span class="prelude-val">Err</span>(TimeError(..)));
+        </span><span class="macro">assert_matches!</span>(stream_batch, <span class="prelude-val">Err</span>(MassaDBError::CacheMissError(..)));
         <span class="macro">assert!</span>(stream_batch.err().unwrap().to_string().contains(<span class="string">&quot;future&quot;</span>));
 
         <span class="comment">//
