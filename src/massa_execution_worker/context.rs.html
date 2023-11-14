@@ -1157,8 +1157,8 @@
     <span class="doccomment">/// address call stack, most recent is at the back
     </span><span class="kw">pub </span>stack: Vec&lt;ExecutionStackElement&gt;,
 
-    <span class="doccomment">/// keep index of last event emitted in the context
-    </span><span class="kw">pub </span>last_event_index: usize,
+    <span class="doccomment">/// generated events during this execution, with multiple indexes
+    </span><span class="kw">pub </span>events: EventStore,
 
     <span class="doccomment">/// Unsafe random state
     </span><span class="kw">pub </span>unsafe_rng: Xoshiro256PlusPlus,
@@ -1326,7 +1326,7 @@
             created_event_index: <span class="self">self</span>.created_event_index,
             created_message_index: <span class="self">self</span>.created_message_index,
             stack: <span class="self">self</span>.stack.clone(),
-            last_event_index: <span class="self">self</span>.events.<span class="number">0</span>.len(),
+            events: <span class="self">self</span>.events.clone(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
         }
     }
@@ -1358,7 +1358,7 @@
 
         <span class="comment">// For events, set snapshot delta to error events.
         // Start iterating from snapshot events length because we are dealing with a VecDeque.
-        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.last_event_index..) {
+        </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.events.<span class="number">0</span>.len()..) {
             event.context.is_error = <span class="bool-val">true</span>;
         }
 

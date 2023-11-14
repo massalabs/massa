@@ -725,7 +725,7 @@
             }
 
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
-                <span class="macro">tracing::log::error!</span>(<span class="string">&quot;Failed to shutdown socket for {} : {}&quot;</span>, addr, e);
+                <span class="macro">tracing::error!</span>(<span class="string">&quot;Failed to shutdown socket for {} : {}&quot;</span>, addr, e);
             }
             res
         };
@@ -882,7 +882,7 @@
                                             //     &amp;OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                             // );
 
-                                            </span><span class="macro">tracing::log::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
+                                            </span><span class="macro">tracing::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
                                         }
                                     };
                                 }
