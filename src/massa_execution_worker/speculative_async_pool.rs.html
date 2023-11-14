@@ -305,6 +305,10 @@
 <a href="#305" id="305">305</a>
 <a href="#306" id="306">306</a>
 <a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -315,7 +319,7 @@
     AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
     AsyncPoolChanges,
 };
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>parking_lot::RwLock;
@@ -325,7 +329,7 @@
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeAsyncPool {
-    final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     <span class="comment">// current speculative pool changes
     </span>pool_changes: AsyncPoolChanges,
@@ -338,10 +342,14 @@
     ///
     /// # Arguments
     </span><span class="kw">pub fn </span>new(
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>message_infos = final_state.read().async_pool.message_info_cache.clone();
+        <span class="kw">let </span><span class="kw-2">mut </span>message_infos = final_state
+            .read()
+            .get_async_pool()
+            .message_info_cache
+            .clone();
 
         <span class="kw">for </span>history_item <span class="kw">in </span>active_history.read().<span class="number">0</span>.iter() {
             <span class="kw">for </span>change <span class="kw">in </span>history_item.state_changes.async_pool_changes.<span class="number">0</span>.iter() {
@@ -495,7 +503,7 @@
         </span><span class="kw">let </span>excess_count = <span class="self">self
             </span>.message_infos
             .len()
-            .saturating_sub(<span class="self">self</span>.final_state.read().async_pool.config.max_length <span class="kw">as </span>usize);
+            .saturating_sub(<span class="self">self</span>.final_state.read().get_async_pool().config.max_length <span class="kw">as </span>usize);
 
         eliminated_infos.reserve_exact(excess_count);
         <span class="kw">for _ in </span><span class="number">0</span>..excess_count {
@@ -590,7 +598,7 @@
         </span><span class="kw">let </span>fetched_msgs = <span class="self">self
             </span>.final_state
             .read()
-            .async_pool
+            .get_async_pool()
             .fetch_messages(wanted_ids);
 
         <span class="kw">for </span>(message_id, message) <span class="kw">in </span>fetched_msgs {

@@ -1095,7 +1095,7 @@
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
 };
-<span class="kw">use </span>massa_final_state::{FinalState, StateChanges};
+<span class="kw">use </span>massa_final_state::{FinalStateController, StateChanges};
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
@@ -1261,7 +1261,7 @@
     /// A new (empty) `ExecutionContext` instance
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
         config: ExecutionConfig,
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
@@ -1385,7 +1385,7 @@
         config: ExecutionConfig,
         slot: Slot,
         call_stack: Vec&lt;ExecutionStackElement&gt;,
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
@@ -1450,7 +1450,7 @@
         config: ExecutionConfig,
         slot: Slot,
         opt_block_id: <span class="prelude-ty">Option</span>&lt;BlockId&gt;,
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
         mip_store: MipStore,
