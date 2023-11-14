@@ -6,7 +6,7 @@ use massa_models::{
     timeslots::{get_block_slot_timestamp, get_closest_slot_to_timestamp},
 };
 use massa_time::MassaTime;
-use tracing::log::{info, warn};
+use tracing::{info, warn};
 
 use crate::commands::ConsensusCommand;
 

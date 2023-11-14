@@ -14,7 +14,7 @@ use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
 use tonic::{Request, Streaming};
-use tracing::log::{error, warn};
+use tracing::{error, warn};
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<

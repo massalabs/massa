@@ -246,7 +246,7 @@ impl Tester {
             }
 
             if let Err(e) = socket.shutdown(std::net::Shutdown::Both) {
-                tracing::log::error!("Failed to shutdown socket for {} : {}", addr, e);
+                tracing::error!("Failed to shutdown socket for {} : {}", addr, e);
             }
             res
         };
@@ -403,7 +403,7 @@ impl Tester {
                                             //     &OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                             // );
 
-                                            tracing::log::debug!("{:?}", res);
+                                            tracing::debug!("{:?}", res);
                                         }
                                     };
                                 }

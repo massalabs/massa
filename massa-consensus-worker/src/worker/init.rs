@@ -25,7 +25,7 @@ use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
 };
-use tracing::log::info;
+use tracing::info;
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 

@@ -11,7 +11,7 @@ use massa_serialization::{DeserializeError, Deserializer};
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tracing::log::{error, warn};
+use tracing::{error, warn};
 
 /// Type declaration for SendEndorsements
 pub type SendEndorsementsStreamType = Pin<

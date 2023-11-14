@@ -13,7 +13,7 @@ use std::pin::Pin;
 use std::str::FromStr;
 use tokio::select;
 use tonic::{Request, Streaming};
-use tracing::log::error;
+use tracing::error;
 
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<

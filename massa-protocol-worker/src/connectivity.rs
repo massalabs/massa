@@ -270,7 +270,7 @@ pub(crate) fn start_connectivity_thread(
                                             if let Some(slots) = connection_slots.get_mut(peer_category.as_str()) {
                                                 *slots = slots.saturating_sub(1);
                                             } else {
-                                                tracing::log::warn!("Category of connected peer {peer_category} not known in configuration"); 
+                                                tracing::warn!("Category of connected peer {peer_category} not known in configuration");
                                             }
                                         } else {
                                             let slots = connection_slots.get_mut("default").unwrap();
@@ -329,7 +329,7 @@ pub(crate) fn start_connectivity_thread(
 
                                             addresses_can_connect.push((*addr, connection_metadata, category_found));
                                         } else {
-                                            tracing::log::warn!("No listeners for the peer {peer_id}"); 
+                                            tracing::warn!("No listeners for the peer {peer_id}");
                                         }
                                     }
                                 }
