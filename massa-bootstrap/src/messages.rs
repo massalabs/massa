@@ -29,7 +29,7 @@ use massa_serialization::{
 
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::{length_count, length_data};
+use nom::multi::{length_count, length_data, length_value};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -478,27 +478,39 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         tuple((
                             context(
                                 "Failed new_elements deserialization",
-                                length_count(
-                                    context("Failed length deserialization", |input| {
+                                length_value(
+                                    context("Failed total byte size deserialization", |input| {
                                         self.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    )),
+                                    length_count(
+                                        context("Failed count deserialization", |input| {
+                                            self.state_new_elements_length_deserializer
+                                                .deserialize(input)
+                                        }),
+                                        tuple((
+                                            |input| self.datastore_key_deserializer.deserialize(input),
+                                            |input| self.datastore_val_deserializer.deserialize(input),
+                                        )),
+                                    )
                                 ),
                             ),
                             context(
                                 "Failed updates deserialization",
-                                length_count(
-                                    context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                length_value(
+                                    context("Failed total byte size deserialization", |input| {
+                                        self.state_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
-                                    tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    )),
+                                    length_count(
+                                        context("Failed count deserialization", |input| {
+                                            self.state_updates_length_deserializer.deserialize(input)
+                                        }),
+                                        tuple((
+                                            |input| self.datastore_key_deserializer.deserialize(input),
+                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                    ),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {
@@ -511,27 +523,39 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         tuple((
                             context(
                                 "Failed new_elements deserialization",
-                                length_count(
-                                    context("Failed length deserialization", |input| {
-                                        self.versioning_part_new_elements_length_deserializer
+                                length_value(
+                                    context("Failed total byte size deserialization", |input| {
+                                        self.state_updates_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.datastore_val_deserializer.deserialize(input),
-                                    )),
+                                    length_count(
+                                        context("Failed count deserialization", |input| {
+                                            self.versioning_part_new_elements_length_deserializer
+                                                .deserialize(input)
+                                        }),
+                                        tuple((
+                                            |input| self.datastore_key_deserializer.deserialize(input),
+                                            |input| self.datastore_val_deserializer.deserialize(input),
+                                        )),
+                                    ),
                                 ),
                             ),
                             context(
                                 "Failed updates deserialization",
-                                length_count(
-                                    context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                length_value(
+                                    context("Failed total byte size deserialization", |input| {
+                                        self.state_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
-                                    tuple((
-                                        |input| self.datastore_key_deserializer.deserialize(input),
-                                        |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    )),
+                                    length_count(
+                                        context("Failed count deserialization", |input| {
+                                            self.state_updates_length_deserializer.deserialize(input)
+                                        }),
+                                        tuple((
+                                            |input| self.datastore_key_deserializer.deserialize(input),
+                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
+                                        )),
+                                    ),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {
