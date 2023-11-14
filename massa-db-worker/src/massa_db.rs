@@ -121,7 +121,10 @@ where
                             {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history
                                     .range((Bound::Included(last_change_id), Bound::Unbounded));
@@ -138,6 +141,9 @@ where
                                 updates
                             }
                             _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
                                 return Err(MassaDBError::CacheMissError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
@@ -228,7 +234,10 @@ where
                             {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history_versioning
                                     .range((Bound::Included(last_change_id), Bound::Unbounded));
@@ -245,6 +254,9 @@ where
                                 updates
                             }
                             _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
                                 return Err(MassaDBError::CacheMissError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
