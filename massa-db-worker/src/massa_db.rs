@@ -105,7 +105,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -138,7 +138,7 @@ where
                                 updates
                             }
                             _ => {
-                                return Err(MassaDBError::TimeError(String::from(
+                                return Err(MassaDBError::CacheMissError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
                             }
@@ -212,7 +212,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -245,7 +245,7 @@ where
                                 updates
                             }
                             _ => {
-                                return Err(MassaDBError::TimeError(String::from(
+                                return Err(MassaDBError::CacheMissError(String::from(
                                     "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
                                 )));
                             }
@@ -1676,11 +1676,11 @@ mod test {
         // Now updates some values for each slot until slot 2 (included)
         let mut cur_slot = slot_1.get_next_slot(THREAD_COUNT).unwrap();
         while cur_slot <= slot_2 {
-            let batch_key = vec![(cur_slot.period % 256) as u8];
+            let batch_key = vec![(cur_slot.period % u8::MAX as u64) as u8];
             let batch_value = vec![cur_slot.thread];
             let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
             let versioning_batch = DBBatch::from([(
-                vec![(cur_slot.period % 256) as u8],
+                vec![(cur_slot.period % u8::MAX as u64) as u8],
                 Some(vec![cur_slot.thread]),
             )]);
             let mut guard = db.write();

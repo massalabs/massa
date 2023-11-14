@@ -13,6 +13,8 @@ pub enum MassaDBError {
     InvalidChangeID(String),
     /// time error: {0}
     TimeError(String),
+    /// cache miss error: {0}
+    CacheMissError(String),
     /// rocks db error: {0}
     RocksDBError(String),
     /// hash error: {0}
