@@ -1709,7 +1709,8 @@ mod test {
             .get_batch_to_stream(&last_state_step, Some(slot_1));
         assert!(stream_batch_.is_ok());
 
-        // Now updates some values for each slot until slot 2 (included)
+        // Now updates some values for each slot until slot 3 (included)
+        // There are more slots between slot_2 and slot_3 than max_history_length, so we will CacheMiss
         let mut cur_slot = slot_2.get_next_slot(THREAD_COUNT).unwrap();
         while cur_slot <= slot_3 {
             let batch_key = vec![(cur_slot.period % 256) as u8];
@@ -1724,6 +1725,14 @@ mod test {
             drop(guard);
             cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
         }
+
+        // Stream using StreamingStep::Ongoing
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_2.clone());
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
 
         // Stream using StreamingStep::Finished
         let last_state_step: StreamingStep<Vec<u8>> =
