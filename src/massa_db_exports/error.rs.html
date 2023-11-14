@@ -18,6 +18,8 @@
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
 <a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines all error types for final state management
@@ -33,6 +35,8 @@
     </span>InvalidChangeID(String),
     <span class="doccomment">/// time error: {0}
     </span>TimeError(String),
+    <span class="doccomment">/// cache miss error: {0}
+    </span>CacheMissError(String),
     <span class="doccomment">/// rocks db error: {0}
     </span>RocksDBError(String),
     <span class="doccomment">/// hash error: {0}
