@@ -255,7 +255,7 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::{Request, Streaming};
-<span class="kw">use </span>tracing::{error, warn};
+<span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for NewEndorsements
 </span><span class="kw">pub type </span>NewEndorsementsStreamType = Pin&lt;

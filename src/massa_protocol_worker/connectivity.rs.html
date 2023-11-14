@@ -690,7 +690,7 @@
                                             <span class="kw">if let </span><span class="prelude-val">Some</span>(slots) = connection_slots.get_mut(peer_category.as_str()) {
                                                 <span class="kw-2">*</span>slots = slots.saturating_sub(<span class="number">1</span>);
                                             } <span class="kw">else </span>{
-                                                <span class="macro">tracing::warn!</span>(<span class="string">&quot;Category of connected peer {peer_category} not known in configuration&quot;</span>);
+                                                <span class="macro">tracing::log::warn!</span>(<span class="string">&quot;Category of connected peer {peer_category} not known in configuration&quot;</span>); 
                                             }
                                         } <span class="kw">else </span>{
                                             <span class="kw">let </span>slots = connection_slots.get_mut(<span class="string">&quot;default&quot;</span>).unwrap();
@@ -749,7 +749,7 @@
 
                                             addresses_can_connect.push((<span class="kw-2">*</span>addr, connection_metadata, category_found));
                                         } <span class="kw">else </span>{
-                                            <span class="macro">tracing::warn!</span>(<span class="string">&quot;No listeners for the peer {peer_id}&quot;</span>);
+                                            <span class="macro">tracing::log::warn!</span>(<span class="string">&quot;No listeners for the peer {peer_id}&quot;</span>); 
                                         }
                                     }
                                 }

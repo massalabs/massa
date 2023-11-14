@@ -215,7 +215,7 @@
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::sync::mpsc::Sender;
 <span class="kw">use </span>tonic::Request;
-<span class="kw">use </span>tracing::{error, warn};
+<span class="kw">use </span>tracing::log::{error, warn};
 
 <span class="doccomment">/// Type declaration for SendBlockStream
 </span><span class="kw">pub type </span>SendBlocksStreamType = Pin&lt;
