@@ -1332,7 +1332,7 @@ mod test {
             .read()
             .get_batch_to_stream(&StreamingStep::Ongoing(vec![]), Some(Slot::new(5, 0)));
         // println!("stream_batch: {:?}", stream_batch);
-        assert_matches!(stream_batch, Err(TimeError(..)));
+        assert_matches!(stream_batch, Err(MassaDBError::CacheMissError(..)));
         assert!(stream_batch.err().unwrap().to_string().contains("future"));
 
         //
