@@ -1458,7 +1458,6 @@
 <a href="#1458" id="1458">1458</a>
 <a href="#1459" id="1459">1459</a>
 <a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1658,7 +1657,6 @@
     </span><span class="kw">let </span>ledger_config = LedgerConfig {
         thread_count: THREAD_COUNT,
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
-        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
@@ -1879,7 +1877,7 @@
         massa_metrics.clone(),
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
-        <span class="prelude-val">Err</span>(BootstrapError::Interupted(msg)) =&gt; {
+        <span class="prelude-val">Err</span>(BootstrapError::Interrupted(msg)) =&gt; {
             <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
             process::exit(<span class="number">0</span>);
         }

@@ -1282,10 +1282,6 @@
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
-<a href="#1285" id="1285">1285</a>
-<a href="#1286" id="1286">1286</a>
-<a href="#1287" id="1287">1287</a>
-<a href="#1288" id="1288">1288</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -2206,16 +2202,12 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">fn </span>get_final_state_config() -&gt; (FinalStateConfig, LedgerConfig) {
-        <span class="kw">let </span>temp_dir_storage = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
         <span class="kw">let </span>massa_node_base = PathBuf::from(<span class="string">&quot;../massa-node&quot;</span>);
 
         <span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
         <span class="kw">let </span>ledger_config = LedgerConfig {
             thread_count: THREAD_COUNT,
             initial_ledger_path: massa_node_base.join(<span class="string">&quot;base_config/initial_ledger.json&quot;</span>),
-            disk_ledger_path: temp_dir_storage
-                .into_path()
-                .join(PathBuf::from(<span class="string">&quot;storage/ledger/rocks_db&quot;</span>)),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         };
