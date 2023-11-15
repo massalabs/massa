@@ -2180,7 +2180,7 @@
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
         ));
-        <span class="kw">let </span>(final_state, _tempfile) =
+        <span class="kw">let </span>(final_state, _tempfile, _tempdir) =
             get_sample_state(config.last_start_period, selector_controller, mip_store, db).unwrap();
         <span class="kw">let </span>module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
