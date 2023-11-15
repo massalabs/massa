@@ -1,5 +1,7 @@
 use massa_hash::Hash;
 use massa_models::address::Address;
+use massa_models::config::PERIODS_PER_CYCLE;
+use massa_models::config::THREAD_COUNT;
 use massa_models::slot::Slot;
 use massa_pos_exports::PosError;
 use massa_pos_exports::SelectorConfig;
@@ -53,23 +55,22 @@ fn test_standalone_selection() {
         )
         .unwrap();
 
-    // 2 slots as inclusive range so 32 * 2 + 1 = 65
-    // we expect 65 selections
-    assert_eq!(two_slot_selection.len(), 65);
+    // 2 slots as inclusive range so THREAD_COUNT * 2 + 1 = 65 for 32 threads
+    assert_eq!(two_slot_selection.len(), (THREAD_COUNT as usize) * 2 + 1);
 
-    // period 127 is the last of cycle 0
+    // period (PERIODS_PER_CYCLE - 1) is the last of cycle 0
     // draws for this slot have been computed
     controller
         .get_selection(Slot {
-            period: 127,
+            period: PERIODS_PER_CYCLE - 1,
             thread: 0,
         })
         .unwrap();
 
-    // period 128 is the first of cycle 1
+    // period PERIODS_PER_CYCLE is the first of cycle 1
     // draws for this slot have not been computed yet
     let result = controller.get_selection(Slot {
-        period: 128,
+        period: PERIODS_PER_CYCLE,
         thread: 0,
     });
     assert!(matches!(result, Err(PosError::CycleUnavailable(1))));
