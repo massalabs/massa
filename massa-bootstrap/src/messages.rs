@@ -29,7 +29,7 @@ use massa_serialization::{
 
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::{length_count, length_data, length_value};
+use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -38,6 +38,7 @@ use nom::{
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
+use std::collections::BTreeMap;
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -207,58 +208,85 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
                 // slot
                 self.slot_serializer.serialize(slot, buffer)?;
-                // state
-                self.u64_serializer.serialize(
-                    &(state_part
-                        .new_elements
-                        .len()
-                        .try_into()
-                        .expect("Overflow of new_elements len")),
-                    buffer,
-                )?;
+                // state new_elements
+                let mut total_state_new_element_size = 0;
+                let mut state_new_element_buffer: Vec<u8> = Vec::new();
                 for (key, value) in state_part.new_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.vec_u8_serializer.serialize(value, buffer)?;
+                    total_state_new_element_size += key.len() + value.len();
+                    self.vec_u8_serializer
+                        .serialize(key, &mut state_new_element_buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(value, &mut state_new_element_buffer)?;
                 }
+                println!("LEO - serialization: total_state_new_element_size: {}", total_state_new_element_size);
                 self.u64_serializer.serialize(
-                    &(state_part
-                        .updates_on_previous_elements
-                        .len()
+                    &total_state_new_element_size
                         .try_into()
-                        .expect("Overflow of updates_on_previous_elements len")),
+                        .expect("Overflow of state new_elements len"),
                     buffer,
                 )?;
+                buffer.extend(state_new_element_buffer);
+                // state updates
+                let mut total_state_updates_size = 0;
+                let mut state_updates_buffer: Vec<u8> = Vec::new();
                 for (key, value) in state_part.updates_on_previous_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.opt_vec_u8_serializer.serialize(value, buffer)?;
+                    if let Some(_value) = value {
+                        total_state_updates_size += key.len() + _value.len();
+                    } else {
+                        total_state_updates_size += key.len();
+                    }
+                    self.vec_u8_serializer
+                        .serialize(key, &mut state_updates_buffer)?;
+                    self.opt_vec_u8_serializer
+                        .serialize(value, &mut state_updates_buffer)?;
                 }
+                self.u64_serializer.serialize(
+                    &total_state_updates_size
+                        .try_into()
+                        .expect("Overflow of state updates len"),
+                    buffer,
+                )?;
+                buffer.extend(state_updates_buffer);
                 self.slot_serializer
                     .serialize(&state_part.change_id, buffer)?;
-                // versioning
-                self.u64_serializer.serialize(
-                    &(versioning_part
-                        .new_elements
-                        .len()
-                        .try_into()
-                        .expect("Overflow of new_elements (versioning) len")),
-                    buffer,
-                )?;
+                // versioning new_elements
+                let mut total_versioning_new_element_size = 0;
+                let mut versioning_new_element_buffer: Vec<u8> = Vec::new();
                 for (key, value) in versioning_part.new_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.vec_u8_serializer.serialize(value, buffer)?;
+                    total_versioning_new_element_size += key.len() + value.len();
+                    self.vec_u8_serializer
+                        .serialize(key, &mut versioning_new_element_buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(value, &mut versioning_new_element_buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(versioning_part
-                        .updates_on_previous_elements
-                        .len()
+                    &total_versioning_new_element_size
                         .try_into()
-                        .expect("Overflow of updates_on_previous_elements (versioning) len")),
+                        .expect("Overflow of versioning new_elements len"),
                     buffer,
                 )?;
-                for (key, value) in versioning_part.updates_on_previous_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.opt_vec_u8_serializer.serialize(value, buffer)?;
+                buffer.extend(versioning_new_element_buffer);
+                // versioning updates
+                let mut total_state_updates_size = 0;
+                let mut versioning_updates_buffer: Vec<u8> = Vec::new();
+                for (key, value) in state_part.updates_on_previous_elements.iter() {
+                    if let Some(_value) = value {
+                        total_state_updates_size += key.len() + _value.len();
+                    } else {
+                        total_state_updates_size += key.len();
+                    }
+                    self.vec_u8_serializer
+                        .serialize(key, &mut versioning_updates_buffer)?;
+                    self.opt_vec_u8_serializer
+                        .serialize(value, &mut versioning_updates_buffer)?;
                 }
+                self.u64_serializer.serialize(
+                    &total_state_updates_size
+                        .try_into()
+                        .expect("Overflow of versioning updates len"),
+                    buffer,
+                )?;
+                buffer.extend(versioning_updates_buffer);
                 self.slot_serializer
                     .serialize(&versioning_part.change_id, buffer)?;
                 // consensus graph
@@ -476,43 +504,63 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context(
                         "Failed state_part deserialization",
                         tuple((
-                            context(
-                                "Failed new_elements deserialization",
-                                length_value(
-                                    context("Failed total byte size deserialization", |input| {
-                                        self.state_new_elements_length_deserializer
-                                            .deserialize(input)
-                                    }),
-                                    length_count(
-                                        context("Failed count deserialization", |input| {
-                                            self.state_new_elements_length_deserializer
-                                                .deserialize(input)
-                                        }),
-                                        tuple((
-                                            |input| self.datastore_key_deserializer.deserialize(input),
-                                            |input| self.datastore_val_deserializer.deserialize(input),
-                                        )),
-                                    )
-                                ),
-                            ),
-                            context(
-                                "Failed updates deserialization",
-                                length_value(
-                                    context("Failed total byte size deserialization", |input| {
-                                        self.state_updates_length_deserializer
-                                            .deserialize(input)
-                                    }),
-                                    length_count(
-                                        context("Failed count deserialization", |input| {
-                                            self.state_updates_length_deserializer.deserialize(input)
-                                        }),
-                                        tuple((
-                                            |input| self.datastore_key_deserializer.deserialize(input),
-                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                        )),
-                                    ),
-                                ),
-                            ),
+                            context("Failed new_elements deserialization", |buffer| {
+                                let mut cur_input;
+                                let (input, length) = self
+                                    .state_new_elements_length_deserializer
+                                    .deserialize(buffer)?;
+                                println!("LEO - deserialization: length: {}", length);
+                                cur_input = input;
+                                let mut cur_length = 0;
+                                let mut cur_map = BTreeMap::new();
+                                while cur_length < length {
+                                    println!("LEO - deserialization: cur_length: {}", cur_length);
+                                    println!("LEO - deser key");
+                                    let (input, key) =
+                                        self.datastore_key_deserializer.deserialize(cur_input)?;
+                                    println!("LEO - deser value");
+                                    let (input, value) =
+                                        self.datastore_val_deserializer.deserialize(input)?;
+                                    cur_input = input;
+                                    cur_length += key.len() as u64 + value.len() as u64;
+                                    cur_map.insert(key, value);
+                                }
+                                if cur_length != length {
+                                    return Err(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Eof,
+                                    )));
+                                }
+                                Ok((cur_input, cur_map))
+                            }),
+                            context("Failed updates deserialization", |buffer| {
+                                let mut cur_input;
+                                let (input, length) =
+                                    self.state_updates_length_deserializer.deserialize(buffer)?;
+                                cur_input = input;
+                                let mut cur_length = 0;
+                                let mut cur_map = BTreeMap::new();
+                                while cur_length < length {
+                                    let (input, key) =
+                                        self.datastore_key_deserializer.deserialize(cur_input)?;
+                                    let (input, value) =
+                                        self.opt_vec_u8_deserializer.deserialize(input)?;
+                                    cur_input = input;
+                                    if let Some(_value) = &value {
+                                        cur_length += key.len() as u64 + _value.len() as u64;
+                                    } else {
+                                        cur_length += key.len() as u64;
+                                    }
+                                    cur_map.insert(key, value);
+                                }
+                                if cur_length != length {
+                                    return Err(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Eof,
+                                    )));
+                                }
+                                Ok((cur_input, cur_map))
+                            }),
                             context("Failed slot deserialization", |input| {
                                 self.slot_deserializer.deserialize(input)
                             }),
@@ -521,43 +569,59 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                     context(
                         "Failed versioning_part deserialization",
                         tuple((
-                            context(
-                                "Failed new_elements deserialization",
-                                length_value(
-                                    context("Failed total byte size deserialization", |input| {
-                                        self.state_updates_length_deserializer
-                                            .deserialize(input)
-                                    }),
-                                    length_count(
-                                        context("Failed count deserialization", |input| {
-                                            self.versioning_part_new_elements_length_deserializer
-                                                .deserialize(input)
-                                        }),
-                                        tuple((
-                                            |input| self.datastore_key_deserializer.deserialize(input),
-                                            |input| self.datastore_val_deserializer.deserialize(input),
-                                        )),
-                                    ),
-                                ),
-                            ),
-                            context(
-                                "Failed updates deserialization",
-                                length_value(
-                                    context("Failed total byte size deserialization", |input| {
-                                        self.state_updates_length_deserializer
-                                            .deserialize(input)
-                                    }),
-                                    length_count(
-                                        context("Failed count deserialization", |input| {
-                                            self.state_updates_length_deserializer.deserialize(input)
-                                        }),
-                                        tuple((
-                                            |input| self.datastore_key_deserializer.deserialize(input),
-                                            |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                        )),
-                                    ),
-                                ),
-                            ),
+                            context("Failed new_elements deserialization", |buffer| {
+                                let mut cur_input;
+                                let (input, length) = self
+                                    .versioning_part_new_elements_length_deserializer
+                                    .deserialize(buffer)?;
+                                cur_input = input;
+                                let mut cur_length = 0;
+                                let mut cur_map = BTreeMap::new();
+                                while cur_length < length {
+                                    let (input, key) =
+                                        self.datastore_key_deserializer.deserialize(cur_input)?;
+                                    let (input, value) =
+                                        self.datastore_val_deserializer.deserialize(input)?;
+                                    cur_input = input;
+                                    cur_length += key.len() as u64 + value.len() as u64;
+                                    cur_map.insert(key, value);
+                                }
+                                if cur_length != length {
+                                    return Err(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Eof,
+                                    )));
+                                }
+                                Ok((cur_input, cur_map))
+                            }),
+                            context("Failed updates deserialization", |buffer| {
+                                let mut cur_input;
+                                let (input, length) =
+                                    self.state_updates_length_deserializer.deserialize(buffer)?;
+                                cur_input = input;
+                                let mut cur_length = 0;
+                                let mut cur_map = BTreeMap::new();
+                                while cur_length < length {
+                                    let (input, key) =
+                                        self.datastore_key_deserializer.deserialize(cur_input)?;
+                                    let (input, value) =
+                                        self.opt_vec_u8_deserializer.deserialize(input)?;
+                                    cur_input = input;
+                                    if let Some(_value) = &value {
+                                        cur_length += key.len() as u64 + _value.len() as u64;
+                                    } else {
+                                        cur_length += key.len() as u64;
+                                    }
+                                    cur_map.insert(key, value);
+                                }
+                                if cur_length != length {
+                                    return Err(nom::Err::Error(ParseError::from_error_kind(
+                                        buffer,
+                                        nom::error::ErrorKind::Eof,
+                                    )));
+                                }
+                                Ok((cur_input, cur_map))
+                            }),
                             context("Failed slot deserialization", |input| {
                                 self.slot_deserializer.deserialize(input)
                             }),
