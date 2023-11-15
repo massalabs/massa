@@ -18,9 +18,12 @@ use std::path::PathBuf;
 fn test_bootstrap_not_whitelisted() {
     let port = 8069;
     let server_keypair = KeyPair::generate(0).unwrap();
-    let mut bootstrap_server_config = BootstrapConfig::default();
-    bootstrap_server_config.bootstrap_whitelist_path =
-        PathBuf::from("../massa-node/base_config/bootstrap_whitelist.json");
+    let bootstrap_server_config = BootstrapConfig {
+        bootstrap_whitelist_path: PathBuf::from(
+            "../massa-node/base_config/bootstrap_whitelist.json",
+        ),
+        ..Default::default()
+    };
     let server_universe = BootstrapServerTestUniverseBuilder::new()
         .set_port(port)
         .set_config(bootstrap_server_config)
