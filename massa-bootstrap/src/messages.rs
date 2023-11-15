@@ -218,7 +218,10 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     self.vec_u8_serializer
                         .serialize(value, &mut state_new_element_buffer)?;
                 }
-                println!("LEO - serialization: total_state_new_element_size: {}", total_state_new_element_size);
+                println!(
+                    "LEO - serialization: total_state_new_element_size: {}",
+                    total_state_new_element_size
+                );
                 self.u64_serializer.serialize(
                     &total_state_new_element_size
                         .try_into()
