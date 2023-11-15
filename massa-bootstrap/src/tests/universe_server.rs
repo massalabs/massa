@@ -16,10 +16,12 @@ use massa_metrics::MassaMetrics;
 use massa_models::{
     address::Address,
     amount::Amount,
+    bytecode::Bytecode,
     config::{
         MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
         MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, THREAD_COUNT,
     },
+    datastore::Datastore,
     prehash::PreHashSet,
     streaming_step::StreamingStep,
 };
@@ -33,7 +35,7 @@ use tempfile::{NamedTempFile, TempDir};
 
 use crate::{
     listener::{BootstrapListenerStopHandle, MockBootstrapTcpListener, PollEvent},
-    start_bootstrap_server, BootstrapConfig, BootstrapManager,
+    start_bootstrap_server, BootstrapConfig, BootstrapError, BootstrapManager,
 };
 
 pub struct BootstrapServerForeignControllers {
@@ -118,6 +120,7 @@ pub struct BootstrapServerTestUniverseBuilder {
     config: BootstrapConfig,
     final_ledger: FinalLedger,
     socket_addr: SocketAddr,
+    accept_error: bool,
 }
 
 impl Default for BootstrapServerTestUniverseBuilder {
@@ -182,6 +185,7 @@ impl Default for BootstrapServerTestUniverseBuilder {
             config: BootstrapConfig::default(),
             final_ledger,
             socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8069),
+            accept_error: false,
         }
     }
 }
@@ -205,6 +209,36 @@ impl BootstrapServerTestUniverseBuilder {
         self
     }
 
+    pub fn set_bytecode(mut self, address: &Address, bytecode: Bytecode) -> Self {
+        let mut ledger_changes = LedgerChanges::default();
+        ledger_changes.set_bytecode(*address, bytecode);
+        let mut batch = DBBatch::default();
+        let versioning_batch = DBBatch::default();
+        self.final_ledger
+            .apply_changes_to_batch(ledger_changes, &mut batch);
+        self.controllers
+            .database
+            .write()
+            .write_batch(batch, versioning_batch, None);
+        self
+    }
+
+    pub fn set_datastore(mut self, address: &Address, datastore: Datastore) -> Self {
+        let mut ledger_changes = LedgerChanges::default();
+        for (key, value) in datastore.into_iter() {
+            ledger_changes.set_data_entry(*address, key, value);
+        }
+        let mut batch = DBBatch::default();
+        let versioning_batch = DBBatch::default();
+        self.final_ledger
+            .apply_changes_to_batch(ledger_changes, &mut batch);
+        self.controllers
+            .database
+            .write()
+            .write_batch(batch, versioning_batch, None);
+        self
+    }
+
     pub fn set_keypair(mut self, keypair: &KeyPair) -> Self {
         self.controllers.server_keypair = keypair.clone();
         self
@@ -212,6 +246,11 @@ impl BootstrapServerTestUniverseBuilder {
 
     pub fn set_port(mut self, port: u16) -> Self {
         self.socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
+        self
+    }
+
+    pub fn set_accept_error(mut self, accept_error: bool) -> Self {
+        self.accept_error = accept_error;
         self
     }
 
@@ -224,22 +263,37 @@ impl BootstrapServerTestUniverseBuilder {
         //TODO: Add possibility to chain bootstrap
         let listener = std::net::TcpListener::bind(self.socket_addr).unwrap();
         let mut sequence = Sequence::new();
-        // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
-        // thread. We use a channel to make the connection available in the mocked `accept` method
-        let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
-        std::thread::Builder::new()
-            .name("mock-listen-loop".to_string())
-            .spawn(move || loop {
-                conn_tx.send(listener.accept().unwrap()).unwrap()
-            })
-            .unwrap();
-        self.controllers
-            .listener
-            .expect_poll()
-            .times(1)
-            // Mock the `accept` method here by receiving from the listen-loop thread
-            .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
-            .in_sequence(&mut sequence);
+        if self.accept_error {
+            self.controllers
+                .listener
+                .expect_poll()
+                .times(1)
+                // Mock the `accept` method here by receiving from the listen-loop thread
+                .returning(move || {
+                    Err(BootstrapError::IoError(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "mocked error",
+                    )))
+                })
+                .in_sequence(&mut sequence);
+        } else {
+            // Due to the limitations of the mocking system, the listener must loop-accept in a dedicated
+            // thread. We use a channel to make the connection available in the mocked `accept` method
+            let (conn_tx, conn_rx) = std::sync::mpsc::sync_channel(100);
+            std::thread::Builder::new()
+                .name("mock-listen-loop".to_string())
+                .spawn(move || loop {
+                    conn_tx.send(listener.accept().unwrap()).unwrap()
+                })
+                .unwrap();
+            self.controllers
+                .listener
+                .expect_poll()
+                .times(1)
+                // Mock the `accept` method here by receiving from the listen-loop thread
+                .returning(move || Ok(PollEvent::NewConnections(vec![conn_rx.recv().unwrap()])))
+                .in_sequence(&mut sequence);
+        }
         self.controllers
             .listener
             .expect_poll()
