@@ -218,10 +218,6 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     self.vec_u8_serializer
                         .serialize(value, &mut state_new_element_buffer)?;
                 }
-                println!(
-                    "LEO - serialization: total_state_new_element_size: {}",
-                    total_state_new_element_size
-                );
                 self.u64_serializer.serialize(
                     &total_state_new_element_size
                         .try_into()
@@ -512,16 +508,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 let (input, length) = self
                                     .state_new_elements_length_deserializer
                                     .deserialize(buffer)?;
-                                println!("LEO - deserialization: length: {}", length);
                                 cur_input = input;
                                 let mut cur_length = 0;
                                 let mut cur_map = BTreeMap::new();
                                 while cur_length < length {
-                                    println!("LEO - deserialization: cur_length: {}", cur_length);
-                                    println!("LEO - deser key");
                                     let (input, key) =
                                         self.datastore_key_deserializer.deserialize(cur_input)?;
-                                    println!("LEO - deser value");
                                     let (input, value) =
                                         self.datastore_val_deserializer.deserialize(input)?;
                                     cur_input = input;
