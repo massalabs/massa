@@ -90,7 +90,7 @@ pub trait MassaDBController: Send + Sync + Debug {
 
     /// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
     #[cfg(feature = "test-exports")]
-    fn get_entire_ledger(&self) -> BTreeMap<Vec<u8>, Vec<u8>>;
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>>;
 }
 
 /// Similar to RocksDB's IteratorMode

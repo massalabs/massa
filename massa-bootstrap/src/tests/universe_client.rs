@@ -143,8 +143,8 @@ impl BootstrapClientTestUniverse {
     //TODO: Add consensus blocks and peers
     pub fn compare_database(&self, other_database: ShareableMassaDBController) {
         assert_eq!(
-            self.database.read().get_entire_ledger(),
-            other_database.read().get_entire_ledger()
+            self.database.read().get_entire_database(),
+            other_database.read().get_entire_database()
         );
     }
 }
