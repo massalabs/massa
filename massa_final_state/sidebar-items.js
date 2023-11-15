@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["FinalStateError"],"mod":["config","error","final_state","mapping_grpc","state_changes"],"struct":["FinalState","FinalStateConfig","StateChanges","StateChangesDeserializer","StateChangesSerializer"]};
+window.SIDEBAR_ITEMS = {"enum":["FinalStateError"],"mod":["config","controller_trait","error","final_state","mapping_grpc","state_changes"],"struct":["FinalState","FinalStateConfig","StateChanges","StateChangesDeserializer","StateChangesSerializer"],"trait":["FinalStateController"]};
