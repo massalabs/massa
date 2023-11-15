@@ -518,7 +518,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.datastore_val_deserializer.deserialize(input)?;
                                     cur_input = input;
                                     cur_length += key.len() as u64 + value.len() as u64;
-                                    cur_map.insert(key, value);
+                                    if cur_map.insert(key, value).is_some() {
+                                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 if cur_length != length {
                                     return Err(nom::Err::Error(ParseError::from_error_kind(
@@ -546,7 +551,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                     } else {
                                         cur_length += key.len() as u64;
                                     }
-                                    cur_map.insert(key, value);
+                                    if cur_map.insert(key, value).is_some() {
+                                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 if cur_length != length {
                                     return Err(nom::Err::Error(ParseError::from_error_kind(
@@ -579,7 +589,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                         self.datastore_val_deserializer.deserialize(input)?;
                                     cur_input = input;
                                     cur_length += key.len() as u64 + value.len() as u64;
-                                    cur_map.insert(key, value);
+                                    if cur_map.insert(key, value).is_some() {
+                                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 if cur_length != length {
                                     return Err(nom::Err::Error(ParseError::from_error_kind(
@@ -607,7 +622,12 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                     } else {
                                         cur_length += key.len() as u64;
                                     }
-                                    cur_map.insert(key, value);
+                                    if cur_map.insert(key, value).is_some() {
+                                        return Err(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 if cur_length != length {
                                     return Err(nom::Err::Error(ParseError::from_error_kind(
@@ -654,15 +674,13 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         last_slot_before_downtime,
                     )| {
                         let state_part = StreamBatch::<Slot> {
-                            new_elements: state_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: state_part_updates.into_iter().collect(),
+                            new_elements: state_part_new_elems,
+                            updates_on_previous_elements: state_part_updates,
                             change_id: state_part_change_id,
                         };
                         let versioning_part = StreamBatch::<Slot> {
-                            new_elements: versioning_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: versioning_part_updates
-                                .into_iter()
-                                .collect(),
+                            new_elements: versioning_part_new_elems,
+                            updates_on_previous_elements: versioning_part_updates,
                             change_id: versioning_part_change_id,
                         };
 
