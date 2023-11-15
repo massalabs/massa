@@ -272,7 +272,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                 // versioning updates
                 let mut total_state_updates_size = 0;
                 let mut versioning_updates_buffer: Vec<u8> = Vec::new();
-                for (key, value) in state_part.updates_on_previous_elements.iter() {
+                for (key, value) in versioning_part.updates_on_previous_elements.iter() {
                     if let Some(_value) = value {
                         total_state_updates_size += key.len() + _value.len();
                     } else {
