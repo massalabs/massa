@@ -986,6 +986,24 @@
 <a href="#986" id="986">986</a>
 <a href="#987" id="987">987</a>
 <a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
+<a href="#994" id="994">994</a>
+<a href="#995" id="995">995</a>
+<a href="#996" id="996">996</a>
+<a href="#997" id="997">997</a>
+<a href="#998" id="998">998</a>
+<a href="#999" id="999">999</a>
+<a href="#1000" id="1000">1000</a>
+<a href="#1001" id="1001">1001</a>
+<a href="#1002" id="1002">1002</a>
+<a href="#1003" id="1003">1003</a>
+<a href="#1004" id="1004">1004</a>
+<a href="#1005" id="1005">1005</a>
+<a href="#1006" id="1006">1006</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1506,7 +1524,12 @@
                                         <span class="self">self</span>.datastore_val_deserializer.deserialize(input)<span class="question-mark">?</span>;
                                     cur_input = input;
                                     cur_length += key.len() <span class="kw">as </span>u64 + value.len() <span class="kw">as </span>u64;
-                                    cur_map.insert(key, value);
+                                    <span class="kw">if </span>cur_map.insert(key, value).is_some() {
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 <span class="kw">if </span>cur_length != length {
                                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
@@ -1534,7 +1557,12 @@
                                     } <span class="kw">else </span>{
                                         cur_length += key.len() <span class="kw">as </span>u64;
                                     }
-                                    cur_map.insert(key, value);
+                                    <span class="kw">if </span>cur_map.insert(key, value).is_some() {
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 <span class="kw">if </span>cur_length != length {
                                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
@@ -1567,7 +1595,12 @@
                                         <span class="self">self</span>.datastore_val_deserializer.deserialize(input)<span class="question-mark">?</span>;
                                     cur_input = input;
                                     cur_length += key.len() <span class="kw">as </span>u64 + value.len() <span class="kw">as </span>u64;
-                                    cur_map.insert(key, value);
+                                    <span class="kw">if </span>cur_map.insert(key, value).is_some() {
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 <span class="kw">if </span>cur_length != length {
                                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
@@ -1595,7 +1628,12 @@
                                     } <span class="kw">else </span>{
                                         cur_length += key.len() <span class="kw">as </span>u64;
                                     }
-                                    cur_map.insert(key, value);
+                                    <span class="kw">if </span>cur_map.insert(key, value).is_some() {
+                                        <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
+                                            buffer,
+                                            nom::error::ErrorKind::Eof,
+                                        )));
+                                    }
                                 }
                                 <span class="kw">if </span>cur_length != length {
                                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
@@ -1642,15 +1680,13 @@
                         last_slot_before_downtime,
                     )| {
                         <span class="kw">let </span>state_part = StreamBatch::&lt;Slot&gt; {
-                            new_elements: state_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: state_part_updates.into_iter().collect(),
+                            new_elements: state_part_new_elems,
+                            updates_on_previous_elements: state_part_updates,
                             change_id: state_part_change_id,
                         };
                         <span class="kw">let </span>versioning_part = StreamBatch::&lt;Slot&gt; {
-                            new_elements: versioning_part_new_elems.into_iter().collect(),
-                            updates_on_previous_elements: versioning_part_updates
-                                .into_iter()
-                                .collect(),
+                            new_elements: versioning_part_new_elems,
+                            updates_on_previous_elements: versioning_part_updates,
                             change_id: versioning_part_change_id,
                         };
 
