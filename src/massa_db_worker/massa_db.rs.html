@@ -1744,6 +1744,37 @@
 <a href="#1744" id="1744">1744</a>
 <a href="#1745" id="1745">1745</a>
 <a href="#1746" id="1746">1746</a>
+<a href="#1747" id="1747">1747</a>
+<a href="#1748" id="1748">1748</a>
+<a href="#1749" id="1749">1749</a>
+<a href="#1750" id="1750">1750</a>
+<a href="#1751" id="1751">1751</a>
+<a href="#1752" id="1752">1752</a>
+<a href="#1753" id="1753">1753</a>
+<a href="#1754" id="1754">1754</a>
+<a href="#1755" id="1755">1755</a>
+<a href="#1756" id="1756">1756</a>
+<a href="#1757" id="1757">1757</a>
+<a href="#1758" id="1758">1758</a>
+<a href="#1759" id="1759">1759</a>
+<a href="#1760" id="1760">1760</a>
+<a href="#1761" id="1761">1761</a>
+<a href="#1762" id="1762">1762</a>
+<a href="#1763" id="1763">1763</a>
+<a href="#1764" id="1764">1764</a>
+<a href="#1765" id="1765">1765</a>
+<a href="#1766" id="1766">1766</a>
+<a href="#1767" id="1767">1767</a>
+<a href="#1768" id="1768">1768</a>
+<a href="#1769" id="1769">1769</a>
+<a href="#1770" id="1770">1770</a>
+<a href="#1771" id="1771">1771</a>
+<a href="#1772" id="1772">1772</a>
+<a href="#1773" id="1773">1773</a>
+<a href="#1774" id="1774">1774</a>
+<a href="#1775" id="1775">1775</a>
+<a href="#1776" id="1776">1776</a>
+<a href="#1777" id="1777">1777</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1757,7 +1788,7 @@
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
@@ -1924,9 +1955,25 @@
                 <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
             };
 
+            <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_final_state_elements_size {
+                <span class="kw">let </span>key_len = serialized_key.len();
+                <span class="kw">let </span>value_len = serialized_value.len();
+                <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+                u64_ser
+                    .serialize(<span class="kw-2">&amp;</span>(key_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
+                    .map_err(|<span class="kw">_</span>| {
+                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize key length&quot;</span>))
+                    })<span class="question-mark">?</span>;
+                u64_ser
+                    .serialize(<span class="kw-2">&amp;</span>(value_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
+                    .map_err(|<span class="kw">_</span>| {
+                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize value length&quot;</span>))
+                    })<span class="question-mark">?</span>;
+                <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                </span>new_elements_size += key_len + value_len + buffer.len();
+                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -2036,10 +2083,25 @@
                 }
                 <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
             };
-
+            <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                <span class="kw">if </span>new_elements_size &lt; <span class="self">self</span>.config.max_versioning_elements_size {
+                <span class="kw">let </span>key_len = serialized_key.len();
+                <span class="kw">let </span>value_len = serialized_value.len();
+                <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
+                u64_ser
+                    .serialize(<span class="kw-2">&amp;</span>(key_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
+                    .map_err(|<span class="kw">_</span>| {
+                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize key length&quot;</span>))
+                    })<span class="question-mark">?</span>;
+                u64_ser
+                    .serialize(<span class="kw-2">&amp;</span>(value_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
+                    .map_err(|<span class="kw">_</span>| {
+                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize value length&quot;</span>))
+                    })<span class="question-mark">?</span>;
+                <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                </span>new_elements_size += key_len + value_len + buffer.len();
+                <span class="kw">if </span>new_elements_size &lt;= <span class="self">self</span>.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } <span class="kw">else </span>{
                     <span class="kw">break</span>;
@@ -3185,8 +3247,8 @@
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">4</span>,
-            max_versioning_elements_size: <span class="number">4</span>,
+            max_final_state_elements_size: <span class="number">10</span>,
+            max_versioning_elements_size: <span class="number">10</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3269,8 +3331,8 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
-            max_final_state_elements_size: <span class="number">7</span>,
-            max_versioning_elements_size: <span class="number">7</span>,
+            max_final_state_elements_size: <span class="number">20</span>,
+            max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
@@ -3380,8 +3442,8 @@
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">4</span>,
-            max_final_state_elements_size: <span class="number">7</span>,
-            max_versioning_elements_size: <span class="number">7</span>,
+            max_final_state_elements_size: <span class="number">20</span>,
+            max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
         };
 
