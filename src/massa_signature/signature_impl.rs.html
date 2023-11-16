@@ -1790,7 +1790,7 @@
 
 <span class="kw">impl </span>PartialOrd <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="self">self</span>.to_bytes().partial_cmp(<span class="kw-2">&amp;</span>other.to_bytes())
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.to_bytes().cmp(<span class="kw-2">&amp;</span>other.to_bytes()))
     }
 }
 
@@ -1949,7 +1949,7 @@
 <span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
 </span><span class="kw">impl </span>PartialOrd <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="self">self</span>.<span class="number">0</span>.to_bytes().partial_cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes())
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="number">0</span>.to_bytes().cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes()))
     }
 }
 
