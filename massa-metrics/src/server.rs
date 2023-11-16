@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use hyper::{
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
-    Body, Request, Response,
+    body::Body, Request, Response,
 };
 use prometheus::{Encoder, TextEncoder};
 use tracing::{error, info};
