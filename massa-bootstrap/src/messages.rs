@@ -224,6 +224,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                         .expect("Overflow of state new_elements len"),
                     buffer,
                 )?;
+                println!("SER - total_state_new_element_size: {:?}", total_state_new_element_size);
                 buffer.extend(state_new_element_buffer);
                 // state updates
                 let mut total_state_updates_size = 0;
@@ -245,6 +246,7 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                         .expect("Overflow of state updates len"),
                     buffer,
                 )?;
+                println!("SER - total_state_updates_size: {:?}", total_state_updates_size);
                 buffer.extend(state_updates_buffer);
                 self.slot_serializer
                     .serialize(&state_part.change_id, buffer)?;
@@ -264,15 +266,16 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                         .expect("Overflow of versioning new_elements len"),
                     buffer,
                 )?;
+                println!("SER - total_versioning_new_element_size: {:?}", total_versioning_new_element_size);
                 buffer.extend(versioning_new_element_buffer);
                 // versioning updates
-                let mut total_state_updates_size = 0;
+                let mut total_versioning_updates_size = 0;
                 let mut versioning_updates_buffer: Vec<u8> = Vec::new();
                 for (key, value) in versioning_part.updates_on_previous_elements.iter() {
                     if let Some(_value) = value {
-                        total_state_updates_size += key.len() + _value.len();
+                        total_versioning_updates_size += key.len() + _value.len();
                     } else {
-                        total_state_updates_size += key.len();
+                        total_versioning_updates_size += key.len();
                     }
                     self.vec_u8_serializer
                         .serialize(key, &mut versioning_updates_buffer)?;
@@ -280,12 +283,14 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                         .serialize(value, &mut versioning_updates_buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &total_state_updates_size
+                    &total_versioning_updates_size
                         .try_into()
                         .expect("Overflow of versioning updates len"),
                     buffer,
                 )?;
+                println!("SER - total_versioning_updates_size: {:?}", total_versioning_updates_size);
                 buffer.extend(versioning_updates_buffer);
+                println!("SER versioning_part.change_id: {:?}", versioning_part.change_id);
                 self.slot_serializer
                     .serialize(&versioning_part.change_id, buffer)?;
                 // consensus graph
@@ -508,6 +513,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 let (input, length) = self
                                     .state_new_elements_length_deserializer
                                     .deserialize(buffer)?;
+                                println!("DESER - state_new_elements size: {:?}", length);
                                 cur_input = input;
                                 let mut cur_length = 0;
                                 let mut cur_map = BTreeMap::new();
@@ -537,6 +543,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 let mut cur_input;
                                 let (input, length) =
                                     self.state_updates_length_deserializer.deserialize(buffer)?;
+                                println!("DESER - state_updates size: {:?}", length);
                                 cur_input = input;
                                 let mut cur_length = 0;
                                 let mut cur_map = BTreeMap::new();
@@ -579,6 +586,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 let (input, length) = self
                                     .versioning_part_new_elements_length_deserializer
                                     .deserialize(buffer)?;
+                                println!("DESER - total_versioning_new_element_size: {:?}", length);
                                 cur_input = input;
                                 let mut cur_length = 0;
                                 let mut cur_map = BTreeMap::new();
@@ -608,6 +616,7 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 let mut cur_input;
                                 let (input, length) =
                                     self.state_updates_length_deserializer.deserialize(buffer)?;
+                                println!("DESER - total_versioning_updates_size: {:?}", length);
                                 cur_input = input;
                                 let mut cur_length = 0;
                                 let mut cur_map = BTreeMap::new();
