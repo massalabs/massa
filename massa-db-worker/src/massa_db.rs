@@ -11,7 +11,7 @@ use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
@@ -178,8 +178,22 @@ where
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
 
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                new_elements_size += serialized_key.len() + serialized_value.len();
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                new_elements_size += key_len + value_len + buffer.len();
                 if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
@@ -290,9 +304,22 @@ where
                 }
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
-
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                new_elements_size += serialized_key.len() + serialized_value.len();
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                new_elements_size += key_len + value_len + buffer.len();
                 if new_elements_size <= self.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
@@ -1439,8 +1466,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 4,
-            max_versioning_elements_size: 4,
+            max_final_state_elements_size: 10,
+            max_versioning_elements_size: 10,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1523,8 +1550,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 7,
-            max_versioning_elements_size: 7,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1634,8 +1661,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 4,
-            max_final_state_elements_size: 7,
-            max_versioning_elements_size: 7,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
         };
 

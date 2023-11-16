@@ -19,4 +19,6 @@ pub enum MassaDBError {
     RocksDBError(String),
     /// hash error: {0}
     HashError(String),
+    /// serialization error: {0}
+    SerializeError(String),
 }
