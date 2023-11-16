@@ -915,7 +915,7 @@ mod test {
         );
 
         // Checks up
-        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
+        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or_default();
         let cf_exists_1 = cfs.iter().any(|cf| cf == "state");
         let cf_exists_2 = cfs.iter().any(|cf| cf == "metadata");
         let cf_exists_3 = cfs.iter().any(|cf| cf == "versioning");
