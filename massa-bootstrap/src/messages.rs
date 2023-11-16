@@ -319,7 +319,7 @@ pub struct BootstrapServerMessageDeserializer {
     peers_deserializer: BootstrapPeersDeserializer,
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
-    state_updates_length_deserializer: U64VarIntDeserializer,
+    stream_batch_updates_length_deserializer: U64VarIntDeserializer,
     datastore_key_deserializer: VecU8Deserializer,
     datastore_val_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
@@ -379,7 +379,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(args.max_final_state_elements_size.into()),
             ),
-            state_updates_length_deserializer: U64VarIntDeserializer::new(
+            stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(u64::MAX),
             ),
@@ -506,7 +506,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed updates deserialization",
                                 length_value(
                                     context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                        self.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),
@@ -539,7 +540,8 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                                 "Failed updates deserialization",
                                 length_value(
                                     context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                        self.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),

@@ -193,6 +193,8 @@ where
                     .map_err(|_| {
                         MassaDBError::SerializeError(String::from("Cannot serialize value length"))
                     })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
                 if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
@@ -319,6 +321,8 @@ where
                     .map_err(|_| {
                         MassaDBError::SerializeError(String::from("Cannot serialize value length"))
                     })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
                 new_elements_size += key_len + value_len + buffer.len();
                 if new_elements_size <= self.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
