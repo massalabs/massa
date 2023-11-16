@@ -736,6 +736,59 @@ pub fn gen_random_streaming_step<T, R: Rng>(rng: &mut R, content: T) -> Streamin
     }
 }
 
+#[allow(clippy::enum_variant_names)]
+#[derive(PartialEq, Debug)]
+pub enum BootstrapServerMessageFaultyPart {
+    MaxBootstrapErrorLengthOverflow = 0,
+    MaxBootstrapPeersOverflow = 1,
+    MaxListenersPerPeerOverflow = 2,
+    SlotThreadOverflow = 3,
+    MaxStateDatastoreKeyLengthOverflow = 4,
+    MaxStateDatastoreValueLengthOverflow = 5,
+    MaxStateNewElementsSizeOverflow = 6,
+    StateChangeIdThreadOverflow = 7,
+    MaxVersioningNewElementsSizeOverflow = 8,
+    MaxVersioningDatastoreKeyLengthOverflow = 9,
+    MaxVersioningDatastoreValueLengthOverflow = 10,
+    VersioningChangeIdThreadOverflow = 11,
+    MaxBootstrapBlocksOverflow = 12,
+    MaxParentsPerBlockOverflow = 13,
+    BlockSlotThreadOverflow = 14,
+    MaxEndorsementsPerBlockOverflow = 15,
+    MaxDenunciationsPerBlockOverflow = 16,
+    MaxOperationsPerBlockOverflow = 17,
+    MaxOutdatedIdsOverflow = 18,
+    LastSlotBeforeDowntimeThreadOverflow = 19,
+}
+
+impl BootstrapServerMessageFaultyPart {
+    pub fn from_u8(v_u8: u8) -> Self {
+        match v_u8 {
+            0 => Self::MaxBootstrapErrorLengthOverflow,
+            1 => Self::MaxBootstrapPeersOverflow,
+            2 => Self::MaxListenersPerPeerOverflow,
+            3 => Self::SlotThreadOverflow,
+            4 => Self::MaxStateDatastoreKeyLengthOverflow,
+            5 => Self::MaxStateDatastoreValueLengthOverflow,
+            6 => Self::MaxStateNewElementsSizeOverflow,
+            7 => Self::StateChangeIdThreadOverflow,
+            8 => Self::MaxVersioningNewElementsSizeOverflow,
+            9 => Self::MaxVersioningDatastoreKeyLengthOverflow,
+            10 => Self::MaxVersioningDatastoreValueLengthOverflow,
+            11 => Self::VersioningChangeIdThreadOverflow,
+            12 => Self::MaxBootstrapBlocksOverflow,
+            13 => Self::MaxParentsPerBlockOverflow,
+            14 => Self::BlockSlotThreadOverflow,
+            15 => Self::MaxEndorsementsPerBlockOverflow,
+            16 => Self::MaxDenunciationsPerBlockOverflow,
+            17 => Self::MaxOperationsPerBlockOverflow,
+            18 => Self::MaxOutdatedIdsOverflow,
+            19 => Self::LastSlotBeforeDowntimeThreadOverflow,
+            _ => panic!("invalid value"),
+        }
+    }
+}
+
 impl BootstrapServerMessage {
     pub fn generate<R: Rng>(rng: &mut R) -> Self {
         let variant = rng.gen_range(0..6);
@@ -815,10 +868,12 @@ impl BootstrapServerMessage {
     // Generate a message with errors added inside the message.
     // Has to be generated quickly, and have a previsible error case based on the
     // "faulty_part" input number.
-    pub fn generate_faulty<R: Rng>(rng: &mut R, faulty_part: usize) -> Self {
-        assert!(faulty_part < 20, "Faulty part < 20");
+    pub fn generate_faulty<R: Rng>(
+        rng: &mut R,
+        faulty_part: BootstrapServerMessageFaultyPart,
+    ) -> Self {
         // Error
-        if faulty_part == 0 {
+        if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapErrorLengthOverflow {
             let mut res = vec![0; (MAX_BOOTSTRAP_ERROR_LENGTH as usize) + 10];
             rng.fill_bytes(&mut res);
             let error = res
@@ -828,7 +883,7 @@ impl BootstrapServerMessage {
             BootstrapServerMessage::BootstrapError { error }
 
         // BootstrapPeers too many peers
-        } else if faulty_part == 1 {
+        } else if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapPeersOverflow {
             // Too many peers sent in the message
             let mut peers = vec![];
             for _ in 0..(MAX_ADVERTISE_LENGTH + 1) {
@@ -842,7 +897,7 @@ impl BootstrapServerMessage {
             }
 
         // BootstrapPeers too many listeners per peer
-        } else if faulty_part == 2 {
+        } else if faulty_part == BootstrapServerMessageFaultyPart::MaxListenersPerPeerOverflow {
             // Too many listeners inside a peer
             let mut peers = vec![];
             let peer_id = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
@@ -864,22 +919,28 @@ impl BootstrapServerMessage {
         // BootstrapServerMessage::BootstrapPart
         } else {
             let mut slot = gen_random_slot(rng);
-            if faulty_part == 3 {
+            if faulty_part == BootstrapServerMessageFaultyPart::SlotThreadOverflow {
                 slot.thread = THREAD_COUNT;
             }
             let mut new_elements = BTreeMap::new();
             let mut new_elements_size: usize = 0;
-            let key_len = if faulty_part == 4 {
+            let key_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateDatastoreKeyLengthOverflow
+            {
                 (MAX_DATASTORE_KEY_LENGTH as usize) + 1
             } else {
                 MAX_DATASTORE_KEY_LENGTH as usize
             };
-            let value_len = if faulty_part == 5 {
+            let value_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateDatastoreValueLengthOverflow
+            {
                 (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
             } else {
                 MAX_DATASTORE_VALUE_LENGTH as usize
             };
-            let new_elements_size_max = if faulty_part == 6 {
+            let new_elements_size_max = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateNewElementsSizeOverflow
+            {
                 // (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize) + key_len + value_len
                 (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE * 2) as usize
             } else {
@@ -897,7 +958,7 @@ impl BootstrapServerMessage {
                 new_elements.insert(key, value);
                 new_elements_size += key_len + value_len;
             }
-            if faulty_part == 6 {
+            if faulty_part == BootstrapServerMessageFaultyPart::MaxStateNewElementsSizeOverflow {
                 assert!(
                     new_elements_size > (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize),
                     "Error in the code of the test for faulty_part 4"
@@ -906,7 +967,7 @@ impl BootstrapServerMessage {
             // No limit on the size of this except the u64 boundery
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
-            if faulty_part == 7 {
+            if faulty_part == BootstrapServerMessageFaultyPart::StateChangeIdThreadOverflow {
                 change_id.thread = THREAD_COUNT;
             }
             let state_part = StreamBatch {
@@ -917,17 +978,23 @@ impl BootstrapServerMessage {
 
             let mut new_elements = BTreeMap::new();
             let mut new_elements_size: usize = 0;
-            let new_elements_size_max = if faulty_part == 8 {
+            let new_elements_size_max = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningNewElementsSizeOverflow
+            {
                 (MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE + 1) as usize
             } else {
                 5
             };
-            let key_len = if faulty_part == 9 {
+            let key_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreKeyLengthOverflow
+            {
                 (MAX_DATASTORE_KEY_LENGTH as usize) + 1
             } else {
                 MAX_DATASTORE_KEY_LENGTH as usize
             };
-            let value_len = if faulty_part == 10 {
+            let value_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreValueLengthOverflow
+            {
                 (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
             } else {
                 MAX_DATASTORE_VALUE_LENGTH as usize
@@ -947,7 +1014,7 @@ impl BootstrapServerMessage {
             // No limit on the size of this except the u64 boundery
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
-            if faulty_part == 11 {
+            if faulty_part == BootstrapServerMessageFaultyPart::VersioningChangeIdThreadOverflow {
                 change_id.thread = THREAD_COUNT;
             }
             let versioning_part = StreamBatch {
@@ -960,24 +1027,26 @@ impl BootstrapServerMessage {
             // Generate all blocks, as the count is high, to reduce testing time,
             // Pre-generate everything that will go inside the block (it's not a problem)
             // That they are all the same as we care only about serialization / deserialization
-            let block_nb = if faulty_part == 12 {
-                MAX_BOOTSTRAP_BLOCKS + 1
-            } else {
-                5
-            };
+            let block_nb =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapBlocksOverflow {
+                    MAX_BOOTSTRAP_BLOCKS + 1
+                } else {
+                    5
+                };
 
             let mut final_blocks = vec![];
 
             let mut block_slot = gen_random_slot(rng);
             let keypair = KeyPair::generate(0).unwrap();
 
-            let mut parents_nb = if faulty_part == 13 {
-                THREAD_COUNT + 1
-            } else {
-                THREAD_COUNT
-            };
+            let mut parents_nb =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxParentsPerBlockOverflow {
+                    THREAD_COUNT + 1
+                } else {
+                    THREAD_COUNT
+                };
 
-            if faulty_part == 14 {
+            if faulty_part == BootstrapServerMessageFaultyPart::BlockSlotThreadOverflow {
                 block_slot.thread = THREAD_COUNT;
                 parents_nb = THREAD_COUNT + 1;
             }
@@ -986,7 +1055,9 @@ impl BootstrapServerMessage {
 
             // Generate block header
             let mut endorsements = vec![];
-            let nb_endorsements = if faulty_part == 15 {
+            let nb_endorsements = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxEndorsementsPerBlockOverflow
+            {
                 ENDORSEMENT_COUNT + 1
             } else {
                 5
@@ -1005,7 +1076,9 @@ impl BootstrapServerMessage {
                 endorsements.push(endorsement);
             }
 
-            let _nb_denunciations = if faulty_part == 16 {
+            let _nb_denunciations = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxDenunciationsPerBlockOverflow
+            {
                 MAX_DENUNCIATIONS_PER_BLOCK_HEADER + 1
             } else {
                 5
@@ -1016,11 +1089,12 @@ impl BootstrapServerMessage {
             //    // TODO    Denunciations generation
             // }
 
-            let nb_operations = if faulty_part == 17 {
-                MAX_OPERATIONS_PER_BLOCK + 1
-            } else {
-                5
-            };
+            let nb_operations =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxOperationsPerBlockOverflow {
+                    MAX_OPERATIONS_PER_BLOCK + 1
+                } else {
+                    5
+                };
 
             let mut operations = vec![];
             for _ in 0..nb_operations {
@@ -1058,17 +1132,20 @@ impl BootstrapServerMessage {
             for _ in 0..block_nb {
                 final_blocks.push(export_active_block.clone());
             }
-            let outdated_ids = if faulty_part == 18 {
-                MAX_BOOTSTRAP_BLOCKS + 1
-            } else {
-                5
-            };
+            let outdated_ids =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxOutdatedIdsOverflow {
+                    MAX_BOOTSTRAP_BLOCKS + 1
+                } else {
+                    5
+                };
             let mut consensus_outdated_ids = PreHashSet::default();
             for _ in 0..outdated_ids {
                 consensus_outdated_ids.insert(gen_random_block_id(rng));
             }
             let last_start_period = rng.gen();
-            let last_slot_before_downtime = if faulty_part == 19 {
+            let last_slot_before_downtime = if faulty_part
+                == BootstrapServerMessageFaultyPart::LastSlotBeforeDowntimeThreadOverflow
+            {
                 let mut slot = gen_random_slot(rng);
                 slot.thread = THREAD_COUNT;
                 Some(Some(slot))
@@ -1154,6 +1231,27 @@ impl BootstrapServerMessage {
                 BootstrapServerMessage::BootstrapError { error: e2 },
             ) => e1 == e2,
             _ => false,
+        }
+    }
+}
+
+#[allow(clippy::enum_variant_names)]
+#[derive(PartialEq, Clone, Debug)]
+pub enum BootstrapClientMessageFaultyPart {
+    LastSlotThreadOverflow = 0,
+    LastStateStepMaxKeyOverflow = 1,
+    LastVersioningStepMaxKeyOverflow = 2,
+    LastConsensusStepMaxBlockOverflow = 3,
+}
+
+impl BootstrapClientMessageFaultyPart {
+    pub fn from_u8(v_u8: u8) -> Self {
+        match v_u8 {
+            0 => Self::LastSlotThreadOverflow,
+            1 => Self::LastStateStepMaxKeyOverflow,
+            2 => Self::LastVersioningStepMaxKeyOverflow,
+            3 => Self::LastConsensusStepMaxBlockOverflow,
+            _ => panic!("invalid value"),
         }
     }
 }
@@ -1261,37 +1359,42 @@ impl BootstrapClientMessage {
     // Generate a message with errors added inside the message.
     // Has to be generated quickly, and have a previsible error case based on the
     // "faulty_part" input number.
-    pub fn generate_faulty<R: Rng>(rng: &mut R, faulty_part: u8) -> Self {
-        assert!(faulty_part < 4, "Faulty part has to be < 4");
+    pub fn generate_faulty<R: Rng>(
+        rng: &mut R,
+        faulty_part: BootstrapClientMessageFaultyPart,
+    ) -> Self {
         let mut last_slot = gen_random_slot(rng);
-        if faulty_part == 0 {
+        if faulty_part == BootstrapClientMessageFaultyPart::LastSlotThreadOverflow {
             last_slot.thread = THREAD_COUNT;
         }
         let last_slot = Some(last_slot);
 
-        let last_state_step_nb = if faulty_part == 1 {
-            (MAX_DATASTORE_KEY_LENGTH as usize) + 1
-        } else {
-            5
-        };
+        let last_state_step_nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastStateStepMaxKeyOverflow {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                5
+            };
         let mut last_state_step = vec![0; last_state_step_nb];
         rng.fill_bytes(&mut last_state_step);
         let last_state_step = StreamingStep::Ongoing(last_state_step);
 
-        let last_versioning_step_nb = if faulty_part == 2 {
-            (MAX_DATASTORE_KEY_LENGTH as usize) + 1
-        } else {
-            5
-        };
+        let last_versioning_step_nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastVersioningStepMaxKeyOverflow {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                5
+            };
         let mut last_versioning_step = vec![0; last_versioning_step_nb];
         rng.fill_bytes(&mut last_versioning_step);
         let last_versioning_step = StreamingStep::Ongoing(last_versioning_step);
 
-        let nb = if faulty_part == 3 {
-            (MAX_CONSENSUS_BLOCKS_IDS as usize) + 1
-        } else {
-            5
-        };
+        let nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastConsensusStepMaxBlockOverflow {
+                (MAX_CONSENSUS_BLOCKS_IDS as usize) + 1
+            } else {
+                5
+            };
         let mut last_consensus_step = PreHashSet::with_capacity(nb);
         for _ in 0..nb {
             last_consensus_step.insert(gen_random_block_id(rng));
