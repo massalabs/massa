@@ -17,14 +17,14 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [ubuntu-20.04, macOS-latest, windows-latest]
+        os: [ubuntu-latest, macOS-latest, windows-latest]
         platform: [x86_64, arm64]
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             platform: x86_64
             target: x86_64-unknown-linux-gnu
             name: release_linux.tar.gz
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             platform: arm64
             target: aarch64-unknown-linux-gnu
             name: release_linux_arm64.tar.gz
@@ -92,7 +92,23 @@ jobs:
             tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           fi
           cd -
+        working-directory: ${{ github.workspace }}
+      - name: Create Checksums
+        id: checksums
+        run: |
+          checksums=""
+          for file in massa/*.{gz,zip}; do
+            if [ -f "$file" ]; then
+              checksum=$(sha256sum "$file" | cut -d ' ' -f 1)
+              checksums="$checksums\n$checksum $(basename $file)"
+            fi
+          done
+          echo -e "$checksums" > checksums.txt
+        working-directory: ${{ github.workspace }}
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-          files: 'massa_*'
+          files: |
+            massa_*.zip
+            massa_*.gz
+            checksums.txt

@@ -8,7 +8,6 @@
 *.swp*
 **/Cargo.lock
 **/target
-lcov.info
 massa-client/config/*
 massa-client/wallet.dat
 massa-node/config/*
