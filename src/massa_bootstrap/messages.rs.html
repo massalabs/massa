@@ -916,6 +916,8 @@
 <a href="#916" id="916">916</a>
 <a href="#917" id="917">917</a>
 <a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1237,7 +1239,7 @@
     peers_deserializer: BootstrapPeersDeserializer,
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
-    state_updates_length_deserializer: U64VarIntDeserializer,
+    stream_batch_updates_length_deserializer: U64VarIntDeserializer,
     datastore_key_deserializer: VecU8Deserializer,
     datastore_val_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
@@ -1297,7 +1299,7 @@
                 Included(<span class="number">0</span>),
                 Included(args.max_final_state_elements_size.into()),
             ),
-            state_updates_length_deserializer: U64VarIntDeserializer::new(
+            stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(u64::MAX),
             ),
@@ -1424,7 +1426,8 @@
                                 <span class="string">&quot;Failed updates deserialization&quot;</span>,
                                 length_value(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
+                                        <span class="self">self</span>.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     many0(tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
@@ -1457,7 +1460,8 @@
                                 <span class="string">&quot;Failed updates deserialization&quot;</span>,
                                 length_value(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
+                                        <span class="self">self</span>.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
                                     many0(tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
