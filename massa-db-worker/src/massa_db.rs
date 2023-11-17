@@ -180,7 +180,8 @@ where
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_final_state_elements_size {
+                new_elements_size += serialized_key.len();
+                if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -293,7 +294,8 @@ where
 
             for (serialized_key, serialized_value) in db_iterator.flatten() {
                 new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_versioning_elements_size {
+                new_elements_size += serialized_key.len();
+                if new_elements_size <= self.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -814,6 +816,33 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
+    }
+
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
+        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
+        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let mut entire_database = Vec::new();
+        let mut state = BTreeMap::new();
+        for (k, v) in iter_state.flatten() {
+            state.insert(k.to_vec(), v.to_vec());
+        }
+        let mut metadata = BTreeMap::new();
+        for (k, v) in iter_metadata.flatten() {
+            metadata.insert(k.to_vec(), v.to_vec());
+        }
+        let mut versioning = BTreeMap::new();
+        for (k, v) in iter_versioning.flatten() {
+            versioning.insert(k.to_vec(), v.to_vec());
+        }
+        entire_database.push(state);
+        entire_database.push(metadata);
+        entire_database.push(versioning);
+        entire_database
     }
 }
 
@@ -1439,8 +1468,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 4,
-            max_versioning_elements_size: 4,
+            max_final_state_elements_size: 10,
+            max_versioning_elements_size: 10,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1523,8 +1552,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 7,
-            max_versioning_elements_size: 7,
+            max_final_state_elements_size: 13,
+            max_versioning_elements_size: 13,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1634,8 +1663,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 4,
-            max_final_state_elements_size: 7,
-            max_versioning_elements_size: 7,
+            max_final_state_elements_size: 13,
+            max_versioning_elements_size: 13,
             thread_count: THREAD_COUNT,
         };
 

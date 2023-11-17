@@ -25,7 +25,7 @@ use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_signature::KeyPair;
 use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
-use tempfile::{NamedTempFile, TempDir};
+use tempfile::NamedTempFile;
 
 use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
 
@@ -178,16 +178,9 @@ pub fn get_sample_state(
     selector_controller: Box<dyn SelectorController>,
     mip_store: MipStore,
     db: ShareableMassaDBController,
-) -> Result<
-    (
-        Arc<RwLock<dyn FinalStateController>>,
-        NamedTempFile,
-        TempDir,
-    ),
-    LedgerError,
-> {
+) -> Result<(Arc<RwLock<dyn FinalStateController>>, NamedTempFile), LedgerError> {
     let (rolls_file, ledger) = get_initials();
-    let (ledger_config, tempfile, tempdir) = LedgerConfig::sample(&ledger);
+    let (ledger_config, tempfile) = LedgerConfig::sample(&ledger);
 
     let mut ledger = FinalLedger::new(ledger_config.clone(), db.clone());
     ledger.load_initial_ledger().unwrap();
@@ -240,5 +233,5 @@ pub fn get_sample_state(
         .write()
         .write_batch(batch, Default::default(), None);
     final_state.compute_initial_draws().unwrap();
-    Ok((Arc::new(RwLock::new(final_state)), tempfile, tempdir))
+    Ok((Arc::new(RwLock::new(final_state)), tempfile))
 }

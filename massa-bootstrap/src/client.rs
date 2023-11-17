@@ -199,7 +199,7 @@ fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-fn bootstrap_from_server(
+pub(crate) fn bootstrap_from_server(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -347,7 +347,7 @@ fn send_client_message(
         })
 }
 
-fn connect_to_server(
+pub(crate) fn connect_to_server(
     connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
@@ -492,7 +492,7 @@ pub fn get_state(
     loop {
         // check for interuption
         if *interupted.0.lock().expect("double-lock on interupt-mutex") {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "Sig INT received while getting state".to_string(),
             ));
         }
@@ -571,7 +571,7 @@ pub fn get_state(
                 .wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
                 .expect("interupt signal mutex poisoned");
             if *wake.0 {
-                return Err(BootstrapError::Interupted(
+                return Err(BootstrapError::Interrupted(
                     "Sig INT during bootstrap retry-wait".to_string(),
                 ));
             }

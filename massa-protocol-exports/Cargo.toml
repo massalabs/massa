@@ -16,6 +16,7 @@ serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 peernet = {workspace = true}
 tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
 mockall = {workspace = true}
+mockall_wrap = {workspace = true}
 massa_models = {workspace = true}
 massa_time = {workspace = true}
 massa_storage = {workspace = true}

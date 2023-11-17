@@ -593,7 +593,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
 
     let res = server_thread.join().unwrap();
     match res {
-        Err(BootstrapError::Interupted(_)) => (),
+        Err(BootstrapError::Interrupted(_)) => (),
         _ => panic!("The server should have been interrupted"),
     }
     client_thread.join().unwrap();

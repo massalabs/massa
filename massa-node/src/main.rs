@@ -197,7 +197,6 @@ async fn launch(
     let ledger_config = LedgerConfig {
         thread_count: THREAD_COUNT,
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
-        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
@@ -418,7 +417,7 @@ async fn launch(
         massa_metrics.clone(),
     ) {
         Ok(vals) => vals,
-        Err(BootstrapError::Interupted(msg)) => {
+        Err(BootstrapError::Interrupted(msg)) => {
             info!("{}", msg);
             process::exit(0);
         }
