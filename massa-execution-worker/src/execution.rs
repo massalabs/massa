@@ -1390,16 +1390,11 @@ impl ExecutionState {
             )));
         }
 
-        // set the execution slot to be the one after the latest executed active or final slot
-        let slot = if req.is_final {
-            self.final_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from final slot")
-        } else {
-            self.active_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from active slot")
-        };
+        // set the execution slot to be the one after the latest executed active slot
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution from active slot");
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
@@ -1427,18 +1422,12 @@ impl ExecutionState {
                     }
                 }
 
-                // pay SP compilation as read only execution has no base cost
-                let post_compil = req
-                    .max_gas
-                    .checked_sub(self.config.gas_costs.sp_compilation_cost)
-                    .ok_or(ExecutionError::NotEnoughGas(
-                        "Not enough gas to pay SP compilation in ReadOnly execution".to_string(),
-                    ))?;
                 // load the tmp module
                 let (module, remaining_gas) = self
                     .module_cache
                     .read()
-                    .load_tmp_module(&bytecode, post_compil)?;
+                    .load_tmp_module(&bytecode, req.max_gas)?;
+
                 // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
@@ -1451,6 +1440,7 @@ impl ExecutionState {
                     error,
                 })?
             }
+
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
                 target_func,
@@ -1487,6 +1477,7 @@ impl ExecutionState {
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
+
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module,
@@ -1495,6 +1486,7 @@ impl ExecutionState {
                     remaining_gas,
                     self.config.gas_costs.clone(),
                 );
+
                 match response {
                     Ok(Response { init_gas_cost, .. })
                     | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
@@ -1504,6 +1496,7 @@ impl ExecutionState {
                     }
                     _ => (),
                 }
+
                 response.map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
                     error,

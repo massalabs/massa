@@ -261,10 +261,6 @@ pub struct ReadOnlyExecutionRequest {
     pub coins: Option<Amount>,
     /// Fee
     pub fee: Option<Amount>,
-    /// execution start state
-    ///
-    /// Whether to start execution from final or active state
-    pub is_final: bool,
 }
 
 /// structure describing different possible targets of a read-only execution request

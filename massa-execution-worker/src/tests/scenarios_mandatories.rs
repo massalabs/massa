@@ -229,18 +229,16 @@ fn test_readonly_execution() {
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
+            max_gas: 100_000_000,
             call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: true,
             coins: None,
             fee: None,
         })
         .expect("readonly execution failed");
 
-    assert_eq!(res.out.slot, Slot::new(0, 1));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
 }
