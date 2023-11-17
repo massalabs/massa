@@ -903,21 +903,6 @@
 <a href="#903" id="903">903</a>
 <a href="#904" id="904">904</a>
 <a href="#905" id="905">905</a>
-<a href="#906" id="906">906</a>
-<a href="#907" id="907">907</a>
-<a href="#908" id="908">908</a>
-<a href="#909" id="909">909</a>
-<a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
-<a href="#913" id="913">913</a>
-<a href="#914" id="914">914</a>
-<a href="#915" id="915">915</a>
-<a href="#916" id="916">916</a>
-<a href="#917" id="917">917</a>
-<a href="#918" id="918">918</a>
-<a href="#919" id="919">919</a>
-<a href="#920" id="920">920</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -949,7 +934,7 @@
 
 <span class="kw">use </span>massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 <span class="kw">use </span>nom::error::context;
-<span class="kw">use </span>nom::multi::{length_data, length_value, many0};
+<span class="kw">use </span>nom::multi::{length_count, length_data};
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::Parser;
 <span class="kw">use </span>nom::{
@@ -957,6 +942,7 @@
     IResult,
 };
 <span class="kw">use </span>num_enum::{IntoPrimitive, TryFromPrimitive};
+
 <span class="kw">use </span>std::convert::TryInto;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -1126,72 +1112,58 @@
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageServerTypeId::FinalStatePart), buffer)<span class="question-mark">?</span>;
                 <span class="comment">// slot
                 </span><span class="self">self</span>.slot_serializer.serialize(slot, buffer)<span class="question-mark">?</span>;
-                <span class="comment">// state new_elements
-                </span><span class="kw">let </span><span class="kw-2">mut </span>state_new_element_buffer: Vec&lt;u8&gt; = Vec::new();
+                <span class="comment">// state
+                </span><span class="self">self</span>.u64_serializer.serialize(
+                    <span class="kw-2">&amp;</span>(state_part
+                        .new_elements
+                        .len()
+                        .try_into()
+                        .expect(<span class="string">&quot;Overflow of new_elements len&quot;</span>)),
+                    buffer,
+                )<span class="question-mark">?</span>;
                 <span class="kw">for </span>(key, value) <span class="kw">in </span>state_part.new_elements.iter() {
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(key, <span class="kw-2">&amp;mut </span>state_new_element_buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(value, <span class="kw-2">&amp;mut </span>state_new_element_buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
                 }
                 <span class="self">self</span>.u64_serializer.serialize(
-                    <span class="kw-2">&amp;</span>state_new_element_buffer
+                    <span class="kw-2">&amp;</span>(state_part
+                        .updates_on_previous_elements
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of state new_elements len&quot;</span>),
+                        .expect(<span class="string">&quot;Overflow of updates_on_previous_elements len&quot;</span>)),
                     buffer,
                 )<span class="question-mark">?</span>;
-                buffer.extend(state_new_element_buffer);
-                <span class="comment">// state updates
-                </span><span class="kw">let </span><span class="kw-2">mut </span>state_updates_buffer: Vec&lt;u8&gt; = Vec::new();
                 <span class="kw">for </span>(key, value) <span class="kw">in </span>state_part.updates_on_previous_elements.iter() {
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(key, <span class="kw-2">&amp;mut </span>state_updates_buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.opt_vec_u8_serializer
-                        .serialize(value, <span class="kw-2">&amp;mut </span>state_updates_buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.opt_vec_u8_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
                 }
-                <span class="self">self</span>.u64_serializer.serialize(
-                    <span class="kw-2">&amp;</span>state_updates_buffer
-                        .len()
-                        .try_into()
-                        .expect(<span class="string">&quot;Overflow of state updates len&quot;</span>),
-                    buffer,
-                )<span class="question-mark">?</span>;
-                buffer.extend(state_updates_buffer);
                 <span class="self">self</span>.slot_serializer
                     .serialize(<span class="kw-2">&amp;</span>state_part.change_id, buffer)<span class="question-mark">?</span>;
-                <span class="comment">// versioning new_elements
-                </span><span class="kw">let </span><span class="kw-2">mut </span>versioning_new_element_buffer: Vec&lt;u8&gt; = Vec::new();
+                <span class="comment">// versioning
+                </span><span class="self">self</span>.u64_serializer.serialize(
+                    <span class="kw-2">&amp;</span>(versioning_part
+                        .new_elements
+                        .len()
+                        .try_into()
+                        .expect(<span class="string">&quot;Overflow of new_elements (versioning) len&quot;</span>)),
+                    buffer,
+                )<span class="question-mark">?</span>;
                 <span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_part.new_elements.iter() {
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(key, <span class="kw-2">&amp;mut </span>versioning_new_element_buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(value, <span class="kw-2">&amp;mut </span>versioning_new_element_buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
                 }
                 <span class="self">self</span>.u64_serializer.serialize(
-                    <span class="kw-2">&amp;</span>versioning_new_element_buffer
+                    <span class="kw-2">&amp;</span>(versioning_part
+                        .updates_on_previous_elements
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of versioning new_elements len&quot;</span>),
+                        .expect(<span class="string">&quot;Overflow of updates_on_previous_elements (versioning) len&quot;</span>)),
                     buffer,
                 )<span class="question-mark">?</span>;
-                buffer.extend(versioning_new_element_buffer);
-                <span class="comment">// versioning updates
-                </span><span class="kw">let </span><span class="kw-2">mut </span>versioning_updates_buffer: Vec&lt;u8&gt; = Vec::new();
                 <span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_part.updates_on_previous_elements.iter() {
-                    <span class="self">self</span>.vec_u8_serializer
-                        .serialize(key, <span class="kw-2">&amp;mut </span>versioning_updates_buffer)<span class="question-mark">?</span>;
-                    <span class="self">self</span>.opt_vec_u8_serializer
-                        .serialize(value, <span class="kw-2">&amp;mut </span>versioning_updates_buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.vec_u8_serializer.serialize(key, buffer)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.opt_vec_u8_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
                 }
-                <span class="self">self</span>.u64_serializer.serialize(
-                    <span class="kw-2">&amp;</span>versioning_updates_buffer
-                        .len()
-                        .try_into()
-                        .expect(<span class="string">&quot;Overflow of versioning updates len&quot;</span>),
-                    buffer,
-                )<span class="question-mark">?</span>;
-                buffer.extend(versioning_updates_buffer);
                 <span class="self">self</span>.slot_serializer
                     .serialize(<span class="kw-2">&amp;</span>versioning_part.change_id, buffer)<span class="question-mark">?</span>;
                 <span class="comment">// consensus graph
@@ -1239,7 +1211,7 @@
     peers_deserializer: BootstrapPeersDeserializer,
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
-    stream_batch_updates_length_deserializer: U64VarIntDeserializer,
+    state_updates_length_deserializer: U64VarIntDeserializer,
     datastore_key_deserializer: VecU8Deserializer,
     datastore_val_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer&lt;Vec&lt;u8&gt;, VecU8Deserializer&gt;,
@@ -1299,7 +1271,7 @@
                 Included(<span class="number">0</span>),
                 Included(args.max_final_state_elements_size.into()),
             ),
-            stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
+            state_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(u64::MAX),
             ),
@@ -1411,28 +1383,27 @@
                         tuple((
                             context(
                                 <span class="string">&quot;Failed new_elements deserialization&quot;</span>,
-                                length_value(
+                                length_count(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
                                         <span class="self">self</span>.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
+                                    tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    )),
                                 ),
                             ),
                             context(
                                 <span class="string">&quot;Failed updates deserialization&quot;</span>,
-                                length_value(
+                                length_count(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.stream_batch_updates_length_deserializer
-                                            .deserialize(input)
+                                        <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
                                     }),
-                                    many0(tuple((
+                                    tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    )),
                                 ),
                             ),
                             context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
@@ -1445,28 +1416,27 @@
                         tuple((
                             context(
                                 <span class="string">&quot;Failed new_elements deserialization&quot;</span>,
-                                length_value(
+                                length_count(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
                                         <span class="self">self</span>.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    many0(tuple((
+                                    tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.datastore_val_deserializer.deserialize(input),
-                                    ))),
+                                    )),
                                 ),
                             ),
                             context(
                                 <span class="string">&quot;Failed updates deserialization&quot;</span>,
-                                length_value(
+                                length_count(
                                     context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
-                                        <span class="self">self</span>.stream_batch_updates_length_deserializer
-                                            .deserialize(input)
+                                        <span class="self">self</span>.state_updates_length_deserializer.deserialize(input)
                                     }),
-                                    many0(tuple((
+                                    tuple((
                                         |input| <span class="self">self</span>.datastore_key_deserializer.deserialize(input),
                                         |input| <span class="self">self</span>.opt_vec_u8_deserializer.deserialize(input),
-                                    ))),
+                                    )),
                                 ),
                             ),
                             context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {

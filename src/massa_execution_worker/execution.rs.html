@@ -1870,13 +1870,6 @@
 <a href="#1870" id="1870">1870</a>
 <a href="#1871" id="1871">1871</a>
 <a href="#1872" id="1872">1872</a>
-<a href="#1873" id="1873">1873</a>
-<a href="#1874" id="1874">1874</a>
-<a href="#1875" id="1875">1875</a>
-<a href="#1876" id="1876">1876</a>
-<a href="#1877" id="1877">1877</a>
-<a href="#1878" id="1878">1878</a>
-<a href="#1879" id="1879">1879</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3269,16 +3262,11 @@
             )));
         }
 
-        <span class="comment">// set the execution slot to be the one after the latest executed active or final slot
-        </span><span class="kw">let </span>slot = <span class="kw">if </span>req.is_final {
-            <span class="self">self</span>.final_cursor
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from final slot&quot;</span>)
-        } <span class="kw">else </span>{
-            <span class="self">self</span>.active_cursor
-                .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;slot overflow in readonly execution from active slot&quot;</span>)
-        };
+        <span class="comment">// set the execution slot to be the one after the latest executed active slot
+        </span><span class="kw">let </span>slot = <span class="self">self
+            </span>.active_cursor
+            .get_next_slot(<span class="self">self</span>.config.thread_count)
+            .expect(<span class="string">&quot;slot overflow in readonly execution from active slot&quot;</span>);
 
         <span class="comment">// create a readonly execution context
         </span><span class="kw">let </span>execution_context = ExecutionContext::readonly(
@@ -3306,18 +3294,12 @@
                     }
                 }
 
-                <span class="comment">// pay SP compilation as read only execution has no base cost
-                </span><span class="kw">let </span>post_compil = req
-                    .max_gas
-                    .checked_sub(<span class="self">self</span>.config.gas_costs.sp_compilation_cost)
-                    .ok_or(ExecutionError::NotEnoughGas(
-                        <span class="string">&quot;Not enough gas to pay SP compilation in ReadOnly execution&quot;</span>.to_string(),
-                    ))<span class="question-mark">?</span>;
                 <span class="comment">// load the tmp module
                 </span><span class="kw">let </span>(module, remaining_gas) = <span class="self">self
                     </span>.module_cache
                     .read()
-                    .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, post_compil)<span class="question-mark">?</span>;
+                    .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
+
                 <span class="comment">// run the VM
                 </span>massa_sc_runtime::run_main(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
@@ -3330,6 +3312,7 @@
                     error,
                 })<span class="question-mark">?
             </span>}
+
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
                 target_func,
@@ -3366,6 +3349,7 @@
                     </span>.module_cache
                     .write()
                     .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas)<span class="question-mark">?</span>;
+
                 <span class="kw">let </span>response = massa_sc_runtime::run_function(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
                     module,
@@ -3374,6 +3358,7 @@
                     remaining_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
                 );
+
                 <span class="kw">match </span>response {
                     <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. })
                     | <span class="prelude-val">Err</span>(VMError::ExecutionError { init_gas_cost, .. }) =&gt; {
@@ -3383,6 +3368,7 @@
                     }
                     <span class="kw">_ </span>=&gt; (),
                 }
+
                 response.map_err(|error| ExecutionError::VMError {
                     context: <span class="string">&quot;ReadOnlyExecutionTarget::FunctionCall&quot;</span>.to_string(),
                     error,
