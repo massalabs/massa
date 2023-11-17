@@ -122,7 +122,6 @@ pub(crate) fn execute_read_only_call(
         max_gas: call.max_gas,
         call_stack,
         target,
-        is_final: call.is_final,
         coins,
         fee: call
             .fee

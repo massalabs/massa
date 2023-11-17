@@ -24,7 +24,6 @@ use massa_models::{
 };
 use massa_sdk::Client;
 use massa_signature::KeyPair;
-use massa_time::MassaTime;
 use massa_wallet::Wallet;
 
 use serde::Serialize;
@@ -280,30 +279,20 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(
-            args = "PathToBytecode MaxGas Address IsFinal Fee",
-            pwd_not_needed = "true"
-        ),
-        message = "execute byte code, address is optional, is_final is optional, fee is optional. Nothing is really executed on chain"
+        props(args = "PathToBytecode MaxGas Address Fee", pwd_not_needed = "true"),
+        message = "execute byte code, address is optional, fee is optional. Nothing is really executed on chain"
     )]
     read_only_execute_smart_contract,
 
     #[strum(
         ascii_case_insensitive,
         props(
-            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal Coins Fee",
+            args = "TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee",
             pwd_not_needed = "true"
         ),
-        message = "call a smart contract function, sender address, is_final, coins and fee are optional. Nothing is really executed on chain"
+        message = "call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain"
     )]
     read_only_call,
-
-    #[strum(
-        ascii_case_insensitive,
-        props(pwd_not_needed = "true"),
-        message = "show time remaining to end of current episode"
-    )]
-    when_episode_ends,
 
     #[strum(
         ascii_case_insensitive,
@@ -979,25 +968,6 @@ impl Command {
                 )
                 .await
             }
-            Command::when_episode_ends => {
-                let end = match client.public.get_status().await {
-                    Ok(node_status) => node_status.config.end_timestamp,
-                    Err(e) => bail!("RpcError: {}", e),
-                };
-                let mut res = "".to_string();
-                if let Some(e) = end {
-                    let (days, hours, mins, secs) =
-                        e.saturating_sub(MassaTime::now()).days_hours_mins_secs()?; // compensation milliseconds is zero
-
-                    let _ = write!(res, "{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode", days, hours, mins, secs);
-                } else {
-                    let _ = write!(res, "There is no end !");
-                }
-                if !json {
-                    println!("{}", res);
-                }
-                Ok(Box::new(()))
-            }
             Command::when_moon => {
                 let res = "At night 🌔.";
                 if !json {
@@ -1127,10 +1097,9 @@ impl Command {
                 }
             }
             Command::read_only_execute_smart_contract => {
-                if parameters.len() < 2 || parameters.len() > 5 {
+                if parameters.len() < 2 || parameters.len() > 4 {
                     bail!("wrong number of parameters");
                 }
-
                 let path = parameters[0].parse::<PathBuf>()?;
                 let max_gas = parameters[1].parse::<u64>()?;
                 let address = if let Some(adr) = parameters.get(2) {
@@ -1138,13 +1107,8 @@ impl Command {
                 } else {
                     None
                 };
-                let is_final = if let Some(adr) = parameters.get(3) {
-                    adr.parse::<bool>()?
-                } else {
-                    false
-                };
                 let fee = parameters
-                    .get(7)
+                    .get(3)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()?;
                 let bytecode = get_file_as_byte_vec(&path).await?;
@@ -1155,7 +1119,6 @@ impl Command {
                         bytecode,
                         address,
                         operation_datastore: None, // TODO - #3072
-                        is_final,
                         fee,
                     })
                     .await
@@ -1165,7 +1128,7 @@ impl Command {
                 }
             }
             Command::read_only_call => {
-                if parameters.len() < 4 || parameters.len() > 8 {
+                if parameters.len() < 4 || parameters.len() > 7 {
                     bail!("wrong number of parameters");
                 }
 
@@ -1178,14 +1141,9 @@ impl Command {
                 } else {
                     None
                 };
-                let is_final = if let Some(adr) = parameters.get(5) {
-                    adr.parse::<bool>()?
-                } else {
-                    false
-                };
-                let coins = parameters.get(6).map(|c| Amount::from_str(c)).transpose()?;
+                let coins = parameters.get(5).map(|c| Amount::from_str(c)).transpose()?;
                 let fee = parameters
-                    .get(7)
+                    .get(6)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()?;
                 match client
@@ -1196,7 +1154,6 @@ impl Command {
                         target_function,
                         parameter,
                         max_gas,
-                        is_final,
                         coins,
                         fee,
                     })
