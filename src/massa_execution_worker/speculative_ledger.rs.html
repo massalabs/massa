@@ -835,7 +835,7 @@
                 .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
                 </span>.checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed to transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
+                    ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed to transfer {} coins from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
                     </span>.get_balance(<span class="kw-2">&amp;</span>from_addr).unwrap_or_default()))
                 })<span class="question-mark">?</span>;
 
@@ -852,7 +852,7 @@
                 <span class="comment">// if `to_addr` exists we increase its balance
                 </span><span class="kw">let </span>new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                     ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;overflow in crediting address {} balance {} due to adding {}&quot;</span>,
+                        <span class="string">&quot;overflow in crediting address {} balance {} due to adding {} coins to balance&quot;</span>,
                         to_addr, old_balance, amount
                     ))
                 })<span class="question-mark">?</span>;
