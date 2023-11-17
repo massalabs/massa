@@ -1,0 +1,10 @@
+[profile.ci]
+# Print out output for failing tests as soon as they fail, and also at the end
+# of the run (for easy scrollability).
+failure-output = "immediate-final"
+# Do not cancel the test run on the first failure.
+fail-fast = false
+# retry policy for flaky tests
+retries = { backoff = "fixed", count = 2, delay = "1s" }
+# timeout policy for slow tests
+slow-timeout = { period = "60s", terminate-after = 4, grace-period = "30s" }

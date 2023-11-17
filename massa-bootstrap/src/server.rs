@@ -247,7 +247,6 @@ impl BootstrapServer<'_> {
         let limit = self.bootstrap_config.rate_limit;
         loop {
             // block until we have a connection to work with, or break out of main-loop
-
             let connections = match self.ev_poller.poll() {
                 Ok(PollEvent::Stop) => return Ok(()),
                 Ok(PollEvent::NewConnections(connections)) => connections,
@@ -269,17 +268,6 @@ impl BootstrapServer<'_> {
                     Some(limit),
                 );
 
-                // check whether incoming peer IP is allowed.
-                if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
-                    server_binding.close_and_send_error(
-                        error_msg.to_string(),
-                        remote_addr,
-                        move || {},
-                    );
-                    self.massa_metrics.inc_bootstrap_peers_failed();
-                    continue;
-                };
-
                 // the `- 1` is to account for the top-level Arc that is created at the top
                 // of this method. subsequent counts correspond to each `clone` that is passed
                 // into a thread
@@ -287,6 +275,17 @@ impl BootstrapServer<'_> {
                 //       a dedicated wrapper-type with doc-comments, manual drop impl that
                 //       integrates logging, etc...
                 if Arc::strong_count(&bootstrap_sessions_counter) - 1 < max_bootstraps {
+                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
+                    // check whether incoming peer IP is allowed.
+                    if let Err(error_msg) = self.white_black_list.is_ip_allowed(&remote_addr) {
+                        server_binding.close_and_send_error(
+                            error_msg.to_string(),
+                            remote_addr,
+                            move || {},
+                        );
+                        self.massa_metrics.inc_bootstrap_peers_failed();
+                        continue;
+                    };
                     massa_trace!("bootstrap.lib.run.select.accept", {
                         "remote_addr": remote_addr
                     });
@@ -336,7 +335,6 @@ impl BootstrapServer<'_> {
                     let protocol_controller = self.protocol_controller.clone();
                     let config = self.bootstrap_config.clone();
 
-                    let bootstrap_count_token = bootstrap_sessions_counter.clone();
                     let massa_metrics = self.massa_metrics.clone();
 
                     let _ = thread::Builder::new()
@@ -483,12 +481,6 @@ pub fn stream_bootstrap_information(
     write_timeout: Duration,
 ) -> Result<(), BootstrapError> {
     loop {
-        #[cfg(test)]
-        {
-            // Necessary for test_bootstrap_server in tests/scenarios.rs
-            std::thread::sleep(Duration::from_millis(500));
-        }
-
         let current_slot;
         let state_part;
         let versioning_part;
@@ -668,7 +660,7 @@ pub fn stream_bootstrap_information(
         }
 
         let Some(write_timeout) = step_timeout_duration(bs_deadline, &write_timeout) else {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "insufficient time left to provide next bootstrap part".to_string(),
             ));
         };
@@ -716,7 +708,7 @@ pub(crate) fn manage_bootstrap(
     let Some(hs_timeout) =
         step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
     else {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time left to begin handshake".to_string(),
         ));
     };
@@ -725,7 +717,7 @@ pub(crate) fn manage_bootstrap(
 
     // Check for error from client
     if Instant::now() + read_error_timeout >= deadline {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time to check for error from client".to_string(),
         ));
     };
@@ -742,7 +734,7 @@ pub(crate) fn manage_bootstrap(
     let send_time_timeout =
         step_timeout_duration(&deadline, &bootstrap_config.write_timeout.to_duration());
     let Some(next_step_timeout) = send_time_timeout else {
-        return Err(BootstrapError::Interupted(
+        return Err(BootstrapError::Interrupted(
             "insufficient time left to send server time".to_string(),
         ));
     };
@@ -758,7 +750,7 @@ pub(crate) fn manage_bootstrap(
         let Some(read_timeout) =
             step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
         else {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "insufficient time left to process next message".to_string(),
             ));
         };
@@ -771,7 +763,7 @@ pub(crate) fn manage_bootstrap(
                         &deadline,
                         &bootstrap_config.write_timeout.to_duration(),
                     ) else {
-                        return Err(BootstrapError::Interupted(
+                        return Err(BootstrapError::Interrupted(
                             "insufficient time left to respond te request for peers".to_string(),
                         ));
                     };

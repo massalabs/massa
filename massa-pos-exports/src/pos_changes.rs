@@ -65,7 +65,7 @@ impl PoSChanges {
         for (other_addr, other_stats) in other.production_stats {
             self.production_stats
                 .entry(other_addr)
-                .or_insert_with(ProductionStats::default)
+                .or_default()
                 .extend(&other_stats);
         }
 

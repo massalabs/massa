@@ -15,7 +15,7 @@ use crate::tools::to_canonical;
 
 /// A wrapper around the white/black lists that allows efficient sharing between threads
 // TODO: don't clone the path-bufs...
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SharedWhiteBlackList<'a> {
     inner: Arc<RwLock<WhiteBlackListInner>>,
     white_path: Cow<'a, Path>,
@@ -137,11 +137,7 @@ impl SharedWhiteBlackList<'_> {
         Ok(())
     }
 
-    #[cfg_attr(test, allow(unreachable_code, unused_variables))]
     pub(crate) fn is_ip_allowed(&self, remote_addr: &SocketAddr) -> Result<(), BootstrapError> {
-        #[cfg(test)]
-        return Ok(());
-
         let ip = to_canonical(remote_addr.ip());
         // whether the peer IP address is blacklisted
         let read = self.inner.read();
@@ -219,7 +215,7 @@ impl WhiteBlackListInner {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct WhiteBlackListInner {
     white_list: Option<HashSet<IpAddr>>,
     black_list: Option<HashSet<IpAddr>>,

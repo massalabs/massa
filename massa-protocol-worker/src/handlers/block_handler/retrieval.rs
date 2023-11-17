@@ -1101,7 +1101,7 @@ impl RetrievalThread {
                     // Update the asked_blocks list
                     self.asked_blocks
                         .entry(peer_id)
-                        .or_insert_with(Default::default)
+                        .or_default()
                         .insert(block_id, now);
 
                     // Increment the load of the peer.

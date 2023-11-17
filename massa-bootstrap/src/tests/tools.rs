@@ -6,10 +6,7 @@ use bitvec::vec::BitVec;
 use massa_async_pool::AsyncPoolChanges;
 use massa_async_pool::{test_exports::get_random_message, AsyncPool};
 use massa_consensus_exports::{
-    bootstrapable_graph::{
-        BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
-    },
-    export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
+    bootstrapable_graph::BootstrapableGraph, export_active_block::ExportActiveBlock,
 };
 use massa_db_exports::{DBBatch, ShareableMassaDBController, StreamBatch};
 use massa_executed_ops::{
@@ -19,9 +16,8 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrKeep, SetUpdateOrDelete};
+use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
@@ -58,7 +54,6 @@ use massa_models::{
 };
 use massa_pos_exports::{DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
@@ -102,21 +97,6 @@ fn get_random_ledger_entry() -> LedgerEntry {
         bytecode,
         datastore,
     }
-}
-
-pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
-    let mut changes = LedgerChanges::default();
-    for _ in 0..r_limit {
-        changes.0.insert(
-            get_random_address(),
-            SetUpdateOrDelete::Set(LedgerEntry {
-                balance: Amount::from_raw(r_limit),
-                bytecode: Bytecode::default(),
-                datastore: BTreeMap::default(),
-            }),
-        );
-    }
-    changes
 }
 
 /// generates random PoS cycles info
@@ -196,36 +176,6 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
     pos
 }
 
-/// generates random PoS changes
-pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
-    let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
-    PoSChanges {
-        seed_bits,
-        roll_changes: roll_counts.into_iter().collect(),
-        production_stats,
-        deferred_credits,
-    }
-}
-
-pub fn get_random_async_pool_changes(r_limit: u64, thread_count: u8) -> AsyncPoolChanges {
-    let mut changes = AsyncPoolChanges::default();
-    for _ in 0..(r_limit / 2) {
-        let message = get_random_message(Some(Amount::from_str("10").unwrap()), thread_count);
-        changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-    }
-    for _ in (r_limit / 2)..r_limit {
-        let message =
-            get_random_message(Some(Amount::from_str("1_000_000").unwrap()), thread_count);
-        changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-    }
-    changes
-}
-
 pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
@@ -291,15 +241,6 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
     }
 
     de_changes
-}
-
-/// generates a random execution trail hash change
-pub fn get_random_execution_trail_hash_change(always_set: bool) -> SetOrKeep<massa_hash::Hash> {
-    if always_set || rand::thread_rng().gen() {
-        SetOrKeep::Set(Hash::compute_from(&get_some_random_bytes()))
-    } else {
-        SetOrKeep::Keep
-    }
 }
 
 /// generates a random bootstrap state for the final state
@@ -378,10 +319,6 @@ pub fn get_random_final_state_bootstrap(
     final_state
 }
 
-pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
-}
-
 pub fn get_random_address() -> Address {
     let priv_key = KeyPair::generate(0).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
@@ -448,125 +385,6 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
     }
-}
-
-/// asserts that two `BootstrapableGraph` are equal
-pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
-    assert_eq!(
-        v1.final_blocks.len(),
-        v2.final_blocks.len(),
-        "length mismatch"
-    );
-    let serializer = ExportActiveBlockSerializer::new();
-    let mut data1: Vec<u8> = Vec::new();
-    let mut data2: Vec<u8> = Vec::new();
-    for (item1, item2) in v1.final_blocks.iter().zip(v2.final_blocks.iter()) {
-        serializer.serialize(item1, &mut data1).unwrap();
-        serializer.serialize(item2, &mut data2).unwrap();
-    }
-    assert_eq!(data1, data2, "BootstrapableGraph mismatch")
-}
-
-pub fn get_boot_state() -> BootstrapableGraph {
-    let keypair = KeyPair::generate(0).unwrap();
-
-    let block = Block::new_verifiable(
-        Block {
-            header: BlockHeader::new_verifiable(
-                BlockHeader {
-                    current_version: 0,
-                    announced_version: None,
-                    // associated slot
-                    // all header endorsements are supposed to point towards this one
-                    slot: Slot::new(1, 0),
-                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
-                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
-                    endorsements: vec![
-                        Endorsement::new_verifiable(
-                            Endorsement {
-                                slot: Slot::new(1, 0),
-                                index: 1,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            EndorsementSerializer::new(),
-                            &keypair,
-                        )
-                        .unwrap(),
-                        Endorsement::new_verifiable(
-                            Endorsement {
-                                slot: Slot::new(1, 0),
-                                index: 3,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            EndorsementSerializer::new(),
-                            &keypair,
-                        )
-                        .unwrap(),
-                    ],
-                    denunciations: vec![],
-                },
-                BlockHeaderSerializer::new(),
-                &keypair,
-            )
-            .unwrap(),
-            operations: Default::default(),
-        },
-        BlockSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-
-    // TODO: We currently lost information. Need to use shared storage
-    let block1 = ExportActiveBlock {
-        block,
-        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
-        is_final: true,
-    };
-
-    let boot_graph = BootstrapableGraph {
-        final_blocks: vec![block1],
-    };
-
-    let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let args = BlockDeserializerArgs {
-        thread_count: THREAD_COUNT,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        last_start_period: Some(0),
-    };
-    let bootstrapable_graph_deserializer =
-        BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);
-
-    let mut bootstrapable_graph_serialized = Vec::new();
-    bootstrapable_graph_serializer
-        .serialize(&boot_graph, &mut bootstrapable_graph_serialized)
-        .unwrap();
-    let (_, bootstrapable_graph_deserialized) = bootstrapable_graph_deserializer
-        .deserialize::<DeserializeError>(&bootstrapable_graph_serialized)
-        .unwrap();
-
-    assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
-
-    boot_graph
-}
-
-pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
-    let mut listeners1 = HashMap::default();
-    listeners1.insert("82.245.123.77:8080".parse().unwrap(), TransportType::Tcp);
-
-    let mut listeners2 = HashMap::default();
-    listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
-    BootstrapPeers(vec![
-        (
-            PeerId::from_public_key(keypair.get_public_key()),
-            listeners1,
-        ),
-        (
-            PeerId::from_public_key(keypair.get_public_key()),
-            listeners2,
-        ),
-    ])
 }
 
 fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {

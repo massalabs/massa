@@ -5,7 +5,7 @@ authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["massa_models/test-exports", "massa_execution_exports/test-exports", "massa_pool_exports/test-exports", "massa_pos_exports/test-exports", "massa_protocol_exports/test-exports", "massa_storage/test-exports", "dep:mockall"]
+test-exports = ["massa_models/test-exports", "massa_execution_exports/test-exports", "massa_pool_exports/test-exports", "massa_pos_exports/test-exports", "massa_protocol_exports/test-exports", "massa_storage/test-exports", "dep:mockall", "dep:mockall_wrap"]
 
 [dependencies]
 displaydoc = {workspace = true}
@@ -15,6 +15,7 @@ serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
 thiserror = {workspace = true}
 tokio = {workspace = true, "features" = ["sync"]}
 mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
+mockall_wrap = {workspace = true, "optional" = true}
 massa_channel = {workspace = true}
 massa_execution_exports = {workspace = true}
 massa_models = {workspace = true}

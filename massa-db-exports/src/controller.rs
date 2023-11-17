@@ -5,6 +5,9 @@ use parking_lot::RwLock;
 use std::path::PathBuf;
 use std::{fmt::Debug, sync::Arc};
 
+#[cfg(feature = "test-exports")]
+use std::collections::BTreeMap;
+
 pub type ShareableMassaDBController = Arc<RwLock<Box<dyn MassaDBController>>>;
 
 /// Controller trait for the MassaDB
@@ -84,6 +87,10 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_versioning_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
+
+    /// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>>;
 }
 
 /// Similar to RocksDB's IteratorMode

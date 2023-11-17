@@ -846,6 +846,33 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
+
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
+        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
+        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let mut entire_database = Vec::new();
+        let mut state = BTreeMap::new();
+        for (k, v) in iter_state.flatten() {
+            state.insert(k.to_vec(), v.to_vec());
+        }
+        let mut metadata = BTreeMap::new();
+        for (k, v) in iter_metadata.flatten() {
+            metadata.insert(k.to_vec(), v.to_vec());
+        }
+        let mut versioning = BTreeMap::new();
+        for (k, v) in iter_versioning.flatten() {
+            versioning.insert(k.to_vec(), v.to_vec());
+        }
+        entire_database.push(state);
+        entire_database.push(metadata);
+        entire_database.push(versioning);
+        entire_database
+    }
 }
 
 #[cfg(test)]
@@ -946,7 +973,7 @@ mod test {
         );
 
         // Checks up
-        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
+        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or_default();
         let cf_exists_1 = cfs.iter().any(|cf| cf == "state");
         let cf_exists_2 = cfs.iter().any(|cf| cf == "metadata");
         let cf_exists_3 = cfs.iter().any(|cf| cf == "versioning");

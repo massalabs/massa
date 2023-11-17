@@ -3,6 +3,9 @@ name = "massa_db_worker"
 version = "0.27.0"
 edition = "2021"
 
+[features]
+test-exports = ["massa_db_exports/test-exports"]
+
 [dependencies]
 parking_lot = {workspace = true}
 rocksdb = {workspace = true}
