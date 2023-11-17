@@ -29,7 +29,7 @@ use massa_serialization::{
 
 use massa_time::{MassaTime, MassaTimeDeserializer, MassaTimeSerializer};
 use nom::error::context;
-use nom::multi::{length_count, length_data};
+use nom::multi::{length_data, length_value, many0};
 use nom::sequence::tuple;
 use nom::Parser;
 use nom::{
@@ -37,7 +37,6 @@ use nom::{
     IResult,
 };
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-
 use std::convert::TryInto;
 use std::ops::Bound::{Excluded, Included};
 
@@ -207,58 +206,72 @@ impl Serializer<BootstrapServerMessage> for BootstrapServerMessageSerializer {
                     .serialize(&u32::from(MessageServerTypeId::FinalStatePart), buffer)?;
                 // slot
                 self.slot_serializer.serialize(slot, buffer)?;
-                // state
-                self.u64_serializer.serialize(
-                    &(state_part
-                        .new_elements
-                        .len()
-                        .try_into()
-                        .expect("Overflow of new_elements len")),
-                    buffer,
-                )?;
+                // state new_elements
+                let mut state_new_element_buffer: Vec<u8> = Vec::new();
                 for (key, value) in state_part.new_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.vec_u8_serializer.serialize(value, buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(key, &mut state_new_element_buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(value, &mut state_new_element_buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(state_part
-                        .updates_on_previous_elements
+                    &state_new_element_buffer
                         .len()
                         .try_into()
-                        .expect("Overflow of updates_on_previous_elements len")),
+                        .expect("Overflow of state new_elements len"),
                     buffer,
                 )?;
+                buffer.extend(state_new_element_buffer);
+                // state updates
+                let mut state_updates_buffer: Vec<u8> = Vec::new();
                 for (key, value) in state_part.updates_on_previous_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.opt_vec_u8_serializer.serialize(value, buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(key, &mut state_updates_buffer)?;
+                    self.opt_vec_u8_serializer
+                        .serialize(value, &mut state_updates_buffer)?;
                 }
+                self.u64_serializer.serialize(
+                    &state_updates_buffer
+                        .len()
+                        .try_into()
+                        .expect("Overflow of state updates len"),
+                    buffer,
+                )?;
+                buffer.extend(state_updates_buffer);
                 self.slot_serializer
                     .serialize(&state_part.change_id, buffer)?;
-                // versioning
-                self.u64_serializer.serialize(
-                    &(versioning_part
-                        .new_elements
-                        .len()
-                        .try_into()
-                        .expect("Overflow of new_elements (versioning) len")),
-                    buffer,
-                )?;
+                // versioning new_elements
+                let mut versioning_new_element_buffer: Vec<u8> = Vec::new();
                 for (key, value) in versioning_part.new_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.vec_u8_serializer.serialize(value, buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(key, &mut versioning_new_element_buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(value, &mut versioning_new_element_buffer)?;
                 }
                 self.u64_serializer.serialize(
-                    &(versioning_part
-                        .updates_on_previous_elements
+                    &versioning_new_element_buffer
                         .len()
                         .try_into()
-                        .expect("Overflow of updates_on_previous_elements (versioning) len")),
+                        .expect("Overflow of versioning new_elements len"),
                     buffer,
                 )?;
+                buffer.extend(versioning_new_element_buffer);
+                // versioning updates
+                let mut versioning_updates_buffer: Vec<u8> = Vec::new();
                 for (key, value) in versioning_part.updates_on_previous_elements.iter() {
-                    self.vec_u8_serializer.serialize(key, buffer)?;
-                    self.opt_vec_u8_serializer.serialize(value, buffer)?;
+                    self.vec_u8_serializer
+                        .serialize(key, &mut versioning_updates_buffer)?;
+                    self.opt_vec_u8_serializer
+                        .serialize(value, &mut versioning_updates_buffer)?;
                 }
+                self.u64_serializer.serialize(
+                    &versioning_updates_buffer
+                        .len()
+                        .try_into()
+                        .expect("Overflow of versioning updates len"),
+                    buffer,
+                )?;
+                buffer.extend(versioning_updates_buffer);
                 self.slot_serializer
                     .serialize(&versioning_part.change_id, buffer)?;
                 // consensus graph
@@ -306,7 +319,7 @@ pub struct BootstrapServerMessageDeserializer {
     peers_deserializer: BootstrapPeersDeserializer,
     state_new_elements_length_deserializer: U64VarIntDeserializer,
     versioning_part_new_elements_length_deserializer: U64VarIntDeserializer,
-    state_updates_length_deserializer: U64VarIntDeserializer,
+    stream_batch_updates_length_deserializer: U64VarIntDeserializer,
     datastore_key_deserializer: VecU8Deserializer,
     datastore_val_deserializer: VecU8Deserializer,
     opt_vec_u8_deserializer: OptionDeserializer<Vec<u8>, VecU8Deserializer>,
@@ -366,7 +379,7 @@ impl BootstrapServerMessageDeserializer {
                 Included(0),
                 Included(args.max_final_state_elements_size.into()),
             ),
-            state_updates_length_deserializer: U64VarIntDeserializer::new(
+            stream_batch_updates_length_deserializer: U64VarIntDeserializer::new(
                 Included(0),
                 Included(u64::MAX),
             ),
@@ -478,27 +491,28 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         tuple((
                             context(
                                 "Failed new_elements deserialization",
-                                length_count(
+                                length_value(
                                     context("Failed length deserialization", |input| {
                                         self.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    tuple((
+                                    many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.datastore_val_deserializer.deserialize(input),
-                                    )),
+                                    ))),
                                 ),
                             ),
                             context(
                                 "Failed updates deserialization",
-                                length_count(
+                                length_value(
                                     context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                        self.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
-                                    tuple((
+                                    many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    )),
+                                    ))),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {
@@ -511,27 +525,28 @@ impl Deserializer<BootstrapServerMessage> for BootstrapServerMessageDeserializer
                         tuple((
                             context(
                                 "Failed new_elements deserialization",
-                                length_count(
+                                length_value(
                                     context("Failed length deserialization", |input| {
                                         self.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
-                                    tuple((
+                                    many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.datastore_val_deserializer.deserialize(input),
-                                    )),
+                                    ))),
                                 ),
                             ),
                             context(
                                 "Failed updates deserialization",
-                                length_count(
+                                length_value(
                                     context("Failed length deserialization", |input| {
-                                        self.state_updates_length_deserializer.deserialize(input)
+                                        self.stream_batch_updates_length_deserializer
+                                            .deserialize(input)
                                     }),
-                                    tuple((
+                                    many0(tuple((
                                         |input| self.datastore_key_deserializer.deserialize(input),
                                         |input| self.opt_vec_u8_deserializer.deserialize(input),
-                                    )),
+                                    ))),
                                 ),
                             ),
                             context("Failed slot deserialization", |input| {

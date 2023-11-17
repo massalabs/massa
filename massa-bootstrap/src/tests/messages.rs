@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use crate::settings::BootstrapClientConfig;
-use crate::tests::tools::parametric_test;
+use crate::tests::tools::{
+    parametric_test, BootstrapClientMessageFaultyPart, BootstrapServerMessageFaultyPart,
+};
 use crate::{
     BootstrapClientMessage, BootstrapClientMessageDeserializer, BootstrapClientMessageSerializer,
     BootstrapServerMessage, BootstrapServerMessageDeserializer, BootstrapServerMessageSerializer,
@@ -129,14 +131,15 @@ fn test_serialize_error_cases_clientmsg() {
 
     for n in 0..4 {
         let mut bytes = Vec::new();
-        let msg = BootstrapClientMessage::generate_faulty(&mut rng, n);
+        let faulty_part = BootstrapClientMessageFaultyPart::from_u8(n);
+        let msg = BootstrapClientMessage::generate_faulty(&mut rng, faulty_part.clone());
         assert!(ser.serialize(&msg, &mut bytes).is_ok());
         let res = deser.deserialize::<DeserializeError>(&bytes);
         assert!(
             res.is_err(),
             "Expected error, but deserialization succeeded\nData: {msg:?}"
         );
-        println!("Fault {n} caught");
+        println!("Fault {:?} caught", faulty_part);
     }
 }
 
@@ -174,21 +177,15 @@ fn test_serialize_error_cases_servermsg() {
     let deser = BootstrapServerMessageDeserializer::new((&config).into());
 
     for n in 0..20 {
-        if n == 16 {
+        let faulty_part = BootstrapServerMessageFaultyPart::from_u8(n);
+
+        if faulty_part == BootstrapServerMessageFaultyPart::MaxDenunciationsPerBlockOverflow {
             // TODO    Remove once we generate denunciations in the block header
             continue;
         }
-        if n == 6 {
-            // TODO    Remove once limits for deser of final_state_parts is by bytes, not length
-            continue;
-        }
-        if n == 8 {
-            // TODO    Remove once limits for deser of versionning_parts is by bytes, not length
-            continue;
-        }
-        println!("Testing {n} faulty case");
+        println!("Testing {:?} faulty case", faulty_part);
         let mut bytes = Vec::new();
-        let msg = BootstrapServerMessage::generate_faulty(&mut rng, n);
+        let msg = BootstrapServerMessage::generate_faulty(&mut rng, faulty_part);
         assert!(ser.serialize(&msg, &mut bytes).is_ok());
         let res = deser.deserialize::<DeserializeError>(&bytes);
         if let Err(ref e) = res {
