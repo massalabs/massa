@@ -882,7 +882,7 @@
 
 <span class="doccomment">/// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-</span><span class="kw">fn </span>bootstrap_from_server(
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bootstrap_from_server(
     cfg: <span class="kw-2">&amp;</span>BootstrapConfig,
     client: <span class="kw-2">&amp;mut </span>BootstrapClientBinder,
     next_bootstrap_message: <span class="kw-2">&amp;mut </span>BootstrapClientMessage,
@@ -1030,7 +1030,7 @@
         })
 }
 
-<span class="kw">fn </span>connect_to_server(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>connect_to_server(
     connector: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>BSConnector,
     bootstrap_config: <span class="kw-2">&amp;</span>BootstrapConfig,
     addr: <span class="kw-2">&amp;</span>SocketAddr,
@@ -1175,7 +1175,7 @@
     <span class="kw">loop </span>{
         <span class="comment">// check for interuption
         </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
+            <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
                 <span class="string">&quot;Sig INT received while getting state&quot;</span>.to_string(),
             ));
         }
@@ -1254,7 +1254,7 @@
                 </span>.wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
                 .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interupted(
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
                     <span class="string">&quot;Sig INT during bootstrap retry-wait&quot;</span>.to_string(),
                 ));
             }
