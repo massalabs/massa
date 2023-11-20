@@ -1513,8 +1513,8 @@ impl ExecutionState {
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
             // return max_instance_cost if the exact cost is below
-            // so the user can paste the estimated amount into a real call
-            // and be sure the call will go through
+            // users can paste the estimated amount into a real call
+            // without having to worry about underlying limits
             gas_cost: if exact_cost > self.config.gas_costs.max_instance_cost {
                 exact_cost
             } else {
