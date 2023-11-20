@@ -3392,8 +3392,8 @@
         <span class="prelude-val">Ok</span>(ReadOnlyExecutionOutput {
             out: execution_output,
             <span class="comment">// return max_instance_cost if the exact cost is below
-            // so the user can paste the estimated amount into a real call
-            // and be sure the call will go through
+            // users can paste the estimated amount into a real call
+            // without having to worry about underlying limits
             </span>gas_cost: <span class="kw">if </span>exact_cost &gt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
                 exact_cost
             } <span class="kw">else </span>{
