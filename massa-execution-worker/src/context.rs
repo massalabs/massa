@@ -351,9 +351,10 @@ impl ExecutionContext {
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
+        async_msg_cst_gas_cost: u64,
     ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
-            .take_batch_to_execute(self.slot, max_gas)
+            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
             .into_iter()
             .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
             .collect()

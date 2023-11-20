@@ -1069,8 +1069,10 @@ impl ExecutionState {
         );
 
         // Get asynchronous messages to execute
-        let messages = execution_context.take_async_batch(self.config.max_async_gas);
-        debug!("executing {} messages at slot {}", messages.len(), slot);
+        let messages = execution_context.take_async_batch(
+            self.config.max_async_gas,
+            self.config.async_msg_cst_gas_cost,
+        );
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
