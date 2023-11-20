@@ -1878,6 +1878,8 @@
 <a href="#1878" id="1878">1878</a>
 <a href="#1879" id="1879">1879</a>
 <a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2949,8 +2951,10 @@
         );
 
         <span class="comment">// Get asynchronous messages to execute
-        </span><span class="kw">let </span>messages = execution_context.take_async_batch(<span class="self">self</span>.config.max_async_gas);
-        <span class="macro">debug!</span>(<span class="string">&quot;executing {} messages at slot {}&quot;</span>, messages.len(), slot);
+        </span><span class="kw">let </span>messages = execution_context.take_async_batch(
+            <span class="self">self</span>.config.max_async_gas,
+            <span class="self">self</span>.config.async_msg_cst_gas_cost,
+        );
 
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;

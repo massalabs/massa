@@ -331,6 +331,8 @@
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
 <a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -458,7 +460,7 @@
 <span class="doccomment">/// Maximum block size in bytes
 </span><span class="kw">pub const </span>MAX_BLOCK_SIZE: u32 = <span class="number">300_000</span>;
 <span class="doccomment">/// Maximum capacity of the asynchronous messages pool
-</span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">10_000</span>;
+</span><span class="kw">pub const </span>MAX_ASYNC_POOL_LENGTH: u64 = <span class="number">1_000</span>;
 <span class="doccomment">/// Maximum operation validity period count
 </span><span class="kw">pub const </span>OPERATION_VALIDITY_PERIODS: u64 = <span class="number">10</span>;
 <span class="doccomment">/// Number of periods of executed operation and denunciation history to keep
@@ -575,6 +577,8 @@
 </span><span class="kw">pub const </span>MAX_GAS_PER_BLOCK: u64 = u32::MAX <span class="kw">as </span>u64;
 <span class="doccomment">/// Maximum of GAS allowed for asynchronous messages execution on one slot
 </span><span class="kw">pub const </span>MAX_ASYNC_GAS: u64 = <span class="number">1_000_000_000</span>;
+<span class="doccomment">/// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
+</span><span class="kw">pub const </span>ASYNC_MSG_CST_GAS_COST: u64 = <span class="number">750_000</span>;
 <span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
 </span><span class="kw">pub const </span>BASE_OPERATION_GAS_COST: u64 = <span class="number">800_000</span>; <span class="comment">// approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 </span><span class="doccomment">/// Maximum event size in bytes

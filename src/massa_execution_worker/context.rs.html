@@ -1072,6 +1072,7 @@
 <a href="#1072" id="1072">1072</a>
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1425,9 +1426,10 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_async_batch(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         max_gas: u64,
+        async_msg_cst_gas_cost: u64,
     ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, AsyncMessage)&gt; {
         <span class="self">self</span>.speculative_async_pool
-            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas)
+            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
             .into_iter()
             .map(|(_id, msg)| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
             .collect()
