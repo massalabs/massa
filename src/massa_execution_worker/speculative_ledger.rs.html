@@ -658,6 +658,14 @@
 <a href="#658" id="658">658</a>
 <a href="#659" id="659">659</a>
 <a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -668,7 +676,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
-<span class="kw">use </span>massa_final_state::FinalState;
+<span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
@@ -687,7 +695,7 @@
 /// while keeping track of all the newly added changes, and never writing in the final ledger.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SpeculativeLedger {
     <span class="doccomment">/// Thread-safe shared access to the final state. For reading only.
-    </span>final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+    </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
 
     <span class="doccomment">/// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -729,7 +737,7 @@
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
     /// * `active_history`: thread-safe shared access the speculative execution history
     </span><span class="kw">pub fn </span>new(
-        final_state: Arc&lt;RwLock&lt;FinalState&gt;&gt;,
+        final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
         active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
         max_datastore_key_length: u8,
         max_bytecode_size: u64,
@@ -775,7 +783,9 @@
         </span><span class="self">self</span>.added_changes.get_balance_or_else(addr, || {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(par_balance) =&gt; <span class="prelude-val">Some</span>(par_balance),
-                HistorySearchResult::NoInfo =&gt; <span class="self">self</span>.final_state.read().ledger.get_balance(addr),
+                HistorySearchResult::NoInfo =&gt; {
+                    <span class="self">self</span>.final_state.read().get_ledger().get_balance(addr)
+                }
                 HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             }
         })
@@ -793,7 +803,9 @@
         </span><span class="self">self</span>.added_changes.get_bytecode_or_else(addr, || {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) =&gt; <span class="prelude-val">Some</span>(bytecode),
-                HistorySearchResult::NoInfo =&gt; <span class="self">self</span>.final_state.read().ledger.get_bytecode(addr),
+                HistorySearchResult::NoInfo =&gt; {
+                    <span class="self">self</span>.final_state.read().get_ledger().get_bytecode(addr)
+                }
                 HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             }
         })
@@ -823,7 +835,7 @@
                 .ok_or_else(|| ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;spending address {} not found&quot;</span>, from_addr)))<span class="question-mark">?
                 </span>.checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed to transfer {} from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
+                    ExecutionError::RuntimeError(<span class="macro">format!</span>(<span class="string">&quot;failed to transfer {} coins from spending address {} due to insufficient balance {}&quot;</span>, amount, from_addr, <span class="self">self
                     </span>.get_balance(<span class="kw-2">&amp;</span>from_addr).unwrap_or_default()))
                 })<span class="question-mark">?</span>;
 
@@ -840,7 +852,7 @@
                 <span class="comment">// if `to_addr` exists we increase its balance
                 </span><span class="kw">let </span>new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                     ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;overflow in crediting address {} balance {} due to adding {}&quot;</span>,
+                        <span class="string">&quot;overflow in crediting address {} balance {} due to adding {} coins to balance&quot;</span>,
                         to_addr, old_balance, amount
                     ))
                 })<span class="question-mark">?</span>;
@@ -880,7 +892,9 @@
         </span><span class="self">self</span>.added_changes.entry_exists_or_else(addr, || {
             <span class="kw">match </span><span class="self">self</span>.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(_balance) =&gt; <span class="bool-val">true</span>,
-                HistorySearchResult::NoInfo =&gt; <span class="self">self</span>.final_state.read().ledger.entry_exists(addr),
+                HistorySearchResult::NoInfo =&gt; {
+                    <span class="self">self</span>.final_state.read().get_ledger().entry_exists(addr)
+                }
                 HistorySearchResult::Absent =&gt; <span class="bool-val">false</span>,
             }
         })
@@ -1030,7 +1044,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>candidate_keys: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; = <span class="self">self
             </span>.final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_datastore_keys(addr, prefix);
 
         <span class="comment">// here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
@@ -1096,9 +1110,11 @@
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(entry) =&gt; <span class="prelude-val">Some</span>(entry),
-                HistorySearchResult::NoInfo =&gt; {
-                    <span class="self">self</span>.final_state.read().ledger.get_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo =&gt; <span class="self">self
+                    </span>.final_state
+                    .read()
+                    .get_ledger()
+                    .get_data_entry(addr, key),
                 HistorySearchResult::Absent =&gt; <span class="prelude-val">None</span>,
             }
         })
@@ -1124,7 +1140,7 @@
                 HistorySearchResult::NoInfo =&gt; <span class="self">self
                     </span>.final_state
                     .read()
-                    .ledger
+                    .get_ledger()
                     .get_data_entry(addr, key)
                     .is_some(),
                 HistorySearchResult::Absent =&gt; <span class="bool-val">false</span>,

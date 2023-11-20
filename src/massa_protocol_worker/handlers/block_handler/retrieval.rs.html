@@ -2407,7 +2407,7 @@
                     // Update the asked_blocks list
                     </span><span class="self">self</span>.asked_blocks
                         .entry(peer_id)
-                        .or_insert_with(Default::default)
+                        .or_default()
                         .insert(block_id, now);
 
                     <span class="comment">// Increment the load of the peer.

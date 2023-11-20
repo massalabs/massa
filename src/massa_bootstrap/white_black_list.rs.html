@@ -220,10 +220,6 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     borrow::Cow,
     collections::HashSet,
@@ -241,7 +237,7 @@
 
 <span class="doccomment">/// A wrapper around the white/black lists that allows efficient sharing between threads
 </span><span class="comment">// TODO: don&#39;t clone the path-bufs...
-</span><span class="attr">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>SharedWhiteBlackList&lt;<span class="lifetime">&#39;a</span>&gt; {
     inner: Arc&lt;RwLock&lt;WhiteBlackListInner&gt;&gt;,
     white_path: Cow&lt;<span class="lifetime">&#39;a</span>, Path&gt;,
@@ -363,11 +359,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="attr">#[cfg_attr(test, allow(unreachable_code, unused_variables))]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, remote_addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-        <span class="attr">#[cfg(test)]
-        </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
-
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_ip_allowed(<span class="kw-2">&amp;</span><span class="self">self</span>, remote_addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="kw">let </span>ip = to_canonical(remote_addr.ip());
         <span class="comment">// whether the peer IP address is blacklisted
         </span><span class="kw">let </span>read = <span class="self">self</span>.inner.read();
@@ -445,7 +437,7 @@
     }
 }
 
-<span class="attr">#[derive(Default)]
+<span class="attr">#[derive(Default, Debug)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>WhiteBlackListInner {
     white_list: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
     black_list: <span class="prelude-ty">Option</span>&lt;HashSet&lt;IpAddr&gt;&gt;,
