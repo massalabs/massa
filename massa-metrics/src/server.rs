@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
 use hyper::{
+    body::Body,
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
-    Body, Request, Response,
+    Request, Response,
 };
 use prometheus::{Encoder, TextEncoder};
 use tracing::{error, info};

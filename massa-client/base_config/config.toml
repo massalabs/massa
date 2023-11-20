@@ -11,7 +11,7 @@ grpc_public_port = 33037
 grpc_private_port = 33038
 
 [client]
-    # maximum size in bytes of a request
+    # maximum size in bytes of a request. Defaults to 50MB
     max_request_body_size = 52428800
     # request timeout
     request_timeout = 60000
@@ -19,7 +19,7 @@ grpc_private_port = 33038
     max_concurrent_requests = 100
     # certificate_store, `Native` or `WebPki`
     certificate_store = "Native"
-    # JSON-RPC request object id data type, `String` or `Number` 
+    # JSON-RPC request object id data type, `String` or `Number`
     id_kind = "Number"
     # max length for logging for requests and responses. Logs bigger than this limit will be truncated
     max_log_length = 4096

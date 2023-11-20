@@ -1,6 +1,6 @@
 use humantime::format_duration;
 use massa_db_exports::DBBatch;
-use massa_final_state::{FinalState, FinalStateError};
+use massa_final_state::{FinalStateController, FinalStateError};
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
 use massa_models::{node::NodeId, slot::Slot, streaming_step::StreamingStep, version::Version};
@@ -93,14 +93,14 @@ fn stream_final_state_and_consensus(
 
                     // We only need to receive the initial_state once
                     if let Some(last_start_period) = last_start_period {
-                        write_final_state.last_start_period = last_start_period;
+                        write_final_state.set_last_start_period(last_start_period);
                     }
                     if let Some(last_slot_before_downtime) = last_slot_before_downtime {
-                        write_final_state.last_slot_before_downtime = last_slot_before_downtime;
+                        write_final_state.set_last_slot_before_downtime(last_slot_before_downtime);
                     }
 
                     let (last_state_step, last_versioning_step) = write_final_state
-                        .db
+                        .get_database()
                         .write()
                         .write_batch_bootstrap_client(state_part, versioning_part)
                         .map_err(|e| {
@@ -155,9 +155,9 @@ fn stream_final_state_and_consensus(
 
                     // Update MIP store by reading from the disk
                     let mut guard = global_bootstrap_state.final_state.write();
-                    let db = guard.db.clone();
+                    let db = guard.get_database().clone();
                     let (updated, added) = guard
-                        .mip_store
+                        .get_mip_store_mut()
                         .extend_from_db(db)
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
 
@@ -199,7 +199,7 @@ fn stream_final_state_and_consensus(
 
 /// Gets the state from a bootstrap server (internal private function)
 /// needs to be CANCELLABLE
-fn bootstrap_from_server(
+pub(crate) fn bootstrap_from_server(
     cfg: &BootstrapConfig,
     client: &mut BootstrapClientBinder,
     next_bootstrap_message: &mut BootstrapClientMessage,
@@ -347,7 +347,7 @@ fn send_client_message(
         })
 }
 
-fn connect_to_server(
+pub(crate) fn connect_to_server(
     connector: &mut impl BSConnector,
     bootstrap_config: &BootstrapConfig,
     addr: &SocketAddr,
@@ -396,7 +396,7 @@ fn filter_bootstrap_list(
 #[allow(clippy::too_many_arguments)]
 pub fn get_state(
     bootstrap_config: &BootstrapConfig,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     mut connector: impl BSConnector,
     version: Version,
     genesis_timestamp: MassaTime,
@@ -423,7 +423,7 @@ pub fn get_state(
             if !bootstrap_config.keep_ledger {
                 // load ledger from initial ledger file
                 final_state_guard
-                    .ledger
+                    .get_ledger_mut()
                     .load_initial_ledger()
                     .map_err(|err| {
                         BootstrapError::GeneralError(format!(
@@ -434,21 +434,23 @@ pub fn get_state(
             }
 
             let slot = Slot::new(
-                final_state_guard.last_start_period,
+                final_state_guard.get_last_start_period(),
                 bootstrap_config.thread_count.saturating_sub(1),
             );
 
             // create the initial cycle of PoS cycle_history
             let mut batch = DBBatch::new();
             let mut db_versioning_batch: BTreeMap<Vec<u8>, Option<Vec<u8>>> = DBBatch::new();
-            final_state_guard.pos_state.create_initial_cycle(&mut batch);
+            final_state_guard
+                .get_pos_state_mut()
+                .create_initial_cycle(&mut batch);
 
             // set initial execution trail hash
             final_state_guard.init_execution_trail_hash_to_batch(&mut batch);
 
             // load initial deferred credits
             final_state_guard
-                .pos_state
+                .get_pos_state_mut()
                 .load_initial_deferred_credits(&mut batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(format!(
@@ -459,14 +461,15 @@ pub fn get_state(
 
             // Need to write MIP store to Db if we want to bootstrap it to others
             final_state_guard
-                .mip_store
+                .get_mip_store()
                 .update_batches(&mut batch, &mut db_versioning_batch, None)
                 .map_err(|e| BootstrapError::GeneralError(e.to_string()))?;
 
-            final_state_guard
-                .db
-                .write()
-                .write_batch(batch, db_versioning_batch, Some(slot));
+            final_state_guard.get_database().write().write_batch(
+                batch,
+                db_versioning_batch,
+                Some(slot),
+            );
         }
         return Ok(GlobalBootstrapState::new(final_state));
     }
@@ -489,7 +492,7 @@ pub fn get_state(
     loop {
         // check for interuption
         if *interupted.0.lock().expect("double-lock on interupt-mutex") {
-            return Err(BootstrapError::Interupted(
+            return Err(BootstrapError::Interrupted(
                 "Sig INT received while getting state".to_string(),
             ));
         }
@@ -568,7 +571,7 @@ pub fn get_state(
                 .wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
                 .expect("interupt signal mutex poisoned");
             if *wake.0 {
-                return Err(BootstrapError::Interupted(
+                return Err(BootstrapError::Interrupted(
                     "Sig INT during bootstrap retry-wait".to_string(),
                 ));
             }

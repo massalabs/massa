@@ -15,6 +15,8 @@ gas_calibration = [
     "massa_execution_exports/gas_calibration",
     "massa_final_state/test-exports",
     "massa_pos_worker",
+    "massa_db_worker",
+    "tempfile"
 ]
 test-exports = [
     "massa_execution_exports/test-exports",
@@ -26,11 +28,15 @@ test-exports = [
     "massa_pos_worker",
     "massa_metrics/test-exports",
     "massa_metrics/test-exports",
+    "massa_db_worker",
+    "tempfile"
 ]
 benchmarking = [
     "massa-sc-runtime/gas_calibration",
     "criterion",
     "massa_pos_worker",
+    "massa_db_worker",
+    "tempfile"
 ]
 metrics = []
 
@@ -68,6 +74,8 @@ massa_pos_exports = { workspace = true }
 massa_final_state = { workspace = true }
 massa_versioning = { workspace = true }
 massa_db_exports = { workspace = true }
+massa_db_worker = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 
@@ -81,6 +89,9 @@ massa_pos_worker = { workspace = true }
 massa-sc-runtime = { workspace = true, features = ["testing"] }
 massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
+massa_db_worker = { workspace = true }
+tempfile = { workspace = true }
 massa_test_framework = {workspace = true}
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
+mockall = { workspace = true }

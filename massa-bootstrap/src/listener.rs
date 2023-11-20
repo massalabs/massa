@@ -17,7 +17,7 @@ pub struct BootstrapTcpListener {
     server: TcpListener,
 }
 
-pub struct BootstrapListenerStopHandle(Waker);
+pub struct BootstrapListenerStopHandle(pub(crate) Waker);
 
 pub enum PollEvent {
     NewConnections(Vec<(TcpStream, SocketAddr)>),
@@ -74,7 +74,8 @@ impl BootstrapTcpListener {
         ))
     }
 
-    pub(crate) fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
+    /// Poll the listener for new connections
+    pub fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         let mut results = Vec::with_capacity(self.events.iter().count());

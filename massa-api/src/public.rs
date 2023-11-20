@@ -135,7 +135,6 @@ impl MassaRpcServer for API<Public> {
             address,
             bytecode,
             operation_datastore,
-            is_final,
             fee,
         } in reqs
         {
@@ -172,11 +171,6 @@ impl MassaRpcServer for API<Public> {
                 None => None,
             };
 
-            // TODO:
-            // * set a maximum gas value for read-only executions to prevent attacks
-            // * stop mapping request and result, reuse execution's structures
-            // * remove async stuff
-
             // translate request
             let req = ReadOnlyExecutionRequest {
                 max_gas,
@@ -187,7 +181,6 @@ impl MassaRpcServer for API<Public> {
                     owned_addresses: vec![address],
                     operation_datastore: op_datastore,
                 }],
-                is_final,
                 coins: None,
                 fee,
             };
@@ -234,7 +227,6 @@ impl MassaRpcServer for API<Public> {
             target_function,
             parameter,
             caller_address,
-            is_final,
             coins,
             fee,
         } in reqs
@@ -250,11 +242,6 @@ impl MassaRpcServer for API<Public> {
                     .map_err(ApiError::from)?;
                 Address::from_public_key(&keypair.get_public_key())
             };
-
-            // TODO:
-            // * set a maximum gas value for read-only executions to prevent attacks
-            // * stop mapping request and result, reuse execution's structures
-            // * remove async stuff
 
             // translate request
             let req = ReadOnlyExecutionRequest {
@@ -278,7 +265,6 @@ impl MassaRpcServer for API<Public> {
                         operation_datastore: None, // should always be None
                     },
                 ],
-                is_final,
                 coins,
                 fee,
             };

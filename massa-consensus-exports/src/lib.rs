@@ -17,7 +17,7 @@ pub use controller_trait::{ConsensusController, ConsensusManager};
 pub use settings::ConsensusConfig;
 
 #[cfg(feature = "test-exports")]
-pub use controller_trait::MockConsensusController;
+pub use controller_trait::{MockConsensusController, MockConsensusControllerWrapper};
 
 /// Test utils
 #[cfg(feature = "test-exports")]

@@ -100,8 +100,8 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "a2e335b1493d302aa03b87e5fd611a2f2c21afdb" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "eaf96314468583279cadf319493e80bce92237c8" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "effc0418977cd64402172b7eb749a2fc7537771a" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "0be22626a5a873e6a17893e1ad8cc3a44a539308" }
 peernet = { git = "https://github.com/massalabs/PeerNet", "branch" = "main" }
 
 # Common dependencies
@@ -113,7 +113,7 @@ anyhow = "1.0"
 assert_matches = "1.5"
 async-trait = "0.1"
 bitvec = "1.0"
-blake3 = "=1.4"
+blake3 = "=1.5"
 bs58 = "=0.5"
 clap = { version = "4.4", features = ["derive", "cargo"] }
 config = "0.13"
@@ -122,10 +122,10 @@ criterion = "0.5"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
 ctrlc = "3.2"
-dialoguer = "0.10"
+dialoguer = "0.11"
 directories = "5.0"
 displaydoc = "0.2"
-ed25519-dalek = { version = "=2.0", features = ["rand_core", "zeroize"] }
+ed25519-dalek = { version = "=2.1", features = ["rand_core", "zeroize"] }
 erased-serde = "0.3"
 futures = "0.3"
 futures-util = "0.3"
@@ -136,7 +136,7 @@ humantime = "2.1"
 hyper = "0.14"
 ip_rfc = "0.1"
 is-terminal = "0.4"
-itertools = "0.11"
+itertools = "0.12"
 jsonrpsee = "0.20"
 jsonrpsee-http-client = "0.20"
 jsonrpsee-ws-client = "0.20"
@@ -182,7 +182,7 @@ thiserror = "1.0"
 time = "0.3"
 tokio = "1.23"
 tokio-stream = "0.1"
-toml_edit = "0.20"
+toml_edit = "0.21"
 tonic = "0.10"
 tonic-health = "0.10"
 tonic-reflection = "0.10"
@@ -191,6 +191,6 @@ tower = "0.4.13"
 tower-http = "0.4.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
-unsigned-varint = "0.7"
+unsigned-varint = "0.8"
 variant_count = "1.1"
 walkdir = "2.3"

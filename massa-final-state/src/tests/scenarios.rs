@@ -1,5 +1,6 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use crate::controller_trait::FinalStateController;
 use crate::{
     /*test_exports::{assert_eq_final_state, assert_eq_final_state_hash},*/
     FinalState, FinalStateConfig, StateChanges,
@@ -52,7 +53,6 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         ledger_config: LedgerConfig {
             thread_count,
             initial_ledger_path: "".into(),
-            disk_ledger_path: temp_dir.path().to_path_buf(),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         },

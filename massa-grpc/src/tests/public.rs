@@ -372,7 +372,6 @@ async fn execute_read_only_call() {
         max_gas: u64::MAX,
         call_stack: vec![],
         caller_address: None,
-        is_final: false,
         target: Some(Target::FunctionCall(FunctionCall {
             target_address: "toto".to_string(),
             target_function: "function".to_string(),

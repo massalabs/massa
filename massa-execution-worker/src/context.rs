@@ -20,7 +20,7 @@ use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
 };
-use massa_final_state::{FinalState, StateChanges};
+use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -82,8 +82,8 @@ pub struct ExecutionContextSnapshot {
     /// address call stack, most recent is at the back
     pub stack: Vec<ExecutionStackElement>,
 
-    /// generated events during this execution, with multiple indexes
-    pub events: EventStore,
+    /// keep the count of event emitted in the context
+    pub event_count: usize,
 
     /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
@@ -186,7 +186,7 @@ impl ExecutionContext {
     /// A new (empty) `ExecutionContext` instance
     pub(crate) fn new(
         config: ExecutionConfig,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,
@@ -251,7 +251,7 @@ impl ExecutionContext {
             created_event_index: self.created_event_index,
             created_message_index: self.created_message_index,
             stack: self.stack.clone(),
-            events: self.events.clone(),
+            event_count: self.events.0.len(),
             unsafe_rng: self.unsafe_rng.clone(),
         }
     }
@@ -282,8 +282,7 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
 
         // For events, set snapshot delta to error events.
-        // Start iterating from snapshot events length because we are dealing with a VecDeque.
-        for event in self.events.0.range_mut(snapshot.events.0.len()..) {
+        for event in self.events.0.range_mut(snapshot.event_count..) {
             event.context.is_error = true;
         }
 
@@ -310,7 +309,7 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         call_stack: Vec<ExecutionStackElement>,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,
@@ -352,9 +351,10 @@ impl ExecutionContext {
     pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
+        async_msg_cst_gas_cost: u64,
     ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
-            .take_batch_to_execute(self.slot, max_gas)
+            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
             .into_iter()
             .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
             .collect()
@@ -375,7 +375,7 @@ impl ExecutionContext {
         config: ExecutionConfig,
         slot: Slot,
         opt_block_id: Option<BlockId>,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         module_cache: Arc<RwLock<ModuleCache>>,
         mip_store: MipStore,

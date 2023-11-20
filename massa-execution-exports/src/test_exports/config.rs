@@ -23,6 +23,7 @@ impl Default for ExecutionConfig {
             readonly_queue_length: 100,
             max_final_events: 1000,
             max_async_gas: MAX_ASYNC_GAS,
+            async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
             thread_count: THREAD_COUNT,
             roll_price: ROLL_PRICE,
             cursor_delay: MassaTime::from_millis(0),

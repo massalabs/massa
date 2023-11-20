@@ -8,7 +8,7 @@ use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
     AsyncPoolChanges,
 };
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 use massa_models::slot::Slot;
 use parking_lot::RwLock;
@@ -18,7 +18,7 @@ use std::{
 };
 
 pub(crate) struct SpeculativeAsyncPool {
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative pool changes
     pool_changes: AsyncPoolChanges,
@@ -31,10 +31,14 @@ impl SpeculativeAsyncPool {
     ///
     /// # Arguments
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
-        let mut message_infos = final_state.read().async_pool.message_info_cache.clone();
+        let mut message_infos = final_state
+            .read()
+            .get_async_pool()
+            .message_info_cache
+            .clone();
 
         for history_item in active_history.read().0.iter() {
             for change in history_item.state_changes.async_pool_changes.0.iter() {
@@ -105,6 +109,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: Slot,
         max_gas: u64,
+        async_msg_cst_gas_cost: u64,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut available_gas = max_gas;
 
@@ -116,12 +121,13 @@ impl SpeculativeAsyncPool {
         let message_infos = self.message_infos.clone();
 
         for (message_id, message_info) in message_infos.iter() {
-            if available_gas >= message_info.max_gas
+            let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+            if available_gas >= corrected_max_gas
                 && slot >= message_info.validity_start
                 && slot < message_info.validity_end
                 && message_info.can_be_executed
             {
-                available_gas -= message_info.max_gas;
+                available_gas -= corrected_max_gas;
 
                 wanted_messages.push(message_id);
             }
@@ -188,7 +194,7 @@ impl SpeculativeAsyncPool {
         let excess_count = self
             .message_infos
             .len()
-            .saturating_sub(self.final_state.read().async_pool.config.max_length as usize);
+            .saturating_sub(self.final_state.read().get_async_pool().config.max_length as usize);
 
         eliminated_infos.reserve_exact(excess_count);
         for _ in 0..excess_count {
@@ -283,7 +289,7 @@ impl SpeculativeAsyncPool {
         let fetched_msgs = self
             .final_state
             .read()
-            .async_pool
+            .get_async_pool()
             .fetch_messages(wanted_ids);
 
         for (message_id, message) in fetched_msgs {

@@ -610,7 +610,6 @@ async fn execute_read_only_bytecode() {
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap()
         ),
         operation_datastore: None,
-        is_final: false,
         fee: None
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
@@ -624,7 +623,6 @@ async fn execute_read_only_bytecode() {
         bytecode: "hi".as_bytes().to_vec(),
         address: None,
         operation_datastore: None,
-        is_final: false,
         fee: None,
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
@@ -638,7 +636,6 @@ async fn execute_read_only_bytecode() {
         bytecode: "hi".as_bytes().to_vec(),
         address: None,
         operation_datastore: Some("hi".as_bytes().to_vec()),
-        is_final: false,
         fee: None
     }]];
     let response: Result<Vec<ExecuteReadOnlyResponse>, Error> = client
@@ -700,7 +697,6 @@ async fn execute_read_only_call() {
         target_function: "hello".to_string(),
         parameter: vec![],
         caller_address: None,
-        is_final: false,
         fee: None,
         coins: None,
     }]];

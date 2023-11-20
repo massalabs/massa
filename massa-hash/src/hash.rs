@@ -42,7 +42,7 @@ pub struct Hash(blake3::Hash);
 
 impl PartialOrd for Hash {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.as_bytes().partial_cmp(other.0.as_bytes())
+        Some(self.0.as_bytes().cmp(other.0.as_bytes()))
     }
 }
 
