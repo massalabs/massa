@@ -1509,9 +1509,17 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
+        let exact_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            // return max_instance_cost if the exact cost is below
+            // so the user can paste the estimated amount into a real call
+            // and be sure the call will go through
+            gas_cost: if exact_cost > self.config.gas_costs.max_instance_cost {
+                exact_cost
+            } else {
+                self.config.gas_costs.max_instance_cost
+            },
             call_result: exec_response.ret,
         })
     }
