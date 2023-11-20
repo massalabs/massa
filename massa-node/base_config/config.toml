@@ -8,9 +8,9 @@
     # port on which the node API listens for admin and node management requests. Dangerous if publicly exposed. Bind to "[::1]:port" for IPv6
     bind_private = "127.0.0.1:33034"
     # port on which the node API listens for public requests. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
-    bind_public = "127.0.0.1:33035"
+    bind_public = "0.0.0.0:33035"
     # port on which the node API(V2) listens for HTTP requests and WebSockets subscriptions. Can be exposed to the Internet. Bind to "[::]:port" for IPv6
-    bind_api = "127.0.0.1:33036"
+    bind_api = "0.0.0.0:33036"
     # max number of arguments per RPC call
     max_arguments = 128
     # path to the openrpc specification file used in `rpc.discover` method
@@ -59,7 +59,7 @@
         # list of subject alternative names for the server certificate(requires `generate_self_signed_certificates` to be true)
         subject_alt_names = []
         # bind for the Massa gRPC API
-        bind = "127.0.0.1:33037"
+        bind = "0.0.0.0:33037"
         # which compression encodings does the server accept for requests
         accept_compressed = "Gzip"
         # which compression encodings might the server use for responses
