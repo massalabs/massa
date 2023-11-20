@@ -2438,6 +2438,8 @@
 <a href="#2438" id="2438">2438</a>
 <a href="#2439" id="2439">2439</a>
 <a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3500,7 +3502,9 @@
 
         <span class="kw">let </span>roll_counts = <span class="self">self</span>.get_all_roll_counts(cycle);
 
-        <span class="kw">let </span>production_stats = <span class="self">self</span>.get_all_production_stats(cycle).unwrap_or_default();
+        <span class="kw">let </span>production_stats = <span class="self">self
+            </span>.get_all_production_stats(cycle)
+            .unwrap_or(PreHashMap::default());
 
         <span class="kw">let </span><span class="kw-2">mut </span>cycle_info =
             CycleInfo::new(cycle, complete, roll_counts, rng_seed, production_stats);

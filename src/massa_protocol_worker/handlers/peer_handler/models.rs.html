@@ -352,6 +352,10 @@
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::{BootstrapPeers, PeerId};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -398,6 +402,14 @@
 
 <span class="kw">impl </span>Ord <span class="kw">for </span>ConnectionMetadata {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        <span class="self">self</span>.partial_cmp(other).unwrap()
+    }
+}
+
+<span class="comment">// Priorisation of a peer compared to another one
+// Greater = Less Prio        Lesser = More prio
+</span><span class="kw">impl </span>PartialOrd <span class="kw">for </span>ConnectionMetadata {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
         <span class="comment">// Time since last failure, more recent = less priority
         </span><span class="kw">let </span>failure_check = <span class="kw">match </span>(<span class="self">self</span>.last_failure, other.last_failure) {
             (<span class="prelude-val">Some</span>(sf), <span class="prelude-val">Some</span>(of)) =&gt; <span class="prelude-val">Some</span>(sf.cmp(<span class="kw-2">&amp;</span>of)),
@@ -406,7 +418,7 @@
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = failure_check {
-            <span class="kw">return </span>res;
+            <span class="kw">return </span><span class="prelude-val">Some</span>(res);
         }
 
         <span class="comment">// Time since last success, more recent = more priority
@@ -417,7 +429,7 @@
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = success_check {
-            <span class="kw">return </span>res;
+            <span class="kw">return </span><span class="prelude-val">Some</span>(res);
         }
 
         <span class="comment">// Time since last failed peer test, more recent = less priority
@@ -428,7 +440,7 @@
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = test_failure_check {
-            <span class="kw">return </span>res;
+            <span class="kw">return </span><span class="prelude-val">Some</span>(res);
         }
 
         <span class="comment">// Time since last succeeded peer test, more recent = more priority
@@ -439,19 +451,12 @@
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
         };
         <span class="kw">if let </span><span class="prelude-val">Some</span>(res) = test_success_check {
-            res
+            <span class="prelude-val">Some</span>(res)
+
         <span class="comment">// Else, pick randomly
         </span>} <span class="kw">else </span>{
-            <span class="self">self</span>.random_priority.cmp(<span class="kw-2">&amp;</span>other.random_priority)
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.random_priority.cmp(<span class="kw-2">&amp;</span>other.random_priority))
         }
-    }
-}
-
-<span class="comment">// Priorisation of a peer compared to another one
-// Greater = Less Prio        Lesser = More prio
-</span><span class="kw">impl </span>PartialOrd <span class="kw">for </span>ConnectionMetadata {
-    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
     }
 }
 
@@ -664,25 +669,28 @@
     <span class="kw">fn </span>set_try_connect_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
         <span class="self">self</span>.try_connect_history
             .entry(<span class="kw-2">*</span>addr)
-            .or_default()
+            .or_insert(ConnectionMetadata::default())
             .try_connect();
     }
 
     <span class="kw">fn </span>set_try_connect_failure_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
-        <span class="self">self</span>.try_connect_history.entry(<span class="kw-2">*</span>addr).or_default().failure();
+        <span class="self">self</span>.try_connect_history
+            .entry(<span class="kw-2">*</span>addr)
+            .or_insert(ConnectionMetadata::default())
+            .failure();
     }
 
     <span class="kw">fn </span>set_try_connect_test_success_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
         <span class="self">self</span>.try_connect_history
             .entry(<span class="kw-2">*</span>addr)
-            .or_default()
+            .or_insert(ConnectionMetadata::default())
             .test_success();
     }
 
     <span class="kw">fn </span>set_try_connect_test_failure_or_insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) {
         <span class="self">self</span>.try_connect_history
             .entry(<span class="kw-2">*</span>addr)
-            .or_default()
+            .or_insert(ConnectionMetadata::default())
             .test_failure();
     }
 

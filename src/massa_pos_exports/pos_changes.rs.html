@@ -323,7 +323,7 @@
         </span><span class="kw">for </span>(other_addr, other_stats) <span class="kw">in </span>other.production_stats {
             <span class="self">self</span>.production_stats
                 .entry(other_addr)
-                .or_default()
+                .or_insert_with(ProductionStats::default)
                 .extend(<span class="kw-2">&amp;</span>other_stats);
         }
 

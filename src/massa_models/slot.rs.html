@@ -469,7 +469,7 @@
 
 <span class="kw">impl </span>PartialOrd <span class="kw">for </span>Slot {
     <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="prelude-val">Some</span>((<span class="self">self</span>.period, <span class="self">self</span>.thread).cmp(<span class="kw-2">&amp;</span>(other.period, other.thread)))
+        (<span class="self">self</span>.period, <span class="self">self</span>.thread).partial_cmp(<span class="kw-2">&amp;</span>(other.period, other.thread))
     }
 }
 

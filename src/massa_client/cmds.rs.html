@@ -1438,6 +1438,49 @@
 <a href="#1438" id="1438">1438</a>
 <a href="#1439" id="1439">1439</a>
 <a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1464,6 +1507,7 @@
 };
 <span class="kw">use </span>massa_sdk::Client;
 <span class="kw">use </span>massa_signature::KeyPair;
+<span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>massa_wallet::Wallet;
 
 <span class="kw">use </span>serde::Serialize;
@@ -1719,20 +1763,30 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;PathToBytecode MaxGas Address Fee&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;execute byte code, address is optional, fee is optional. Nothing is really executed on chain&quot;
+        props(
+            args = <span class="string">&quot;PathToBytecode MaxGas Address IsFinal Fee&quot;</span>,
+            pwd_not_needed = <span class="string">&quot;true&quot;
+        </span>),
+        message = <span class="string">&quot;execute byte code, address is optional, is_final is optional, fee is optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee&quot;</span>,
+            args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress IsFinal Coins Fee&quot;</span>,
             pwd_not_needed = <span class="string">&quot;true&quot;
         </span>),
-        message = <span class="string">&quot;call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain&quot;
+        message = <span class="string">&quot;call a smart contract function, sender address, is_final, coins and fee are optional. Nothing is really executed on chain&quot;
     </span>)]
     </span>read_only_call,
+
+    <span class="attr">#[strum(
+        ascii_case_insensitive,
+        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
+        message = <span class="string">&quot;show time remaining to end of current episode&quot;
+    </span>)]
+    </span>when_episode_ends,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
@@ -2408,6 +2462,25 @@
                 )
                 .<span class="kw">await
             </span>}
+            Command::when_episode_ends =&gt; {
+                <span class="kw">let </span>end = <span class="kw">match </span>client.public.get_status().<span class="kw">await </span>{
+                    <span class="prelude-val">Ok</span>(node_status) =&gt; node_status.config.end_timestamp,
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, e),
+                };
+                <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(e) = end {
+                    <span class="kw">let </span>(days, hours, mins, secs) =
+                        e.saturating_sub(MassaTime::now()).days_hours_mins_secs()<span class="question-mark">?</span>; <span class="comment">// compensation milliseconds is zero
+
+                    </span><span class="kw">let _ </span>= <span class="macro">write!</span>(res, <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds remaining until the end of the current episode&quot;</span>, days, hours, mins, secs);
+                } <span class="kw">else </span>{
+                    <span class="kw">let _ </span>= <span class="macro">write!</span>(res, <span class="string">&quot;There is no end !&quot;</span>);
+                }
+                <span class="kw">if </span>!json {
+                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, res);
+                }
+                <span class="prelude-val">Ok</span>(Box::new(()))
+            }
             Command::when_moon =&gt; {
                 <span class="kw">let </span>res = <span class="string">&quot;At night 🌔.&quot;</span>;
                 <span class="kw">if </span>!json {
@@ -2537,9 +2610,10 @@
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">4 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">5 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
+
                 <span class="kw">let </span>path = parameters[<span class="number">0</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>max_gas = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">2</span>) {
@@ -2547,8 +2621,13 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>};
+                <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">3</span>) {
+                    adr.parse::&lt;bool&gt;()<span class="question-mark">?
+                </span>} <span class="kw">else </span>{
+                    <span class="bool-val">false
+                </span>};
                 <span class="kw">let </span>fee = parameters
-                    .get(<span class="number">3</span>)
+                    .get(<span class="number">7</span>)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()<span class="question-mark">?</span>;
                 <span class="kw">let </span>bytecode = get_file_as_byte_vec(<span class="kw-2">&amp;</span>path).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -2559,7 +2638,8 @@
                         bytecode,
                         address,
                         operation_datastore: <span class="prelude-val">None</span>, <span class="comment">// TODO - #3072
-                        </span>fee,
+                        </span>is_final,
+                        fee,
                     })
                     .<span class="kw">await
                 </span>{
@@ -2568,7 +2648,7 @@
                 }
             }
             Command::read_only_call =&gt; {
-                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">7 </span>{
+                <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">8 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
 
@@ -2581,9 +2661,14 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>};
-                <span class="kw">let </span>coins = parameters.get(<span class="number">5</span>).map(|c| Amount::from_str(c)).transpose()<span class="question-mark">?</span>;
+                <span class="kw">let </span>is_final = <span class="kw">if let </span><span class="prelude-val">Some</span>(adr) = parameters.get(<span class="number">5</span>) {
+                    adr.parse::&lt;bool&gt;()<span class="question-mark">?
+                </span>} <span class="kw">else </span>{
+                    <span class="bool-val">false
+                </span>};
+                <span class="kw">let </span>coins = parameters.get(<span class="number">6</span>).map(|c| Amount::from_str(c)).transpose()<span class="question-mark">?</span>;
                 <span class="kw">let </span>fee = parameters
-                    .get(<span class="number">6</span>)
+                    .get(<span class="number">7</span>)
                     .map(|fee| Amount::from_str(fee))
                     .transpose()<span class="question-mark">?</span>;
                 <span class="kw">match </span>client
@@ -2594,6 +2679,7 @@
                         target_function,
                         parameter,
                         max_gas,
+                        is_final,
                         coins,
                         fee,
                     })

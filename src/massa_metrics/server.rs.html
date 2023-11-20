@@ -64,14 +64,12 @@
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::SocketAddr;
 
 <span class="kw">use </span>hyper::{
-    body::Body,
     header::CONTENT_TYPE,
     service::{make_service_fn, service_fn},
-    Request, Response,
+    Body, Request, Response,
 };
 <span class="kw">use </span>prometheus::{Encoder, TextEncoder};
 <span class="kw">use </span>tracing::{error, info};
