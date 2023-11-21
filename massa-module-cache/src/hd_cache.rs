@@ -1,7 +1,6 @@
 use crate::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
-use core::panic;
 use massa_hash::Hash;
 use massa_sc_runtime::{GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -81,9 +80,9 @@ impl HDCache {
 
         let mut ser_metadata = Vec::new();
         let ser_module = match module_info {
-            ModuleInfo::Invalid => {
+            ModuleInfo::Invalid(err_msg) => {
                 self.meta_ser
-                    .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
+                    .serialize(&ModuleMetadata::Invalid(err_msg), &mut ser_metadata)
                     .expect(DATA_SER_ERROR);
                 Vec::new()
             }
@@ -127,10 +126,10 @@ impl HDCache {
     }
 
     /// Sets a given module as invalid
-    pub fn set_invalid(&self, hash: Hash) {
+    pub fn set_invalid(&self, hash: Hash, err_msg: String) {
         let mut ser_metadata = Vec::new();
         self.meta_ser
-            .serialize(&ModuleMetadata::Invalid, &mut ser_metadata)
+            .serialize(&ModuleMetadata::Invalid(err_msg), &mut ser_metadata)
             .expect(DATA_SER_ERROR);
         self.db
             .put(metadata_key!(hash), ser_metadata)
@@ -151,14 +150,14 @@ impl HDCache {
                     .meta_deser
                     .deserialize::<DeserializeError>(&ser_metadata)
                     .expect(DATA_DESER_ERROR);
-                if metadata == ModuleMetadata::Invalid {
-                    return Some(ModuleInfo::Invalid);
+                if let ModuleMetadata::Invalid(err_msg) = metadata {
+                    return Some(ModuleInfo::Invalid(err_msg));
                 }
                 let module =
                     RuntimeModule::deserialize(&ser_module, gas_costs.max_instance_cost, gas_costs)
                         .expect(MOD_DESER_ERROR);
                 let result = match metadata {
-                    ModuleMetadata::Invalid => ModuleInfo::Invalid,
+                    ModuleMetadata::Invalid(err_msg) => ModuleInfo::Invalid(err_msg),
                     ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
                     ModuleMetadata::Delta(delta) => ModuleInfo::ModuleAndDelta((module, delta)),
                 };
@@ -261,9 +260,13 @@ mod tests {
         let cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
         assert!(matches!(cached_module_v2, ModuleInfo::ModuleAndDelta(_)));
 
-        cache.set_invalid(hash);
+        let err_msg = "test_error".to_string();
+        cache.set_invalid(hash, err_msg.clone());
         let cached_module_v3 = cache.get(hash, gas_costs).unwrap();
-        assert!(matches!(cached_module_v3, ModuleInfo::Invalid));
+        let ModuleInfo::Invalid(res_err) = cached_module_v3 else {
+            panic!("expected ModuleInfo::Invalid");
+        };
+        assert_eq!(res_err, err_msg);
     }
 
     #[test]

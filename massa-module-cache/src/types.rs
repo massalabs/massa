@@ -1,3 +1,4 @@
+use massa_models::serialization::{StringDeserializer, StringSerializer};
 use massa_sc_runtime::RuntimeModule;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -12,7 +13,7 @@ use std::ops::Bound::Included;
 /// Main type
 #[derive(Clone)]
 pub enum ModuleInfo {
-    Invalid,
+    Invalid(String), // contains the error message
     Module(RuntimeModule),
     ModuleAndDelta((RuntimeModule, u64)),
 }
@@ -20,7 +21,7 @@ pub enum ModuleInfo {
 #[derive(PartialEq, Eq)]
 /// Metadata type
 pub enum ModuleMetadata {
-    Invalid,
+    Invalid(String), // contains the error message
     NotExecuted,
     Delta(u64),
 }
@@ -37,12 +38,14 @@ enum ModuleMetadataId {
 /// Metadata serializer
 pub struct ModuleMetadataSerializer {
     u64_ser: U64VarIntSerializer,
+    err_msg_ser: StringSerializer<U64VarIntSerializer, u64>,
 }
 
 impl ModuleMetadataSerializer {
     pub fn new() -> Self {
         Self {
             u64_ser: U64VarIntSerializer::new(),
+            err_msg_ser: StringSerializer::new(U64VarIntSerializer::new()),
         }
     }
 }
@@ -63,9 +66,11 @@ impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
             ModuleMetadata::NotExecuted => self
                 .u64_ser
                 .serialize(&u64::from(ModuleMetadataId::NotExecuted), buffer)?,
-            ModuleMetadata::Invalid => self
-                .u64_ser
-                .serialize(&u64::from(ModuleMetadataId::Invalid), buffer)?,
+            ModuleMetadata::Invalid(err_msg) => {
+                self.u64_ser
+                    .serialize(&u64::from(ModuleMetadataId::Invalid), buffer)?;
+                self.err_msg_ser.serialize(err_msg, buffer)?;
+            }
             ModuleMetadata::Delta(delta) => {
                 self.u64_ser
                     .serialize(&u64::from(ModuleMetadataId::Delta), buffer)?;
@@ -80,6 +85,7 @@ impl Serializer<ModuleMetadata> for ModuleMetadataSerializer {
 pub struct ModuleMetadataDeserializer {
     id_deser: U64VarIntDeserializer,
     delta_deser: U64VarIntDeserializer,
+    err_msg_deser: StringDeserializer<U64VarIntDeserializer, u64>,
 }
 
 impl ModuleMetadataDeserializer {
@@ -90,6 +96,10 @@ impl ModuleMetadataDeserializer {
                 Included(u64::from(ModuleMetadataId::Delta)),
             ),
             delta_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            err_msg_deser: StringDeserializer::new(U64VarIntDeserializer::new(
+                Included(0),
+                Included(u64::MAX),
+            )),
         }
     }
 }
@@ -111,13 +121,17 @@ impl Deserializer<ModuleMetadata> for ModuleMetadataDeserializer {
                 .map(|id| ModuleMetadataId::try_from(id).unwrap())
                 .parse(buffer)?;
             match id {
-                ModuleMetadataId::Invalid => Ok((input, ModuleMetadata::Invalid)),
+                ModuleMetadataId::Invalid => context("ModuleMetadata::Invalid", |input| {
+                    self.err_msg_deser.deserialize(input)
+                })
+                .map(ModuleMetadata::Invalid)
+                .parse(input),
                 ModuleMetadataId::NotExecuted => Ok((input, ModuleMetadata::NotExecuted)),
-                ModuleMetadataId::Delta => {
-                    context("Delta", |input| self.delta_deser.deserialize(input))
-                        .map(ModuleMetadata::Delta)
-                        .parse(input)
-                }
+                ModuleMetadataId::Delta => context("ModuleMetadata::Delta", |input| {
+                    self.delta_deser.deserialize(input)
+                })
+                .map(ModuleMetadata::Delta)
+                .parse(input),
             }
         })
         .parse(buffer)
