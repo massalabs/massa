@@ -183,6 +183,8 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{Compiler, RuntimeModule};
@@ -321,9 +323,10 @@
         // This is only supposed to be a check
         </span>execution_gas
             .checked_sub(<span class="self">self</span>.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                <span class="string">&quot;Provided max gas is below the default instance creation cost&quot;</span>.to_string(),
-            ))<span class="question-mark">?</span>;
+            .ok_or(CacheError::LoadError(<span class="macro">format!</span>(
+                <span class="string">&quot;Provided gas {} is lower than the base instance creation gas cost {}&quot;</span>,
+                execution_gas, <span class="self">self</span>.cfg.gas_costs.max_instance_cost
+            )))<span class="question-mark">?</span>;
         <span class="comment">// TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
         </span><span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode);
@@ -361,9 +364,10 @@
         // This is only supposed to be a check
         </span>limit
             .checked_sub(<span class="self">self</span>.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                <span class="string">&quot;Provided max gas is below the default instance creation cost&quot;</span>.to_string(),
-            ))<span class="question-mark">?</span>;
+            .ok_or(CacheError::LoadError(<span class="macro">format!</span>(
+                <span class="string">&quot;Provided gas {} is lower than the base instance creation gas cost {}&quot;</span>,
+                limit, <span class="self">self</span>.cfg.gas_costs.max_instance_cost
+            )))<span class="question-mark">?</span>;
         <span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="self">self</span>.cfg.gas_costs.clone(), Compiler::SP)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((module, limit))
     }
