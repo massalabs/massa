@@ -174,11 +174,20 @@
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
 <a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>massa_sc_runtime::{Compiler, RuntimeModule};
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
-<span class="kw">use </span>tracing::{debug, info, warn};
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">use crate</span>::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -223,8 +232,9 @@
                 ModuleInfo::Module(module)
             }
             <span class="prelude-val">Err</span>(e) =&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;compilation of module {} failed with: {}&quot;</span>, hash, e);
-                ModuleInfo::Invalid
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">&quot;compilation of module {} failed: {}&quot;</span>, hash, e);
+                <span class="macro">debug!</span>(err_msg);
+                ModuleInfo::Invalid(err_msg)
             }
         }
     }
@@ -254,10 +264,10 @@
     }
 
     <span class="doccomment">/// Set a cached module as invalid
-    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) {
+    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], err_msg: String) {
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
-        <span class="self">self</span>.lru_cache.set_invalid(hash);
-        <span class="self">self</span>.hd_cache.set_invalid(hash);
+        <span class="self">self</span>.lru_cache.set_invalid(hash, err_msg.clone());
+        <span class="self">self</span>.hd_cache.set_invalid(hash, err_msg);
     }
 
     <span class="doccomment">/// Load a cached module for execution
@@ -267,13 +277,19 @@
     /// * `ModuleInfo::Module` if the module is valid and has no delta
     /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
     </span><span class="kw">fn </span>load_module_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; ModuleInfo {
+        <span class="kw">if </span>bytecode.is_empty() {
+            <span class="kw">let </span>error_msg = <span class="string">&quot;load_module: bytecode is absent&quot;</span>.to_string();
+            <span class="macro">debug!</span>(error_msg);
+            <span class="kw">return </span>ModuleInfo::Invalid(error_msg);
+        }
         <span class="kw">if </span>bytecode.len() &gt; <span class="self">self</span>.cfg.max_module_length <span class="kw">as </span>usize {
-            <span class="macro">info!</span>(
+            <span class="kw">let </span>error_msg = <span class="macro">format!</span>(
                 <span class="string">&quot;load_module: bytecode length {} exceeds max module length {}&quot;</span>,
                 bytecode.len(),
                 <span class="self">self</span>.cfg.max_module_length
             );
-            <span class="kw">return </span>ModuleInfo::Invalid;
+            <span class="macro">debug!</span>(error_msg);
+            <span class="kw">return </span>ModuleInfo::Invalid(error_msg);
         }
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
@@ -312,15 +328,17 @@
         // remove max_instance_cost hard check if module is cached and has a delta
         </span><span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode);
         <span class="kw">let </span>module = <span class="kw">match </span>module_info {
-            ModuleInfo::Invalid =&gt; {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(<span class="string">&quot;Loading invalid module&quot;</span>.to_string()));
+            ModuleInfo::Invalid(err) =&gt; {
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">&quot;invalid module: {}&quot;</span>, err);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(err_msg));
             }
             ModuleInfo::Module(module) =&gt; module,
             ModuleInfo::ModuleAndDelta((module, delta)) =&gt; {
                 <span class="kw">if </span>delta &gt; execution_gas {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(
-                        <span class="string">&quot;Provided max gas is below the instance creation cost&quot;</span>.to_string(),
-                    ));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(CacheError::LoadError(<span class="macro">format!</span>(
+                        <span class="string">&quot;Provided gas {} is below the gas cost of instance creation ({})&quot;</span>,
+                        execution_gas, delta
+                    )));
                 } <span class="kw">else </span>{
                     module
                 }
