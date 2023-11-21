@@ -229,9 +229,7 @@ pub fn start_protocol_controller(
         let keypair_factory = KeyPairFactory {
             mip_store: mip_store.clone(),
         };
-        let now = MassaTime::now().map_err(|e| {
-            ProtocolError::GeneralProtocolError(format!("Unable to get current time: {}", e))
-        })?;
+        let now = MassaTime::now();
         let keypair = keypair_factory.create(&(), FactoryStrategy::At(now))?;
         if let Err(e) = std::fs::write(&config.keypair_file, serde_json::to_string(&keypair)?) {
             warn!("could not generate node key file: {}", e);
@@ -240,7 +238,7 @@ pub fn start_protocol_controller(
     };
 
     let mut peernet_config = PeerNetConfiguration::default(
-        MassaHandshake::new(peer_db.clone(), config.clone(), message_handlers.clone()),
+        MassaHandshake::new(peer_db.clone(), config.clone()),
         message_handlers.clone(),
         Context {
             our_keypair: keypair.clone(),
@@ -264,13 +262,13 @@ pub fn start_protocol_controller(
             .chain(
                 initial_peers_infos
                     .iter()
-                    .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone())),
+                    .map(|(peer_id, data)| (*peer_id, data.listeners.clone())),
             )
             .collect()
     } else {
         initial_peers_infos
             .iter()
-            .map(|(peer_id, data)| (peer_id.clone(), data.listeners.clone()))
+            .map(|(peer_id, data)| (*peer_id, data.listeners.clone()))
             .collect()
     };
 

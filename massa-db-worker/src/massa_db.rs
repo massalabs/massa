@@ -11,12 +11,13 @@ use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
     DB,
 };
+use std::path::PathBuf;
 use std::{
     collections::BTreeMap,
     format,
@@ -32,7 +33,7 @@ pub type MassaDB = RawMassaDB<Slot, SlotSerializer, SlotDeserializer>;
 /// A generic wrapped RocksDB database.
 ///
 /// The added features are:
-/// - Hash tracking with Lsm-tree, a Sparse Merkle Tree implementation
+/// - Hash tracking with Xor
 /// - Streaming the database while it is being actively updated
 #[derive()]
 pub struct RawMassaDB<
@@ -52,7 +53,7 @@ pub struct RawMassaDB<
     pub change_id_serializer: ChangeIDSerializer,
     /// A deserializer for the ChangeID type
     pub change_id_deserializer: ChangeIDDeserializer,
-    /// The current RocksDB batch of the database, in a Mutex to share it with lsmtree
+    /// The current RocksDB batch of the database, in a Mutex to share it
     pub current_batch: Arc<Mutex<WriteBatch>>,
 }
 
@@ -92,6 +93,8 @@ where
             _ => Unbounded,
         };
 
+        // Updates == "everything that changed since the last change_id streamed, up to a certain key".
+        // This definition also applies to keys that were not in the DB beforehand.
         let updates_on_previous_elements = match (&last_state_step, last_change_id) {
             (StreamingStep::Started, _) => {
                 // Stream No changes, new elements from start
@@ -102,7 +105,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -111,26 +114,20 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history
-                            .range((Bound::Included(&last_change_id), Bound::Unbounded));
-
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history.keys().next() {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -143,7 +140,14 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
+                                return Err(MassaDBError::CacheMissError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -157,6 +161,7 @@ where
         };
 
         let mut new_elements = BTreeMap::new();
+        let mut new_elements_size = 0;
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
@@ -173,8 +178,25 @@ where
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
 
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                if new_elements.len() < self.config.max_new_elements {
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                new_elements_size += key_len + value_len + buffer.len();
+                if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -212,7 +234,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -221,26 +243,20 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history_versioning
-                            .range((Bound::Included(&last_change_id), Unbounded));
-
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history_versioning.keys().next() {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history_versioning
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -253,7 +269,14 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
+                                return Err(MassaDBError::CacheMissError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -267,6 +290,7 @@ where
         };
 
         let mut new_elements = BTreeMap::new();
+        let mut new_elements_size = 0;
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
@@ -282,9 +306,25 @@ where
                 }
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
-
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                if new_elements.len() < self.config.max_new_elements {
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                new_elements_size += key_len + value_len + buffer.len();
+                if new_elements_size <= self.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -516,44 +556,6 @@ where
         Ok((new_cursor, new_cursor_versioning))
     }
 
-    /// To be called just after bootstrap
-    pub fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
-        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
-
-        let mut current_xor_hash = self.get_xof_db_hash();
-        *self.current_batch.lock() = WriteBatch::default();
-
-        // Iterate over the whole db and compute the hash
-        for (key, value) in self
-            .db
-            .iterator_cf(handle_state, IteratorMode::Start)
-            .flatten()
-        {
-            // Compute the XOR in all cases
-            let new_hash =
-                HashXof::compute_from_tuple(&[key.to_vec().as_slice(), value.to_vec().as_slice()]);
-            current_xor_hash ^= new_hash;
-        }
-
-        // Update the hash entry
-        self.current_batch
-            .lock()
-            .put_cf(handle_metadata, STATE_HASH_KEY, current_xor_hash.0);
-
-        {
-            let mut current_batch_guard = self.current_batch.lock();
-            let batch = WriteBatch::from_data(current_batch_guard.data());
-            current_batch_guard.clear();
-
-            self.db.write(batch).map_err(|e| {
-                MassaDBError::RocksDBError(format!("Can't write batch to disk: {}", e))
-            })?;
-        }
-
-        Ok(())
-    }
-
     /// Get the current XOF state hash of the database
     pub fn get_xof_db_hash(&self) -> HashXof<HASH_XOF_SIZE_BYTES> {
         self.get_xof_db_hash_opt()
@@ -575,10 +577,20 @@ where
 impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a new `MassaDB` instance
     pub fn new(config: MassaDBConfig) -> Self {
+        let db_opts = Self::default_db_opts();
+        Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
+    }
+
+    pub fn default_db_opts() -> Options {
         let mut db_opts = Options::default();
+        db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+        db_opts
+    }
 
+    /// Returns a new `MassaDB` instance given a config and RocksDB options
+    fn new_with_options(config: MassaDBConfig, db_opts: Options) -> Result<Self, rocksdb::Error> {
         let db = DB::open_cf_descriptors(
             &db_opts,
             &config.path,
@@ -587,8 +599,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
                 ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
             ],
-        )
-        .expect(OPEN_ERROR);
+        )?;
 
         let db = Arc::new(db);
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
@@ -615,13 +626,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             });
         }
 
-        massa_db
+        Ok(massa_db)
     }
 }
 
 impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Creates a new hard copy of the DB, for the given slot
-    fn backup_db(&self, slot: Slot) {
+    fn backup_db(&self, slot: Slot) -> PathBuf {
         let db = &self.db;
         let subpath = format!("backup_{}_{}", slot.period, slot.thread);
 
@@ -660,10 +671,14 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             }
         }
 
+        let backup_path = db.path().join(subpath);
+        println!("backup_path: {:?}", backup_path);
         Checkpoint::new(db)
             .expect("Cannot init checkpoint")
-            .create_checkpoint(db.path().join(subpath))
+            .create_checkpoint(backup_path.clone())
             .expect("Failed to create checkpoint");
+
+        backup_path
     }
 
     /// Writes the batch to the DB
@@ -832,8 +847,958 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
 
-    /// To be called just after bootstrap
-    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError> {
-        self.recompute_db_hash()
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
+        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
+        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let mut entire_database = Vec::new();
+        let mut state = BTreeMap::new();
+        for (k, v) in iter_state.flatten() {
+            state.insert(k.to_vec(), v.to_vec());
+        }
+        let mut metadata = BTreeMap::new();
+        for (k, v) in iter_metadata.flatten() {
+            metadata.insert(k.to_vec(), v.to_vec());
+        }
+        let mut versioning = BTreeMap::new();
+        for (k, v) in iter_versioning.flatten() {
+            versioning.insert(k.to_vec(), v.to_vec());
+        }
+        entire_database.push(state);
+        entire_database.push(metadata);
+        entire_database.push(versioning);
+        entire_database
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeMap;
+
+    use assert_matches::assert_matches;
+    use massa_db_exports::MassaDBError::TimeError;
+    use parking_lot::RwLock;
+    use tempfile::tempdir;
+
+    use massa_hash::Hash;
+    use massa_models::config::THREAD_COUNT;
+    use massa_models::streaming_step::StreamingStep;
+
+    use super::*;
+
+    fn dump_column(
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        column: &str,
+    ) -> BTreeMap<Vec<u8>, Vec<u8>> {
+        db.read()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            // .collect::<BTreeMap<Vec<u8>, Vec<u8>>>()
+            .collect()
+    }
+
+    fn dump_column_opt(
+        db: Arc<RwLock<Box<dyn MassaDBController>>>,
+        column: &str,
+    ) -> BTreeMap<Vec<u8>, Option<Vec<u8>>> {
+        db.read()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            .map(|(k, v)| (k, Some(v)))
+            // .collect::<BTreeMap<Vec<u8>, Option<Vec<u8>>>>()
+            .collect()
+    }
+
+    fn initial_hash() -> Hash {
+        // Initial hash in the db / final state
+        Hash::compute_from(STATE_HASH_INITIAL_BYTES)
+    }
+
+    #[test]
+    fn test_init() {
+        // Test we cannot double init a Db object
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap();
+
+        // Check not allowed to init a second instance
+        let db2 = MassaDB::new_with_options(db_config, db_opts.clone());
+        assert!(db2.is_err());
+        assert!(db2.err().unwrap().into_string().contains("IO error"));
+    }
+
+    #[test]
+    fn test_basics_1() {
+        // 1- Init a db + check initial hash
+        // 2- Add some data
+        // 3- Read it
+        // 4- Remove data
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        assert_eq!(
+            Hash::compute_from(db.read().get_xof_db_hash().to_bytes()),
+            initial_hash()
+        );
+
+        // Checks up
+        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or_default();
+        let cf_exists_1 = cfs.iter().any(|cf| cf == "state");
+        let cf_exists_2 = cfs.iter().any(|cf| cf == "metadata");
+        let cf_exists_3 = cfs.iter().any(|cf| cf == "versioning");
+        println!("cfs: {:?}", cfs);
+        assert!(cf_exists_1);
+        assert!(cf_exists_2);
+        assert!(cf_exists_3);
+        for col in cfs {
+            if col == "metadata" {
+                continue;
+            }
+            assert!(dump_column(db.clone(), col.as_str()).is_empty());
+        }
+
+        // Add data
+
+        let mut batch = DBBatch::new();
+        let b_key1 = vec![1, 2, 3];
+        let b_value1 = vec![4, 5, 6];
+        batch.insert(b_key1.clone(), Some(b_value1));
+        let mut versioning_batch = BTreeMap::default();
+        let vb_key1 = vec![10, 20, 30];
+        let vb_value1 = vec![40, 50, 60];
+        versioning_batch.insert(vb_key1.clone(), Some(vb_value1));
+
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), None);
+        drop(guard);
+
+        // assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        assert_eq!(dump_column_opt(db.clone(), "state"), batch);
+        // assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        assert_eq!(dump_column_opt(db.clone(), "versioning"), versioning_batch);
+
+        // Remove data
+
+        let mut batch_2 = DBBatch::new();
+        batch_2.insert(b_key1, None);
+        let mut versioning_batch_2 = BTreeMap::default();
+        versioning_batch_2.insert(vb_key1, None);
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), None);
+        drop(guard);
+
+        // assert!(dump_column(db_.clone(), "state").is_empty());
+        assert!(dump_column(db.clone(), "state").is_empty());
+        // assert!(dump_column(db_.clone(), "versioning").is_empty());
+        assert!(dump_column(db.clone(), "versioning").is_empty());
+    }
+
+    #[test]
+    fn test_basics_2() {
+        // 1- Init a db + check initial hash
+        // 2- Add some data (using  put_or_update_entry_value)
+        // 3- Read it
+        // 4- Remove data (using delete_prefix)
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        assert_eq!(
+            Hash::compute_from(db.read().get_xof_db_hash().to_bytes()),
+            initial_hash()
+        );
+
+        // Add data
+
+        let b_key1 = vec![1, 2, 3];
+        let b_value1 = vec![4, 5, 6];
+        let mut batch = DBBatch::new();
+        db.read()
+            .put_or_update_entry_value(&mut batch, b_key1.clone(), &b_value1);
+        let versioning_batch = BTreeMap::default();
+
+        let mut guard = db.write();
+        guard.write_batch(batch.clone(), versioning_batch.clone(), None);
+        drop(guard);
+
+        // assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        assert_eq!(dump_column_opt(db.clone(), "state"), batch);
+        // assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        assert_eq!(dump_column_opt(db.clone(), "versioning"), versioning_batch);
+
+        // Remove data
+
+        let mut batch_2 = DBBatch::new();
+        // batch_2.insert(b_key1.clone(), None);
+        db.read().delete_key(&mut batch_2, b_key1);
+        let versioning_batch_2 = BTreeMap::default();
+        let mut guard = db.write();
+        guard.write_batch(batch_2.clone(), versioning_batch_2, None);
+        drop(guard);
+
+        // assert!(dump_column(db_.clone(), "state").is_empty());
+        assert!(dump_column(db.clone(), "state").is_empty());
+        // assert!(dump_column(db_.clone(), "versioning").is_empty());
+        assert!(dump_column(db.clone(), "versioning").is_empty());
+
+        // Add some datas then remove using prefix
+        batch.clear();
+        db.read()
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);
+        db.read()
+            .put_or_update_entry_value(&mut batch, vec![97, 98, 2], &[2]);
+        let v3 = vec![200, 101, 1];
+        let k3 = vec![101];
+        db.read()
+            .put_or_update_entry_value(&mut batch, v3.clone(), &k3);
+
+        db.write()
+            .write_batch(batch.clone(), versioning_batch, None);
+
+        // "ab".as_bytes == [97, 98]
+        db.write().delete_prefix("ab", "state", None);
+        assert_eq!(dump_column(db.clone(), "state"), BTreeMap::from([(v3, k3)]))
+    }
+
+    #[test]
+    fn test_backup() {
+        // 1- Init a db + add data
+        // 2- Backup (slot 1)
+        // 3- Add more data + backup (slot 2)
+        // 4- Init from backup 1 + checks
+        // 5- Init from backup 2 + checks
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data
+        let batch = DBBatch::from([(vec![1, 2, 3], Some(vec![4, 5, 6]))]);
+        let versioning_batch = DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch, versioning_batch, Some(slot_1));
+        drop(guard);
+
+        // Keep hash so we can compare with db backup
+        let hash_1 = db.read().get_xof_db_hash();
+
+        // Backup db
+        let guard = db.read();
+        let backup_1 = guard.backup_db(slot_1);
+        drop(guard);
+
+        // Add data
+        let batch = DBBatch::from([(vec![11, 22, 33], Some(vec![44, 55, 66]))]);
+        let versioning_batch = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch, versioning_batch, Some(slot_2));
+        drop(guard);
+
+        let hash_2 = db.read().get_xof_db_hash();
+
+        // Backup db (again)
+        let guard = db.read();
+        let backup_2 = guard.backup_db(slot_2);
+        drop(guard);
+
+        {
+            let db_backup_1_config = MassaDBConfig {
+                path: backup_1,
+                max_history_length: 100,
+                max_final_state_elements_size: 100,
+                max_versioning_elements_size: 100,
+                thread_count: THREAD_COUNT,
+            };
+            let mut db_backup_1_opts = MassaDB::default_db_opts();
+            db_backup_1_opts.create_if_missing(false);
+            let db_backup_1 = Arc::new(RwLock::new(Box::new(
+                MassaDB::new_with_options(db_backup_1_config, db_backup_1_opts.clone()).unwrap(),
+            )
+                as Box<(dyn MassaDBController + 'static)>));
+
+            assert_eq!(db_backup_1.read().get_xof_db_hash(), hash_1);
+            assert_ne!(db_backup_1.read().get_xof_db_hash(), hash_2);
+            assert_ne!(
+                Hash::compute_from(db_backup_1.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+
+        {
+            let db_backup_2_config = MassaDBConfig {
+                path: backup_2,
+                max_history_length: 100,
+                max_final_state_elements_size: 100,
+                max_versioning_elements_size: 100,
+                thread_count: THREAD_COUNT,
+            };
+            let mut db_backup_2_opts = MassaDB::default_db_opts();
+            db_backup_2_opts.create_if_missing(false);
+            let db_backup_2 = Arc::new(RwLock::new(Box::new(
+                MassaDB::new_with_options(db_backup_2_config, db_backup_2_opts.clone()).unwrap(),
+            )
+                as Box<(dyn MassaDBController + 'static)>));
+
+            assert_eq!(db_backup_2.read().get_xof_db_hash(), hash_2);
+            assert_ne!(db_backup_2.read().get_xof_db_hash(), hash_1);
+            assert_ne!(
+                Hash::compute_from(db_backup_2.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+    }
+
+    #[test]
+    fn test_backup_rotation() {
+        // 1- Init a db
+        // 2- Loop (add data, backup) until a rotation occurs
+        // 3- Init from backups + checks
+
+        // Init
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let db = Arc::new(RwLock::new(Box::new(
+            MassaDB::new_with_options(db_config, db_opts.clone()).unwrap(),
+        )
+            as Box<(dyn MassaDBController + 'static)>));
+
+        let mut backups = BTreeMap::default();
+
+        for i in 0..(MAX_BACKUPS_TO_KEEP.unwrap() + 1) {
+            let slot = Slot::new(i as u64, 0);
+            let i_ = i as u8;
+            let batch = DBBatch::from([(vec![i_], Some(vec![i_ + 10]))]);
+            let versioning_batch = DBBatch::from([(vec![i_ + 1], Some(vec![i_ + 20]))]);
+
+            let mut guard = db.write();
+            guard.write_batch(batch.clone(), versioning_batch.clone(), Some(slot));
+            drop(guard);
+
+            let xof = db.read().get_xof_db_hash();
+            let backup = db.read().backup_db(slot);
+
+            backups.insert(slot, (xof, backup));
+        }
+
+        let mut db_opts_no_create = db_opts.clone();
+        db_opts_no_create.create_if_missing(false);
+
+        for i in 0..(MAX_BACKUPS_TO_KEEP.unwrap() + 1) {
+            let slot = Slot::new(i as u64, 0);
+            let (backup_xof, backup_path) = backups.get(&slot).unwrap();
+
+            // println!(
+            //     "Checking backup_path: {:?} -> exists: {}",
+            //     backup_path,
+            //     backup_path.exists()
+            // );
+            let db_backup_config = MassaDBConfig {
+                path: backup_path.clone(),
+                max_history_length: 100,
+                max_final_state_elements_size: 100,
+                max_versioning_elements_size: 100,
+                thread_count: THREAD_COUNT,
+            };
+            // let db_backup_2_opts = MassaDB::default_db_opts();
+
+            let db_backup_2 = match i {
+                0 => {
+                    let _db = MassaDB::new_with_options(
+                        db_backup_config.clone(),
+                        db_opts_no_create.clone(),
+                    );
+                    // backup (index 0) has been removed because we exceed MAX_BACKUPS_TO_KEEP
+                    assert!(_db.is_err());
+                    continue;
+                }
+                _ => {
+                    let _db = MassaDB::new_with_options(
+                        db_backup_config.clone(),
+                        db_opts_no_create.clone(),
+                    );
+                    Arc::new(RwLock::new(
+                        Box::new(_db.unwrap()) as Box<(dyn MassaDBController + 'static)>
+                    ))
+                }
+            };
+
+            assert_eq!(db_backup_2.read().get_xof_db_hash(), *backup_xof);
+            assert_ne!(
+                Hash::compute_from(db_backup_2.read().get_xof_db_hash().to_bytes()),
+                initial_hash()
+            );
+        }
+    }
+
+    #[test]
+    fn test_db_stream() {
+        // Init db + add data
+        // Stream Started
+        // Stream Ongoing
+        // Stream Finished
+        // Stream edge cases
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1))]);
+        let versioning_batch = DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch, versioning_batch, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 2)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch, versioning_batch, Some(slot_2));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        // Here we retrieved the whole db content (see config.max_new_elements)
+        // assert_eq!(stream_batch.new_elements, dump_column(db_.clone(), "state"));
+        assert_eq!(stream_batch.new_elements, dump_column(db.clone(), "state"));
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // Same using StreamingStep::Ongoing, starting from batch_key_1
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_1);
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        let stream_batch = stream_batch_.unwrap();
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_2, batch_value_2)])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(None);
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+
+        assert_eq!(stream_batch.unwrap().new_elements, BTreeMap::new());
+
+        // Edge cases
+
+        // Stream from the future
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&StreamingStep::Ongoing(vec![]), Some(Slot::new(5, 0)));
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_matches!(stream_batch, Err(MassaDBError::CacheMissError(..)));
+        assert!(stream_batch.err().unwrap().to_string().contains("future"));
+
+        //
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&StreamingStep::Finished(None), None);
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_matches!(stream_batch, Err(TimeError(..)));
+    }
+
+    #[test]
+    fn test_db_stream_versioning() {
+        // Same as test_db_stream but for versioning
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // let db_ = db.read().get_db();
+
+        // Add data
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1, Some(batch_value_1))]);
+        let batch_v_key_1 = vec![10, 20, 30];
+        let batch_v_value_1 = vec![127, 128, 254, 255];
+        let versioning_batch_1 = DBBatch::from([(batch_v_key_1.clone(), Some(batch_v_value_1))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2, Some(batch_value_2))]);
+        let batch_v_key_2 = vec![12, 23, 34];
+        let batch_v_value_2 = vec![255, 254, 253];
+        let versioning_batch_2 =
+            DBBatch::from([(batch_v_key_2.clone(), Some(batch_v_value_2.clone()))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_2));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db
+            .read()
+            .get_versioning_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        // Here we retrieved the whole db content (see config.max_new_elements )
+        assert_eq!(
+            stream_batch.new_elements,
+            dump_column(db.clone(), "versioning")
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // Same using StreamingStep::Ongoing, starting from batch_key_1
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_v_key_1);
+        let stream_batch_ = db
+            .read()
+            .get_versioning_batch_to_stream(&last_state_step, Some(slot_2));
+        let stream_batch = stream_batch_.unwrap();
+        // println!("stream_batch: {:?}", stream_batch);
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_v_key_2, batch_v_value_2)])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_2);
+
+        // StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(None);
+        let stream_batch = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+
+        assert_eq!(stream_batch.unwrap().new_elements, BTreeMap::new());
+    }
+
+    #[test]
+    fn test_db_stream_2() {
+        // Init db + add data
+        // Stream (Ongoing) with previous data updated
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 10,
+            max_versioning_elements_size: 10,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_1.clone(), batch_value_1)])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Update data 1 (at slot 2)
+        let batch_value_1b = vec![94, 95, 96];
+        let batch_1b = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1b.clone()))]);
+        let versioning_batch_1b = DBBatch::new();
+        let mut guard = db.write();
+        guard.write_batch(batch_1b, versioning_batch_1b, Some(slot_2));
+        drop(guard);
+
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_1.clone());
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([(batch_key_2, batch_value_2)])
+        );
+        assert_eq!(
+            stream_batch.updates_on_previous_elements,
+            BTreeMap::from([(batch_key_1, Some(batch_value_1b))])
+        );
+        assert_eq!(stream_batch.change_id, slot_2);
+    }
+
+    #[test]
+    fn test_db_stream_3() {
+        // Init db + add data
+        // Stream until finished
+        // Add + Update some values
+        // Stream Finished
+        // Note: This happens in the bootstrap process where the state is streamed then
+        //       the consensus is streamed, but during that, updates to the state must be
+        //       streamed as well
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
+            thread_count: THREAD_COUNT,
+        };
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let slot_1 = Slot::new(1, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let slot_2 = Slot::new(2, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2)
+            ])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Now updates some value (at slot 2)
+        let batch_value_2b = vec![94, 95, 96];
+        let batch_2b = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2b.clone()))]);
+        let versioning_batch_2b = DBBatch::new();
+        let mut guard = db.write();
+        guard.write_batch(batch_2b, versioning_batch_2b, Some(slot_2));
+        drop(guard);
+
+        // Add data (at slot 3)
+        let batch_key_3 = vec![61, 62, 63];
+        let batch_value_3 = vec![4, 5, 6, 7];
+        let batch_3 = DBBatch::from([(batch_key_3.clone(), Some(batch_value_3.clone()))]);
+        let versioning_batch_3 = DBBatch::new();
+        let slot_3 = Slot::new(3, 0);
+        let mut guard = db.write();
+        guard.write_batch(batch_3, versioning_batch_3, Some(slot_3));
+        drop(guard);
+
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        let stream_batch = stream_batch_.unwrap();
+
+        // Note: new_elements is empty, everything is on updates_on_previous_elements
+        //       new_elements are fulfilled only if StreamingStep != StreamingStep::Finished
+        assert!(stream_batch.new_elements.is_empty());
+        assert_eq!(
+            stream_batch.updates_on_previous_elements,
+            BTreeMap::from([
+                (batch_key_1, Some(batch_value_1)),
+                (batch_key_2, Some(batch_value_2b)),
+                (batch_key_3.clone(), Some(batch_value_3))
+            ])
+        );
+
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Finished(Some(batch_key_3));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_3));
+        let stream_batch = stream_batch_.unwrap();
+
+        // No more updates and new elements -> all empty
+        assert!(stream_batch.new_elements.is_empty());
+        assert!(stream_batch.updates_on_previous_elements.is_empty());
+    }
+
+    #[test]
+    fn test_db_err_if_changes_not_available() {
+        // Init db + add data
+        // Stream Slot 1, should succeed
+        // Add changes for N slots, N <= max_history_length
+        // Stream Slot 2, should succeed
+        // Add changes for M slots, M > max_history_length
+        // Stream Slot 3, should return error because we don't have changes for slot 2
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 4,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
+            thread_count: THREAD_COUNT,
+        };
+
+        let slot_1 = Slot::new(1, 0);
+        let slot_2 = Slot::new(1, 2);
+        let slot_3 = Slot::new(1, 8);
+
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2)
+            ])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Now updates some values for each slot until slot 2 (included)
+        let mut cur_slot = slot_1.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_2 {
+            let batch_key = vec![(cur_slot.period % u8::MAX as u64) as u8];
+            let batch_value = vec![cur_slot.thread];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % u8::MAX as u64) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        assert!(stream_batch_.is_ok());
+
+        // Now updates some values for each slot until slot 3 (included)
+        // There are more slots between slot_2 and slot_3 than max_history_length, so we will CacheMiss
+        let mut cur_slot = slot_2.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_3 {
+            let batch_key = vec![(cur_slot.period % 256) as u8];
+            let batch_value = vec![cur_slot.thread];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % 256) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+
+        // Stream using StreamingStep::Ongoing
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_2.clone());
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
+
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
     }
 }

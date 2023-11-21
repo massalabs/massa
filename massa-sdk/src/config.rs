@@ -8,9 +8,9 @@ use massa_time::MassaTime;
 pub struct ClientConfig {
     /// maximum size in bytes of a request.
     pub max_request_body_size: u32,
-    /// maximum size in bytes of a response.
+    /// timeout of an request.
     pub request_timeout: MassaTime,
-    /// maximum size in bytes of a response.
+    /// maximum concurrent requests.
     pub max_concurrent_requests: usize,
     /// certificate_store, `Native` or `WebPki`
     pub certificate_store: String,

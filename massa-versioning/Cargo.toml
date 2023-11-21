@@ -1,11 +1,11 @@
 [package]
 name = "massa_versioning"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = []
+test-exports = []
 
 [dependencies]
 machine = { workspace = true }

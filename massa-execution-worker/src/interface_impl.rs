@@ -30,7 +30,8 @@ use massa_time::MassaTime;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 use num::rational::Ratio;
 use parking_lot::Mutex;
@@ -45,7 +46,8 @@ use tracing::debug;
 #[cfg(any(
     feature = "gas_calibration",
     feature = "benchmarking",
-    feature = "testing"
+    feature = "test-exports",
+    test
 ))]
 use massa_models::datastore::Datastore;
 
@@ -78,25 +80,51 @@ impl InterfaceImpl {
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing"
+        feature = "test-exports",
+        test
     ))]
     /// Used to create an default interface to run SC in a test environment
     pub fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
     ) -> InterfaceImpl {
+        use massa_db_exports::{MassaDBConfig, MassaDBController};
+        use massa_db_worker::MassaDB;
+        use massa_final_state::test_exports::get_sample_state;
         use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
-        use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
+        use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
+        use massa_pos_exports::SelectorConfig;
+        use massa_pos_worker::start_selector_worker;
         use massa_versioning::versioning::{MipStatsConfig, MipStore};
         use parking_lot::RwLock;
+        use tempfile::TempDir;
 
         let config = ExecutionConfig::default();
-        let (final_state, _tempfile, _tempdir) = super::tests::get_sample_state(0).unwrap();
+        let mip_stats_config = MipStatsConfig {
+            block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let (_, selector_controller) = start_selector_worker(SelectorConfig::default())
+            .expect("could not start selector controller");
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let (final_state, _tempfile) =
+            get_sample_state(config.last_start_period, selector_controller, mip_store, db).unwrap();
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
@@ -166,7 +194,7 @@ fn massa_time_from_native_time(time: &NativeTime) -> Result<MassaTime> {
 
 /// Helper function that creates a NativeTime from the MassaTime internal representation
 fn massa_time_to_native_time(time: &MassaTime) -> NativeTime {
-    let milliseconds = time.to_millis();
+    let milliseconds = time.as_millis();
     NativeTime { milliseconds }
 }
 
@@ -274,11 +302,27 @@ impl Interface for InterfaceImpl {
     /// Get the module from cache if possible, compile it if not
     ///
     /// # Returns
-    /// A `massa-sc-runtime` compiled module
-    fn get_module(&self, bytecode: &[u8], limit: u64) -> Result<RuntimeModule> {
+    /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
+    fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
         let context = context_guard!(self);
-        let module = context.module_cache.write().load_module(bytecode, limit)?;
-        Ok(module)
+        let (module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_module(bytecode, gas_limit)?;
+        Ok((module, remaining_gas))
+    }
+
+    /// Compile and return a temporary module
+    ///
+    /// # Returns
+    /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
+    fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
+        let context = context_guard!(self);
+        let (module, remaining_gas) = context
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, gas_limit)?;
+        Ok((module, remaining_gas))
     }
 
     /// Gets the balance of the current address address (top of the stack).
@@ -1077,7 +1121,7 @@ impl Interface for InterfaceImpl {
             self.config.genesis_timestamp,
             slot,
         )?;
-        Ok(ts.to_millis())
+        Ok(ts.as_millis())
     }
 
     /// Returns a pseudo-random deterministic `i64` number
@@ -1711,7 +1755,7 @@ mod tests {
         };
 
         let is_valid = interface.check_native_amount_wasmv1(&amount4).unwrap();
-        assert_eq!(is_valid, true);
+        assert!(is_valid);
 
         let mul = interface
             .scalar_mul_native_amount_wasmv1(&amount1, 2)
@@ -1863,12 +1907,11 @@ mod tests {
         );
 
         //time
-        let time1 = massa_time_to_native_time(&MassaTime::from_str("1").unwrap());
-        let time2 = massa_time_to_native_time(&MassaTime::from_str("2").unwrap());
+        let time1 = massa_time_to_native_time(&MassaTime::from_millis(1));
+        let time2 = massa_time_to_native_time(&MassaTime::from_millis(2));
         println!(
             "do some compare with time1 = {}, time2 = {}",
-            time1.milliseconds.to_string(),
-            time2.milliseconds.to_string()
+            time1.milliseconds, time2.milliseconds
         );
 
         let cmp_res = interface
@@ -1983,7 +2026,7 @@ fn test_evm_verify() {
     // build the message
     let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
     let to_hash = [prefix.as_bytes(), message_].concat();
-    let full_hash = sha3::Keccak256::digest(&to_hash);
+    let full_hash = sha3::Keccak256::digest(to_hash);
     let message = libsecp256k1::Message::parse_slice(&full_hash).unwrap();
 
     // parse the signature as being (r, s, v)

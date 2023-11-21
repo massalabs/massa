@@ -8,7 +8,7 @@
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
@@ -27,7 +27,7 @@ use tracing::debug;
 /// while keeping track of all the newly added changes, and never writing in the final ledger.
 pub(crate) struct SpeculativeLedger {
     /// Thread-safe shared access to the final state. For reading only.
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
 
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -37,13 +37,15 @@ pub(crate) struct SpeculativeLedger {
     #[cfg(all(
         not(feature = "gas_calibration"),
         not(feature = "benchmarking"),
-        not(feature = "testing")
+        not(feature = "test-exports"),
+        not(test)
     ))]
     added_changes: LedgerChanges,
     #[cfg(any(
         feature = "gas_calibration",
         feature = "benchmarking",
-        feature = "testing"
+        feature = "test-exports",
+        test
     ))]
     pub added_changes: LedgerChanges,
 
@@ -67,7 +69,7 @@ impl SpeculativeLedger {
     /// * `final_state`: thread-safe shared access to the final state (for reading only)
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
         max_datastore_key_length: u8,
         max_bytecode_size: u64,
@@ -113,7 +115,9 @@ impl SpeculativeLedger {
         self.added_changes.get_balance_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(par_balance) => Some(par_balance),
-                HistorySearchResult::NoInfo => self.final_state.read().ledger.get_balance(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().get_balance(addr)
+                }
                 HistorySearchResult::Absent => None,
             }
         })
@@ -131,7 +135,9 @@ impl SpeculativeLedger {
         self.added_changes.get_bytecode_or_else(addr, || {
             match self.active_history.read().fetch_bytecode(addr) {
                 HistorySearchResult::Present(bytecode) => Some(bytecode),
-                HistorySearchResult::NoInfo => self.final_state.read().ledger.get_bytecode(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().get_bytecode(addr)
+                }
                 HistorySearchResult::Absent => None,
             }
         })
@@ -161,7 +167,7 @@ impl SpeculativeLedger {
                 .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError(format!("failed to transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                    ExecutionError::RuntimeError(format!("failed to transfer {} coins from spending address {} due to insufficient balance {}", amount, from_addr, self
                     .get_balance(&from_addr).unwrap_or_default()))
                 })?;
 
@@ -178,7 +184,7 @@ impl SpeculativeLedger {
                 // if `to_addr` exists we increase its balance
                 let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                     ExecutionError::RuntimeError(format!(
-                        "overflow in crediting address {} balance {} due to adding {}",
+                        "overflow in crediting address {} balance {} due to adding {} coins to balance",
                         to_addr, old_balance, amount
                     ))
                 })?;
@@ -218,7 +224,9 @@ impl SpeculativeLedger {
         self.added_changes.entry_exists_or_else(addr, || {
             match self.active_history.read().fetch_balance(addr) {
                 HistorySearchResult::Present(_balance) => true,
-                HistorySearchResult::NoInfo => self.final_state.read().ledger.entry_exists(addr),
+                HistorySearchResult::NoInfo => {
+                    self.final_state.read().get_ledger().entry_exists(addr)
+                }
                 HistorySearchResult::Absent => false,
             }
         })
@@ -368,7 +376,7 @@ impl SpeculativeLedger {
         let mut candidate_keys: Option<BTreeSet<Vec<u8>>> = self
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_datastore_keys(addr, prefix);
 
         // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
@@ -434,9 +442,11 @@ impl SpeculativeLedger {
                 .fetch_active_history_data_entry(addr, key)
             {
                 HistorySearchResult::Present(entry) => Some(entry),
-                HistorySearchResult::NoInfo => {
-                    self.final_state.read().ledger.get_data_entry(addr, key)
-                }
+                HistorySearchResult::NoInfo => self
+                    .final_state
+                    .read()
+                    .get_ledger()
+                    .get_data_entry(addr, key),
                 HistorySearchResult::Absent => None,
             }
         })
@@ -462,7 +472,7 @@ impl SpeculativeLedger {
                 HistorySearchResult::NoInfo => self
                     .final_state
                     .read()
-                    .ledger
+                    .get_ledger()
                     .get_data_entry(addr, key)
                     .is_some(),
                 HistorySearchResult::Absent => false,

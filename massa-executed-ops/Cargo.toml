@@ -1,18 +1,20 @@
 [package]
 name = "massa_executed_ops"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [dependencies]
 nom = {workspace = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 massa_models = {workspace = true}
-massa_hash = {workspace = true}
 massa_serialization = {workspace = true}
 massa_db_exports = {workspace = true}
 
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-massa_ledger_worker = {workspace = true}
 massa_db_worker = {workspace = true}
+massa_hash = {workspace = true}
+parking_lot = {workspace = true}
+
+[features]
+test-exports = ["massa_models/test-exports"]

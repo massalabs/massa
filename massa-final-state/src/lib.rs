@@ -30,7 +30,7 @@
 //!
 //! ## Test exports
 //!
-//! When the crate feature `testing` is enabled, tooling useful for testing purposes is exported.
+//! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
 //!
 //! # Network restart documentation
@@ -88,19 +88,24 @@
 #![warn(unused_crate_dependencies)]
 
 mod config;
+mod controller_trait;
 mod error;
 mod final_state;
 mod mapping_grpc;
 mod state_changes;
 
 pub use config::FinalStateConfig;
+pub use controller_trait::FinalStateController;
 pub use error::FinalStateError;
 pub use final_state::FinalState;
 use num as _;
 pub use state_changes::{StateChanges, StateChangesDeserializer, StateChangesSerializer};
 
+#[cfg(feature = "test-exports")]
+pub use controller_trait::MockFinalStateController;
+
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

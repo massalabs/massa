@@ -3,21 +3,22 @@
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
-use massa_models::operation::{OperationDeserializer, SecureShareOperation};
+use massa_models::operation::{OperationDeserializer, OperationType, SecureShareOperation};
 use massa_models::secure_share::SecureShareDeserializer;
+use massa_models::timeslots::get_latest_block_slot_at_timestamp;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 use massa_serialization::{DeserializeError, Deserializer};
+use massa_time::MassaTime;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tonic::codegen::futures_core;
 use tracing::log::{error, warn};
 
 /// Type declaration for SendOperations
 pub type SendOperationsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc_api::SendOperationsResponse, tonic::Status>>
+        dyn futures_util::Stream<Item = Result<grpc_api::SendOperationsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -54,6 +55,21 @@ pub(crate) async fn send_operations(
                         )
                         .await;
                     } else {
+                        let now = MassaTime::now();
+                        let Ok(last_slot) = get_latest_block_slot_at_timestamp(
+                            config.thread_count,
+                            config.t0,
+                            config.genesis_timestamp,
+                            now,
+                        ) else {
+                            report_error(
+                                tx.clone(),
+                                tonic::Code::InvalidArgument,
+                                "failed to get current period".to_owned(),
+                            )
+                            .await;
+                            continue;
+                        };
                         // If there are too many operations in the incoming message, send an error message back to the client
                         if req_content.operations.len() as u32 > config.max_operations_per_message {
                             report_error(
@@ -80,6 +96,19 @@ pub(crate) async fn send_operations(
                                     let verified_op_res = match operation_deserializer.deserialize::<DeserializeError>(&proto_operation) {
                                         Ok(tuple) => {
                                             let (rest, res_operation): (&[u8], SecureShareOperation) = tuple;
+                                            match res_operation.content.op {
+                                                OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } => {
+                                                    if max_gas > config.max_gas_per_block {
+                                                        return Err(GrpcError::InvalidArgument("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()));
+                                                    }
+                                                },
+                                                _ => {}
+                                            };
+                                            if let Some(slot) = last_slot {
+                                                if res_operation.content.expire_period < slot.period {
+                                                    return Err(GrpcError::InvalidArgument("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()));
+                                                }
+                                            }
                                             if rest.is_empty() {
                                                 res_operation.verify_signature()
                                                     .map(|_| (res_operation.id.to_string(), res_operation))

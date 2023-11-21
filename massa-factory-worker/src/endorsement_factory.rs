@@ -59,7 +59,7 @@ impl EndorsementFactoryWorker {
     /// Extra safety against double-production caused by clock adjustments (this is the role of the `previous_slot` parameter).
     fn get_next_slot(&self, previous_slot: Option<Slot>) -> (Slot, Instant) {
         // get delayed time
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
 
         // if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         let base_time = if previous_slot.is_none() {

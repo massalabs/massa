@@ -1,12 +1,12 @@
 [package]
 name = "massa_models"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
 sandbox = []
-testing = []
+test-exports = []
 
 [dependencies]
 displaydoc = { workspace = true }

@@ -19,7 +19,7 @@ use massa_execution_exports::{
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -73,7 +73,7 @@ pub(crate) struct ExecutionState {
     // store containing execution events that became final
     final_events: EventStore,
     // final state with atomic R/W access
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     // execution context (see documentation in context.rs)
     execution_context: Arc<Mutex<ExecutionContext>>,
     // execution interface allowing the VM runtime to access the Massa context
@@ -105,7 +105,7 @@ impl ExecutionState {
     /// A new `ExecutionState`
     pub fn new(
         config: ExecutionConfig,
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         mip_store: MipStore,
         selector: Box<dyn SelectorController>,
         channels: ExecutionChannels,
@@ -129,7 +129,6 @@ impl ExecutionState {
         let module_cache = Arc::new(RwLock::new(ModuleCache::new(ModuleCacheConfig {
             hd_cache_path: config.hd_cache_path.clone(),
             gas_costs: config.gas_costs.clone(),
-            compilation_gas: config.max_gas_per_block,
             lru_cache_size: config.lru_cache_size,
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
@@ -247,7 +246,11 @@ impl ExecutionState {
             .inc_sc_messages_final_by(exec_out_2.state_changes.async_pool_changes.0.len());
 
         self.massa_metrics.set_async_message_pool_size(
-            self.final_state.read().async_pool.message_info_cache.len(),
+            self.final_state
+                .read()
+                .get_async_pool()
+                .message_info_cache
+                .len(),
         );
 
         self.massa_metrics.inc_executed_final_slot();
@@ -346,9 +349,6 @@ impl ExecutionState {
         // save a snapshot of the context to revert any further changes on error
         let context_snapshot = context.get_snapshot();
 
-        // set the context max gas to match the one defined in the operation
-        context.max_gas = operation.get_gas_usage();
-
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
 
@@ -382,7 +382,10 @@ impl ExecutionState {
         }
 
         // check remaining block gas
-        let op_gas = operation.get_gas_usage();
+        let op_gas = operation.get_gas_usage(
+            self.config.base_operation_gas_cost,
+            self.config.gas_costs.sp_compilation_cost,
+        );
         let new_remaining_block_gas = remaining_block_gas.checked_sub(op_gas).ok_or_else(|| {
             ExecutionError::NotEnoughGas(
                 "not enough remaining block gas to execute operation".to_string(),
@@ -805,16 +808,10 @@ impl ExecutionState {
         };
 
         // load the tmp module
-        let module = self
+        let (module, remaining_gas) = self
             .module_cache
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
-        // sub tmp module compilation cost
-        let remaining_gas = max_gas
-            .checked_sub(self.config.gas_costs.sp_compilation_cost)
-            .ok_or(ExecutionError::RuntimeError(
-                "not enough gas to pay for singlepass compilation".to_string(),
-            ))?;
         // run the VM
         massa_sc_runtime::run_main(
             &*self.execution_interface,
@@ -908,13 +905,13 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let (module, remaining_gas) = self.module_cache.write().load_module(&bytecode, max_gas)?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             target_func,
             param,
-            max_gas,
+            remaining_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -949,7 +946,6 @@ impl ExecutionState {
         let bytecode = {
             let mut context = context_guard!(self);
             context_snapshot = context.get_snapshot();
-            context.max_gas = message.max_gas;
             context.creator_address = None;
             context.creator_min_balance = None;
             context.stack = vec![
@@ -1007,16 +1003,16 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self
+        let (module, remaining_gas) = self
             .module_cache
             .write()
             .load_module(&bytecode, message.max_gas)?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
-            &message.handler,
-            &message.data,
-            message.max_gas,
+            &message.function,
+            &message.function_params,
+            remaining_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -1073,8 +1069,10 @@ impl ExecutionState {
         );
 
         // Get asynchronous messages to execute
-        let messages = execution_context.take_async_batch(self.config.max_async_gas);
-        debug!("executing {} messages at slot {}", messages.len(), slot);
+        let messages = execution_context.take_async_batch(
+            self.config.max_async_gas,
+            self.config.async_msg_cst_gas_cost,
+        );
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -1394,22 +1392,16 @@ impl ExecutionState {
             )));
         }
 
-        // set the execution slot to be the one after the latest executed active or final slot
-        let slot = if req.is_final {
-            self.final_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from final slot")
-        } else {
-            self.active_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from active slot")
-        };
+        // set the execution slot to be the one after the latest executed active slot
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution from active slot");
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
             self.config.clone(),
             slot,
-            req.max_gas,
             req.call_stack,
             self.final_state.clone(),
             self.active_history.clone(),
@@ -1420,19 +1412,29 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-                // set the execution context
-                *context_guard!(self) = execution_context;
+                {
+                    let mut context = context_guard!(self);
+                    *context = execution_context;
+
+                    let call_stack_addr = context.get_call_stack();
+
+                    // transfer fee
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                    }
+                }
 
                 // load the tmp module
-                let module = self
+                let (module, remaining_gas) = self
                     .module_cache
                     .read()
                     .load_tmp_module(&bytecode, req.max_gas)?;
+
                 // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
-                    req.max_gas,
+                    remaining_gas,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
@@ -1440,6 +1442,7 @@ impl ExecutionState {
                     error,
                 })?
             }
+
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
                 target_func,
@@ -1451,23 +1454,41 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
-                // set the execution context
-                *context_guard!(self) = execution_context;
+                {
+                    let mut context = context_guard!(self);
+                    *context = execution_context;
+
+                    let call_stack_addr = context.get_call_stack();
+
+                    // transfer fee
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                    }
+
+                    // transfer coins
+                    if let (Some(coins), Some(from), Some(to)) =
+                        (req.coins, call_stack_addr.get(0), call_stack_addr.get(1))
+                    {
+                        context.transfer_coins(Some(*from), Some(*to), coins, false)?;
+                    }
+                }
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let module = self
+                let (module, remaining_gas) = self
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
+
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module,
                     &target_func,
                     &parameter,
-                    req.max_gas,
+                    remaining_gas,
                     self.config.gas_costs.clone(),
                 );
+
                 match response {
                     Ok(Response { init_gas_cost, .. })
                     | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
@@ -1477,6 +1498,7 @@ impl ExecutionState {
                     }
                     _ => (),
                 }
+
                 response.map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
                     error,
@@ -1486,9 +1508,17 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
+        let exact_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            // return max_instance_cost if the exact cost is below
+            // users can paste the estimated amount into a real call
+            // without having to worry about underlying limits
+            gas_cost: if exact_cost > self.config.gas_costs.max_instance_cost {
+                exact_cost
+            } else {
+                self.config.gas_costs.max_instance_cost
+            },
             call_result: exec_response.ret,
         })
     }
@@ -1498,7 +1528,7 @@ impl ExecutionState {
         &self,
         address: &Address,
     ) -> (Option<Amount>, Option<Amount>) {
-        let final_balance = self.final_state.read().ledger.get_balance(address);
+        let final_balance = self.final_state.read().get_ledger().get_balance(address);
         let search_result = self.active_history.read().fetch_balance(address);
         (
             final_balance,
@@ -1515,7 +1545,7 @@ impl ExecutionState {
         &self,
         address: &Address,
     ) -> (Option<Bytecode>, Option<Bytecode>) {
-        let final_bytecode = self.final_state.read().ledger.get_bytecode(address);
+        let final_bytecode = self.final_state.read().get_ledger().get_bytecode(address);
         let search_result = self.active_history.read().fetch_bytecode(address);
         let speculative_v = match search_result {
             HistorySearchResult::Present(active_bytecode) => Some(active_bytecode),
@@ -1527,7 +1557,11 @@ impl ExecutionState {
 
     /// Gets roll counts both at the latest final and active executed slots
     pub fn get_final_and_candidate_rolls(&self, address: &Address) -> (u64, u64) {
-        let final_rolls = self.final_state.read().pos_state.get_rolls_for(address);
+        let final_rolls = self
+            .final_state
+            .read()
+            .get_pos_state()
+            .get_rolls_for(address);
         let active_rolls = self
             .active_history
             .read()
@@ -1542,7 +1576,11 @@ impl ExecutionState {
         address: &Address,
         key: &[u8],
     ) -> (Option<Vec<u8>>, Option<Vec<u8>>) {
-        let final_entry = self.final_state.read().ledger.get_data_entry(address, key);
+        let final_entry = self
+            .final_state
+            .read()
+            .get_ledger()
+            .get_data_entry(address, key);
         let search_result = self
             .active_history
             .read()
@@ -1569,7 +1607,7 @@ impl ExecutionState {
         let final_keys = self
             .final_state
             .read()
-            .ledger
+            .get_ledger()
             .get_datastore_keys(addr, prefix);
 
         let mut candidate_keys = final_keys.clone();
@@ -1629,7 +1667,7 @@ impl ExecutionState {
     pub fn get_cycle_active_rolls(&self, cycle: u64) -> BTreeMap<Address, u64> {
         self.final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_all_active_rolls(cycle)
     }
 
@@ -1681,7 +1719,7 @@ impl ExecutionState {
         let executed_final = self
             .final_state
             .read()
-            .executed_denunciations
+            .get_executed_denunciations()
             .contains(denunciation_index);
         if executed_final {
             return (true, true);
@@ -1709,7 +1747,7 @@ impl ExecutionState {
         let final_state_lock = self.final_state.read();
 
         // check if cycle is complete
-        let is_final = match final_state_lock.pos_state.is_cycle_complete(cycle) {
+        let is_final = match final_state_lock.get_pos_state().is_cycle_complete(cycle) {
             Some(v) => v,
             None => return None,
         };
@@ -1722,11 +1760,11 @@ impl ExecutionState {
                 .map(|addr| {
                     let staker_info = ExecutionQueryStakerInfo {
                         active_rolls: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_address_active_rolls(addr, cycle)
                             .unwrap_or(0),
                         production_stats: final_state_lock
-                            .pos_state
+                            .get_pos_state()
                             .get_production_stats_for_address(cycle, addr)
                             .unwrap_or_default(),
                     };
@@ -1734,9 +1772,9 @@ impl ExecutionState {
                 })
                 .collect()
         } else {
-            let active_rolls = final_state_lock.pos_state.get_all_roll_counts(cycle);
+            let active_rolls = final_state_lock.get_pos_state().get_all_roll_counts(cycle);
             let production_stats = final_state_lock
-                .pos_state
+                .get_pos_state()
                 .get_all_production_stats(cycle)
                 .unwrap_or_default();
             let all_addrs: BTreeSet<Address> = active_rolls
@@ -1779,7 +1817,7 @@ impl ExecutionState {
         let res_final = self
             .final_state
             .read()
-            .pos_state
+            .get_pos_state()
             .get_address_deferred_credits(address);
 
         // get values from active history, backwards
@@ -1811,11 +1849,7 @@ impl ExecutionState {
     /// Otherwise, the status is a boolean indicating whether the execution was successful (true) or if there was an error (false.)
     pub fn get_ops_exec_status(&self, batch: &[OperationId]) -> Vec<(Option<bool>, Option<bool>)> {
         let speculative_exec = self.active_history.read().get_ops_exec_status(batch);
-        let final_exec = self
-            .final_state
-            .read()
-            .executed_ops
-            .get_ops_exec_status(batch);
+        let final_exec = self.final_state.read().get_ops_exec_status(batch);
         speculative_exec
             .into_iter()
             .zip(final_exec)

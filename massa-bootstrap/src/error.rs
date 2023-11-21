@@ -15,7 +15,7 @@ use thiserror::Error;
 
 #[non_exhaustive]
 #[derive(Display, Error, Debug)]
-/// Encapsulates the verious failure contexts for the bootstrap process, both client and server side
+/// Encapsulates the various failure contexts for the bootstrap process, both client and server side
 pub enum BootstrapError {
     /// Bootstrap IO error: {0}
     IoError(std::io::Error),
@@ -66,7 +66,7 @@ pub enum BootstrapError {
     /// IP {0} is not in the whitelist
     WhiteListed(String),
     /// The bootstrap process ended prematurely - e.g. too much time elapsed
-    Interupted(String),
+    Interrupted(String),
 }
 
 /// # Platform-specific behavior

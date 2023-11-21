@@ -2,8 +2,8 @@
 
 //! This file exports testing utilities
 
-mod bootstrap;
 mod config;
+mod mock;
 
-pub use bootstrap::*;
 pub use config::*;
+pub use mock::*;

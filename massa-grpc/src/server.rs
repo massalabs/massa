@@ -14,9 +14,9 @@ use crate::error::GrpcError;
 use futures_util::FutureExt;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response};
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
-use massa_pool_exports::{PoolChannels, PoolController};
+use massa_pool_exports::{PoolBroadcasts, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_proto_rs::massa::api::v1::{
     private_service_server::PrivateServiceServer, public_service_server::PublicServiceServer,
@@ -96,14 +96,14 @@ impl MassaPrivateGrpc {
 pub struct MassaPublicGrpc {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
+    /// Broadcasts made by consensus component
+    pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
     /// link(channels) to the execution component
     pub execution_channels: ExecutionChannels,
-    /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
+    /// Broadcasts made by pool component
+    pub pool_broadcasts: PoolBroadcasts,
     /// link to the pool component
     pub pool_controller: Box<dyn PoolController>,
     /// link to the protocol component

@@ -35,7 +35,7 @@ impl OperationCache {
     pub fn insert_peer_known_ops(&mut self, peer_id: &PeerId, ops: &[OperationPrefixId]) {
         let known_ops = self
             .ops_known_by_peer
-            .entry(peer_id.clone())
+            .entry(*peer_id)
             .or_insert_with(|| LruMap::new(ByLength::new(self.max_known_ops_by_peer)));
         for op in ops {
             known_ops.insert(*op, ());
@@ -57,7 +57,7 @@ impl OperationCache {
 
         // Add new connected peers to cache
         for peer_id in peers_connected {
-            match self.ops_known_by_peer.entry(peer_id.clone()) {
+            match self.ops_known_by_peer.entry(*peer_id) {
                 std::collections::hash_map::Entry::Occupied(_) => {}
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(LruMap::new(ByLength::new(self.max_known_ops_by_peer)));

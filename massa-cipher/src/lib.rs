@@ -16,6 +16,7 @@ mod constants;
 mod decrypt;
 mod encrypt;
 mod error;
+mod tests;
 
 pub use decrypt::decrypt;
 pub use encrypt::encrypt;

@@ -558,7 +558,7 @@ pub enum StateAtError {
     BeforeInitialState(ComponentStateTypeId, MassaTime),
     #[error("Empty history, should never happen")]
     EmptyHistory,
-    #[error("Cannot predict in the future (~ threshold not reach yet)")]
+    #[error("Cannot predict value: threshold not reached yet")]
     Unpredictable,
 }
 
@@ -934,7 +934,7 @@ impl MipStoreRaw {
                         }
                     }
 
-                    #[cfg(not(feature = "testing"))]
+                    #[cfg(not(any(test, feature = "test-exports")))]
                     if m_info.activation_delay < VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = Some(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -1559,7 +1559,7 @@ mod test {
         let start = MassaTime::from_utc_ymd_hms(2017, 11, 1, 7, 33, 44).unwrap();
         let timeout = MassaTime::from_utc_ymd_hms(2017, 11, 11, 7, 33, 44).unwrap();
 
-        return (
+        (
             start,
             timeout,
             MipInfo {
@@ -1570,7 +1570,7 @@ mod test {
                 timeout,
                 activation_delay: MassaTime::from_millis(20),
             },
-        );
+        )
     }
 
     #[test]
@@ -1861,11 +1861,11 @@ mod test {
             history: Default::default(),
         };
         // At state Defined but no history -> false
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), false);
+        assert!(vsh.is_consistent_with(&vi_1).is_err());
 
         let mut vsh = MipState::new(MassaTime::from_millis(1));
         // At state Defined at time 1 -> true, given vi_1 @ time 1
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
         // At state Defined at time 1 -> false given vi_1 @ time 3 (state should be Started)
         // assert_eq!(vsh.is_consistent_with(&vi_1, MassaTime::from_millis(3)), false);
 
@@ -1879,9 +1879,9 @@ mod test {
 
         // At state Started at time now -> true
         assert_eq!(vsh.state, ComponentState::started(Ratio::new_raw(14, 100)));
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
         // Now with another versioning info
-        assert_eq!(vsh.is_consistent_with(&vi_2).is_ok(), false);
+        assert!(vsh.is_consistent_with(&vi_2).is_err());
 
         // Advance to LockedIn
         let now = MassaTime::from_millis(4);
@@ -1890,7 +1890,7 @@ mod test {
 
         // At state LockedIn at time now -> true
         assert_eq!(vsh.state, ComponentState::locked_in(now));
-        assert_eq!(vsh.is_consistent_with(&vi_1).is_ok(), true);
+        assert!(vsh.is_consistent_with(&vi_1).is_ok());
 
         // edge cases
         // TODO: history all good but does not start with Defined, start with Started
@@ -1909,7 +1909,7 @@ mod test {
             activation_delay: MassaTime::from_millis(2),
         };
 
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let vs_1 = advance_state_until(ComponentState::active(_time), &vi_1);
         assert!(matches!(vs_1.state, ComponentState::Active(_)));
 
@@ -1966,7 +1966,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
         assert!(matches!(ms_1.state, ComponentState::Active(_)));
 
@@ -2022,7 +2022,7 @@ mod test {
                     ],
                     mip_stats_cfg.clone(),
                 ));
-                assert_eq!(_store_2_.is_err(), true);
+                assert!(_store_2_.is_err());
             }
         }
 
@@ -2149,7 +2149,7 @@ mod test {
             timeout: MassaTime::from_millis(5),
             activation_delay: MassaTime::from_millis(2),
         };
-        let _time = MassaTime::now().unwrap();
+        let _time = MassaTime::now();
         let ms_1 = advance_state_until(ComponentState::active(_time), &mi_1);
         assert!(matches!(ms_1.state, ComponentState::Active(_)));
         {
@@ -2194,7 +2194,7 @@ mod test {
         };
 
         let mip_store = MipStore::try_from(([], mip_stats_config));
-        assert_eq!(mip_store.is_ok(), true);
+        assert!(mip_store.is_ok());
     }
 
     #[test]
@@ -2472,7 +2472,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
             max_history_length: 100,
-            max_new_elements: 100,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
             thread_count: THREAD_COUNT,
         };
         let db = Arc::new(RwLock::new(
@@ -2603,9 +2604,7 @@ mod test {
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let activation_delay = MassaTime::from_millis(100);
-        let timeout = MassaTime::now()
-            .unwrap()
-            .saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
+        let timeout = MassaTime::now().saturating_add(MassaTime::from_millis(50_000)); // + 50 seconds
         let mi_1 = MipInfo {
             name: "MIP-0001".to_string(),
             version: 1,
@@ -2633,7 +2632,7 @@ mod test {
         assert_eq!(*mi_, mi_1);
         assert_matches!(ms_.state, ComponentState::LockedIn(..));
 
-        let mut at = MassaTime::now().unwrap();
+        let mut at = MassaTime::now();
         at = at.saturating_add(activation_delay);
         assert_eq!(
             ms_.state_at(at, mi_1.start, mi_1.timeout, mi_1.activation_delay),

@@ -1,7 +1,7 @@
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use schnellru::{ByLength, LruMap};
-use tracing::{debug, warn};
+use tracing::debug;
 
 use crate::types::ModuleInfo;
 
@@ -48,17 +48,20 @@ impl LRUCache {
                     *content = ModuleInfo::ModuleAndDelta((module.clone(), init_cost))
                 }
                 ModuleInfo::ModuleAndDelta((_module, delta)) => *delta = init_cost,
-                ModuleInfo::Invalid => {
-                    warn!("tried to set the init cost of an invalid module");
+                ModuleInfo::Invalid(err_msg) => {
+                    debug!(
+                        "tried to set the init cost of an invalid module. Invalidity reason: {}",
+                        err_msg
+                    );
                 }
             }
         }
     }
 
     /// Set a module as invalid
-    pub fn set_invalid(&mut self, hash: Hash) {
+    pub fn set_invalid(&mut self, hash: Hash, err_msg: String) {
         if let Some(content) = self.cache.get(&hash) {
-            *content = ModuleInfo::Invalid;
+            *content = ModuleInfo::Invalid(err_msg);
         }
     }
 }

@@ -16,6 +16,10 @@ use crate::{
     messages::{Message, MessagesHandler, MessagesSerializer},
 };
 
+#[cfg(test)]
+use std::sync::{Arc, RwLock};
+
+#[cfg_attr(test, mockall_wrap::wrap, mockall::automock)]
 pub trait ActiveConnectionsTrait: Send + Sync {
     fn send_to_peer(
         &self,
@@ -76,7 +80,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
             .iter()
             .map(|(peer_id, connection)| {
                 (
-                    peer_id.clone(),
+                    *peer_id,
                     (
                         *connection.endpoint.get_target_addr(),
                         connection.connection_type,
@@ -114,6 +118,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
     }
 }
 
+#[cfg_attr(test, mockall::automock)]
 pub trait NetworkController: Send + Sync {
     fn get_active_connections(&self) -> Box<dyn ActiveConnectionsTrait>;
     fn start_listener(

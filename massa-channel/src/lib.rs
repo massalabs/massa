@@ -18,7 +18,6 @@ use std::sync::Arc;
 
 use receiver::MassaReceiver;
 use sender::MassaSender;
-use tracing::debug;
 
 pub mod receiver;
 pub mod sender;
@@ -54,12 +53,17 @@ impl MassaChannel {
 
         // Register metrics in prometheus
         // error here if metrics already registered (ex : ProtocolController>::get_stats )
-        if let Err(e) = prometheus::register(Box::new(actual_len.clone())) {
-            debug!("Failed to register actual_len gauge for {} : {}", name, e);
-        }
 
-        if let Err(e) = prometheus::register(Box::new(received.clone())) {
-            debug!("Failed to register received counter for {} : {}", name, e);
+        #[cfg(not(feature = "test-exports"))]
+        {
+            use tracing::debug;
+            if let Err(e) = prometheus::register(Box::new(actual_len.clone())) {
+                debug!("Failed to register actual_len gauge for {} : {}", name, e);
+            }
+
+            if let Err(e) = prometheus::register(Box::new(received.clone())) {
+                debug!("Failed to register received counter for {} : {}", name, e);
+            }
         }
 
         let sender = MassaSender {

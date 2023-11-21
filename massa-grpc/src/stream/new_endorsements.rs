@@ -13,14 +13,13 @@ use std::io::ErrorKind;
 use std::pin::Pin;
 use std::str::FromStr;
 use tokio::select;
-use tonic::codegen::futures_core;
 use tonic::{Request, Streaming};
 use tracing::log::{error, warn};
 
 /// Type declaration for NewEndorsements
 pub type NewEndorsementsStreamType = Pin<
     Box<
-        dyn futures_core::Stream<Item = Result<grpc_api::NewEndorsementsResponse, tonic::Status>>
+        dyn futures_util::Stream<Item = Result<grpc_api::NewEndorsementsResponse, tonic::Status>>
             + Send
             + 'static,
     >,
@@ -47,13 +46,13 @@ pub(crate) async fn new_endorsements(
     // Get the inner stream from the request
     let mut in_stream = request.into_inner();
     // Subscribe to the new endorsements channel
-    let mut subscriber = grpc.pool_channels.endorsement_sender.subscribe();
+    let mut subscriber = grpc.pool_broadcasts.endorsement_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
-    let grpc = grpc.clone();
+    let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match get_filter(request, &grpc.grpc_config) {
+            let mut filters = match get_filter(request, &grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -94,7 +93,7 @@ pub(crate) async fn new_endorsements(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message, &grpc.grpc_config) {
+                                        filters = match get_filter(message, &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

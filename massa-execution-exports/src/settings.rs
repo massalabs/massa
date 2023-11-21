@@ -28,6 +28,8 @@ pub struct ExecutionConfig {
     pub max_final_events: usize,
     /// maximum available gas for asynchronous messages execution
     pub max_async_gas: u64,
+    /// constant cost for async messages
+    pub async_msg_cst_gas_cost: u64,
     /// maximum gas per block
     pub max_gas_per_block: u64,
     /// number of threads
@@ -68,6 +70,8 @@ pub struct ExecutionConfig {
     pub max_read_only_gas: u64,
     /// Gas costs
     pub gas_costs: GasCosts,
+    /// Gas used by a transaction, a roll buy or a roll sell)
+    pub base_operation_gas_cost: u64,
     /// last start period, used to attach to the correct execution slot if the network has restarted
     pub last_start_period: u64,
     /// Path to the hard drive cache storage

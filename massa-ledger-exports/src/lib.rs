@@ -29,5 +29,8 @@ pub use types::{
     SetUpdateOrDelete, SetUpdateOrDeleteDeserializer, SetUpdateOrDeleteSerializer,
 };
 
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;
+
+#[cfg(feature = "test-exports")]
+pub use controller::{MockLedgerController, MockLedgerControllerWrapper};

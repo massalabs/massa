@@ -1,11 +1,14 @@
 use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
 use std::collections::BTreeSet;
-use std::fmt::Debug;
 
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
 
-pub trait LedgerController: Send + Sync + Debug {
+#[cfg(feature = "test-exports")]
+use std::sync::{Arc, RwLock};
+
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
+pub trait LedgerController: Send + Sync {
     /// Loads ledger from file
     fn load_initial_ledger(&mut self) -> Result<(), LedgerError>;
 
@@ -59,7 +62,7 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeMap` with the address as key and the balance as value
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     fn get_every_address(&self) -> std::collections::BTreeMap<Address, Amount>;
 
     /// Get the entire datastore for a given address.
@@ -68,6 +71,6 @@ pub trait LedgerController: Send + Sync + Debug {
     ///
     /// # Returns
     /// A `BTreeMap` with the entry hash as key and the data bytes as value
-    #[cfg(feature = "testing")]
+    #[cfg(feature = "test-exports")]
     fn get_entire_datastore(&self, addr: &Address) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>>;
 }

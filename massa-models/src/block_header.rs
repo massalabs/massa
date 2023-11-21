@@ -45,7 +45,7 @@ pub struct BlockHeader {
 }
 
 // TODO: gh-issue #3398
-#[cfg(any(test, feature = "testing"))]
+#[cfg(any(test, feature = "test-exports"))]
 impl BlockHeader {
     /// This is an intentional duplication of invariant checks. In production code,
     /// these checks are dispersed throughout the deserialization process. This test-only function
@@ -83,9 +83,6 @@ impl BlockHeader {
         // assert that the endorsement indexes are all unique...
         let mut set = HashSet::new();
         for endo in self.endorsements.iter() {
-            // ...and check signatures + invariants while at it
-            endo.check_invariants()?;
-
             if !set.insert(endo.content.index) {
                 return Err("Endorsement duplicate index found".into());
             }
@@ -120,7 +117,7 @@ impl SecuredHeader {
     }
     // TODO: gh-issue #3398
     #[allow(dead_code)]
-    #[cfg(any(test, feature = "testing"))]
+    #[cfg(any(test, feature = "test-exports"))]
     pub(crate) fn assert_invariants(
         &self,
         thread_count: u8,
@@ -457,7 +454,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             };
 
             // TODO: gh-issue #3398
-            #[cfg(any(test, feature = "testing"))]
+            #[cfg(any(test, feature = "test-exports"))]
             res.assert_invariants(self.thread_count, self.endorsement_count)
                 .unwrap();
 
@@ -536,7 +533,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         };
 
         // TODO: gh-issue #3398
-        #[cfg(any(test, feature = "testing"))]
+        #[cfg(any(test, feature = "test-exports"))]
         header
             .assert_invariants(self.thread_count, self.endorsement_count)
             .unwrap();

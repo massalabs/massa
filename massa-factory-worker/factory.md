@@ -43,14 +43,14 @@ Since double-staking is penalized and could happen on node reboot, a safety meas
 We ignore block creation slots for which `S.period == 0` (genesis blocks).
 
 At every block creation slot, the block creation thread will read selector draws at that slot to check whether one of the staking keys was selected to produce the block.
-If the addres linked to a stored staking key was selected, launch the block production process below.
+If the address linked to a stored staking key was selected, launch the block production process below.
 
 ### Block production
 
 The production of a block `B` at slot `S` happens in steps:
 * prepare the header content with the obvious fields of the header (eg. creator public key, slot)
 * ask consensus for `best_parents` which will be the parents set inside the header
-* ask pool for the endorsmeents to add to the header given the `BlockId` of `B`'s parent in `B`'s thread
+* ask pool for the endorsements to add to the header given the `BlockId` of `B`'s parent in `B`'s thread
 * define `remaining_gas = MAX_BLOCk_GAS`  which is the remaining gas in the block
 * define `remaining_space = MAX_BLOCK_SIZE` which is the remaining operation space in the block in bytes
 * define `balance_cache: Map<Address, Amount> = Default::default()` which is a cache of balance
@@ -92,7 +92,7 @@ This is indeed a half-period lag in order to incentivize timely block and endors
 Since double-staking is penalized and could happen on node reboot, a safety measure is to wait 1 period (`2*t0`) after the program starts before beginning endorsement production.
 
 At every block creation slot, the block creation thread will read selector draws at that slot to check whether one of the staking keys was selected to produce the block.
-If the addres linked to a stored staking key was selected, launch the block production process below.
+If the address linked to a stored staking key was selected, launch the block production process below.
 
 
 ### Endorsement production

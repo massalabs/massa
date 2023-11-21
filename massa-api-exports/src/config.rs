@@ -59,6 +59,8 @@ pub struct APIConfig {
     pub max_function_name_length: u16,
     /// max parameter size
     pub max_parameter_size: u32,
+    /// max gas in a block
+    pub max_gas_per_block: u64,
     /// thread count
     pub thread_count: u8,
     /// `genesis_timestamp`

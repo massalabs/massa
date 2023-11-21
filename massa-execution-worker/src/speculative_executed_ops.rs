@@ -4,7 +4,7 @@
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_executed_ops::ExecutedOpsChanges;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_models::{operation::OperationId, slot::Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use std::sync::Arc;
 /// Speculative state of executed operations
 pub(crate) struct SpeculativeExecutedOps {
     /// Thread-safe shared access to the final state. For reading only.
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
 
     /// History of the outputs of recently executed slots.
     /// Slots should be consecutive, newest at the back.
@@ -29,7 +29,7 @@ impl SpeculativeExecutedOps {
     /// * `final_state`: thread-safe shared access the the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
-        final_state: Arc<RwLock<FinalState>>,
+        final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
         SpeculativeExecutedOps {
@@ -74,7 +74,7 @@ impl SpeculativeExecutedOps {
         }
 
         // check in the final state
-        self.final_state.read().executed_ops.contains(op_id)
+        self.final_state.read().executed_ops_contains(op_id)
     }
 
     /// Insert an executed operation.

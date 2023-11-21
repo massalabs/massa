@@ -6,6 +6,7 @@ use massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKe
 use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::config::GENESIS_KEY;
+use massa_models::serialization::{StringDeserializer, StringSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
 use massa_models::{
     address::Address,
@@ -15,10 +16,10 @@ use massa_models::{
 };
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, OptionDeserializer, OptionSerializer,
-    SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use nom::error::{context, ContextError, ParseError};
-use nom::multi::length_data;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use num::rational::Ratio;
@@ -96,7 +97,9 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
 #[derive(Clone)]
 pub struct AsyncMessageIdDeserializer {
     slot_deserializer: SlotDeserializer,
-    u64_deserializer: U64VarIntDeserializer,
+    numerator_deserializer: U64VarIntDeserializer,
+    denominator_deserializer: U64VarIntDeserializer,
+    emission_index_deserializer: U64VarIntDeserializer,
 }
 
 impl AsyncMessageIdDeserializer {
@@ -106,7 +109,15 @@ impl AsyncMessageIdDeserializer {
                 (Included(u64::MIN), Included(u64::MAX)),
                 (Included(0), Excluded(thread_count)),
             ),
-            u64_deserializer: U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            numerator_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            ),
+            denominator_deserializer: U64VarIntDeserializer::new(Included(1), Included(u64::MAX)),
+            emission_index_deserializer: U64VarIntDeserializer::new(
+                Included(u64::MIN),
+                Included(u64::MAX),
+            ),
         }
     }
 }
@@ -151,17 +162,17 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
         context(
             "Failed AsyncMessageId deserialization",
             tuple((
-                context("Failed fee deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                context("Failed num deserialization", |input| {
+                    self.numerator_deserializer.deserialize(input)
                 }),
                 context("Failed denum deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.denominator_deserializer.deserialize(input)
                 }),
                 context("Failed emission_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed emission_index deserialization", |input| {
-                    self.u64_deserializer.deserialize(input)
+                    self.emission_index_deserializer.deserialize(input)
                 }),
             )),
         )
@@ -228,7 +239,7 @@ impl AsyncMessageTriggerDeserializer {
             address_deserializer: AddressDeserializer::new(),
             key_serializer: OptionDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Excluded(max_key_length as u64),
+                Included(max_key_length as u64),
             )),
         }
     }
@@ -274,8 +285,8 @@ pub struct AsyncMessage {
     /// The address towards which the message is being sent
     pub destination: Address,
 
-    /// the handler function name within the destination address' bytecode
-    pub handler: String,
+    /// the function function name within the destination address' bytecode
+    pub function: String,
 
     /// Maximum gas to use when processing the message
     pub max_gas: u64,
@@ -295,8 +306,8 @@ pub struct AsyncMessage {
     /// Slot at which the message stops being valid (bound not included in the validity range)
     pub validity_end: Slot,
 
-    /// Raw payload data of the message
-    pub data: Vec<u8>,
+    /// Raw payload parameters to call the function with
+    pub function_params: Vec<u8>,
 
     /// Trigger that define whenever a message can be executed
     pub trigger: Option<AsyncMessageTrigger>,
@@ -330,13 +341,13 @@ impl AsyncMessage {
         emission_index: u64,
         sender: Address,
         destination: Address,
-        handler: String,
+        function: String,
         max_gas: u64,
         fee: Amount,
         coins: Amount,
         validity_start: Slot,
         validity_end: Slot,
-        data: Vec<u8>,
+        function_params: Vec<u8>,
         trigger: Option<AsyncMessageTrigger>,
         can_be_executed: Option<bool>,
     ) -> Self {
@@ -345,13 +356,13 @@ impl AsyncMessage {
             emission_index,
             sender,
             destination,
-            handler,
+            function,
             max_gas,
             fee,
             coins,
             validity_start,
             validity_end,
-            data,
+            function_params,
             can_be_executed: can_be_executed.unwrap_or(trigger.is_none()),
             trigger,
         }
@@ -371,9 +382,10 @@ impl AsyncMessage {
 #[derive(Clone)]
 pub struct AsyncMessageSerializer {
     pub slot_serializer: SlotSerializer,
+    pub function_serializer: StringSerializer<U16VarIntSerializer, u16>,
     pub amount_serializer: AmountSerializer,
     pub u64_serializer: U64VarIntSerializer,
-    pub vec_u8_serializer: VecU8Serializer,
+    pub function_params_serializer: VecU8Serializer,
     pub address_serializer: AddressSerializer,
     pub trigger_serializer: OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
     pub bool_serializer: BoolSerializer,
@@ -386,7 +398,8 @@ impl AsyncMessageSerializer {
             slot_serializer: SlotSerializer::new(),
             amount_serializer: AmountSerializer::new(),
             u64_serializer: U64VarIntSerializer::new(),
-            vec_u8_serializer: VecU8Serializer::new(),
+            function_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            function_params_serializer: VecU8Serializer::new(),
             address_serializer: AddressSerializer::new(),
             trigger_serializer: OptionSerializer::new(AsyncMessageTriggerSerializer::new()),
             bool_serializer: BoolSerializer::new(),
@@ -443,13 +456,8 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
         self.address_serializer.serialize(&value.sender, buffer)?;
         self.address_serializer
             .serialize(&value.destination, buffer)?;
-
-        let handler_bytes = value.handler.as_bytes();
-        let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
-            SerializeError::GeneralError("could not convert handler name length to u8".into())
-        })?;
-        buffer.extend([handler_name_len]);
-        buffer.extend(handler_bytes);
+        self.function_serializer
+            .serialize(&value.function, buffer)?;
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
         self.amount_serializer.serialize(&value.fee, buffer)?;
         self.amount_serializer.serialize(&value.coins, buffer)?;
@@ -457,7 +465,8 @@ impl Serializer<AsyncMessage> for AsyncMessageSerializer {
             .serialize(&value.validity_start, buffer)?;
         self.slot_serializer
             .serialize(&value.validity_end, buffer)?;
-        self.vec_u8_serializer.serialize(&value.data, buffer)?;
+        self.function_params_serializer
+            .serialize(&value.function_params, buffer)?;
         self.trigger_serializer.serialize(&value.trigger, buffer)?;
         if self.for_db {
             self.bool_serializer
@@ -473,7 +482,8 @@ pub struct AsyncMessageDeserializer {
     pub amount_deserializer: AmountDeserializer,
     pub emission_index_deserializer: U64VarIntDeserializer,
     pub max_gas_deserializer: U64VarIntDeserializer,
-    pub data_deserializer: VecU8Deserializer,
+    pub function_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    pub function_params_deserializer: VecU8Deserializer,
     pub address_deserializer: AddressDeserializer,
     pub trigger_deserializer:
         OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
@@ -484,7 +494,8 @@ pub struct AsyncMessageDeserializer {
 impl AsyncMessageDeserializer {
     pub fn new(
         thread_count: u8,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_function_params_length: u64,
         max_key_length: u32,
         for_db: bool,
     ) -> Self {
@@ -502,9 +513,13 @@ impl AsyncMessageDeserializer {
                 Included(u64::MAX),
             ),
             max_gas_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            data_deserializer: VecU8Deserializer::new(
+            function_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
                 Included(0),
-                Included(max_async_message_data),
+                Included(max_function_length),
+            )),
+            function_params_deserializer: VecU8Deserializer::new(
+                Included(0),
+                Included(max_function_params_length),
             ),
             address_deserializer: AddressDeserializer::new(),
             trigger_deserializer: OptionDeserializer::new(AsyncMessageTriggerDeserializer::new(
@@ -545,7 +560,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// let message_serializer = AsyncMessageSerializer::new(false);
     /// let mut serialized = Vec::new();
     /// message_serializer.serialize(&message, &mut serialized).unwrap();
-    /// let message_deserializer = AsyncMessageDeserializer::new(32, 100000, 255, false);
+    /// let message_deserializer = AsyncMessageDeserializer::new(32, 10000, 100000, 255, false);
     /// // dbg!(&serialized);
     /// let (rest, message_deserialized) = message_deserializer.deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert!(rest.is_empty());
@@ -570,23 +585,8 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 context("Failed destination deserialization", |input| {
                     self.address_deserializer.deserialize(input)
                 }),
-                context("Failed handler deserialization", |input| {
-                    let (rest, array) = length_data(|input: &'a [u8]| match input.first() {
-                        Some(len) => Ok((&input[1..], *len)),
-                        None => Err(nom::Err::Error(ParseError::from_error_kind(
-                            input,
-                            nom::error::ErrorKind::LengthValue,
-                        ))),
-                    })(input)?;
-                    Ok((
-                        rest,
-                        String::from_utf8(array.to_vec()).map_err(|_| {
-                            nom::Err::Error(ParseError::from_error_kind(
-                                input,
-                                nom::error::ErrorKind::Fail,
-                            ))
-                        })?,
-                    ))
+                context("Failed function deserialization", |input| {
+                    self.function_deserializer.deserialize(input)
                 }),
                 context("Failed max_gas deserialization", |input| {
                     self.max_gas_deserializer.deserialize(input)
@@ -604,7 +604,7 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     self.slot_deserializer.deserialize(input)
                 }),
                 context("Failed data deserialization", |input| {
-                    self.data_deserializer.deserialize(input)
+                    self.function_params_deserializer.deserialize(input)
                 }),
                 context("Failed filter deserialization", |input| {
                     self.trigger_deserializer.deserialize(input)
@@ -624,13 +624,13 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                 emission_index,
                 sender,
                 destination,
-                handler,
+                function,
                 max_gas,
                 fee,
                 coins,
                 validity_start,
                 validity_end,
-                data,
+                function_params,
                 filter,
                 can_be_executed,
             )| {
@@ -639,13 +639,13 @@ impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
                     emission_index,
                     sender,
                     destination,
-                    handler,
+                    function,
                     max_gas,
                     fee,
                     coins,
                     validity_start,
                     validity_end,
-                    data,
+                    function_params,
                     filter,
                     if self.for_db {
                         Some(can_be_executed)
@@ -696,8 +696,8 @@ pub struct AsyncMessageUpdate {
     /// The address towards which the message is being sent
     pub destination: SetOrKeep<Address>,
 
-    /// the handler function name within the destination address' bytecode
-    pub handler: SetOrKeep<String>,
+    /// the function function name within the destination address' bytecode
+    pub function: SetOrKeep<String>,
 
     /// Maximum gas to use when processing the message
     pub max_gas: SetOrKeep<u64>,
@@ -717,8 +717,8 @@ pub struct AsyncMessageUpdate {
     /// Slot at which the message stops being valid (bound not included in the validity range)
     pub validity_end: SetOrKeep<Slot>,
 
-    /// Raw payload data of the message
-    pub data: SetOrKeep<Vec<u8>>,
+    /// Raw payload parameters to call the function with
+    pub function_params: SetOrKeep<Vec<u8>>,
 
     /// Trigger that define whenever a message can be executed
     pub trigger: SetOrKeep<Option<AsyncMessageTrigger>>,
@@ -733,14 +733,14 @@ pub struct AsyncMessageUpdateSerializer {
     slot_serializer: SetOrKeepSerializer<Slot, SlotSerializer>,
     amount_serializer: SetOrKeepSerializer<Amount, AmountSerializer>,
     u64_serializer: SetOrKeepSerializer<u64, U64VarIntSerializer>,
-    vec_u8_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
+    function_serializer: SetOrKeepSerializer<String, StringSerializer<U16VarIntSerializer, u16>>,
+    function_params_serializer: SetOrKeepSerializer<Vec<u8>, VecU8Serializer>,
     address_serializer: SetOrKeepSerializer<Address, AddressSerializer>,
     trigger_serializer: SetOrKeepSerializer<
         Option<AsyncMessageTrigger>,
         OptionSerializer<AsyncMessageTrigger, AsyncMessageTriggerSerializer>,
     >,
     bool_serializer: SetOrKeepSerializer<bool, BoolSerializer>,
-    regular_bool_serializer: BoolSerializer,
     for_db: bool,
 }
 
@@ -751,13 +751,15 @@ impl AsyncMessageUpdateSerializer {
             slot_serializer: SetOrKeepSerializer::new(SlotSerializer::new()),
             amount_serializer: SetOrKeepSerializer::new(AmountSerializer::new()),
             u64_serializer: SetOrKeepSerializer::new(U64VarIntSerializer::new()),
-            vec_u8_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
+            function_serializer: SetOrKeepSerializer::new(StringSerializer::new(
+                U16VarIntSerializer::new(),
+            )),
+            function_params_serializer: SetOrKeepSerializer::new(VecU8Serializer::new()),
             address_serializer: SetOrKeepSerializer::new(AddressSerializer::new()),
             trigger_serializer: SetOrKeepSerializer::new(OptionSerializer::new(
                 AsyncMessageTriggerSerializer::new(),
             )),
             bool_serializer: SetOrKeepSerializer::new(BoolSerializer::new()),
-            regular_bool_serializer: BoolSerializer::new(),
             for_db,
         }
     }
@@ -782,24 +784,8 @@ impl Serializer<AsyncMessageUpdate> for AsyncMessageUpdateSerializer {
         self.address_serializer.serialize(&value.sender, buffer)?;
         self.address_serializer
             .serialize(&value.destination, buffer)?;
-
-        match &value.handler {
-            SetOrKeep::Keep => {
-                self.regular_bool_serializer.serialize(&false, buffer)?;
-            }
-            SetOrKeep::Set(s) => {
-                let handler_bytes = s.as_bytes();
-                let handler_name_len: u8 = handler_bytes.len().try_into().map_err(|_| {
-                    SerializeError::GeneralError(
-                        "could not convert handler name length to u8".into(),
-                    )
-                })?;
-                self.regular_bool_serializer.serialize(&true, buffer)?;
-                buffer.extend([handler_name_len]);
-                buffer.extend(handler_bytes);
-            }
-        };
-
+        self.function_serializer
+            .serialize(&value.function, buffer)?;
         self.u64_serializer.serialize(&value.max_gas, buffer)?;
         self.amount_serializer.serialize(&value.fee, buffer)?;
         self.amount_serializer.serialize(&value.coins, buffer)?;
@@ -807,7 +793,8 @@ impl Serializer<AsyncMessageUpdate> for AsyncMessageUpdateSerializer {
             .serialize(&value.validity_start, buffer)?;
         self.slot_serializer
             .serialize(&value.validity_end, buffer)?;
-        self.vec_u8_serializer.serialize(&value.data, buffer)?;
+        self.function_params_serializer
+            .serialize(&value.function_params, buffer)?;
         self.trigger_serializer.serialize(&value.trigger, buffer)?;
         if self.for_db {
             self.bool_serializer
@@ -823,14 +810,15 @@ pub struct AsyncMessageUpdateDeserializer {
     amount_deserializer: SetOrKeepDeserializer<Amount, AmountDeserializer>,
     emission_index_deserializer: SetOrKeepDeserializer<u64, U64VarIntDeserializer>,
     max_gas_deserializer: SetOrKeepDeserializer<u64, U64VarIntDeserializer>,
-    data_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
+    function_deserializer:
+        SetOrKeepDeserializer<String, StringDeserializer<U16VarIntDeserializer, u16>>,
+    function_params_deserializer: SetOrKeepDeserializer<Vec<u8>, VecU8Deserializer>,
     address_deserializer: SetOrKeepDeserializer<Address, AddressDeserializer>,
     trigger_deserializer: SetOrKeepDeserializer<
         Option<AsyncMessageTrigger>,
         OptionDeserializer<AsyncMessageTrigger, AsyncMessageTriggerDeserializer>,
     >,
     bool_deserializer: SetOrKeepDeserializer<bool, BoolDeserializer>,
-    regular_bool_deserializer: BoolDeserializer,
     for_db: bool,
 }
 
@@ -838,7 +826,8 @@ impl AsyncMessageUpdateDeserializer {
     /// Creates a new `AsyncMessageUpdateDeserializer`
     pub fn new(
         thread_count: u8,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_function_params_length: u64,
         max_key_length: u32,
         for_db: bool,
     ) -> Self {
@@ -859,16 +848,18 @@ impl AsyncMessageUpdateDeserializer {
                 Included(0),
                 Included(u64::MAX),
             )),
-            data_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
+            function_deserializer: SetOrKeepDeserializer::new(StringDeserializer::new(
+                U16VarIntDeserializer::new(Included(0), Included(max_function_length)),
+            )),
+            function_params_deserializer: SetOrKeepDeserializer::new(VecU8Deserializer::new(
                 Included(0),
-                Included(max_async_message_data),
+                Included(max_function_params_length),
             )),
             address_deserializer: SetOrKeepDeserializer::new(AddressDeserializer::new()),
             trigger_deserializer: SetOrKeepDeserializer::new(OptionDeserializer::new(
                 AsyncMessageTriggerDeserializer::new(max_key_length),
             )),
             bool_deserializer: SetOrKeepDeserializer::new(BoolDeserializer::new()),
-            regular_bool_deserializer: BoolDeserializer::new(),
             for_db,
         }
     }
@@ -894,28 +885,8 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                 context("Failed destination deserialization", |input| {
                     self.address_deserializer.deserialize(input)
                 }),
-                context("Failed handler deserialization", |input| {
-                    let (rest, id) = self.regular_bool_deserializer.deserialize(input)?;
-                    if id {
-                        let (rest, array) = length_data(|input: &'a [u8]| match input.first() {
-                            Some(len) => Ok((&input[1..], *len)),
-                            None => Err(nom::Err::Error(ParseError::from_error_kind(
-                                input,
-                                nom::error::ErrorKind::LengthValue,
-                            ))),
-                        })(rest)?;
-                        Ok((
-                            rest,
-                            SetOrKeep::Set(String::from_utf8(array.to_vec()).map_err(|_| {
-                                nom::Err::Error(ParseError::from_error_kind(
-                                    input,
-                                    nom::error::ErrorKind::Fail,
-                                ))
-                            })?),
-                        ))
-                    } else {
-                        Ok((rest, SetOrKeep::Keep))
-                    }
+                context("Failed function deserialization", |input| {
+                    self.function_deserializer.deserialize(input)
                 }),
                 context("Failed max_gas deserialization", |input| {
                     self.max_gas_deserializer.deserialize(input)
@@ -932,8 +903,8 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                 context("Failed validity_end deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
-                context("Failed data deserialization", |input| {
-                    self.data_deserializer.deserialize(input)
+                context("Failed function_params deserialization", |input| {
+                    self.function_params_deserializer.deserialize(input)
                 }),
                 context("Failed filter deserialization", |input| {
                     self.trigger_deserializer.deserialize(input)
@@ -953,13 +924,13 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                 emission_index,
                 sender,
                 destination,
-                handler,
+                function,
                 max_gas,
                 fee,
                 coins,
                 validity_start,
                 validity_end,
-                data,
+                function_params,
                 trigger,
                 can_be_executed,
             )| {
@@ -968,13 +939,13 @@ impl Deserializer<AsyncMessageUpdate> for AsyncMessageUpdateDeserializer {
                     emission_index,
                     sender,
                     destination,
-                    handler,
+                    function,
                     max_gas,
                     fee,
                     coins,
                     validity_start,
                     validity_end,
-                    data,
+                    function_params,
                     trigger,
                     can_be_executed,
                 }
@@ -991,13 +962,13 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessageUpdate {
         self.emission_index.apply(update.emission_index);
         self.sender.apply(update.sender);
         self.destination.apply(update.destination);
-        self.handler.apply(update.handler);
+        self.function.apply(update.function);
         self.max_gas.apply(update.max_gas);
         self.fee.apply(update.fee);
         self.coins.apply(update.coins);
         self.validity_start.apply(update.validity_start);
         self.validity_end.apply(update.validity_end);
-        self.data.apply(update.data);
+        self.function_params.apply(update.function_params);
         self.trigger.apply(update.trigger);
         self.can_be_executed.apply(update.can_be_executed);
     }
@@ -1010,13 +981,13 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessage {
         update.emission_index.apply_to(&mut self.emission_index);
         update.sender.apply_to(&mut self.sender);
         update.destination.apply_to(&mut self.destination);
-        update.handler.apply_to(&mut self.handler);
+        update.function.apply_to(&mut self.function);
         update.max_gas.apply_to(&mut self.max_gas);
         update.fee.apply_to(&mut self.fee);
         update.coins.apply_to(&mut self.coins);
         update.validity_start.apply_to(&mut self.validity_start);
         update.validity_end.apply_to(&mut self.validity_end);
-        update.data.apply_to(&mut self.data);
+        update.function_params.apply_to(&mut self.function_params);
         update.trigger.apply_to(&mut self.trigger);
         update.can_be_executed.apply_to(&mut self.can_be_executed);
     }
@@ -1035,21 +1006,472 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessageInfo {
 
 #[cfg(test)]
 mod tests {
+    use massa_ledger_exports::{Applicable, SetOrKeep};
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
+    use num::rational::Ratio;
 
-    use crate::{AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer};
+    use crate::{
+        message::{AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer},
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
+        AsyncMessageIdSerializer, AsyncMessageSerializer, AsyncMessageTrigger, AsyncMessageUpdate,
+    };
     use massa_models::{
         address::Address,
         amount::Amount,
-        config::{MAX_ASYNC_MESSAGE_DATA, MAX_DATASTORE_KEY_LENGTH, THREAD_COUNT},
+        config::{
+            MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
+        },
         slot::Slot,
     };
     use std::str::FromStr;
 
-    use super::AsyncMessageTrigger;
+    #[test]
+    fn no_apply_update_message() {
+        // Init an AsyncMessage, try to apply an update (with no modifications at all)
+        // Original async message and 'updated' async message should be ==
+
+        let mut msg = AsyncMessage {
+            emission_slot: Slot::new(0, 0),
+            emission_index: 0,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: String::from(""),
+            max_gas: 0,
+            fee: Amount::from_str("0").unwrap(),
+            coins: Amount::from_str("0").unwrap(),
+            validity_start: Slot::new(0, 0),
+            validity_end: Slot::new(0, 0),
+            function_params: vec![],
+            trigger: None,
+            can_be_executed: false,
+        };
+        let old_message = msg.clone();
+
+        let update = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Keep,
+            emission_index: SetOrKeep::Keep,
+            sender: SetOrKeep::Keep,
+            destination: SetOrKeep::Keep,
+            function: SetOrKeep::Keep,
+            max_gas: SetOrKeep::Keep,
+            fee: SetOrKeep::Keep,
+            coins: SetOrKeep::Keep,
+            validity_start: SetOrKeep::Keep,
+            validity_end: SetOrKeep::Keep,
+            function_params: SetOrKeep::Keep,
+            trigger: SetOrKeep::Keep,
+            can_be_executed: SetOrKeep::Keep,
+        };
+        msg.apply(update);
+        assert_eq!(old_message, msg);
+    }
 
     #[test]
-    fn bad_serialization_version() {
+    fn apply_update_message() {
+        // Init an AsyncMessage, try to apply an update (with modifications for all fields)
+        // Original async message and 'updated' async message should be !=
+
+        let mut msg = AsyncMessage {
+            emission_slot: Slot::new(0, 0),
+            emission_index: 0,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: String::from(""),
+            max_gas: 0,
+            fee: Amount::from_str("0").unwrap(),
+            coins: Amount::from_str("0").unwrap(),
+            validity_start: Slot::new(0, 0),
+            validity_end: Slot::new(0, 0),
+            function_params: vec![],
+            trigger: None,
+            can_be_executed: false,
+        };
+        let old_message = msg.clone();
+
+        let update = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            emission_index: SetOrKeep::Set(u64::MAX),
+            sender: SetOrKeep::Set(
+                Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            ),
+            destination: SetOrKeep::Set(
+                Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            ),
+            function: SetOrKeep::Set(
+                (0..MAX_FUNCTION_NAME_LENGTH)
+                    .map(|_| "X")
+                    .collect::<String>(),
+            ),
+            max_gas: SetOrKeep::Set(u64::MAX),
+            fee: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            coins: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            validity_start: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            function_params: SetOrKeep::Set(vec![0; MAX_PARAMETERS_SIZE as usize]),
+            trigger: SetOrKeep::Set(Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            })),
+            can_be_executed: SetOrKeep::Set(true),
+        };
+        msg.apply(update);
+
+        assert_ne!(old_message, msg);
+
+        let new_msg = AsyncMessage {
+            emission_slot: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            emission_index: u64::MAX,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: (0..MAX_FUNCTION_NAME_LENGTH)
+                .map(|_| "X")
+                .collect::<String>(),
+            max_gas: u64::MAX,
+            fee: Amount::from_raw(u64::MAX),
+            coins: Amount::from_raw(u64::MAX),
+            validity_start: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            validity_end: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            function_params: vec![0; MAX_PARAMETERS_SIZE as usize],
+            trigger: Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            }),
+            can_be_executed: true,
+        };
+        assert_eq!(new_msg, msg);
+    }
+
+    #[test]
+    fn apply_update_on_update_message() {
+        // Apply AsyncMessageUpdate on a AsyncMessageUpdate then apply to an AsyncMessage
+
+        let mut msg = AsyncMessage {
+            emission_slot: Slot::new(0, 0),
+            emission_index: 0,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: String::from(""),
+            max_gas: 0,
+            fee: Amount::from_str("0").unwrap(),
+            coins: Amount::from_str("0").unwrap(),
+            validity_start: Slot::new(0, 0),
+            validity_end: Slot::new(0, 0),
+            function_params: vec![],
+            trigger: None,
+            can_be_executed: false,
+        };
+
+        let mut update = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Keep,
+            emission_index: SetOrKeep::Keep,
+            sender: SetOrKeep::Keep,
+            destination: SetOrKeep::Keep,
+            function: SetOrKeep::Keep,
+            max_gas: SetOrKeep::Keep,
+            fee: SetOrKeep::Keep,
+            coins: SetOrKeep::Keep,
+            validity_start: SetOrKeep::Keep,
+            validity_end: SetOrKeep::Keep,
+            function_params: SetOrKeep::Keep,
+            trigger: SetOrKeep::Keep,
+            can_be_executed: SetOrKeep::Keep,
+        };
+
+        let update_update = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            emission_index: SetOrKeep::Set(u64::MAX),
+            sender: SetOrKeep::Set(
+                Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            ),
+            destination: SetOrKeep::Set(
+                Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            ),
+            function: SetOrKeep::Set(
+                (0..MAX_FUNCTION_NAME_LENGTH)
+                    .map(|_| "X")
+                    .collect::<String>(),
+            ),
+            max_gas: SetOrKeep::Set(u64::MAX),
+            fee: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            coins: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            validity_start: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            function_params: SetOrKeep::Set(vec![0; MAX_PARAMETERS_SIZE as usize]),
+            trigger: SetOrKeep::Set(Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            })),
+            can_be_executed: SetOrKeep::Set(true),
+        };
+
+        update.apply(update_update);
+
+        msg.apply(update);
+
+        let new_msg = AsyncMessage {
+            emission_slot: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            emission_index: u64::MAX,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: (0..MAX_FUNCTION_NAME_LENGTH)
+                .map(|_| "X")
+                .collect::<String>(),
+            max_gas: u64::MAX,
+            fee: Amount::from_raw(u64::MAX),
+            coins: Amount::from_raw(u64::MAX),
+            validity_start: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            validity_end: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            function_params: vec![0; MAX_PARAMETERS_SIZE as usize],
+            trigger: Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            }),
+            can_be_executed: true,
+        };
+
+        assert_eq!(new_msg, msg);
+    }
+
+    #[test]
+    fn lower_limit_ser_deser_id() {
+        // Serialize then Deserialize an AsyncMessageId (with lowest values)
+
+        let id: AsyncMessageId = (std::cmp::Reverse(Ratio::new(0, 1)), Slot::new(0, 0), 0);
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageIdSerializer::new();
+        serializer.serialize(&id, &mut buffer).unwrap();
+        let deserializer = AsyncMessageIdDeserializer::new(32);
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn higher_limit_ser_deser_id() {
+        // Serialize then Deserialize an AsyncMessageId (with highest values)
+
+        let id: AsyncMessageId = (
+            std::cmp::Reverse(Ratio::new(u64::MAX, u64::MAX)),
+            Slot::new(u64::MAX, THREAD_COUNT - 1),
+            u64::MAX,
+        );
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageIdSerializer::new();
+        serializer.serialize(&id, &mut buffer).unwrap();
+        let deserializer = AsyncMessageIdDeserializer::new(32);
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(id, deserialized);
+    }
+
+    #[test]
+    fn wrong_denom_ser_deser_id() {
+        let id: AsyncMessageId = (
+            // Ratio with 0 as a denominator -> will fail to deserialize
+            std::cmp::Reverse(Ratio::new_raw(u64::MAX, 0)),
+            Slot::new(u64::MAX, THREAD_COUNT - 1),
+            u64::MAX,
+        );
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageIdSerializer::new();
+        serializer.serialize(&id, &mut buffer).unwrap();
+        let deserializer = AsyncMessageIdDeserializer::new(32);
+        let _ = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .expect_err("Failed to deserialize");
+    }
+
+    #[test]
+    fn lower_limit_ser_deser_message() {
+        // Serialize then Deserialize an AsyncMessage (with lowest values)
+
+        let msg = AsyncMessage {
+            emission_slot: Slot::new(0, 0),
+            emission_index: 0,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: String::from(""),
+            max_gas: 0,
+            fee: Amount::from_str("0").unwrap(),
+            coins: Amount::from_str("0").unwrap(),
+            validity_start: Slot::new(0, 0),
+            validity_end: Slot::new(0, 0),
+            function_params: vec![],
+            trigger: None,
+            can_be_executed: false,
+        };
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageSerializer::new(true);
+        serializer.serialize(&msg, &mut buffer).unwrap();
+        let deserializer = AsyncMessageDeserializer::new(
+            THREAD_COUNT,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+            true,
+        );
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(msg, deserialized);
+    }
+
+    #[test]
+    fn higher_limit_ser_deser_message() {
+        // Serialize then Deserialize an AsyncMessage (with max values in most of its fields)
+
+        let msg = AsyncMessage {
+            emission_slot: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            emission_index: u64::MAX,
+            sender: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                .unwrap(),
+            destination: Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G")
+                .unwrap(),
+            function: (0..MAX_FUNCTION_NAME_LENGTH)
+                .map(|_| "X")
+                .collect::<String>(),
+            max_gas: u64::MAX,
+            fee: Amount::from_raw(u64::MAX),
+            coins: Amount::from_raw(u64::MAX),
+            validity_start: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            validity_end: Slot::new(u64::MAX, THREAD_COUNT - 1),
+            function_params: vec![0; MAX_PARAMETERS_SIZE as usize],
+            trigger: Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            }),
+            can_be_executed: true,
+        };
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageSerializer::new(true);
+        serializer.serialize(&msg, &mut buffer).unwrap();
+        let deserializer = AsyncMessageDeserializer::new(
+            THREAD_COUNT,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+            true,
+        );
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(msg, deserialized);
+    }
+
+    #[test]
+    fn lower_limit_ser_deser_message_update() {
+        let msg = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Keep,
+            emission_index: SetOrKeep::Keep,
+            sender: SetOrKeep::Keep,
+            destination: SetOrKeep::Keep,
+            function: SetOrKeep::Keep,
+            max_gas: SetOrKeep::Keep,
+            fee: SetOrKeep::Keep,
+            coins: SetOrKeep::Keep,
+            validity_start: SetOrKeep::Keep,
+            validity_end: SetOrKeep::Keep,
+            function_params: SetOrKeep::Keep,
+            trigger: SetOrKeep::Keep,
+            can_be_executed: SetOrKeep::Keep,
+        };
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageUpdateSerializer::new(true);
+        serializer.serialize(&msg, &mut buffer).unwrap();
+        let deserializer = AsyncMessageUpdateDeserializer::new(
+            THREAD_COUNT,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+            true,
+        );
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(msg, deserialized);
+    }
+
+    #[test]
+    fn higher_limit_ser_deser_message_update() {
+        let msg = AsyncMessageUpdate {
+            emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            emission_index: SetOrKeep::Set(u64::MAX),
+            sender: SetOrKeep::Set(
+                Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            ),
+            destination: SetOrKeep::Set(
+                Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            ),
+            function: SetOrKeep::Set(
+                (0..MAX_FUNCTION_NAME_LENGTH)
+                    .map(|_| "X")
+                    .collect::<String>(),
+            ),
+            max_gas: SetOrKeep::Set(u64::MAX),
+            fee: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            coins: SetOrKeep::Set(Amount::from_raw(u64::MAX)),
+            validity_start: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - 1)),
+            function_params: SetOrKeep::Set(vec![0; MAX_PARAMETERS_SIZE as usize]),
+            trigger: SetOrKeep::Set(Some(AsyncMessageTrigger {
+                address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x")
+                    .unwrap(),
+                datastore_key: Some(vec![0; MAX_DATASTORE_KEY_LENGTH as usize]),
+            })),
+            can_be_executed: SetOrKeep::Set(true),
+        };
+
+        let mut buffer = Vec::new();
+        let serializer = AsyncMessageUpdateSerializer::new(true);
+        serializer.serialize(&msg, &mut buffer).unwrap();
+        let deserializer = AsyncMessageUpdateDeserializer::new(
+            THREAD_COUNT,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_DATASTORE_KEY_LENGTH as u32,
+            true,
+        );
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(msg, deserialized);
+    }
+
+    #[test]
+    fn bad_serialization_message() {
+        // Serialize an AsyncMessage, write some crap in the result and try to deserialize it
+
         let message = AsyncMessage::new(
             Slot::new(1, 2),
             0,
@@ -1076,10 +1498,12 @@ mod tests {
             .unwrap();
         let message_deserializer = AsyncMessageDeserializer::new(
             THREAD_COUNT,
-            MAX_ASYNC_MESSAGE_DATA,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
             MAX_DATASTORE_KEY_LENGTH as u32,
             false,
         );
+        // Will break the deserialization
         serialized[1] = 50;
         message_deserializer
             .deserialize::<DeserializeError>(&serialized)

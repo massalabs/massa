@@ -1,16 +1,19 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use std::collections::HashSet;
 use std::time::Duration;
 
-use massa_consensus_exports::test_exports::MockConsensusControllerMessage;
+use massa_models::operation::{OperationPrefixId, SecureShareOperation};
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
-use massa_pool_exports::test_exports::MockPoolControllerMessage;
 use massa_protocol_exports::PeerId;
-use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
+use massa_protocol_exports::ProtocolConfig;
 use massa_signature::KeyPair;
+use massa_test_framework::{TestUniverse, WaitPoint};
 use massa_time::MassaTime;
-use serial_test::serial;
+use mockall::{predicate, Sequence};
 
+use crate::handlers::block_handler::AskForBlockInfo;
+use crate::wrap_network::MockActiveConnectionsTraitWrapper;
 use crate::{
     handlers::{
         block_handler::{BlockInfoReply, BlockMessage},
@@ -19,819 +22,641 @@ use crate::{
     messages::Message,
 };
 
-use super::{
-    context::{protocol_test, protocol_test_with_storage},
-    tools::assert_hash_asked_to_node,
-};
+use super::universe::{ProtocolForeignControllers, ProtocolTestUniverse};
 
-#[test]
-#[serial]
-fn test_protocol_sends_valid_operations_it_receives_to_pool() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
-
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              mut pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 1 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            //2. Creates 2 ops
-            let operation_1 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-            let operation_2 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![
-                        operation_1.clone(),
-                        operation_2.clone(),
-                    ])),
-                )
-                .unwrap();
-
-            //4. Check protocol sends operations to pool.
-            let received_operations = match pool_event_receiver.wait_command(
-                MassaTime::from_millis(1000),
-                |evt| match evt {
-                    evt @ MockPoolControllerMessage::AddOperations { .. } => Some(evt),
-                    _ => None,
-                },
-            ) {
-                Some(MockPoolControllerMessage::AddOperations { operations, .. }) => operations,
-                _ => panic!("Unexpected or no protocol pool event."),
-            };
-
-            let op_refs = received_operations.get_op_refs();
-            // Check the event includes the expected operations.
-            assert!(op_refs.contains(&operation_1.id));
-            assert!(op_refs.contains(&operation_2.id));
-
-            let ops_reader = received_operations.read_operations();
-            // Check that the operations come with their serialized representations.
-            assert_eq!(operation_1.id, ops_reader.get(&operation_1.id).unwrap().id);
-            assert_eq!(operation_2.id, ops_reader.get(&operation_2.id).unwrap().id);
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+enum TestsStepMatch {
+    // bool for sequence or not
+    OperationsPropagated((PeerId, Vec<OperationPrefixId>, bool)),
+    AskBlockInfos((PeerId, BlockId, AskForBlockInfo)),
+    AskForOperations((PeerId, Vec<OperationPrefixId>)),
+    OperationsInPool(Vec<SecureShareOperation>),
+    OperationsSent((PeerId, Vec<SecureShareOperation>)),
 }
 
-#[test]
-#[serial]
-fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
-
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              mut pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 1 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            //2. Creates 1 op
-            let mut operation_1 = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-
-            //3. Making the signature of the op invalid
-            operation_1.content_creator_pub_key = KeyPair::generate(0).unwrap().get_public_key();
-
-            //4. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation_1])),
-                )
-                .unwrap();
-
-            //5. Check protocol didn't sent operations to pool.
-            match pool_event_receiver.wait_command(MassaTime::from_millis(1000), |_| Some(())) {
-                Some(_) => panic!("Unexpected or no protocol pool event."),
-                _ => (),
-            }
-
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
-}
-
-#[test]
-#[serial]
-fn test_protocol_propagates_operations_to_active_nodes() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
-
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test_with_storage(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              mut pool_event_receiver,
-              selector_event_receiver,
-              mut storage| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 ops
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
-                )
-                .unwrap();
-
-            //4. Check protocol sends operations to pool.
-            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
-                MockPoolControllerMessage::AddOperations { .. } => {
-                    Some(MockPoolControllerMessage::Any)
-                }
-                _ => panic!("Unexpected or no protocol pool event."),
-            });
-
-            //5. Ask the protocol to propagate the operations.
-            storage.store_operations(vec![operation.clone()]);
-            protocol_controller.propagate_operations(storage).unwrap();
-
-            //6. Verify that the operations have been sent to node B only.
-            let _ = node_a
-                .recv_timeout(Duration::from_millis(1500))
-                .expect_err("Node A should not have received the operation.");
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1500))
-                .expect("Node B should have received the operation.");
-            match msg {
-                Message::Operation(OperationMessage::OperationsAnnouncement(operations)) => {
-                    assert_eq!(operations.len(), 1);
-                    assert_eq!(
-                        operations.iter().next().unwrap(),
-                        &operation.id.into_prefix()
-                    );
-                }
-                _ => panic!("Unexpected message type."),
-            }
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
-}
-
-#[test]
-#[serial]
-fn test_protocol_propagates_operations_received_over_the_network_only_to_nodes_that_dont_know_about_it(
+/// This function allow you to pass a sequence of steps that should be executed in an certain order.
+/// This will be checked and after each step executed the waitpoint will be triggered.
+fn operation_workflow_mock(
+    steps: Vec<TestsStepMatch>,
+    foreign_controllers: &mut ProtocolForeignControllers,
+    waitpoint_trigger_handle: WaitPoint,
 ) {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
-
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              mut pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 ops
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
-                )
-                .unwrap();
-
-            //4. Check protocol sends operations to pool.
-            pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
-                MockPoolControllerMessage::AddOperations { .. } => {
-                    Some(MockPoolControllerMessage::Any)
-                }
-                _ => panic!("Unexpected or no protocol pool event."),
-            });
-
-            //5. Verify that the operations have been sent to node B only.
-            let _ = node_a
-                .recv_timeout(Duration::from_millis(1500))
-                .expect_err("Node A should not have received the operation.");
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1500))
-                .expect("Node B should have received the operation.");
-            match msg {
-                Message::Operation(OperationMessage::OperationsAnnouncement(operations)) => {
-                    assert_eq!(operations.len(), 1);
-                    assert_eq!(
-                        operations.iter().next().unwrap(),
-                        &operation.id.into_prefix()
-                    );
-                }
-                _ => panic!("Unexpected message type."),
+    let mut sequence = Sequence::new();
+    let mut shared_active_connections = MockActiveConnectionsTraitWrapper::new();
+    let mut peer_ids = HashSet::new();
+    for step in steps {
+        let waitpoint_trigger_handle = waitpoint_trigger_handle.get_trigger_handle();
+        match step {
+            TestsStepMatch::OperationsPropagated((node_peer_id, propagated_operations, seq)) => {
+                peer_ids.insert(node_peer_id);
+                shared_active_connections.set_expectations(|active_connections| {
+                    let expect = active_connections.expect_send_to_peer().times(1);
+                    if seq {
+                        expect.in_sequence(&mut sequence);
+                    }
+                    expect
+                        .with(
+                            predicate::eq(node_peer_id),
+                            predicate::always(),
+                            predicate::always(),
+                            predicate::always(),
+                        )
+                        .returning(move |_, _, message, high_priority| {
+                            assert!(!high_priority);
+                            match message {
+                                Message::Operation(OperationMessage::OperationsAnnouncement(
+                                    operations,
+                                )) => {
+                                    assert_eq!(operations.len(), propagated_operations.len());
+                                    for op in propagated_operations.iter() {
+                                        assert!(operations.contains(op));
+                                    }
+                                    waitpoint_trigger_handle.trigger();
+                                }
+                                _ => panic!("Unexpected message type."),
+                            }
+                            Ok(())
+                        });
+                });
             }
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+            TestsStepMatch::AskBlockInfos((node_peer_id, asked_block_id, asked_block_info)) => {
+                peer_ids.insert(node_peer_id);
+                shared_active_connections.set_expectations(|active_connections| {
+                    active_connections
+                        .expect_send_to_peer()
+                        .times(1)
+                        .in_sequence(&mut sequence)
+                        .returning(move |peer_id, _, message, high_priority| {
+                            assert_eq!(*peer_id, node_peer_id);
+                            assert!(high_priority);
+                            match message {
+                                Message::Block(message) => match *message {
+                                    BlockMessage::DataRequest {
+                                        block_id,
+                                        block_info,
+                                    } => {
+                                        assert_eq!(block_id, asked_block_id);
+                                        assert_eq!(block_info, asked_block_info);
+                                        waitpoint_trigger_handle.trigger();
+                                        Ok(())
+                                    }
+                                    _ => panic!("Unexpected message type."),
+                                },
+                                _ => panic!("Unexpected message type."),
+                            }
+                        });
+                });
+            }
+            TestsStepMatch::AskForOperations((node_peer_id, asked_op_ids)) => {
+                peer_ids.insert(node_peer_id);
+                shared_active_connections.set_expectations(|active_connections| {
+                    active_connections
+                        .expect_send_to_peer()
+                        .times(1)
+                        .in_sequence(&mut sequence)
+                        .returning(move |peer_id, _, message, high_priority| {
+                            assert_eq!(*peer_id, node_peer_id);
+                            assert!(!high_priority);
+                            match message {
+                                Message::Operation(OperationMessage::AskForOperations(
+                                    operations,
+                                )) => {
+                                    assert_eq!(operations.len(), asked_op_ids.len());
+                                    for op in asked_op_ids.iter() {
+                                        assert!(operations.contains(op));
+                                    }
+                                    waitpoint_trigger_handle.trigger();
+                                }
+                                _ => panic!("Unexpected message type."),
+                            }
+                            Ok(())
+                        });
+                });
+            }
+            TestsStepMatch::OperationsSent((node_peer_id, sent_operations)) => {
+                peer_ids.insert(node_peer_id);
+                shared_active_connections.set_expectations(|active_connections| {
+                    active_connections
+                        .expect_send_to_peer()
+                        .times(1)
+                        .in_sequence(&mut sequence)
+                        .returning(move |peer_id, _, message, high_priority| {
+                            assert_eq!(*peer_id, node_peer_id);
+                            assert!(!high_priority);
+                            match message {
+                                Message::Operation(OperationMessage::Operations(operations)) => {
+                                    assert_eq!(operations.len(), sent_operations.len());
+                                    waitpoint_trigger_handle.trigger();
+                                }
+                                _ => panic!("Unexpected message type."),
+                            }
+                            Ok(())
+                        });
+                });
+            }
+            TestsStepMatch::OperationsInPool(operations) => {
+                foreign_controllers
+                    .pool_controller
+                    .set_expectations(|pool_controller| {
+                        pool_controller
+                            .expect_add_operations()
+                            .times(1)
+                            .in_sequence(&mut sequence)
+                            .returning(move |op_storage| {
+                                let storage_operations = op_storage.get_op_refs();
+                                assert_eq!(storage_operations.len(), operations.len());
+                                for op in operations.iter() {
+                                    assert!(storage_operations.contains(&op.id));
+                                }
+                                waitpoint_trigger_handle.trigger();
+                            });
+                    });
+            }
+        }
+    }
+    ProtocolTestUniverse::active_connections_boilerplate(&mut shared_active_connections, peer_ids);
+    foreign_controllers
+        .network_controller
+        .expect_get_active_connections()
+        .returning(move || Box::new(shared_active_connections.clone()));
 }
 
 #[test]
-#[serial]
+fn test_protocol_sends_valid_operations_it_receives_to_pool() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![TestsStepMatch::OperationsInPool(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])),
+    );
+    waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let mut operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    operation_1.content_creator_pub_key = KeyPair::generate(0).unwrap().get_public_key();
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let waitpoint_trigger_handle2 = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .peer_db
+        .write()
+        .expect_ban_peer()
+        .times(1)
+        .returning(move |peer_id| {
+            assert_eq!(*peer_id, node_a_peer_id);
+            waitpoint_trigger_handle2.trigger();
+        });
+    operation_workflow_mock(vec![], &mut foreign_controllers, waitpoint_trigger_handle);
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])),
+    );
+    //Peer ban
+    waitpoint.wait();
+}
+
+#[test]
+fn test_protocol_propagates_operations_to_active_nodes() {
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::OperationsInPool(vec![operation_1.clone(), operation_2.clone()]),
+            TestsStepMatch::OperationsPropagated((
+                node_b_peer_id,
+                vec![operation_1.clone(), operation_2.clone()]
+                    .into_iter()
+                    .map(|op| op.id.into_prefix())
+                    .collect(),
+                true,
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
+
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])),
+    );
+    waitpoint.wait();
+    waitpoint.wait();
+}
+
+#[test]
 fn test_protocol_batches_propagation_of_operations_received_over_the_network_and_from_the_api() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test_with_storage(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              mut pool_event_receiver,
-              selector_event_receiver,
-              mut storage| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 ops
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::OperationsInPool(vec![operation_1.clone()]),
+            TestsStepMatch::OperationsPropagated((
+                node_b_peer_id,
+                vec![operation_1.clone(), operation_2.clone()]
+                    .into_iter()
+                    .map(|op| op.id.into_prefix())
+                    .collect(),
+                true,
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
-                )
-                .unwrap();
-
-            //4. Check protocol sends operations to pool.
-            match pool_event_receiver.wait_command(MassaTime::from_millis(1000), |evt| match evt {
-                MockPoolControllerMessage::AddOperations { .. } => {
-                    Some(MockPoolControllerMessage::Any)
-                }
-                _ => panic!("Unexpected or no protocol pool event."),
-            }) {
-                Some(_) => {}
-                None => panic!("Pool event not received."),
-            };
-
-            // 5. Create another operation
-            let api_operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
-
-            // 6. Send it via the API.
-            storage.store_operations(vec![api_operation.clone()]);
-            protocol_controller.propagate_operations(storage).unwrap();
-
-            //7. Verify that one operation have been sent to node A and two to B in one batch.
-            let msg = node_a
-                .recv_timeout(Duration::from_millis(1500))
-                .expect("Node A should have received the operation.");
-            match msg {
-                Message::Operation(OperationMessage::OperationsAnnouncement(operations)) => {
-                    assert_eq!(operations.len(), 1);
-                    assert_eq!(
-                        operations.iter().next().unwrap(),
-                        &api_operation.id.into_prefix()
-                    );
-                }
-                _ => panic!("Unexpected message type."),
-            }
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1500))
-                .expect("Node B should have received the operations.");
-            match msg {
-                Message::Operation(OperationMessage::OperationsAnnouncement(operations)) => {
-                    assert_eq!(operations.len(), 2);
-                    assert!(operations.contains(&operation.id.into_prefix()));
-                    assert!(operations.contains(&api_operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![operation_1.clone()])),
+    );
+    universe.storage.store_operations(vec![operation_2.clone()]);
+    universe
+        .module_controller
+        .propagate_operations(universe.storage.clone())
+        .unwrap();
+    waitpoint.wait();
+    waitpoint.wait();
 }
 
 #[test]
-#[serial]
 fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_indirect_knowledge_via_header(
 ) {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ask_block_timeout: MassaTime::from_millis(100),
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let op_thread = operation_1
+        .content_creator_address
+        .get_thread(protocol_config.thread_count);
+    let block = ProtocolTestUniverse::create_block(
+        &block_creator,
+        Slot::new(1, op_thread),
+        vec![operation_1.clone()],
+        vec![],
+        vec![],
+    );
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test_with_storage(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              mut consensus_event_receiver,
-              pool_event_receiver,
-              selector_event_receiver,
-              mut storage| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (_node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 ops
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let waitpoint_trigger_handle2 = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block_header()
+        .times(1)
+        .returning(move |_, _| {});
+    foreign_controllers
+        .consensus_controller
+        .expect_register_block()
+        .times(1)
+        .returning(move |_, _, _, _| {
+            waitpoint_trigger_handle2.trigger();
+        });
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::AskBlockInfos((
+                node_a_peer_id,
+                block.id,
+                AskForBlockInfo::OperationIds,
+            )),
+            TestsStepMatch::AskBlockInfos((
+                node_a_peer_id,
+                block.id,
+                AskForBlockInfo::Operations(vec![operation_1.id]),
+            )),
+            TestsStepMatch::OperationsInPool(vec![operation_1.clone()]),
+            TestsStepMatch::OperationsPropagated((
+                node_a_peer_id,
+                vec![operation_2.clone()]
+                    .into_iter()
+                    .map(|op| op.id.into_prefix())
+                    .collect(),
+                false,
+            )),
+            TestsStepMatch::OperationsPropagated((
+                node_b_peer_id,
+                vec![operation_1.clone(), operation_2.clone()]
+                    .into_iter()
+                    .map(|op| op.id.into_prefix())
+                    .collect(),
+                false,
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let mut universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Create a block from the operation
-            let block = tools::create_block_with_operations(
-                &node_a_keypair,
-                Slot::new(1, 1),
-                vec![operation.clone()],
-            );
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
+    );
+    universe
+        .module_controller
+        .send_wishlist_delta(
+            vec![(block.id, Some(block.content.header.clone()))]
+                .into_iter()
+                .collect(),
+            PreHashSet::<BlockId>::default(),
+        )
+        .unwrap();
+    waitpoint.wait();
 
-            //4. Node A send the block
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::Header(block.content.header.clone()))),
-                )
-                .unwrap();
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::OperationIds(vec![operation_1.id].into_iter().collect()),
+        })),
+    );
+    waitpoint.wait();
 
-            //5. Assert that we register the block header to the consensus
-            loop {
-                match consensus_event_receiver.wait_command(
-                    MassaTime::from_millis(100),
-                    |command| match command {
-                        MockConsensusControllerMessage::RegisterBlockHeader {
-                            header,
-                            block_id,
-                        } => {
-                            assert_eq!(header.id, block.content.header.id);
-                            assert_eq!(block_id, block.id);
-                            Some(())
-                        }
-                        _evt => None,
-                    },
-                ) {
-                    Some(()) => {
-                        break;
-                    }
-                    None => {
-                        continue;
-                    }
-                }
-            }
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Block(Box::new(BlockMessage::DataResponse {
+            block_id: block.id,
+            block_info: BlockInfoReply::Operations(vec![operation_1].into_iter().collect()),
+        })),
+    );
+    waitpoint.wait();
 
-            // 6. Send wishlist
-            protocol_controller
-                .send_wishlist_delta(
-                    vec![(block.id, Some(block.content.header.clone()))]
-                        .into_iter()
-                        .collect(),
-                    PreHashSet::<BlockId>::default(),
-                )
-                .unwrap();
+    universe.storage.store_operations(vec![operation_2.clone()]);
+    universe
+        .module_controller
+        .propagate_operations(universe.storage.clone())
+        .unwrap();
 
-            assert_hash_asked_to_node(&node_a, &block.id);
-
-            // Node 2 sends block info with ops list, resulting in protocol using the info to determine
-            // the node knows about the operations contained in the block.
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Block(Box::new(BlockMessage::DataResponse {
-                        block_id: block.id,
-                        block_info: BlockInfoReply::OperationIds(
-                            vec![operation.id].into_iter().collect(),
-                        ),
-                    })),
-                )
-                .unwrap();
-
-            assert_hash_asked_to_node(&node_a, &block.id);
-            storage.store_operations(vec![operation.clone()]);
-            protocol_controller.propagate_operations(storage).unwrap();
-
-            //7. Verify that one operation have been sent to node A and two to B in one batch.
-            let _ = node_a
-                .recv_timeout(Duration::from_millis(1000))
-                .expect_err("Node A shouldn't receive the operation.");
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1500))
-                .expect("Node B should have received the operations.");
-            match msg {
-                Message::Operation(OperationMessage::OperationsAnnouncement(operations)) => {
-                    assert_eq!(operations.len(), 1);
-                    assert!(operations.contains(&operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    waitpoint.wait();
+    waitpoint.wait();
 }
 
 #[test]
-#[serial]
 fn test_protocol_ask_operations_on_batch_received() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let op_prefixes = vec![operation_1.id.into_prefix(), operation_2.id.into_prefix()];
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 1 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            //2. Creates 1 op
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![TestsStepMatch::AskForOperations((
+            node_a_peer_id,
+            op_prefixes.clone(),
+        ))],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::OperationsAnnouncement(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
-
-            //4. Node A receive an ask for ops
-            let msg = node_a
-                .recv_timeout(Duration::from_millis(1000))
-                .expect("Node A should have received the ask for ops.");
-            match msg {
-                Message::Operation(OperationMessage::AskForOperations(asked_operations)) => {
-                    assert_eq!(asked_operations.len(), 1);
-                    assert!(asked_operations.contains(&operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
-
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::OperationsAnnouncement(
+            op_prefixes.into_iter().collect(),
+        )),
+    );
+    waitpoint.wait();
 }
 
 #[test]
-#[serial]
 fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+    let op_prefixes = vec![operation_1.id.into_prefix(), operation_2.id.into_prefix()];
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 op
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::AskForOperations((node_a_peer_id, op_prefixes.clone())),
+            TestsStepMatch::AskForOperations((node_b_peer_id, op_prefixes.clone())),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::OperationsAnnouncement(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::OperationsAnnouncement(
+            op_prefixes.clone().into_iter().collect(),
+        )),
+    );
+    waitpoint.wait();
 
-            //4. Node A receive an ask for ops
-            let msg = node_a
-                .recv_timeout(Duration::from_millis(1000))
-                .expect("Node A should have received the ask for ops.");
-            match msg {
-                Message::Operation(OperationMessage::AskForOperations(asked_operations)) => {
-                    assert_eq!(asked_operations.len(), 1);
-                    assert!(asked_operations.contains(&operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
-
-            //5. Node B send the ops
-            network_controller
-                .send_from_peer(
-                    &node_b_peer_id,
-                    Message::Operation(OperationMessage::OperationsAnnouncement(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
-
-            //4. Node B receive an ask for ops
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1000))
-                .expect("Node A should have received the ask for ops.");
-            match msg {
-                Message::Operation(OperationMessage::AskForOperations(asked_operations)) => {
-                    assert_eq!(asked_operations.len(), 1);
-                    assert!(asked_operations.contains(&operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
-
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Operation(OperationMessage::OperationsAnnouncement(
+            op_prefixes.into_iter().collect(),
+        )),
+    );
+    waitpoint.wait();
 }
 
 #[test]
-#[serial]
 fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+    let op_prefixes = vec![operation_1.id.into_prefix(), operation_2.id.into_prefix()];
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 op
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::AskForOperations((node_a_peer_id, op_prefixes.clone())),
+            TestsStepMatch::OperationsInPool(vec![operation_1.clone(), operation_2.clone()]),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Node A send the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::OperationsAnnouncement(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::OperationsAnnouncement(
+            op_prefixes.clone().into_iter().collect(),
+        )),
+    );
+    waitpoint.wait();
 
-            //4. Node A receive an ask for ops
-            let msg = node_a
-                .recv_timeout(Duration::from_millis(1000))
-                .expect("Node A should have received the ask for ops.");
-            match msg {
-                Message::Operation(OperationMessage::AskForOperations(asked_operations)) => {
-                    assert_eq!(asked_operations.len(), 1);
-                    assert!(asked_operations.contains(&operation.id.into_prefix()));
-                }
-                _ => panic!("Unexpected message type."),
-            }
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])),
+    );
+    waitpoint.wait();
 
-            //5. Node A send the full ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
-                )
-                .unwrap();
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Operation(OperationMessage::OperationsAnnouncement(
+            op_prefixes.into_iter().collect(),
+        )),
+    );
 
-            //6. Node B send the ops
-            network_controller
-                .send_from_peer(
-                    &node_b_peer_id,
-                    Message::Operation(OperationMessage::OperationsAnnouncement(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
-
-            //7. Node B doesn't receive an ask for ops
-            let _ = node_b
-                .recv_timeout(Duration::from_millis(1000))
-                .expect_err("Node B shouldn't have received the ask for ops.");
-
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    //TODO: Find a way to test we didn't sent
+    std::thread::sleep(Duration::from_millis(200));
 }
 
 #[test]
-#[serial]
 fn test_protocol_on_ask_operations() {
-    let default_panic = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        default_panic(info);
-        std::process::exit(1);
-    }));
+    let protocol_config = ProtocolConfig {
+        thread_count: 2,
+        ..Default::default()
+    };
+    let block_creator = KeyPair::generate(0).unwrap();
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let node_a_keypair = KeyPair::generate(0).unwrap();
+    let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
+    let node_b_keypair = KeyPair::generate(0).unwrap();
+    let node_b_peer_id = PeerId::from_public_key(node_b_keypair.get_public_key());
+    let op_prefixes = vec![operation_1.id.into_prefix(), operation_2.id.into_prefix()];
 
-    let mut protocol_config = ProtocolConfig::default();
-    protocol_config.thread_count = 2;
-    protocol_config.initial_peers = "./src/tests/empty_initial_peers.json".to_string().into();
-    protocol_test(
-        &protocol_config,
-        move |mut network_controller,
-              protocol_controller,
-              protocol_manager,
-              consensus_event_receiver,
-              pool_event_receiver,
-              selector_event_receiver| {
-            //1. Create 2 node
-            let node_a_keypair = KeyPair::generate(0).unwrap();
-            let (node_a_peer_id, _node_a) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_a_keypair.get_public_key()));
-            let node_b_keypair = KeyPair::generate(0).unwrap();
-            let (node_b_peer_id, node_b) = network_controller
-                .create_fake_connection(PeerId::from_public_key(node_b_keypair.get_public_key()));
-            //2. Creates 1 op
-            let operation = tools::create_operation_with_expire_period(&node_a_keypair, 1);
+    let waitpoint = WaitPoint::new();
+    let waitpoint_trigger_handle = waitpoint.get_trigger_handle();
+    let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
+    ProtocolTestUniverse::peer_db_boilerplate(&mut foreign_controllers.peer_db.write());
+    operation_workflow_mock(
+        vec![
+            TestsStepMatch::OperationsInPool(vec![operation_1.clone(), operation_2.clone()]),
+            TestsStepMatch::OperationsSent((
+                node_b_peer_id,
+                vec![operation_1.clone(), operation_2.clone()],
+            )),
+        ],
+        &mut foreign_controllers,
+        waitpoint_trigger_handle,
+    );
+    let universe = ProtocolTestUniverse::new(foreign_controllers, protocol_config);
 
-            //3. Node A send full the ops
-            network_controller
-                .send_from_peer(
-                    &node_a_peer_id,
-                    Message::Operation(OperationMessage::Operations(vec![operation.clone()])),
-                )
-                .unwrap();
+    universe.mock_message_receive(
+        &node_a_peer_id,
+        Message::Operation(OperationMessage::Operations(vec![
+            operation_1.clone(),
+            operation_2.clone(),
+        ])),
+    );
+    waitpoint.wait();
 
-            //4. Node B send the ask for ops
-            network_controller
-                .send_from_peer(
-                    &node_b_peer_id,
-                    Message::Operation(OperationMessage::AskForOperations(
-                        vec![operation.id.into_prefix()].into_iter().collect(),
-                    )),
-                )
-                .unwrap();
-
-            //5. Node B receive the ops
-            let msg = node_b
-                .recv_timeout(Duration::from_millis(1000))
-                .expect("Node B should have received the ops.");
-            match msg {
-                Message::Operation(OperationMessage::Operations(operations)) => {
-                    assert_eq!(operations.len(), 1);
-                    assert_eq!(operations[0].id, operation.id);
-                }
-                _ => panic!("Unexpected message type."),
-            }
-
-            (
-                network_controller,
-                protocol_controller,
-                protocol_manager,
-                consensus_event_receiver,
-                pool_event_receiver,
-                selector_event_receiver,
-            )
-        },
-    )
+    universe.mock_message_receive(
+        &node_b_peer_id,
+        Message::Operation(OperationMessage::AskForOperations(
+            op_prefixes.into_iter().collect(),
+        )),
+    );
+    waitpoint.wait();
 }
