@@ -4,13 +4,13 @@ use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfi
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::MockLedgerControllerWrapper;
+use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper, SetUpdateOrDelete};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -281,7 +281,6 @@ fn test_readonly_execution() {
                 target_func: "test".to_string(),
                 parameter: vec![],
             },
-            is_final: true,
             coins: Some(Amount::from_str("20").unwrap()),
             fee: Some(Amount::from_str("30").unwrap()),
         })
