@@ -59,10 +59,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         // name
         let name_len_ = value.name.len();
         let name_len = u32::try_from(name_len_).map_err(|_| {
-            SerializeError::GeneralError(format!(
-                "Cannot convert to name_len: {} to u32",
-                name_len_
-            ))
+            SerializeError::GeneralError(format!("Cannot convert name_len ({}) to u32", name_len_))
         })?;
         self.u32_serializer.serialize(&name_len, buffer)?;
         buffer.extend(value.name.as_bytes());
@@ -73,7 +70,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         let components_len_ = value.components.len();
         let components_len = u32::try_from(components_len_).map_err(|_| {
             SerializeError::GeneralError(format!(
-                "Cannot convert to component_len: {} to u32",
+                "Cannot convert component_len ({}) to u32",
                 name_len_
             ))
         })?;
