@@ -2,7 +2,7 @@ use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
 use massa_sc_runtime::{Compiler, RuntimeModule};
 use schnellru::{ByLength, LruMap};
-use tracing::{debug, info, warn};
+use tracing::debug;
 
 use crate::{
     config::ModuleCacheConfig, error::CacheError, hd_cache::HDCache, lru_cache::LRUCache,
@@ -47,8 +47,9 @@ impl ModuleCache {
                 ModuleInfo::Module(module)
             }
             Err(e) => {
-                warn!("compilation of module {} failed with: {}", hash, e);
-                ModuleInfo::Invalid
+                let err_msg = format!("compilation of module {} failed: {}", hash, e);
+                debug!(err_msg);
+                ModuleInfo::Invalid(err_msg)
             }
         }
     }
@@ -78,10 +79,10 @@ impl ModuleCache {
     }
 
     /// Set a cached module as invalid
-    pub fn set_invalid(&mut self, bytecode: &[u8]) {
+    pub fn set_invalid(&mut self, bytecode: &[u8], err_msg: String) {
         let hash = Hash::compute_from(bytecode);
-        self.lru_cache.set_invalid(hash);
-        self.hd_cache.set_invalid(hash);
+        self.lru_cache.set_invalid(hash, err_msg.clone());
+        self.hd_cache.set_invalid(hash, err_msg);
     }
 
     /// Load a cached module for execution
@@ -91,13 +92,19 @@ impl ModuleCache {
     /// * `ModuleInfo::Module` if the module is valid and has no delta
     /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
     fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
+        if bytecode.is_empty() {
+            let error_msg = "load_module: bytecode is absent".to_string();
+            debug!(error_msg);
+            return ModuleInfo::Invalid(error_msg);
+        }
         if bytecode.len() > self.cfg.max_module_length as usize {
-            info!(
+            let error_msg = format!(
                 "load_module: bytecode length {} exceeds max module length {}",
                 bytecode.len(),
                 self.cfg.max_module_length
             );
-            return ModuleInfo::Invalid;
+            debug!(error_msg);
+            return ModuleInfo::Invalid(error_msg);
         }
         let hash = Hash::compute_from(bytecode);
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -129,22 +136,25 @@ impl ModuleCache {
         // This is only supposed to be a check
         execution_gas
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                "Provided max gas is below the default instance creation cost".to_string(),
-            ))?;
+            .ok_or(CacheError::LoadError(format!(
+                "Provided gas {} is lower than the base instance creation gas cost {}",
+                execution_gas, self.cfg.gas_costs.max_instance_cost
+            )))?;
         // TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
         let module_info = self.load_module_info(bytecode);
         let module = match module_info {
-            ModuleInfo::Invalid => {
-                return Err(CacheError::LoadError("Loading invalid module".to_string()));
+            ModuleInfo::Invalid(err) => {
+                let err_msg = format!("invalid module: {}", err);
+                return Err(CacheError::LoadError(err_msg));
             }
             ModuleInfo::Module(module) => module,
             ModuleInfo::ModuleAndDelta((module, delta)) => {
                 if delta > execution_gas {
-                    return Err(CacheError::LoadError(
-                        "Provided max gas is below the instance creation cost".to_string(),
-                    ));
+                    return Err(CacheError::LoadError(format!(
+                        "Provided gas {} is below the gas cost of instance creation ({})",
+                        execution_gas, delta
+                    )));
                 } else {
                     module
                 }
@@ -167,9 +177,10 @@ impl ModuleCache {
         // This is only supposed to be a check
         limit
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                "Provided max gas is below the default instance creation cost".to_string(),
-            ))?;
+            .ok_or(CacheError::LoadError(format!(
+                "Provided gas {} is lower than the base instance creation gas cost {}",
+                limit, self.cfg.gas_costs.max_instance_cost
+            )))?;
         let module = RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::SP)?;
         Ok((module, limit))
     }

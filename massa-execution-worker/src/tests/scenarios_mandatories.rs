@@ -1814,7 +1814,7 @@ fn not_enough_instance_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("Provided max gas is below the default instance creation cost"));
+        .contains("is lower than the base instance creation gas"));
 }
 
 #[test]
