@@ -2648,93 +2648,6 @@
 <a href="#2648" id="2648">2648</a>
 <a href="#2649" id="2649">2649</a>
 <a href="#2650" id="2650">2650</a>
-<a href="#2651" id="2651">2651</a>
-<a href="#2652" id="2652">2652</a>
-<a href="#2653" id="2653">2653</a>
-<a href="#2654" id="2654">2654</a>
-<a href="#2655" id="2655">2655</a>
-<a href="#2656" id="2656">2656</a>
-<a href="#2657" id="2657">2657</a>
-<a href="#2658" id="2658">2658</a>
-<a href="#2659" id="2659">2659</a>
-<a href="#2660" id="2660">2660</a>
-<a href="#2661" id="2661">2661</a>
-<a href="#2662" id="2662">2662</a>
-<a href="#2663" id="2663">2663</a>
-<a href="#2664" id="2664">2664</a>
-<a href="#2665" id="2665">2665</a>
-<a href="#2666" id="2666">2666</a>
-<a href="#2667" id="2667">2667</a>
-<a href="#2668" id="2668">2668</a>
-<a href="#2669" id="2669">2669</a>
-<a href="#2670" id="2670">2670</a>
-<a href="#2671" id="2671">2671</a>
-<a href="#2672" id="2672">2672</a>
-<a href="#2673" id="2673">2673</a>
-<a href="#2674" id="2674">2674</a>
-<a href="#2675" id="2675">2675</a>
-<a href="#2676" id="2676">2676</a>
-<a href="#2677" id="2677">2677</a>
-<a href="#2678" id="2678">2678</a>
-<a href="#2679" id="2679">2679</a>
-<a href="#2680" id="2680">2680</a>
-<a href="#2681" id="2681">2681</a>
-<a href="#2682" id="2682">2682</a>
-<a href="#2683" id="2683">2683</a>
-<a href="#2684" id="2684">2684</a>
-<a href="#2685" id="2685">2685</a>
-<a href="#2686" id="2686">2686</a>
-<a href="#2687" id="2687">2687</a>
-<a href="#2688" id="2688">2688</a>
-<a href="#2689" id="2689">2689</a>
-<a href="#2690" id="2690">2690</a>
-<a href="#2691" id="2691">2691</a>
-<a href="#2692" id="2692">2692</a>
-<a href="#2693" id="2693">2693</a>
-<a href="#2694" id="2694">2694</a>
-<a href="#2695" id="2695">2695</a>
-<a href="#2696" id="2696">2696</a>
-<a href="#2697" id="2697">2697</a>
-<a href="#2698" id="2698">2698</a>
-<a href="#2699" id="2699">2699</a>
-<a href="#2700" id="2700">2700</a>
-<a href="#2701" id="2701">2701</a>
-<a href="#2702" id="2702">2702</a>
-<a href="#2703" id="2703">2703</a>
-<a href="#2704" id="2704">2704</a>
-<a href="#2705" id="2705">2705</a>
-<a href="#2706" id="2706">2706</a>
-<a href="#2707" id="2707">2707</a>
-<a href="#2708" id="2708">2708</a>
-<a href="#2709" id="2709">2709</a>
-<a href="#2710" id="2710">2710</a>
-<a href="#2711" id="2711">2711</a>
-<a href="#2712" id="2712">2712</a>
-<a href="#2713" id="2713">2713</a>
-<a href="#2714" id="2714">2714</a>
-<a href="#2715" id="2715">2715</a>
-<a href="#2716" id="2716">2716</a>
-<a href="#2717" id="2717">2717</a>
-<a href="#2718" id="2718">2718</a>
-<a href="#2719" id="2719">2719</a>
-<a href="#2720" id="2720">2720</a>
-<a href="#2721" id="2721">2721</a>
-<a href="#2722" id="2722">2722</a>
-<a href="#2723" id="2723">2723</a>
-<a href="#2724" id="2724">2724</a>
-<a href="#2725" id="2725">2725</a>
-<a href="#2726" id="2726">2726</a>
-<a href="#2727" id="2727">2727</a>
-<a href="#2728" id="2728">2728</a>
-<a href="#2729" id="2729">2729</a>
-<a href="#2730" id="2730">2730</a>
-<a href="#2731" id="2731">2731</a>
-<a href="#2732" id="2732">2732</a>
-<a href="#2733" id="2733">2733</a>
-<a href="#2734" id="2734">2734</a>
-<a href="#2735" id="2735">2735</a>
-<a href="#2736" id="2736">2736</a>
-<a href="#2737" id="2737">2737</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3448,11 +3361,6 @@
         )
     }
 
-    <span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
-        <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
-        guard.is_key_value_valid(serialized_key, serialized_value)
-    }
-
     <span class="comment">// DB
 
     </span><span class="kw">pub fn </span>update_batches(
@@ -3578,14 +3486,6 @@
     </span>Update(<span class="attr">#[from] </span>ModelsError),
     <span class="attr">#[error(<span class="string">&quot;MipInfo: {0:?} (state: {1:?}) is not consistent with shutdown: {2} {3}&quot;</span>)]
     </span>NonConsistent(MipInfo, ComponentState, MassaTime, MassaTime),
-}
-
-<span class="attr">#[derive(Error, Debug)]
-</span><span class="kw">pub enum </span>IsKVValidError {
-    <span class="attr">#[error(<span class="string">&quot;{0}&quot;</span>)]
-    </span>Deserialize(String),
-    <span class="attr">#[error(<span class="string">&quot;Invalid prefix for key&quot;</span>)]
-    </span>InvalidPrefix,
 }
 
 <span class="doccomment">/// Store of all versioning info
@@ -4046,61 +3946,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="comment">// Final state
-    </span><span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
-        <span class="self">self</span>._is_key_value_valid(serialized_key, serialized_value)
-            .is_ok()
-    }
-
-    <span class="kw">pub fn </span>_is_key_value_valid(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        serialized_key: <span class="kw-2">&amp;</span>[u8],
-        serialized_value: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), IsKVValidError&gt; {
-        <span class="kw">let </span>mip_info_deser = MipInfoDeserializer::new();
-        <span class="kw">let </span>mip_state_deser = MipStateDeserializer::new();
-        <span class="kw">let </span>mip_store_stats_deser = MipStoreStatsDeserializer::new(
-            MIP_STORE_STATS_BLOCK_CONSIDERED,
-            <span class="self">self</span>.stats.config.warn_announced_version_ratio,
-        );
-
-        <span class="kw">if </span>serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
-            <span class="kw">let </span>(rem, _mip_info) = mip_info_deser
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[MIP_STORE_PREFIX.len()..])
-                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))<span class="question-mark">?</span>;
-
-            <span class="kw">if </span>!rem.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
-                ));
-            }
-
-            <span class="kw">let </span>(rem2, _mip_state) = mip_state_deser
-                .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))<span class="question-mark">?</span>;
-
-            <span class="kw">if </span>!rem2.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
-                ));
-            }
-        } <span class="kw">else if </span>serialized_key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) {
-            <span class="kw">let </span>(rem, _mip_store_stats) = mip_store_stats_deser
-                .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))<span class="question-mark">?</span>;
-
-            <span class="kw">if </span>!rem.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
-                ));
-            }
-        } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::InvalidPrefix);
-        }
-
-        <span class="prelude-val">Ok</span>(())
-    }
-
     <span class="comment">// DB methods
 
     </span><span class="doccomment">/// Get MIP store changes between 2 timestamps - used by the db to update the disk
@@ -4323,9 +4168,9 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">use </span>assert_matches::assert_matches;
-    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, MassaIteratorMode};
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
     <span class="kw">use </span>massa_db_worker::MassaDB;
-    <span class="kw">use </span>more_asserts::{assert_gt, assert_le};
+    <span class="kw">use </span>more_asserts::assert_le;
     <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::ops::{Add, Sub};
     <span class="kw">use </span>std::sync::Arc;
@@ -5263,7 +5108,6 @@
         // 2- update state
         // 3- write changes to db
         // 4- init a new mip store from disk and compare
-        // 5- test is_key_value_valid method
 
         </span><span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
         <span class="comment">// helpers
@@ -5394,24 +5238,6 @@
         <span class="comment">// println!(&quot;st1_raw: {:?}&quot;, st1_raw);
         // println!(&quot;st2_raw: {:?}&quot;, st2_raw);
         </span><span class="macro">assert_eq!</span>(st1_raw, st2_raw);
-
-        <span class="comment">// Step 5: test is_key_value_valid
-        </span><span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
-        <span class="kw">for </span>(ser_key, ser_value) <span class="kw">in </span>db.read().iterator_cf(STATE_CF, MassaIteratorMode::Start) {
-            <span class="macro">assert!</span>(mip_store.is_key_value_valid(<span class="kw-2">&amp;</span>ser_key, <span class="kw-2">&amp;</span>ser_value));
-            count += <span class="number">1</span>;
-        }
-        <span class="macro">assert_gt!</span>(count, <span class="number">0</span>);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>count2 = <span class="number">0</span>;
-        <span class="kw">for </span>(ser_key, ser_value) <span class="kw">in </span>db
-            .read()
-            .iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
-        {
-            <span class="macro">assert!</span>(mip_store.is_key_value_valid(<span class="kw-2">&amp;</span>ser_key, <span class="kw-2">&amp;</span>ser_value));
-            count2 += <span class="number">1</span>;
-        }
-        <span class="macro">assert_gt!</span>(count2, <span class="number">0</span>);
     }
 
     <span class="attr">#[test]
