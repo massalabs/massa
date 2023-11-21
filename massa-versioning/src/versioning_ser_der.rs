@@ -943,9 +943,7 @@ mod test {
 
         // A MIP info with a very long name
         let mi_2 = MipInfo {
-            name: std::iter::repeat("a")
-                .take(MIP_INFO_NAME_MAX_LEN as usize + 1)
-                .collect::<String>(),
+            name: "a".repeat(MIP_INFO_NAME_MAX_LEN as usize + 1),
             version: 2,
             components: BTreeMap::from([(MipComponent::Address, 1)]),
             start: MassaTime::from_millis(2),
