@@ -1214,8 +1214,6 @@
 <a href="#1214" id="1214">1214</a>
 <a href="#1215" id="1215">1215</a>
 <a href="#1216" id="1216">1216</a>
-<a href="#1217" id="1217">1217</a>
-<a href="#1218" id="1218">1218</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -2161,9 +2159,7 @@
 
         <span class="comment">// A MIP info with a very long name
         </span><span class="kw">let </span>mi_2 = MipInfo {
-            name: std::iter::repeat(<span class="string">&quot;a&quot;</span>)
-                .take(MIP_INFO_NAME_MAX_LEN <span class="kw">as </span>usize + <span class="number">1</span>)
-                .collect::&lt;String&gt;(),
+            name: <span class="string">&quot;a&quot;</span>.repeat(MIP_INFO_NAME_MAX_LEN <span class="kw">as </span>usize + <span class="number">1</span>),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
