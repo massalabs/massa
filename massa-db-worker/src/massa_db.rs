@@ -11,7 +11,7 @@ use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
@@ -105,7 +105,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -114,26 +114,20 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history
-                            .range((Bound::Included(&last_change_id), Bound::Unbounded));
-
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history.keys().next() {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -146,7 +140,14 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
+                                return Err(MassaDBError::CacheMissError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -177,9 +178,25 @@ where
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
 
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_final_state_elements_size {
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                new_elements_size += key_len + value_len + buffer.len();
+                if new_elements_size <= self.config.max_final_state_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -217,7 +234,7 @@ where
 
                 match last_change_id.cmp(&self.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater => {
-                        return Err(MassaDBError::TimeError(String::from(
+                        return Err(MassaDBError::CacheMissError(String::from(
                             "we don't have this change yet on this node (it's in the future for us)",
                         )));
                     }
@@ -226,26 +243,20 @@ where
                     }
                     std::cmp::Ordering::Less => {
                         // We should send all the new updates since last_change_id
-
-                        let mut cursor = self
-                            .change_history_versioning
-                            .range((Bound::Included(&last_change_id), Unbounded));
-
-                        if cursor.next().is_none() {
-                            return Err(MassaDBError::TimeError(String::from(
-                                "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
-                            )));
-                        }
-
-                        match cursor.next() {
-                            Some((cursor_change_id, _)) => {
-                                // We have to send all the updates since cursor_change_id
-                                // TODO_PR: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                        // We check that last_change_id is in our history
+                        match self.change_history_versioning.keys().next() {
+                            Some(first_change_id_in_history)
+                                if first_change_id_in_history <= &last_change_id =>
+                            {
                                 let mut updates: BTreeMap<Vec<u8>, Option<Vec<u8>>> =
                                     BTreeMap::new();
+                                // TODO: check if / how we want to limit the number of updates we send. It may be needed but tricky to implement.
+                                // NOTE: We send again the changes associated to last_change_id (Bound::Included),
+                                // in case multiple writes happened in the same slot.
+                                // This should not happen in the current codebase, but it may be done in the future.
                                 let iter = self
                                     .change_history_versioning
-                                    .range((Bound::Included(cursor_change_id), Bound::Unbounded));
+                                    .range((Bound::Included(last_change_id), Bound::Unbounded));
                                 for (_change_id, changes) in iter {
                                     updates.extend(
                                         changes
@@ -258,7 +269,14 @@ where
                                 }
                                 updates
                             }
-                            None => BTreeMap::new(), // no new updates
+                            _ => {
+                                // Here, we have been asked for the changes associated to a change_id that is not in our history.
+                                // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
+                                // This can happen if the client has a poor connection, or if the network is unstable.
+                                return Err(MassaDBError::CacheMissError(String::from(
+                                    "all our changes are strictly after last_change_id, we can't be sure we did not miss any",
+                                )));
+                            }
                         }
                     }
                 }
@@ -288,10 +306,25 @@ where
                 }
                 _ => self.db.iterator_cf(handle, IteratorMode::Start),
             };
-
+            let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
-                new_elements_size += serialized_value.len();
-                if new_elements_size < self.config.max_versioning_elements_size {
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser
+                    .serialize(&(key_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize key length"))
+                    })?;
+                u64_ser
+                    .serialize(&(value_len as u64), &mut buffer)
+                    .map_err(|_| {
+                        MassaDBError::SerializeError(String::from("Cannot serialize value length"))
+                    })?;
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                new_elements_size += key_len + value_len + buffer.len();
+                if new_elements_size <= self.config.max_versioning_elements_size {
                     new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
                 } else {
                     break;
@@ -813,6 +846,33 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     ) -> Result<StreamBatch<Slot>, MassaDBError> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
+
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>> {
+        let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+        let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
+        let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
+        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
+        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let mut entire_database = Vec::new();
+        let mut state = BTreeMap::new();
+        for (k, v) in iter_state.flatten() {
+            state.insert(k.to_vec(), v.to_vec());
+        }
+        let mut metadata = BTreeMap::new();
+        for (k, v) in iter_metadata.flatten() {
+            metadata.insert(k.to_vec(), v.to_vec());
+        }
+        let mut versioning = BTreeMap::new();
+        for (k, v) in iter_versioning.flatten() {
+            versioning.insert(k.to_vec(), v.to_vec());
+        }
+        entire_database.push(state);
+        entire_database.push(metadata);
+        entire_database.push(versioning);
+        entire_database
+    }
 }
 
 #[cfg(test)]
@@ -913,7 +973,7 @@ mod test {
         );
 
         // Checks up
-        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or(vec![]);
+        let cfs = rocksdb::DB::list_cf(&db_opts, temp_dir_db.path()).unwrap_or_default();
         let cf_exists_1 = cfs.iter().any(|cf| cf == "state");
         let cf_exists_2 = cfs.iter().any(|cf| cf == "metadata");
         let cf_exists_3 = cfs.iter().any(|cf| cf == "versioning");
@@ -1330,7 +1390,7 @@ mod test {
             .read()
             .get_batch_to_stream(&StreamingStep::Ongoing(vec![]), Some(Slot::new(5, 0)));
         // println!("stream_batch: {:?}", stream_batch);
-        assert_matches!(stream_batch, Err(TimeError(..)));
+        assert_matches!(stream_batch, Err(MassaDBError::CacheMissError(..)));
         assert!(stream_batch.err().unwrap().to_string().contains("future"));
 
         //
@@ -1437,8 +1497,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 4,
-            max_versioning_elements_size: 4,
+            max_final_state_elements_size: 10,
+            max_versioning_elements_size: 10,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1521,8 +1581,8 @@ mod test {
         let db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: 100,
-            max_final_state_elements_size: 7,
-            max_versioning_elements_size: 7,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
         };
         let mut db_opts = MassaDB::default_db_opts();
@@ -1562,7 +1622,7 @@ mod test {
         assert_eq!(
             stream_batch.new_elements,
             BTreeMap::from([
-                (batch_key_1, batch_value_1),
+                (batch_key_1.clone(), batch_value_1.clone()),
                 (batch_key_2.clone(), batch_value_2)
             ])
         );
@@ -1588,7 +1648,6 @@ mod test {
         drop(guard);
 
         // Stream using StreamingStep::Finished
-
         let last_state_step: StreamingStep<Vec<u8>> =
             StreamingStep::Finished(Some(batch_key_2.clone()));
         let stream_batch_ = db
@@ -1596,11 +1655,13 @@ mod test {
             .get_batch_to_stream(&last_state_step, Some(slot_1));
         let stream_batch = stream_batch_.unwrap();
 
-        // FIXME?: new_elements is empty, everything is on updates_on_previous_elements
+        // Note: new_elements is empty, everything is on updates_on_previous_elements
+        //       new_elements are fulfilled only if StreamingStep != StreamingStep::Finished
         assert!(stream_batch.new_elements.is_empty());
         assert_eq!(
             stream_batch.updates_on_previous_elements,
             BTreeMap::from([
+                (batch_key_1, Some(batch_value_1)),
                 (batch_key_2, Some(batch_value_2b)),
                 (batch_key_3.clone(), Some(batch_value_3))
             ])
@@ -1615,5 +1676,129 @@ mod test {
         // No more updates and new elements -> all empty
         assert!(stream_batch.new_elements.is_empty());
         assert!(stream_batch.updates_on_previous_elements.is_empty());
+    }
+
+    #[test]
+    fn test_db_err_if_changes_not_available() {
+        // Init db + add data
+        // Stream Slot 1, should succeed
+        // Add changes for N slots, N <= max_history_length
+        // Stream Slot 2, should succeed
+        // Add changes for M slots, M > max_history_length
+        // Stream Slot 3, should return error because we don't have changes for slot 2
+
+        let temp_dir_db = tempdir().expect("Unable to create a temp folder");
+        // println!("temp_dir_db: {:?}", temp_dir_db);
+        let db_config = MassaDBConfig {
+            path: temp_dir_db.path().to_path_buf(),
+            max_history_length: 4,
+            max_final_state_elements_size: 20,
+            max_versioning_elements_size: 20,
+            thread_count: THREAD_COUNT,
+        };
+
+        let slot_1 = Slot::new(1, 0);
+        let slot_2 = Slot::new(1, 2);
+        let slot_3 = Slot::new(1, 8);
+
+        let mut db_opts = MassaDB::default_db_opts();
+        // Additional checks (only for testing)
+        db_opts.set_paranoid_checks(true);
+
+        let _db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
+        let db = Arc::new(RwLock::new(
+            Box::new(_db) as Box<(dyn MassaDBController + 'static)>
+        ));
+
+        // Add data 1 (at slot 1)
+        let batch_key_1 = vec![1, 2, 3];
+        let batch_value_1 = vec![4, 5, 6];
+        let batch_1 = DBBatch::from([(batch_key_1.clone(), Some(batch_value_1.clone()))]);
+        let versioning_batch_1 =
+            DBBatch::from([(vec![10, 20, 30], Some(vec![127, 128, 254, 255]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_1, versioning_batch_1, Some(slot_1));
+        drop(guard);
+
+        // Add data 2 (at slot 1)
+        let batch_key_2 = vec![11, 22, 33];
+        let batch_value_2 = vec![44, 55, 66];
+        let batch_2 = DBBatch::from([(batch_key_2.clone(), Some(batch_value_2.clone()))]);
+        let versioning_batch_2 = DBBatch::from([(vec![12, 23, 34], Some(vec![255, 254, 253]))]);
+        let mut guard = db.write();
+        guard.write_batch(batch_2, versioning_batch_2, Some(slot_1));
+        drop(guard);
+
+        // Stream using StreamingStep::Started
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Started;
+        let stream_batch_ = db.read().get_batch_to_stream(&last_state_step, None);
+        let stream_batch = stream_batch_.unwrap();
+        assert_eq!(
+            stream_batch.new_elements,
+            BTreeMap::from([
+                (batch_key_1.clone(), batch_value_1.clone()),
+                (batch_key_2.clone(), batch_value_2)
+            ])
+        );
+        assert_eq!(stream_batch.updates_on_previous_elements, BTreeMap::new());
+        assert_eq!(stream_batch.change_id, slot_1);
+
+        // Now updates some values for each slot until slot 2 (included)
+        let mut cur_slot = slot_1.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_2 {
+            let batch_key = vec![(cur_slot.period % u8::MAX as u64) as u8];
+            let batch_value = vec![cur_slot.thread];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % u8::MAX as u64) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_1));
+        assert!(stream_batch_.is_ok());
+
+        // Now updates some values for each slot until slot 3 (included)
+        // There are more slots between slot_2 and slot_3 than max_history_length, so we will CacheMiss
+        let mut cur_slot = slot_2.get_next_slot(THREAD_COUNT).unwrap();
+        while cur_slot <= slot_3 {
+            let batch_key = vec![(cur_slot.period % 256) as u8];
+            let batch_value = vec![cur_slot.thread];
+            let batch = DBBatch::from([(batch_key.clone(), Some(batch_value.clone()))]);
+            let versioning_batch = DBBatch::from([(
+                vec![(cur_slot.period % 256) as u8],
+                Some(vec![cur_slot.thread]),
+            )]);
+            let mut guard = db.write();
+            guard.write_batch(batch, versioning_batch, Some(cur_slot));
+            drop(guard);
+            cur_slot = cur_slot.get_next_slot(THREAD_COUNT).unwrap();
+        }
+
+        // Stream using StreamingStep::Ongoing
+        let last_state_step: StreamingStep<Vec<u8>> = StreamingStep::Ongoing(batch_key_2.clone());
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
+
+        // Stream using StreamingStep::Finished
+        let last_state_step: StreamingStep<Vec<u8>> =
+            StreamingStep::Finished(Some(batch_key_2.clone()));
+        let stream_batch_ = db
+            .read()
+            .get_batch_to_stream(&last_state_step, Some(slot_2));
+        assert!(stream_batch_.is_err());
+        assert!(stream_batch_.unwrap_err().to_string().contains("all our changes are strictly after last_change_id, we can't be sure we did not miss any"));
     }
 }

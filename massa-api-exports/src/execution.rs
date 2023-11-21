@@ -65,9 +65,6 @@ pub struct ReadOnlyBytecodeExecution {
     pub operation_datastore: Option<Vec<u8>>,
     /// fee
     pub fee: Option<Amount>,
-    /// whether to start execution from final or active state. Default false
-    #[serde(default)]
-    pub is_final: bool,
 }
 
 /// read SC call request
@@ -87,7 +84,4 @@ pub struct ReadOnlyCall {
     pub coins: Option<Amount>,
     /// fee
     pub fee: Option<Amount>,
-    /// whether to start execution from final or active state. Default false
-    #[serde(default)]
-    pub is_final: bool,
 }

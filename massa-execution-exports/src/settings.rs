@@ -28,6 +28,8 @@ pub struct ExecutionConfig {
     pub max_final_events: usize,
     /// maximum available gas for asynchronous messages execution
     pub max_async_gas: u64,
+    /// constant cost for async messages
+    pub async_msg_cst_gas_cost: u64,
     /// maximum gas per block
     pub max_gas_per_block: u64,
     /// number of threads

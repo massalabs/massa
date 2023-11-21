@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1699453800000) // Wednesday, November 8, 2023 14:30:00 AM UTC
+        MassaTime::from_millis(1700496600000) // Wednesday, November 20, 2023 16:10:00  UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -77,7 +77,7 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.26.1"
+            "SAND.27.0"
         } else {
             "SECU.27.0"
         }
@@ -125,7 +125,7 @@ pub const MAX_OPERATIONS_PER_BLOCK: u32 = 5000;
 /// Maximum block size in bytes
 pub const MAX_BLOCK_SIZE: u32 = 300_000;
 /// Maximum capacity of the asynchronous messages pool
-pub const MAX_ASYNC_POOL_LENGTH: u64 = 10_000;
+pub const MAX_ASYNC_POOL_LENGTH: u64 = 1_000;
 /// Maximum operation validity period count
 pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 /// Number of periods of executed operation and denunciation history to keep
@@ -242,6 +242,8 @@ pub const POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE: usize = 1024;
 pub const MAX_GAS_PER_BLOCK: u64 = u32::MAX as u64;
 /// Maximum of GAS allowed for asynchronous messages execution on one slot
 pub const MAX_ASYNC_GAS: u64 = 1_000_000_000;
+/// Constant cost applied to asynchronous messages (to take into account some costs related to snapshot)
+pub const ASYNC_MSG_CST_GAS_COST: u64 = 750_000;
 /// Gas used by a base operation (transaction, roll buy, roll sell)
 pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes

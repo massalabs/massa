@@ -167,7 +167,7 @@ impl SpeculativeLedger {
                 .ok_or_else(|| ExecutionError::RuntimeError(format!("spending address {} not found", from_addr)))?
                 .checked_sub(amount)
                 .ok_or_else(|| {
-                    ExecutionError::RuntimeError(format!("failed to transfer {} from spending address {} due to insufficient balance {}", amount, from_addr, self
+                    ExecutionError::RuntimeError(format!("failed to transfer {} coins from spending address {} due to insufficient balance {}", amount, from_addr, self
                     .get_balance(&from_addr).unwrap_or_default()))
                 })?;
 
@@ -184,7 +184,7 @@ impl SpeculativeLedger {
                 // if `to_addr` exists we increase its balance
                 let new_balance = old_balance.checked_add(amount).ok_or_else(|| {
                     ExecutionError::RuntimeError(format!(
-                        "overflow in crediting address {} balance {} due to adding {}",
+                        "overflow in crediting address {} balance {} due to adding {} coins to balance",
                         to_addr, old_balance, amount
                     ))
                 })?;

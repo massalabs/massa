@@ -1060,9 +1060,7 @@ impl PoSFinalState {
 
         let roll_counts = self.get_all_roll_counts(cycle);
 
-        let production_stats = self
-            .get_all_production_stats(cycle)
-            .unwrap_or(PreHashMap::default());
+        let production_stats = self.get_all_production_stats(cycle).unwrap_or_default();
 
         let mut cycle_info =
             CycleInfo::new(cycle, complete, roll_counts, rng_seed, production_stats);

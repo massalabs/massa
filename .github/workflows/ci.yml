@@ -214,6 +214,10 @@ jobs:
         with:
           command: test
           args: --doc
+      - uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full

@@ -1069,8 +1069,10 @@ impl ExecutionState {
         );
 
         // Get asynchronous messages to execute
-        let messages = execution_context.take_async_batch(self.config.max_async_gas);
-        debug!("executing {} messages at slot {}", messages.len(), slot);
+        let messages = execution_context.take_async_batch(
+            self.config.max_async_gas,
+            self.config.async_msg_cst_gas_cost,
+        );
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -1390,16 +1392,11 @@ impl ExecutionState {
             )));
         }
 
-        // set the execution slot to be the one after the latest executed active or final slot
-        let slot = if req.is_final {
-            self.final_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from final slot")
-        } else {
-            self.active_cursor
-                .get_next_slot(self.config.thread_count)
-                .expect("slot overflow in readonly execution from active slot")
-        };
+        // set the execution slot to be the one after the latest executed active slot
+        let slot = self
+            .active_cursor
+            .get_next_slot(self.config.thread_count)
+            .expect("slot overflow in readonly execution from active slot");
 
         // create a readonly execution context
         let execution_context = ExecutionContext::readonly(
@@ -1427,18 +1424,12 @@ impl ExecutionState {
                     }
                 }
 
-                // pay SP compilation as read only execution has no base cost
-                let post_compil = req
-                    .max_gas
-                    .checked_sub(self.config.gas_costs.sp_compilation_cost)
-                    .ok_or(ExecutionError::NotEnoughGas(
-                        "Not enough gas to pay SP compilation in ReadOnly execution".to_string(),
-                    ))?;
                 // load the tmp module
                 let (module, remaining_gas) = self
                     .module_cache
                     .read()
-                    .load_tmp_module(&bytecode, post_compil)?;
+                    .load_tmp_module(&bytecode, req.max_gas)?;
+
                 // run the VM
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
@@ -1451,6 +1442,7 @@ impl ExecutionState {
                     error,
                 })?
             }
+
             ReadOnlyExecutionTarget::FunctionCall {
                 target_addr,
                 target_func,
@@ -1487,6 +1479,7 @@ impl ExecutionState {
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
+
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
                     module,
@@ -1495,6 +1488,7 @@ impl ExecutionState {
                     remaining_gas,
                     self.config.gas_costs.clone(),
                 );
+
                 match response {
                     Ok(Response { init_gas_cost, .. })
                     | Err(VMError::ExecutionError { init_gas_cost, .. }) => {
@@ -1504,6 +1498,7 @@ impl ExecutionState {
                     }
                     _ => (),
                 }
+
                 response.map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
                     error,
@@ -1513,9 +1508,17 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
+        let exact_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            gas_cost: req.max_gas.saturating_sub(exec_response.remaining_gas),
+            // return max_instance_cost if the exact cost is below
+            // users can paste the estimated amount into a real call
+            // without having to worry about underlying limits
+            gas_cost: if exact_cost > self.config.gas_costs.max_instance_cost {
+                exact_cost
+            } else {
+                self.config.gas_costs.max_instance_cost
+            },
             call_result: exec_response.ret,
         })
     }

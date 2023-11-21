@@ -109,6 +109,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: Slot,
         max_gas: u64,
+        async_msg_cst_gas_cost: u64,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut available_gas = max_gas;
 
@@ -120,12 +121,13 @@ impl SpeculativeAsyncPool {
         let message_infos = self.message_infos.clone();
 
         for (message_id, message_info) in message_infos.iter() {
-            if available_gas >= message_info.max_gas
+            let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+            if available_gas >= corrected_max_gas
                 && slot >= message_info.validity_start
                 && slot < message_info.validity_end
                 && message_info.can_be_executed
             {
-                available_gas -= message_info.max_gas;
+                available_gas -= corrected_max_gas;
 
                 wanted_messages.push(message_id);
             }

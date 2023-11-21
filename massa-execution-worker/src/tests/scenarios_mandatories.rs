@@ -4,13 +4,13 @@ use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfi
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper, SetUpdateOrDelete};
+use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -88,7 +88,6 @@ fn final_state_boilerplate(
         ledger_controller
             .expect_get_balance()
             .returning(move |_| Some(Amount::from_str("100").unwrap()));
-
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
                 .expect_get_bytecode()
@@ -98,7 +97,6 @@ fn final_state_boilerplate(
             .expect_entry_exists()
             .returning(move |_| false);
     });
-
     mock_final_state
         .write()
         .expect_get_ledger()
@@ -217,17 +215,6 @@ fn test_readonly_execution() {
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
-
-    foreign_controllers
-        .ledger_controller
-        .set_expectations(|ledger_controller| {
-            ledger_controller.expect_get_bytecode().returning(move |_| {
-                Some(Bytecode(
-                    include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
-                ))
-            });
-        });
-
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -244,23 +231,16 @@ fn test_readonly_execution() {
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
-            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
-            call_stack: vec![ExecutionStackElement {
-                address: addr,
-                coins: Amount::zero(),
-                owned_addresses: vec![],
-                operation_datastore: None,
-            }],
+            max_gas: 100_000_000,
+            call_stack: vec![],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
-            is_final: true,
             coins: None,
             fee: Some(Amount::from_str("40").unwrap()),
         })
         .expect("readonly execution failed");
 
-    assert_eq!(res.out.slot, Slot::new(0, 1));
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
     assert_eq!(
@@ -618,7 +598,6 @@ fn send_and_receive_async_message() {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
-    dbg!(&events);
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
@@ -1908,7 +1887,7 @@ fn not_enough_instance_gas() {
         .get_filtered_sc_output_event(EventFilter::default());
     assert!(events[0]
         .data
-        .contains("Provided max gas is below the default instance creation cost"));
+        .contains("is lower than the base instance creation gas"));
 }
 
 #[test]

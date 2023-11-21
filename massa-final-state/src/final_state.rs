@@ -918,16 +918,12 @@ mod test {
     use super::*;
 
     fn get_final_state_config() -> (FinalStateConfig, LedgerConfig) {
-        let temp_dir_storage = tempdir().expect("Unable to create a temp folder");
         let massa_node_base = PathBuf::from("../massa-node");
 
         let genesis_timestamp = MassaTime::from_millis(0);
         let ledger_config = LedgerConfig {
             thread_count: THREAD_COUNT,
             initial_ledger_path: massa_node_base.join("base_config/initial_ledger.json"),
-            disk_ledger_path: temp_dir_storage
-                .into_path()
-                .join(PathBuf::from("storage/ledger/rocks_db")),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         };

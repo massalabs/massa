@@ -558,7 +558,7 @@ pub enum StateAtError {
     BeforeInitialState(ComponentStateTypeId, MassaTime),
     #[error("Empty history, should never happen")]
     EmptyHistory,
-    #[error("Cannot predict in the future (~ threshold not reach yet)")]
+    #[error("Cannot predict value: threshold not reached yet")]
     Unpredictable,
 }
 

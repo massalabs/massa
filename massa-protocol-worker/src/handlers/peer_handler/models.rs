@@ -44,14 +44,6 @@ impl Default for ConnectionMetadata {
 
 impl Ord for ConnectionMetadata {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-// Priorisation of a peer compared to another one
-// Greater = Less Prio        Lesser = More prio
-impl PartialOrd for ConnectionMetadata {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         // Time since last failure, more recent = less priority
         let failure_check = match (self.last_failure, other.last_failure) {
             (Some(sf), Some(of)) => Some(sf.cmp(&of)),
@@ -60,7 +52,7 @@ impl PartialOrd for ConnectionMetadata {
             (None, None) => None,
         };
         if let Some(res) = failure_check {
-            return Some(res);
+            return res;
         }
 
         // Time since last success, more recent = more priority
@@ -71,7 +63,7 @@ impl PartialOrd for ConnectionMetadata {
             (None, None) => None,
         };
         if let Some(res) = success_check {
-            return Some(res);
+            return res;
         }
 
         // Time since last failed peer test, more recent = less priority
@@ -82,7 +74,7 @@ impl PartialOrd for ConnectionMetadata {
             (None, None) => None,
         };
         if let Some(res) = test_failure_check {
-            return Some(res);
+            return res;
         }
 
         // Time since last succeeded peer test, more recent = more priority
@@ -93,12 +85,19 @@ impl PartialOrd for ConnectionMetadata {
             (None, None) => None,
         };
         if let Some(res) = test_success_check {
-            Some(res)
-
+            res
         // Else, pick randomly
         } else {
-            Some(self.random_priority.cmp(&other.random_priority))
+            self.random_priority.cmp(&other.random_priority)
         }
+    }
+}
+
+// Priorisation of a peer compared to another one
+// Greater = Less Prio        Lesser = More prio
+impl PartialOrd for ConnectionMetadata {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -311,28 +310,25 @@ impl PeerDBTrait for PeerDB {
     fn set_try_connect_success_or_insert(&mut self, addr: &SocketAddr) {
         self.try_connect_history
             .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
+            .or_default()
             .try_connect();
     }
 
     fn set_try_connect_failure_or_insert(&mut self, addr: &SocketAddr) {
-        self.try_connect_history
-            .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
-            .failure();
+        self.try_connect_history.entry(*addr).or_default().failure();
     }
 
     fn set_try_connect_test_success_or_insert(&mut self, addr: &SocketAddr) {
         self.try_connect_history
             .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
+            .or_default()
             .test_success();
     }
 
     fn set_try_connect_test_failure_or_insert(&mut self, addr: &SocketAddr) {
         self.try_connect_history
             .entry(*addr)
-            .or_insert(ConnectionMetadata::default())
+            .or_default()
             .test_failure();
     }
 

@@ -18,4 +18,4 @@ pub use settings::{PeerCategoryInfo, ProtocolConfig};
 pub mod test_exports;
 
 #[cfg(feature = "test-exports")]
-pub use controller_trait::MockProtocolController;
+pub use controller_trait::{MockProtocolController, MockProtocolControllerWrapper};
