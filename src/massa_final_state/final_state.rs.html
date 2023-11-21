@@ -1282,6 +1282,41 @@
 <a href="#1282" id="1282">1282</a>
 <a href="#1283" id="1283">1283</a>
 <a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1294,12 +1329,12 @@
 
 <span class="kw">use </span>anyhow::{anyhow, <span class="prelude-ty">Result </span><span class="kw">as </span>AnyResult};
 <span class="kw">use </span>massa_async_pool::AsyncPool;
-<span class="kw">use </span>massa_db_exports::EXECUTION_TRAIL_HASH_PREFIX;
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
+<span class="kw">use </span>massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_hash::Hash;
@@ -1919,10 +1954,45 @@
                     ));
                 }
             } <span class="kw">else if </span>serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
-                <span class="comment">// TODO: check MIP_STORE_PREFIX
-            </span>} <span class="kw">else if </span>serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
+                <span class="kw">if </span>!<span class="self">self
+                    </span>.mip_store
+                    .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
+                {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for MIP Store&quot;</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                        <span class="string">&quot;Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}&quot;</span>, 
+                        serialized_key, serialized_value
+                    ));
+                }
+            } <span class="kw">else if </span>serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
                 <span class="comment">// no checks here as they are performed above by direct reading
             </span>} <span class="kw">else </span>{
+                <span class="macro">warn!</span>(
+                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    serialized_key, serialized_value
+                );
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;&quot;</span>));
+                <span class="comment">// return false;
+            </span>}
+        }
+
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
+            </span>db.iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
+        {
+            <span class="kw">if </span>serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
+                || serialized_key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes())
+            {
+                <span class="kw">if </span>!<span class="self">self
+                    </span>.mip_store
+                    .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
+                {
+                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for MIP Store&quot;</span>);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                        <span class="string">&quot;Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        serialized_key, serialized_value
+                    ));
+                }
+            } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(
                     <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
                     serialized_key, serialized_value
