@@ -62,13 +62,10 @@
 <a href="#62" id="62">62</a>
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
-<a href="#65" id="65">65</a>
-<a href="#66" id="66">66</a>
-<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">use </span><span class="kw">crate</span>::types::ModuleInfo;
 
@@ -115,20 +112,17 @@
                     <span class="kw-2">*</span>content = ModuleInfo::ModuleAndDelta((module.clone(), init_cost))
                 }
                 ModuleInfo::ModuleAndDelta((_module, delta)) =&gt; <span class="kw-2">*</span>delta = init_cost,
-                ModuleInfo::Invalid(err_msg) =&gt; {
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;tried to set the init cost of an invalid module. Invalidity reason: {}&quot;</span>,
-                        err_msg
-                    );
+                ModuleInfo::Invalid =&gt; {
+                    <span class="macro">warn!</span>(<span class="string">&quot;tried to set the init cost of an invalid module&quot;</span>);
                 }
             }
         }
     }
 
     <span class="doccomment">/// Set a module as invalid
-    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hash: Hash, err_msg: String) {
+    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hash: Hash) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(content) = <span class="self">self</span>.cache.get(<span class="kw-2">&amp;</span>hash) {
-            <span class="kw-2">*</span>content = ModuleInfo::Invalid(err_msg);
+            <span class="kw-2">*</span>content = ModuleInfo::Invalid;
         }
     }
 }
