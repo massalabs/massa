@@ -346,7 +346,6 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -491,7 +490,6 @@
                 service = service.send_compressed(CompressionEncoding::Gzip);
             };
         }
-
         serve(service, config).<span class="kw">await
     </span>}
 }
@@ -617,7 +615,7 @@
                 </span>.allow_methods([Method::GET, Method::POST, Method::OPTIONS])
                 <span class="comment">// Allow requests from any origin
                 </span>.allow_origin(Any)
-                .allow_headers([hyper::header::CONTENT_TYPE]);
+                .allow_headers(Any);
 
             <span class="kw">let </span>router_with_http1 = server_builder
                 .accept_http1(<span class="bool-val">true</span>)

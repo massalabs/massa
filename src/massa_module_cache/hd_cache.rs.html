@@ -311,10 +311,12 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
-<span class="kw">use </span>core::panic;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_sc_runtime::{GasCosts, RuntimeModule};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -394,9 +396,9 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_metadata = Vec::new();
         <span class="kw">let </span>ser_module = <span class="kw">match </span>module_info {
-            ModuleInfo::Invalid =&gt; {
+            ModuleInfo::Invalid(err_msg) =&gt; {
                 <span class="self">self</span>.meta_ser
-                    .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Invalid, <span class="kw-2">&amp;mut </span>ser_metadata)
+                    .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Invalid(err_msg), <span class="kw-2">&amp;mut </span>ser_metadata)
                     .expect(DATA_SER_ERROR);
                 Vec::new()
             }
@@ -440,10 +442,10 @@
     }
 
     <span class="doccomment">/// Sets a given module as invalid
-    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: Hash) {
+    </span><span class="kw">pub fn </span>set_invalid(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: Hash, err_msg: String) {
         <span class="kw">let </span><span class="kw-2">mut </span>ser_metadata = Vec::new();
         <span class="self">self</span>.meta_ser
-            .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Invalid, <span class="kw-2">&amp;mut </span>ser_metadata)
+            .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Invalid(err_msg), <span class="kw-2">&amp;mut </span>ser_metadata)
             .expect(DATA_SER_ERROR);
         <span class="self">self</span>.db
             .put(<span class="macro">metadata_key!</span>(hash), ser_metadata)
@@ -464,14 +466,14 @@
                     </span>.meta_deser
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_metadata)
                     .expect(DATA_DESER_ERROR);
-                <span class="kw">if </span>metadata == ModuleMetadata::Invalid {
-                    <span class="kw">return </span><span class="prelude-val">Some</span>(ModuleInfo::Invalid);
+                <span class="kw">if let </span>ModuleMetadata::Invalid(err_msg) = metadata {
+                    <span class="kw">return </span><span class="prelude-val">Some</span>(ModuleInfo::Invalid(err_msg));
                 }
                 <span class="kw">let </span>module =
                     RuntimeModule::deserialize(<span class="kw-2">&amp;</span>ser_module, gas_costs.max_instance_cost, gas_costs)
                         .expect(MOD_DESER_ERROR);
                 <span class="kw">let </span>result = <span class="kw">match </span>metadata {
-                    ModuleMetadata::Invalid =&gt; ModuleInfo::Invalid,
+                    ModuleMetadata::Invalid(err_msg) =&gt; ModuleInfo::Invalid(err_msg),
                     ModuleMetadata::NotExecuted =&gt; ModuleInfo::Module(module),
                     ModuleMetadata::Delta(delta) =&gt; ModuleInfo::ModuleAndDelta((module, delta)),
                 };
@@ -574,9 +576,13 @@
         <span class="kw">let </span>cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v2, ModuleInfo::ModuleAndDelta(<span class="kw">_</span>)));
 
-        cache.set_invalid(hash);
+        <span class="kw">let </span>err_msg = <span class="string">&quot;test_error&quot;</span>.to_string();
+        cache.set_invalid(hash, err_msg.clone());
         <span class="kw">let </span>cached_module_v3 = cache.get(hash, gas_costs).unwrap();
-        <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v3, ModuleInfo::Invalid));
+        <span class="kw">let </span>ModuleInfo::Invalid(res_err) = cached_module_v3 <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;expected ModuleInfo::Invalid&quot;</span>);
+        };
+        <span class="macro">assert_eq!</span>(res_err, err_msg);
     }
 
     <span class="attr">#[test]
