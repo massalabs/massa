@@ -711,6 +711,11 @@ impl MipStore {
         )
     }
 
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        let guard = self.0.read();
+        guard.is_key_value_valid(serialized_key, serialized_value)
+    }
+
     // DB
 
     pub fn update_batches(
@@ -836,6 +841,14 @@ pub enum IsConsistentWithShutdownPeriodError {
     Update(#[from] ModelsError),
     #[error("MipInfo: {0:?} (state: {1:?}) is not consistent with shutdown: {2} {3}")]
     NonConsistent(MipInfo, ComponentState, MassaTime, MassaTime),
+}
+
+#[derive(Error, Debug)]
+pub enum IsKVValidError {
+    #[error("{0}")]
+    Deserialize(String),
+    #[error("Invalid prefix for key")]
+    InvalidPrefix,
 }
 
 /// Store of all versioning info
@@ -1296,6 +1309,61 @@ impl MipStoreRaw {
         Ok(())
     }
 
+    // Final state
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        self._is_key_value_valid(serialized_key, serialized_value)
+            .is_ok()
+    }
+
+    pub fn _is_key_value_valid(
+        &self,
+        serialized_key: &[u8],
+        serialized_value: &[u8],
+    ) -> Result<(), IsKVValidError> {
+        let mip_info_deser = MipInfoDeserializer::new();
+        let mip_state_deser = MipStateDeserializer::new();
+        let mip_store_stats_deser = MipStoreStatsDeserializer::new(
+            MIP_STORE_STATS_BLOCK_CONSIDERED,
+            self.stats.config.warn_announced_version_ratio,
+        );
+
+        if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
+            let (rem, _mip_info) = mip_info_deser
+                .deserialize::<DeserializeError>(&serialized_key[MIP_STORE_PREFIX.len()..])
+                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))?;
+
+            if !rem.is_empty() {
+                return Err(IsKVValidError::Deserialize(
+                    "Rem not empty after deserialization".to_string(),
+                ));
+            }
+
+            let (rem2, _mip_state) = mip_state_deser
+                .deserialize::<DeserializeError>(serialized_value)
+                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))?;
+
+            if !rem2.is_empty() {
+                return Err(IsKVValidError::Deserialize(
+                    "Rem not empty after deserialization".to_string(),
+                ));
+            }
+        } else if serialized_key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) {
+            let (rem, _mip_store_stats) = mip_store_stats_deser
+                .deserialize::<DeserializeError>(serialized_value)
+                .map_err(|e| IsKVValidError::Deserialize(e.to_string()))?;
+
+            if !rem.is_empty() {
+                return Err(IsKVValidError::Deserialize(
+                    "Rem not empty after deserialization".to_string(),
+                ));
+            }
+        } else {
+            return Err(IsKVValidError::InvalidPrefix);
+        }
+
+        Ok(())
+    }
+
     // DB methods
 
     /// Get MIP store changes between 2 timestamps - used by the db to update the disk
@@ -1518,9 +1586,9 @@ mod test {
     use super::*;
 
     use assert_matches::assert_matches;
-    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, MassaIteratorMode};
     use massa_db_worker::MassaDB;
-    use more_asserts::assert_le;
+    use more_asserts::{assert_gt, assert_le};
     use parking_lot::RwLock;
     use std::ops::{Add, Sub};
     use std::sync::Arc;
@@ -2458,6 +2526,7 @@ mod test {
         // 2- update state
         // 3- write changes to db
         // 4- init a new mip store from disk and compare
+        // 5- test is_key_value_valid method
 
         let genesis_timestamp = MassaTime::from_millis(0);
         // helpers
@@ -2588,6 +2657,24 @@ mod test {
         // println!("st1_raw: {:?}", st1_raw);
         // println!("st2_raw: {:?}", st2_raw);
         assert_eq!(st1_raw, st2_raw);
+
+        // Step 5: test is_key_value_valid
+        let mut count = 0;
+        for (ser_key, ser_value) in db.read().iterator_cf(STATE_CF, MassaIteratorMode::Start) {
+            assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
+            count += 1;
+        }
+        assert_gt!(count, 0);
+
+        let mut count2 = 0;
+        for (ser_key, ser_value) in db
+            .read()
+            .iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
+        {
+            assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
+            count2 += 1;
+        }
+        assert_gt!(count2, 0);
     }
 
     #[test]
