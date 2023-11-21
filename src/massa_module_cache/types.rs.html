@@ -123,22 +123,7 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::serialization::{StringDeserializer, StringSerializer};
-<span class="kw">use </span>massa_sc_runtime::RuntimeModule;
+</pre></div><pre class="rust"><code><span class="kw">use </span>massa_sc_runtime::RuntimeModule;
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -152,16 +137,16 @@
 <span class="doccomment">/// Main type
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub enum </span>ModuleInfo {
-    Invalid(String), <span class="comment">// contains the error message
-    </span>Module(RuntimeModule),
+    Invalid,
+    Module(RuntimeModule),
     ModuleAndDelta((RuntimeModule, u64)),
 }
 
 <span class="attr">#[derive(PartialEq, Eq)]
 </span><span class="doccomment">/// Metadata type
 </span><span class="kw">pub enum </span>ModuleMetadata {
-    Invalid(String), <span class="comment">// contains the error message
-    </span>NotExecuted,
+    Invalid,
+    NotExecuted,
     Delta(u64),
 }
 
@@ -177,14 +162,12 @@
 <span class="doccomment">/// Metadata serializer
 </span><span class="kw">pub struct </span>ModuleMetadataSerializer {
     u64_ser: U64VarIntSerializer,
-    err_msg_ser: StringSerializer&lt;U64VarIntSerializer, u64&gt;,
 }
 
 <span class="kw">impl </span>ModuleMetadataSerializer {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             u64_ser: U64VarIntSerializer::new(),
-            err_msg_ser: StringSerializer::new(U64VarIntSerializer::new()),
         }
     }
 }
@@ -205,11 +188,9 @@
             ModuleMetadata::NotExecuted =&gt; <span class="self">self
                 </span>.u64_ser
                 .serialize(<span class="kw-2">&amp;</span>u64::from(ModuleMetadataId::NotExecuted), buffer)<span class="question-mark">?</span>,
-            ModuleMetadata::Invalid(err_msg) =&gt; {
-                <span class="self">self</span>.u64_ser
-                    .serialize(<span class="kw-2">&amp;</span>u64::from(ModuleMetadataId::Invalid), buffer)<span class="question-mark">?</span>;
-                <span class="self">self</span>.err_msg_ser.serialize(err_msg, buffer)<span class="question-mark">?</span>;
-            }
+            ModuleMetadata::Invalid =&gt; <span class="self">self
+                </span>.u64_ser
+                .serialize(<span class="kw-2">&amp;</span>u64::from(ModuleMetadataId::Invalid), buffer)<span class="question-mark">?</span>,
             ModuleMetadata::Delta(delta) =&gt; {
                 <span class="self">self</span>.u64_ser
                     .serialize(<span class="kw-2">&amp;</span>u64::from(ModuleMetadataId::Delta), buffer)<span class="question-mark">?</span>;
@@ -224,7 +205,6 @@
 </span><span class="kw">pub struct </span>ModuleMetadataDeserializer {
     id_deser: U64VarIntDeserializer,
     delta_deser: U64VarIntDeserializer,
-    err_msg_deser: StringDeserializer&lt;U64VarIntDeserializer, u64&gt;,
 }
 
 <span class="kw">impl </span>ModuleMetadataDeserializer {
@@ -235,10 +215,6 @@
                 Included(u64::from(ModuleMetadataId::Delta)),
             ),
             delta_deser: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
-            err_msg_deser: StringDeserializer::new(U64VarIntDeserializer::new(
-                Included(<span class="number">0</span>),
-                Included(u64::MAX),
-            )),
         }
     }
 }
@@ -260,17 +236,13 @@
                 .map(|id| ModuleMetadataId::try_from(id).unwrap())
                 .parse(buffer)<span class="question-mark">?</span>;
             <span class="kw">match </span>id {
-                ModuleMetadataId::Invalid =&gt; context(<span class="string">&quot;ModuleMetadata::Invalid&quot;</span>, |input| {
-                    <span class="self">self</span>.err_msg_deser.deserialize(input)
-                })
-                .map(ModuleMetadata::Invalid)
-                .parse(input),
+                ModuleMetadataId::Invalid =&gt; <span class="prelude-val">Ok</span>((input, ModuleMetadata::Invalid)),
                 ModuleMetadataId::NotExecuted =&gt; <span class="prelude-val">Ok</span>((input, ModuleMetadata::NotExecuted)),
-                ModuleMetadataId::Delta =&gt; context(<span class="string">&quot;ModuleMetadata::Delta&quot;</span>, |input| {
-                    <span class="self">self</span>.delta_deser.deserialize(input)
-                })
-                .map(ModuleMetadata::Delta)
-                .parse(input),
+                ModuleMetadataId::Delta =&gt; {
+                    context(<span class="string">&quot;Delta&quot;</span>, |input| <span class="self">self</span>.delta_deser.deserialize(input))
+                        .map(ModuleMetadata::Delta)
+                        .parse(input)
+                }
             }
         })
         .parse(buffer)

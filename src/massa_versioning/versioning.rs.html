@@ -2735,6 +2735,7 @@
 <a href="#2735" id="2735">2735</a>
 <a href="#2736" id="2736">2736</a>
 <a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3295,7 +3296,7 @@
     </span>BeforeInitialState(ComponentStateTypeId, MassaTime),
     <span class="attr">#[error(<span class="string">&quot;Empty history, should never happen&quot;</span>)]
     </span>EmptyHistory,
-    <span class="attr">#[error(<span class="string">&quot;Cannot predict value: threshold not reached yet&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Cannot predict in the future (~ threshold not reach yet)&quot;</span>)]
     </span>Unpredictable,
 }
 
@@ -3448,7 +3449,8 @@
         )
     }
 
-    <span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
+    <span class="comment">// Final state
+    </span><span class="kw">pub fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.is_key_value_valid(serialized_key, serialized_value)
     }
