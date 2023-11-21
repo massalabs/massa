@@ -136,9 +136,10 @@ impl ModuleCache {
         // This is only supposed to be a check
         execution_gas
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                "Provided max gas is below the default instance creation cost".to_string(),
-            ))?;
+            .ok_or(CacheError::LoadError(format!(
+                "Provided gas {} is lower than the base instance creation gas cost {}",
+                execution_gas, self.cfg.gas_costs.max_instance_cost
+            )))?;
         // TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
         let module_info = self.load_module_info(bytecode);
@@ -176,9 +177,10 @@ impl ModuleCache {
         // This is only supposed to be a check
         limit
             .checked_sub(self.cfg.gas_costs.max_instance_cost)
-            .ok_or(CacheError::LoadError(
-                "Provided max gas is below the default instance creation cost".to_string(),
-            ))?;
+            .ok_or(CacheError::LoadError(format!(
+                "Provided gas {} is lower than the base instance creation gas cost {}",
+                limit, self.cfg.gas_costs.max_instance_cost
+            )))?;
         let module = RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::SP)?;
         Ok((module, limit))
     }
