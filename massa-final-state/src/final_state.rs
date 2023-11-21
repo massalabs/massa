@@ -652,8 +652,10 @@ impl FinalState {
                     "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
-                return Err(anyhow!(""));
-                // return false;
+                return Err(anyhow!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                ));
             }
         }
 
@@ -678,8 +680,10 @@ impl FinalState {
                     "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
-                return Err(anyhow!(""));
-                // return false;
+                return Err(anyhow!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                ));
             }
         }
 
