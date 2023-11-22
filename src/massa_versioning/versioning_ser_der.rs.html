@@ -1324,11 +1324,11 @@
             u32_deserializer: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Excluded(u32::MAX)),
             name_len_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Excluded(MIP_INFO_NAME_MAX_LEN),
+                Included(MIP_INFO_NAME_MAX_LEN),
             ),
             components_len_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Excluded(MIP_INFO_COMPONENTS_MAX_ENTRIES),
+                Included(MIP_INFO_COMPONENTS_MAX_ENTRIES),
             ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(<span class="number">0</span>)),
@@ -2145,7 +2145,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>mip_info_der = MipInfoDeserializer::new();
             <span class="comment">// Allow only a max of 2 components per MIP info
             </span>mip_info_der.components_len_deserializer =
-                U32VarIntDeserializer::new(Included(<span class="number">0</span>), Excluded(<span class="number">3</span>));
+                U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(<span class="number">2</span>));
 
             <span class="kw">let </span>res = mip_info_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf);
             <span class="macro">assert!</span>(res.is_err());
