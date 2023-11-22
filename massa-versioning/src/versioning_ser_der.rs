@@ -111,11 +111,11 @@ impl MipInfoDeserializer {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
             name_len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MIP_INFO_NAME_MAX_LEN),
+                Included(MIP_INFO_NAME_MAX_LEN),
             ),
             components_len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MIP_INFO_COMPONENTS_MAX_ENTRIES),
+                Included(MIP_INFO_COMPONENTS_MAX_ENTRIES),
             ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(0)),
@@ -932,7 +932,7 @@ mod test {
             let mut mip_info_der = MipInfoDeserializer::new();
             // Allow only a max of 2 components per MIP info
             mip_info_der.components_len_deserializer =
-                U32VarIntDeserializer::new(Included(0), Excluded(3));
+                U32VarIntDeserializer::new(Included(0), Included(2));
 
             let res = mip_info_der.deserialize::<DeserializeError>(&buf);
             assert!(res.is_err());
