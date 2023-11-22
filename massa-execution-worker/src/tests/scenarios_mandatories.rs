@@ -215,6 +215,16 @@ fn test_readonly_execution() {
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller.expect_get_bytecode().returning(move |_| {
+                Some(Bytecode(
+                    include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
+                ))
+            });
+        });
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -232,7 +242,12 @@ fn test_readonly_execution() {
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 100_000_000,
-            call_stack: vec![],
+            call_stack: vec![ExecutionStackElement {
+                address: addr,
+                coins: Amount::zero(),
+                owned_addresses: vec![],
+                operation_datastore: None,
+            }],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
