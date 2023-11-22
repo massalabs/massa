@@ -71,7 +71,7 @@ impl Serializer<MipInfo> for MipInfoSerializer {
         let components_len = u32::try_from(components_len_).map_err(|_| {
             SerializeError::GeneralError(format!(
                 "Cannot convert component_len ({}) to u32",
-                name_len_
+                components_len_
             ))
         })?;
         // ser hashmap len
@@ -932,7 +932,7 @@ mod test {
             let mut mip_info_der = MipInfoDeserializer::new();
             // Allow only a max of 2 components per MIP info
             mip_info_der.components_len_deserializer =
-                U32VarIntDeserializer::new(Included(0), Excluded(2));
+                U32VarIntDeserializer::new(Included(0), Excluded(3));
 
             let res = mip_info_der.deserialize::<DeserializeError>(&buf);
             assert!(res.is_err());
