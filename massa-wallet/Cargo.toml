@@ -1,12 +1,12 @@
 [package]
 name = "massa_wallet"
-version = "0.26.1"
+version = "0.27.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-testing = ["tempfile", "massa_models/testing"]
+test-exports = ["tempfile", "massa_models/test-exports"]
 
 [dependencies]
 displaydoc = {workspace = true}

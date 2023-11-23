@@ -70,7 +70,7 @@ pub(crate) fn update_package_versions() {
     println!("Updating package versions");
     let mut to_string = VERSION.to_string();
 
-    if to_string.contains("TEST") || to_string.contains("SAND") {
+    if to_string.contains("SECU") || to_string.contains("SAND") {
         // TestNet and Sandbox versions < 1.0.0
         to_string.replace_range(..4, "0");
     } else {

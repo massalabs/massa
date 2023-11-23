@@ -2,14 +2,19 @@ use crate::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 use massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
 use parking_lot::RwLock;
+use std::path::PathBuf;
 use std::{fmt::Debug, sync::Arc};
+
+#[cfg(feature = "test-exports")]
+use std::collections::BTreeMap;
 
 pub type ShareableMassaDBController = Arc<RwLock<Box<dyn MassaDBController>>>;
 
 /// Controller trait for the MassaDB
+/// TODO: MOCK IT WITH MOCKALL. HAVING LIFETIMES ERRORS WITH AUTO MOCK
 pub trait MassaDBController: Send + Sync + Debug {
     /// Creates a new hard copy of the DB, for the given slot
-    fn backup_db(&self, slot: Slot);
+    fn backup_db(&self, slot: Slot) -> PathBuf;
 
     /// Get the current change_id attached to the database.
     fn get_change_id(&self) -> Result<Slot, ModelsError>;
@@ -83,8 +88,9 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 
-    /// To be called just after bootstrap
-    fn recompute_db_hash(&mut self) -> Result<(), MassaDBError>;
+    /// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
+    #[cfg(feature = "test-exports")]
+    fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>>;
 }
 
 /// Similar to RocksDB's IteratorMode

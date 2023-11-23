@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -13,33 +13,30 @@ sandbox = ["massa_async_pool/sandbox"]
 gas_calibration = [
     "massa-sc-runtime/gas_calibration",
     "massa_execution_exports/gas_calibration",
-    "massa_final_state/testing",
+    "massa_final_state/test-exports",
     "massa_pos_worker",
-    "massa_ledger_worker",
     "massa_db_worker",
-    "tempfile",
+    "tempfile"
 ]
-testing = [
-    "massa_execution_exports/testing",
-    "massa_ledger_exports/testing",
-    "massa_pos_exports/testing",
-    "massa_final_state/testing",
+test-exports = [
+    "massa_execution_exports/test-exports",
+    "massa_ledger_exports/test-exports",
+    "massa_pos_exports/test-exports",
+    "massa_final_state/test-exports",
     "massa-sc-runtime/testing",
-    "massa_wallet/testing",
-    "tempfile",
+    "massa_wallet/test-exports",
     "massa_pos_worker",
-    "massa_ledger_worker",
-    "massa_metrics/testing",
+    "massa_metrics/test-exports",
+    "massa_metrics/test-exports",
     "massa_db_worker",
-    "massa_metrics/testing",
+    "tempfile"
 ]
 benchmarking = [
     "massa-sc-runtime/gas_calibration",
     "criterion",
     "massa_pos_worker",
-    "massa_ledger_worker",
     "massa_db_worker",
-    "tempfile",
+    "tempfile"
 ]
 metrics = []
 
@@ -49,18 +46,16 @@ blake3 = { workspace = true }
 bs58 = { workspace = true }
 rand = { workspace = true }
 rand_xoshiro = { workspace = true }
-parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+parking_lot = { workspace = true, features = ["deadlock_detection"] }
 tracing = { workspace = true }
 serde_json = { workspace = true } # BOM UPGRADE     Revert to "1.0" if problem
-num = { workspace = true, "features" = [
+num = { workspace = true, features = [
     "serde",
-] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+] } # BOM UPGRADE     Revert to {"version": "0.4", features: ["serde"]} if problem
 sha2 = { workspace = true }
 sha3 = { workspace = true }
 libsecp256k1 = { workspace = true }
 criterion = { workspace = true, "optional" = true }
-tempfile = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
-massa_ledger_worker = { workspace = true, "optional" = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
 massa_channel = { workspace = true }
@@ -79,17 +74,24 @@ massa_pos_exports = { workspace = true }
 massa_final_state = { workspace = true }
 massa_versioning = { workspace = true }
 massa_db_exports = { workspace = true }
-massa_db_worker = { workspace = true, "optional" = true }
+massa_db_worker = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }
-tokio = { workspace = true, "features" = ["sync"] }
+massa_execution_exports = { workspace = true, features = ["test-exports"] }
+massa_final_state = { workspace = true, features = ["test-exports"] }
+massa_ledger_exports = { workspace = true, features = ["test-exports"] }
+massa_pos_exports = { workspace = true, features = ["test-exports"] }
 massa_pos_worker = { workspace = true }
-massa_ledger_worker = { workspace = true }
-serial_test = { workspace = true }
-tempfile = { workspace = true }                                          # BOM UPGRADE     Revert to "3.2" if problem
+massa-sc-runtime = { workspace = true, features = ["testing"] }
+massa_wallet = { workspace = true, features = ["test-exports"] }
+massa_metrics = { workspace = true, features = ["test-exports"] }
+massa_db_worker = { workspace = true }
+tempfile = { workspace = true }
+massa_test_framework = {workspace = true}
+tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
-massa_execution_exports = { workspace = true, "features" = ["testing"] }
-massa_final_state = { workspace = true, "features" = ["testing"] }
+mockall = { workspace = true }

@@ -87,6 +87,8 @@ pub struct GrpcConfig {
     pub max_parameter_size: u32,
     /// max operations per message in the network to avoid sending to big data packet
     pub max_operations_per_message: u32,
+    /// max gas per block
+    pub max_gas_per_block: u64,
     /// `genesis_timestamp`
     pub genesis_timestamp: MassaTime,
     /// t0
@@ -115,6 +117,8 @@ pub struct GrpcConfig {
     pub max_operation_ids_per_request: u32,
     /// max number of filters that can be included in a single request
     pub max_filters_per_request: u32,
+    /// max number of query items that can be included in a single request
+    pub max_query_items_per_request: u32,
     /// certificate authority root path
     pub certificate_authority_root_path: PathBuf,
     /// server certificate path

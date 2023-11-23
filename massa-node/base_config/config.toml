@@ -15,14 +15,14 @@
     max_arguments = 128
     # path to the openrpc specification file used in `rpc.discover` method
     openrpc_spec_path = "base_config/openrpc.json"
-    # maximum size in bytes of a request
+    # maximum size in bytes of a request. Defaults to 50MB
     max_request_body_size = 52428800
-    # maximum size in bytes of a response
+    # maximum size in bytes of a response. Defaults to 50MB
     max_response_body_size = 52428800
     # maximum number of incoming connections allowed
     max_connections = 100
     # maximum number of subscriptions per connection
-    max_subscriptions_per_connection = 1024
+    max_subscriptions_per_connection = 100
     # max length for logging for requests and responses. Logs bigger than this limit will be truncated
     max_log_length = 4096
     # host filtering
@@ -72,12 +72,12 @@
         max_channel_size = 128
         # set a timeout on for all request handlers in seconds. Defaults to 60s
         timeout = 60
-        # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
-        max_frame_size = 16777215
+        # sets the maximum frame size to use for HTTP2(must be within 16384(16KB) and 16777215(16MB)). Defaults to 16KB
+        max_frame_size = 16384
         # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
-        concurrency_limit_per_connection = 32
+        concurrency_limit_per_connection = 100
         # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
-        max_concurrent_streams = 1024
+        max_concurrent_streams = 100
         # max number of arguments per gRPC request
         max_arguments = 128
         # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -98,6 +98,8 @@
         max_datastore_entries_per_request = 128
         # max number of filters that can be included in a single request
         max_filters_per_request = 32
+        # max number of query items that can be included in a single request
+        max_query_items_per_request = 128
         # certificate authority root path
         certificate_authority_root_path = "config/tls_public_ca.pem"
         # server certificate path
@@ -143,12 +145,12 @@
         max_channel_size = 128
         # set a timeout on for all request handlers in seconds. Defaults to 60s
         timeout = 60
-        # sets the maximum frame size to use for HTTP2(must be within 16,384 and 16,777,215). Defaults to 16MB
-        max_frame_size = 16777215
+        # sets the maximum frame size to use for HTTP2(must be within 16384(16KB) and 16777215(16MB)). Defaults to 16KB
+        max_frame_size = 16384
         # set the concurrency limit applied to on requests inbound per connection. Defaults to 32
-        concurrency_limit_per_connection = 32
+        concurrency_limit_per_connection = 100
         # sets the SETTINGS_MAX_CONCURRENT_STREAMS spec option for HTTP2 connections
-        max_concurrent_streams = 1024
+        max_concurrent_streams = 100
         # max number of arguments per gRPC request
         max_arguments = 128
         # set the value of `TCP_NODELAY` option for accepted connections. Enabled by default
@@ -169,6 +171,8 @@
         max_datastore_entries_per_request = 128
         # max number of filters that can be included in a single request
         max_filters_per_request = 32
+        # max number of query items that can be included in a single request
+        max_query_items_per_request = 128
         # certificate authority root path
         certificate_authority_root_path = "config/tls_private_ca.pem"
         # server certificate path
@@ -365,15 +369,15 @@
     # timeout to establish a bootstrap connection
     connect_timeout = 15000
     # timeout for providing the bootstrap to a connection
-    bootstrap_timeout = 1200000
+    bootstrap_timeout = 600000 # 10 mins
     # delay in milliseconds to wait between consecutive bootstrap attempts
     retry_delay = 60000
     # if ping is too high bootstrap will be interrupted after max_ping milliseconds
     max_ping = 10000
     # timeout for incoming message readout
-    read_timeout = 100000
+    read_timeout = 30000
     # timeout for message sending
-    write_timeout = 100000
+    write_timeout = 30000
     # timeout for incoming error message readout
     read_error_timeout = 200
     # timeout for message error sending

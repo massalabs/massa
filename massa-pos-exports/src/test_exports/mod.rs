@@ -2,8 +2,7 @@
 //! Proof of Stake module `test_exports`
 
 mod bootstrap;
-mod mock;
+mod config;
 
 pub use bootstrap::*;
-#[cfg(feature = "testing")]
-pub use mock::*;
+pub use config::*;

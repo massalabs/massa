@@ -35,8 +35,6 @@ use std::fmt::Formatter;
 use std::{ops::Bound::Included, ops::RangeInclusive, str::FromStr};
 use transition::Versioned;
 
-/// Size in bytes of the serialized operation ID
-
 /// Size in bytes of the serialized operation ID prefix
 pub const OPERATION_ID_PREFIX_SIZE_BYTES: usize = 17;
 
@@ -971,15 +969,19 @@ impl SecureShareOperation {
         start..=self.content.expire_period
     }
 
-    /// Get the max amount of gas used by the operation (`max_gas`)
-    pub fn get_gas_usage(&self) -> u64 {
+    /// Get the maximum amount of gas used by the operation.
+    ///
+    /// base_operation_gas_cost comes from the configuration and
+    /// is the cost of a basic operation (BASE_OPERATION_GAS_COST)
+    pub fn get_gas_usage(&self, base_operation_gas_cost: u64, sp_compilation_cost: u64) -> u64 {
         match &self.content.op {
-            OperationType::ExecuteSC { max_gas, .. } => *max_gas,
+            OperationType::ExecuteSC { max_gas, .. } => max_gas.saturating_add(sp_compilation_cost),
             OperationType::CallSC { max_gas, .. } => *max_gas,
             OperationType::RollBuy { .. } => 0,
             OperationType::RollSell { .. } => 0,
             OperationType::Transaction { .. } => 0,
         }
+        .saturating_add(base_operation_gas_cost)
     }
 
     /// get the addresses that are involved in this operation from a ledger point of view

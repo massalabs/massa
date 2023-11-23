@@ -39,7 +39,8 @@ pub mod server;
 pub mod stream;
 
 #[cfg(test)]
-mod tests;
+/// gRPC tests
+pub mod tests;
 
 /// Slot range type
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]

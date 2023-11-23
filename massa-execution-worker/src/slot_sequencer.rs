@@ -19,9 +19,9 @@ pub struct SlotInfo {
     /// Slot
     slot: Slot,
     /// Whether the slot is CSS-final
-    css_final: bool,
+    consensus_final: bool,
     /// Whether the slot is SCE-final
-    sce_final: bool,
+    execution_final: bool,
     /// Content of the slot (None if miss, otherwise block ID and associated metadata)
     content: Option<(BlockId, ExecutionBlockMetadata)>,
 }
@@ -49,10 +49,10 @@ pub struct SlotSequencer {
     sequence: VecDeque<SlotInfo>,
 
     /// latest CSS-final slots (one per thread)
-    latest_css_final_slots: Vec<Slot>,
+    latest_consensus_final_slots: Vec<Slot>,
 
     /// latest SCE-final slot
-    latest_sce_final_slot: Slot,
+    latest_execution_final_slot: Slot,
 
     /// final slot execution cursor
     latest_executed_final_slot: Slot,
@@ -71,10 +71,10 @@ impl SlotSequencer {
     pub fn new(config: ExecutionConfig, final_cursor: Slot) -> Self {
         SlotSequencer {
             sequence: Default::default(),
-            latest_css_final_slots: (0..config.thread_count)
+            latest_consensus_final_slots: (0..config.thread_count)
                 .map(|t| Slot::new(config.last_start_period, t))
                 .collect(),
-            latest_sce_final_slot: final_cursor,
+            latest_execution_final_slot: final_cursor,
             latest_executed_final_slot: final_cursor,
             latest_executed_candidate_slot: final_cursor,
             config,
@@ -87,29 +87,29 @@ impl SlotSequencer {
     ///
     /// # Arguments
     ///
-    /// `initial_css_final_blocks`: the list of CSS-final blocks (must not be empty)
+    /// `initial_consensus_final_blocks`: the list of CSS-final blocks (must not be empty)
     /// `initial_blockclique`: initial blockclique, usually empty except on major bootstrap latency
-    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_css_final_blocks` and `initial_blockclique`
+    /// `blocks_metadata`: Metadata for all the blocks referenced in `initial_consensus_final_blocks` and `initial_blockclique`
     fn init(
         &mut self,
-        mut initial_css_final_blocks: HashMap<Slot, BlockId>,
+        mut initial_consensus_final_blocks: HashMap<Slot, BlockId>,
         mut initial_blockclique: HashMap<Slot, BlockId>,
         mut blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         // Compute the latest CSS-final slots
-        for (s, _) in initial_css_final_blocks.iter() {
-            if s.period > self.latest_css_final_slots[s.thread as usize].period {
-                self.latest_css_final_slots[s.thread as usize] = *s;
+        for (s, _) in initial_consensus_final_blocks.iter() {
+            if s.period > self.latest_consensus_final_slots[s.thread as usize].period {
+                self.latest_consensus_final_slots[s.thread as usize] = *s;
             }
         }
 
         // Build the slot sequence
 
         // Get the starting slot of the sequence: the earliest CSS-final slot
-        let mut slot = *initial_css_final_blocks
+        let mut slot = *initial_consensus_final_blocks
             .keys()
             .min()
-            .expect("init call should be done with non-empty new_css_final_blocks");
+            .expect("init call should be done with non-empty new_consensus_final_blocks");
 
         // Compute the maximal slot until which the slot sequence is useful.
         // This is the max between the latest CSS-final slot, the latest blockclique slot,
@@ -117,10 +117,10 @@ impl SlotSequencer {
         let max_slot = std::cmp::max(
             std::cmp::max(
                 *self
-                    .latest_css_final_slots
+                    .latest_consensus_final_slots
                     .iter()
                     .max()
-                    .expect("latest_css_final_slots is empty"),
+                    .expect("latest_consensus_final_slots is empty"),
                 initial_blockclique
                     .keys()
                     .max()
@@ -133,16 +133,16 @@ impl SlotSequencer {
         // Iterate from the starting slot to the `max_slot` to build the slot sequence.
         while slot <= max_slot {
             // If the slot is rearlier than (or equal to) the latest CSS-final slot in that thread => mark the slot as CSS-final
-            let css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
+            let consensus_final = slot <= self.latest_consensus_final_slots[slot.thread as usize];
 
             // If the slot is before (or equal to) the latest SCE-final slot => mark the slot as SCE-final.
-            // Note that `self.latest_sce_final_slot` was initialized in `Self::new`.
-            let sce_final = slot <= self.latest_sce_final_slot;
+            // Note that `self.latest_execution_final_slot` was initialized in `Self::new`.
+            let execution_final = slot <= self.latest_execution_final_slot;
 
-            // Gather the content of the slot by looking for a block at that slot inside `initial_css_final_blocks` (and remove it from there if found).
+            // Gather the content of the slot by looking for a block at that slot inside `initial_consensus_final_blocks` (and remove it from there if found).
             // If not found, look into `initial_blockclique` (and remove it from there if found).
             // If still not found, assume a miss (content = None).
-            let content = initial_css_final_blocks
+            let content = initial_consensus_final_blocks
                 .remove(&slot)
                 .or_else(|| initial_blockclique.remove(&slot))
                 .map(|b_id| {
@@ -159,8 +159,8 @@ impl SlotSequencer {
             // Build the `SlotInfo` for that slot and add it to the sequence
             self.sequence.push_back(SlotInfo {
                 slot,
-                css_final,
-                sce_final,
+                consensus_final,
+                execution_final,
                 content,
             });
 
@@ -170,8 +170,8 @@ impl SlotSequencer {
                 .expect("overflow in slot iteration");
         }
         // Explicitly consume tainted containers to prevent mistakes caused by using them later.
-        if initial_css_final_blocks.into_iter().next().is_some() {
-            panic!("remaining elements in css_final_blocks after slot sequencing");
+        if initial_consensus_final_blocks.into_iter().next().is_some() {
+            panic!("remaining elements in consensus_final_blocks after slot sequencing");
         }
         if initial_blockclique.into_iter().next().is_some() {
             panic!("remaining elements in blockclique after slot sequencing");
@@ -188,9 +188,7 @@ impl SlotSequencer {
     /// Note that this time cursor is shifted by `self.config.cursor_delay`
     /// to avoid computing speculative slots that are too recent, and therefore subject to frequent re-writes.
     fn get_time_cursor(&self) -> Slot {
-        let shifted_now = MassaTime::now()
-            .expect("could not get current time")
-            .saturating_sub(self.config.cursor_delay);
+        let shifted_now = MassaTime::now().saturating_sub(self.config.cursor_delay);
         get_latest_block_slot_at_timestamp(
             self.config.thread_count,
             self.config.t0,
@@ -205,21 +203,21 @@ impl SlotSequencer {
     /// This function is also called on time slots to ensure new slots are taken into account even if they don't contain a block.
     ///
     /// # Arguments
-    /// * `new_css_final_blocks`: new CSS-finalized blocks
+    /// * `new_consensus_final_blocks`: new CSS-finalized blocks
     /// * `new_blockclique`: new blockclique (if changed since the last call to this method, otherwise None)
     /// * `new_blocks_metadata`: metadata for blocks that have not been seen previously by the sequencer
     pub fn update(
         &mut self,
-        mut new_css_final_blocks: HashMap<Slot, BlockId>,
+        mut new_consensus_final_blocks: HashMap<Slot, BlockId>,
         mut new_blockclique: Option<HashMap<Slot, BlockId>>,
         mut new_blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
         // If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
         if self.sequence.is_empty() {
-            if !new_css_final_blocks.is_empty() {
+            if !new_consensus_final_blocks.is_empty() {
                 self.init(
-                    new_css_final_blocks,
+                    new_consensus_final_blocks,
                     new_blockclique.unwrap_or_default(),
                     new_blocks_metadata,
                 );
@@ -228,16 +226,16 @@ impl SlotSequencer {
         }
 
         // Update the list of latest CSS-final slots
-        for (s, _) in new_css_final_blocks.iter() {
-            if s.period > self.latest_css_final_slots[s.thread as usize].period {
-                self.latest_css_final_slots[s.thread as usize] = *s;
+        for (s, _) in new_consensus_final_blocks.iter() {
+            if s.period > self.latest_consensus_final_slots[s.thread as usize].period {
+                self.latest_consensus_final_slots[s.thread as usize] = *s;
             }
         }
 
         // Build the slot sequence:.
         // For this, we build a new slot sequence (`new_sequence`) that replaces the old `self.slot_sequence`.
         // For performance, we build the new sequence by recycling elements from the old `self.sequence`
-        // and gathering new ones from `new_css_final_blocks` and `new_blockclique`.
+        // and gathering new ones from `new_consensus_final_blocks` and `new_blockclique`.
 
         // Get earliest useful slot to start the new sequence from (eg. the earliest slot of the previous sequence)
         let mut slot = self
@@ -254,10 +252,10 @@ impl SlotSequencer {
         let max_slot = std::cmp::max(
             std::cmp::max(
                 *self
-                    .latest_css_final_slots
+                    .latest_consensus_final_slots
                     .iter()
                     .max()
-                    .expect("latest_css_final_slots is empty"),
+                    .expect("latest_consensus_final_slots is empty"),
                 new_blockclique
                     .as_ref()
                     .and_then(|bq| bq.keys().max().copied())
@@ -280,25 +278,30 @@ impl SlotSequencer {
         // The very first slot of the sequence must be SCE-final,
         // and as soon as we reach a slot that is not SCE-final,
         // this variable is set to `false` and remains like this until the end of the loop.
-        let mut in_sce_finality = true;
+        let mut in_execution_finality = true;
 
         // Loop over the slots to build the new sequence
         while slot <= max_slot {
             // The slot is now CSS-final if it is before or at the latest CSS-final slot in its own thread
-            let mut new_css_final = slot <= self.latest_css_final_slots[slot.thread as usize];
+            let mut new_consensus_final =
+                slot <= self.latest_consensus_final_slots[slot.thread as usize];
 
             // the slot S is also CSS-final if there is any CSS-final slot S' in any thread so that t(S') >= t(S) + t0
-            if !new_css_final {
-                new_css_final = self.latest_css_final_slots.iter().any(|css_final_slot| {
-                    css_final_slot
-                        .slots_since(&slot, self.config.thread_count)
-                        .unwrap_or_default()
-                        >= self.config.thread_count as u64
-                });
+            if !new_consensus_final {
+                new_consensus_final =
+                    self.latest_consensus_final_slots
+                        .iter()
+                        .any(|consensus_final_slot| {
+                            consensus_final_slot
+                                .slots_since(&slot, self.config.thread_count)
+                                .unwrap_or_default()
+                                >= self.config.thread_count as u64
+                        });
             }
 
             // Try to get a block at the current slot by consuming it from the new CSS-final blocks.
-            let new_css_final_block: Option<BlockId> = new_css_final_blocks.remove(&slot);
+            let new_consensus_final_block: Option<BlockId> =
+                new_consensus_final_blocks.remove(&slot);
 
             // Check if we were notified of a blockclique change.
             let blockclique_updated = new_blockclique.is_some();
@@ -320,23 +323,23 @@ impl SlotSequencer {
             let (seq_item, seq_item_overwrites_history) = SlotSequencer::sequence_build_step(
                 slot,
                 prev_item,
-                new_css_final,
-                new_css_final_block,
+                new_consensus_final,
+                new_consensus_final_block,
                 blockclique_updated,
                 new_blockclique_block,
                 &mut new_blocks_metadata,
-                in_sce_finality,
+                in_execution_finality,
             );
 
             // If the computed slot is not SCE-final => all subsequent slots are not SCE-final
-            in_sce_finality = in_sce_finality && seq_item.sce_final;
+            in_execution_finality = in_execution_finality && seq_item.execution_final;
 
             // Append the slot to the new sequence.
             new_sequence.push_back(seq_item);
 
             // If this slot is SCE-final => update the latest SCE-final slot
-            if in_sce_finality {
-                self.latest_sce_final_slot = slot;
+            if in_execution_finality {
+                self.latest_execution_final_slot = slot;
             }
 
             // If the obtained slot overwrites history before the candidate execution cursor,
@@ -356,8 +359,8 @@ impl SlotSequencer {
         if !self.sequence.is_empty() {
             panic!("some items of the old slot sequence have been unexpectedly not processed");
         }
-        if new_css_final_blocks.into_iter().next().is_some() {
-            panic!("remaining elements in new_css_final_blocks after slot sequencing");
+        if new_consensus_final_blocks.into_iter().next().is_some() {
+            panic!("remaining elements in new_consensus_final_blocks after slot sequencing");
         }
         if let Some(bq) = new_blockclique {
             if !bq.is_empty() {
@@ -379,12 +382,12 @@ impl SlotSequencer {
     /// # Arguments
     /// * `slot`: the slot being constructed
     /// * `prev_item`: the corresponding slot status from the old sequence, if any
-    /// * `new_css_final`: whether this slot was CSS-finalized
-    /// * `new_css_final_block`: newly CSS-finalized block at that slot, if any
+    /// * `new_consensus_final`: whether this slot was CSS-finalized
+    /// * `new_consensus_final_block`: newly CSS-finalized block at that slot, if any
     /// * `blockclique_updated`: whether a new blockclique was provided when `Self::update` was called
     /// * `new_blockclique_block`: block at that slot within the new blockclique, if any
     /// * `new_blocks_metadata`: block metadata for execution
-    /// * `in_sce_finality`: whether the previous slot was SCE-final
+    /// * `in_execution_finality`: whether the previous slot was SCE-final
     ///
     /// # Returns
     /// A pair (SlotInfo, truncate_history: bool) where truncate_history indicates that this slot changes the content of an existing candidate slot
@@ -392,12 +395,12 @@ impl SlotSequencer {
     fn sequence_build_step(
         slot: Slot,
         prev_item: Option<SlotInfo>,
-        new_css_final: bool,
-        new_css_final_block: Option<BlockId>,
+        new_consensus_final: bool,
+        new_consensus_final_block: Option<BlockId>,
         blockclique_updated: bool,
         new_blockclique_block: Option<BlockId>,
         new_blocks_metadata: &mut PreHashMap<BlockId, ExecutionBlockMetadata>,
-        in_sce_finality: bool,
+        in_execution_finality: bool,
     ) -> (SlotInfo, bool) {
         // Match the slot state from the old sequence.
         // Most old slot states can be partially or completely recycled for performance.
@@ -405,23 +408,23 @@ impl SlotSequencer {
             // The slot was already present in the old sequence.
 
             // The slot was CSS-final
-            if prev_slot_info.css_final {
+            if prev_slot_info.consensus_final {
                 // This CSS-final slot is SCE-final if the previous one was SCE-final.
-                prev_slot_info.sce_final = in_sce_finality;
+                prev_slot_info.execution_final = in_execution_finality;
 
                 // Return the obtained slot.
                 return (prev_slot_info, false);
             }
 
             // The slot was not CSS-final and needs to become CSS-final
-            if !prev_slot_info.css_final && new_css_final {
+            if !prev_slot_info.consensus_final && new_consensus_final {
                 // Check if the content of the existing slot matches the newly CSS-finalized one.
-                if prev_slot_info.get_block_id() == new_css_final_block.as_ref() {
+                if prev_slot_info.get_block_id() == new_consensus_final_block.as_ref() {
                     // Contents match => mark the slot as CSS-final
-                    prev_slot_info.css_final = true;
+                    prev_slot_info.consensus_final = true;
 
                     // This CSS-final slot is SCE-final if the previous slot was SCE-final
-                    prev_slot_info.sce_final = in_sce_finality;
+                    prev_slot_info.execution_final = in_execution_finality;
 
                     // Return the obtained slot.
                     return (prev_slot_info, false);
@@ -430,13 +433,13 @@ impl SlotSequencer {
                 // Here we know that the newly CSS-finalized slot has different contents than it used to in its previously non-CSS-final state.
 
                 // Mark the slot as CSS-final
-                prev_slot_info.css_final = true;
+                prev_slot_info.consensus_final = true;
 
                 // This CSS-final slot is SCE-final if the previous slot was SCE-final
-                prev_slot_info.sce_final = in_sce_finality;
+                prev_slot_info.execution_final = in_execution_finality;
 
                 // Overwrite the contents of the slot with the newly CSS-finalized block
-                prev_slot_info.content = new_css_final_block.map(|b_id| {
+                prev_slot_info.content = new_consensus_final_block.map(|b_id| {
                     (
                         b_id,
                         // Can't recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
@@ -483,17 +486,17 @@ impl SlotSequencer {
         // This slot was not present in the old slot sequence.
 
         // Check if the new slot is CSS-final.
-        if new_css_final {
+        if new_consensus_final {
             // The slot was absent (or considered a miss) before.
             // So, if there is a new block there, consider that it caused a mismatch at this slot.
-            let mismatch = new_css_final_block.is_some();
+            let mismatch = new_consensus_final_block.is_some();
 
             // Generate the new CSS-final slot state.
             let slot_info = SlotInfo {
                 slot,
-                css_final: true,
-                sce_final: in_sce_finality, // This CSS-final slot is SCE-final if the previous slot was SCE-final
-                content: new_css_final_block.map(|b_id| {
+                consensus_final: true,
+                execution_final: in_execution_finality, // This CSS-final slot is SCE-final if the previous slot was SCE-final
+                content: new_consensus_final_block.map(|b_id| {
                     // Get the newly CSS-finalized block at that slot, if any
                     (
                         b_id,
@@ -518,8 +521,8 @@ impl SlotSequencer {
         // Generate a new speculative slot state for that slot.
         let slot_info = SlotInfo {
             slot,
-            css_final: false,
-            sce_final: false,
+            consensus_final: false,
+            execution_final: false,
             content: new_blockclique_block.map(|b_id| {
                 (
                     b_id,
@@ -571,14 +574,14 @@ impl SlotSequencer {
         // Check if the next SCE-final slot is available for execution
         {
             // Get the slot just after the last executed SCE-final slot
-            let next_sce_final_slot = self
+            let next_execution_final_slot = self
                 .latest_executed_final_slot
                 .get_next_slot(self.config.thread_count)
                 .expect("overflow in slot iteration");
             // Read whether that slot is present in the slot sequence and is marked as SCE-final.
             let finalization_task_available = self
-                .get_slot(&next_sce_final_slot)
-                .map_or(false, |s_info| s_info.sce_final);
+                .get_slot(&next_execution_final_slot)
+                .map_or(false, |s_info| s_info.execution_final);
             if finalization_task_available {
                 // A non-executed SCE-final slot is ready for execution.
                 return true;
@@ -619,11 +622,11 @@ impl SlotSequencer {
         let min_useful_slot = std::cmp::min(
             std::cmp::min(
                 *self
-                    .latest_css_final_slots
+                    .latest_consensus_final_slots
                     .iter()
                     .min()
-                    .expect("latest_css_final_slots should not be empty"),
-                self.latest_sce_final_slot,
+                    .expect("latest_consensus_final_slots should not be empty"),
+                self.latest_execution_final_slot,
             ),
             std::cmp::min(
                 self.latest_executed_final_slot,
@@ -671,10 +674,12 @@ impl SlotSequencer {
                 .expect("overflow in slot iteration");
             // Check whether that slot is in the sequence and marked as SCE-final.
             if let Some(SlotInfo {
-                sce_final, content, ..
+                execution_final,
+                content,
+                ..
             }) = self.get_slot(&slot)
             {
-                if *sce_final {
+                if *execution_final {
                     // There is an SCE-final slot ready for execution.
 
                     // Call the callback function to execute the slot.
@@ -737,14 +742,12 @@ impl SlotSequencer {
         // This means that we are still waiting for `Self::update` to be called for the first time.
         // To avoid CPU-intensive loops upstream, just register a wake-up after a single slot delay (t0/T).
         if self.sequence.is_empty() {
-            return MassaTime::now()
-                .expect("could not get current time")
-                .saturating_add(
-                    self.config
-                        .t0
-                        .checked_div_u64(self.config.thread_count as u64)
-                        .unwrap(),
-                );
+            return MassaTime::now().saturating_add(
+                self.config
+                    .t0
+                    .checked_div_u64(self.config.thread_count as u64)
+                    .unwrap(),
+            );
         }
 
         // Compute the next slot after the current time cursor.

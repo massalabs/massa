@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main, 'testnet_*']
+    branches: [main, 'testnet_*', 'buildnet_wip']
     types:
     - opened
     - reopened
@@ -31,13 +31,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
-          save-if: ${{ github.ref_name == 'testnet_26' }}
+          save-if: ${{ github.ref_name == 'main' }}
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -55,11 +55,11 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
-          save-if: ${{ github.ref_name == 'testnet_26' }}
+          save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -80,13 +80,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
-          save-if: ${{ github.ref_name == 'testnet_26' }}
+          save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -94,8 +94,19 @@ jobs:
       - uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: -- -A clippy::uninlined-format-args
+          args: --no-deps --all-targets
 
+  security:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+      - uses: actions-rust-lang/audit@v1
+        name: Audit Rust Dependencies
 
   # Full cross-platform tests required by bors to merge on main branch
   full:
@@ -178,12 +189,12 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
-          save-if: ${{ github.ref_name == 'testnet_26' }}
+          save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'
@@ -195,14 +206,18 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --features testing --retries 10
+          args: run --retries 10
       - uses: actions-rs/cargo@v1
         with:
           command: clean
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --features testing --doc
+          args: --doc
+      - uses: codecov/codecov-action@v3
+        with:
+          files: lcov.info
+          fail_ci_if_error: false
 
   build: # quick hack because bors wrongly detect matrix jobs status
     needs: full
@@ -221,7 +236,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -256,13 +271,13 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.0
+          toolchain: 1.72.1
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
-          save-if: ${{ github.ref_name == 'testnet_26' }}
+          save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v1
         with:
           version: '3.x'

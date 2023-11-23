@@ -46,6 +46,7 @@ struct WalletFileFormat {
     public_key: Vec<u8>,
 }
 
+//TODO: Use exports and mock it
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
     pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
@@ -125,18 +126,15 @@ impl Wallet {
     }
 
     /// Removes wallet entries given a list of addresses. Missing entries are ignored.
-    /// The wallet file is updated.
-    pub fn remove_addresses(&mut self, addresses: &Vec<Address>) -> Result<(), WalletError> {
+    /// call save() to persist the changes on disk.
+    pub fn remove_addresses(&mut self, addresses: &Vec<Address>) -> Result<bool, WalletError> {
         let mut changed = false;
         for address in addresses {
             if self.keys.remove(address).is_some() {
                 changed = true;
             }
         }
-        if changed {
-            self.save()?;
-        }
-        Ok(())
+        Ok(changed)
     }
 
     /// Finds the keypair associated with given address
@@ -157,7 +155,7 @@ impl Wallet {
     }
 
     /// Save the wallets in a directory, each wallet in a yaml file.
-    fn save(&self) -> Result<(), WalletError> {
+    pub fn save(&self) -> Result<(), WalletError> {
         let mut existing_keys: HashSet<PathBuf> = HashSet::new();
         if !self.wallet_path.exists() {
             std::fs::create_dir_all(&self.wallet_path)?;
@@ -226,5 +224,5 @@ impl std::fmt::Display for Wallet {
 }
 
 /// Test utils
-#[cfg(feature = "testing")]
+#[cfg(feature = "test-exports")]
 pub mod test_exports;

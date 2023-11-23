@@ -11,13 +11,13 @@ impl From<AsyncMessage> for grpc_model::AsyncMessage {
             emission_index: value.emission_index,
             sender: value.sender.to_string(),
             destination: value.destination.to_string(),
-            handler: value.handler.to_string(),
+            handler: value.function.to_string(),
             max_gas: value.max_gas,
             fee: Some(value.fee.into()),
             coins: Some(value.coins.into()),
             validity_start: Some(value.validity_start.into()),
             validity_end: Some(value.validity_start.into()),
-            data: value.data,
+            data: value.function_params,
             trigger: value.trigger.map(|trigger| trigger.into()),
             can_be_executed: value.can_be_executed,
         }
@@ -72,7 +72,7 @@ impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
                     )),
                 }),
             },
-            handler: match value.handler {
+            handler: match value.function {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepString {
                     change: Some(grpc_model::set_or_keep_string::Change::Set(value)),
                 }),
@@ -134,7 +134,7 @@ impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
                     )),
                 }),
             },
-            data: match value.data {
+            data: match value.function_params {
                 SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepBytes {
                     change: Some(grpc_model::set_or_keep_bytes::Change::Set(value)),
                 }),
@@ -144,13 +144,15 @@ impl From<AsyncMessageUpdate> for grpc_model::AsyncMessageUpdate {
                     )),
                 }),
             },
-            //TODO remove unwrap
             trigger: match value.trigger {
-                SetOrKeep::Set(value) => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
-                    change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Set(
-                        value.map(|trigger| trigger.into()).unwrap(),
-                    )),
-                }),
+                SetOrKeep::Set(value) => match value {
+                    None => Some(grpc_model::SetOrKeepAsyncMessageTrigger { change: None }),
+                    Some(trigger) => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
+                        change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Set(
+                            trigger.into(),
+                        )),
+                    }),
+                },
                 SetOrKeep::Keep => Some(grpc_model::SetOrKeepAsyncMessageTrigger {
                     change: Some(grpc_model::set_or_keep_async_message_trigger::Change::Keep(
                         grpc_model::Empty {},

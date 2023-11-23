@@ -20,13 +20,13 @@ use self::{
 pub mod cache;
 pub mod commands_propagation;
 pub mod commands_retrieval;
-mod messages;
+pub mod messages;
 mod propagation;
 mod retrieval;
 
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
-#[cfg(feature = "testing")]
+#[cfg(test)]
 pub use messages::{
     AskForBlockInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
 };

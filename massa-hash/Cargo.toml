@@ -1,6 +1,6 @@
 [package]
 name = "massa_hash"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -11,8 +11,6 @@ displaydoc = {workspace = true}
 serde = {workspace = true, "features" = ["derive"]}
 thiserror = {workspace = true}
 nom = {workspace = true}
-lsmtree = {workspace = true}
-generic-array = {workspace = true}
 massa_serialization = {workspace = true}
 
 [dev-dependencies]

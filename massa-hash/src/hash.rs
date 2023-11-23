@@ -42,7 +42,7 @@ pub struct Hash(blake3::Hash);
 
 impl PartialOrd for Hash {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.as_bytes().partial_cmp(other.0.as_bytes())
+        Some(self.0.as_bytes().cmp(other.0.as_bytes()))
     }
 }
 
@@ -65,7 +65,7 @@ impl std::fmt::Display for Hash {
 
 impl std::fmt::Debug for Hash {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.to_bs58_check())
+        std::fmt::Display::fmt(self, f)
     }
 }
 
@@ -359,66 +359,6 @@ impl FromStr for Hash {
     type Err = MassaHashError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Hash::from_bs58_check(s)
-    }
-}
-
-/// Wrapper around a Blake3 hasher, used for the Sparse Merkle Tree computation
-pub struct SmtHasher(blake3::Hasher);
-impl lsmtree::digest::OutputSizeUser for SmtHasher {
-    type OutputSize = lsmtree::digest::typenum::U32;
-}
-
-impl lsmtree::digest::Digest for SmtHasher {
-    fn new() -> Self {
-        SmtHasher(blake3::Hasher::new())
-    }
-
-    fn new_with_prefix(_: impl AsRef<[u8]>) -> Self {
-        unreachable!()
-    }
-
-    fn update(&mut self, data: impl AsRef<[u8]>) {
-        self.0.update(data.as_ref());
-    }
-
-    fn chain_update(self, _: impl AsRef<[u8]>) -> Self {
-        unreachable!()
-    }
-
-    fn finalize(self) -> lsmtree::digest::Output<Self> {
-        let hash: [u8; HASH_SIZE_BYTES] = self.0.finalize().into();
-        generic_array::GenericArray::from(hash)
-    }
-
-    fn finalize_into(self, _: &mut lsmtree::digest::Output<Self>) {
-        unreachable!()
-    }
-
-    fn finalize_reset(&mut self) -> lsmtree::digest::Output<Self> {
-        unreachable!()
-    }
-
-    fn finalize_into_reset(&mut self, _: &mut lsmtree::digest::Output<Self>) {
-        unreachable!()
-    }
-
-    fn reset(&mut self) {
-        unreachable!()
-    }
-
-    fn output_size() -> usize {
-        debug_assert_eq!(
-            HASH_SIZE_BYTES,
-            <Self as lsmtree::digest::OutputSizeUser>::output_size(),
-            "lsm_tree hash size is not HASH_SIZE_BYTES"
-        );
-        HASH_SIZE_BYTES
-    }
-
-    fn digest(data: impl AsRef<[u8]>) -> lsmtree::digest::Output<Self> {
-        let mut h = Self::new();
-        h.update(data);
-        h.finalize()
     }
 }
 

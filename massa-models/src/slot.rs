@@ -123,7 +123,7 @@ impl Deserializer<Slot> for SlotDeserializer {
 
 impl PartialOrd for Slot {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (self.period, self.thread).partial_cmp(&(other.period, other.thread))
+        Some((self.period, self.thread).cmp(&(other.period, other.thread)))
     }
 }
 

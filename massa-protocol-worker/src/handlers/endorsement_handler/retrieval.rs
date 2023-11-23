@@ -146,7 +146,7 @@ impl RetrievalThread {
     fn ban_peer(&mut self, peer_id: &PeerId) -> Result<(), ProtocolError> {
         massa_trace!("ban node from retrieval thread", { "peer_id": peer_id.to_string() });
         self.peer_cmd_sender
-            .try_send(PeerManagementCmd::Ban(vec![peer_id.clone()]))
+            .try_send(PeerManagementCmd::Ban(vec![*peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
     }
 }
@@ -243,7 +243,7 @@ pub(crate) fn note_endorsements_from_peer(
     // From there we note new endorsements and propagate them
 
     // Filter out endorsements if they are too old (max age of the inclusion slot: `max_endorsements_propagation_time`)
-    let now = MassaTime::now()?;
+    let now = MassaTime::now();
     new_endorsements.retain(|_id, endorsement| {
         match get_block_slot_timestamp(
             config.thread_count,

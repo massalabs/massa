@@ -8,7 +8,6 @@
 *.swp*
 **/Cargo.lock
 **/target
-lcov.info
 massa-client/config/*
 massa-client/wallet.dat
 massa-node/config/*
@@ -28,3 +27,6 @@ docs/venv
 massa_unit_tests_*.tar.gz
 extract_massa_unit_tests_src_*
 massa-client/wallets/*
+# coverage
+*.profraw
+coverage

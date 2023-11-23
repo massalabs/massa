@@ -1,6 +1,6 @@
 [package]
 name = "massa_cipher"
-version = "0.26.1"
+version = "0.27.0"
 edition = "2021"
 
 [dependencies]
@@ -9,4 +9,3 @@ thiserror = {workspace = true}
 aes-gcm = {workspace = true}
 pbkdf2 = {workspace = true}
 rand = {workspace = true}
-massa_serialization = {workspace = true}

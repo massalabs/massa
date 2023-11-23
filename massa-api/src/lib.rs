@@ -8,10 +8,11 @@ use api_trait::MassaApiServer;
 use hyper::Method;
 use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::{AllowHosts, BatchRequestConfig, ServerBuilder, ServerHandle};
+use jsonrpsee::server::middleware::HostFilterLayer;
+use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::{
-    address::AddressInfo,
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -23,7 +24,7 @@ use massa_api_exports::{
     page::{PageRequest, PagedVec},
     TimeInterval,
 };
-use massa_consensus_exports::{ConsensusChannels, ConsensusController};
+use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::ExecutionController;
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
@@ -35,7 +36,7 @@ use massa_models::{
     address::Address, block::Block, block_id::BlockId, endorsement::EndorsementId,
     execution::EventFilter, slot::Slot, version::Version,
 };
-use massa_pool_exports::{PoolChannels, PoolController};
+use massa_pool_exports::{PoolBroadcasts, PoolController};
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{ProtocolConfig, ProtocolController};
 use massa_storage::Storage;
@@ -52,6 +53,9 @@ mod api;
 mod api_trait;
 mod private;
 mod public;
+
+#[cfg(test)]
+mod tests;
 
 /// Public API component
 pub struct Public {
@@ -98,12 +102,12 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// link(channels) to the consensus component
-    pub consensus_channels: ConsensusChannels,
+    /// channels with informations broadcasted by the consensus
+    pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// link(channels) to the pool component
-    pub pool_channels: PoolChannels,
+    /// channels with informations broadcasted by the pool
+    pub pool_broadcasts: PoolBroadcasts,
     /// API settings
     pub api_settings: APIConfig,
     /// node version
@@ -140,22 +144,10 @@ async fn serve<T>(
     url: &SocketAddr,
     api_config: &APIConfig,
 ) -> Result<StopHandle, JsonRpseeError> {
-    let allowed_hosts = if api_config.allow_hosts.is_empty() {
-        AllowHosts::Any
-    } else {
-        let hosts = api_config
-            .allow_hosts
-            .iter()
-            .map(|hostname| hostname.into())
-            .collect();
-        AllowHosts::Only(hosts)
-    };
-
     let mut server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
         .max_connections(api_config.max_connections)
-        .set_host_filtering(allowed_hosts)
         .set_batch_request_config(if api_config.batch_request_limit > 0 {
             BatchRequestConfig::Limit(api_config.batch_request_limit)
         } else {
@@ -178,7 +170,21 @@ async fn serve<T>(
         .allow_origin(Any)
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
-    let middleware = tower::ServiceBuilder::new().layer(cors);
+    let hosts = if api_config.allow_hosts.is_empty() {
+        vec!["*:*"]
+    } else {
+        api_config
+            .allow_hosts
+            .iter()
+            .map(|hostname| hostname.as_str())
+            .collect()
+    };
+
+    let allowed_hosts = HostFilterLayer::new(hosts).expect("failed to build allowed hosts filter");
+
+    let middleware = tower::ServiceBuilder::new()
+        .layer(cors)
+        .layer(allowed_hosts);
 
     let server = server_builder
         .set_middleware(middleware)
@@ -362,6 +368,10 @@ pub trait MassaRpc {
     /// Get addresses.
     #[method(name = "get_addresses")]
     async fn get_addresses(&self, arg: Vec<Address>) -> RpcResult<Vec<AddressInfo>>;
+
+    /// Get addresses bytecode.
+    #[method(name = "get_addresses_bytecode")]
+    async fn get_addresses_bytecode(&self, args: Vec<AddressFilter>) -> RpcResult<Vec<Vec<u8>>>;
 
     /// Adds operations to pool. Returns operations that were ok and sent to pool.
     #[method(name = "send_operations")]

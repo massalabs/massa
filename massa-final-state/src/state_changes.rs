@@ -72,54 +72,6 @@ impl StateChangesSerializer {
 }
 
 impl Serializer<StateChanges> for StateChangesSerializer {
-    /// ## Example
-    /// ```
-    /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, slot::Slot};
-    /// use massa_final_state::{StateChanges, StateChangesSerializer};
-    /// use std::str::FromStr;
-    /// use std::collections::BTreeMap;
-    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-    ///
-    /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     String::from("test"),
-    ///     10000000,
-    ///     Amount::from_str("1").unwrap(),
-    ///     Amount::from_str("1").unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     None,
-    ///     None,
-    /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
-    /// state_changes.async_pool_changes = async_pool_changes;
-    ///
-    /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntryUpdate {
-    ///    balance: SetOrKeep::Set(amount),
-    ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: BTreeMap::default(),
-    /// };
-    /// let mut ledger_changes = LedgerChanges::default();
-    /// ledger_changes.0.insert(
-    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///    SetUpdateOrDelete::Update(ledger_entry),
-    /// );
-    /// state_changes.ledger_changes = ledger_changes;
-    /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// ```
     fn serialize(&self, value: &StateChanges, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.ledger_changes_serializer
             .serialize(&value.ledger_changes, buffer)?;
@@ -154,7 +106,8 @@ impl StateChangesDeserializer {
     pub fn new(
         thread_count: u8,
         max_async_pool_changes: u64,
-        max_async_message_data: u64,
+        max_function_length: u16,
+        max_function_params_length: u64,
         max_ledger_changes_count: u64,
         max_datastore_key_length: u8,
         max_datastore_value_length: u64,
@@ -176,7 +129,8 @@ impl StateChangesDeserializer {
             async_pool_changes_deserializer: AsyncPoolChangesDeserializer::new(
                 thread_count,
                 max_async_pool_changes,
-                max_async_message_data,
+                max_function_length,
+                max_function_params_length,
                 max_datastore_key_length as u32,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
@@ -202,58 +156,6 @@ impl StateChangesDeserializer {
 }
 
 impl Deserializer<StateChanges> for StateChangesDeserializer {
-    /// ## Example
-    /// ```
-    /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, amount::Amount, bytecode::Bytecode, prehash::PreHashMap, slot::Slot};
-    /// use massa_final_state::{StateChanges, StateChangesSerializer, StateChangesDeserializer};
-    /// use std::str::FromStr;
-    /// use std::collections::BTreeMap;
-    /// use massa_ledger_exports::{LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete, LedgerChanges};
-    /// use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-    ///
-    /// let mut state_changes = StateChanges::default();
-    /// let message = AsyncMessage::new(
-    ///     Slot::new(1, 0),
-    ///     0,
-    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
-    ///     String::from("test"),
-    ///     10000000,
-    ///     Amount::from_str("1").unwrap(),
-    ///     Amount::from_str("1").unwrap(),
-    ///     Slot::new(2, 0),
-    ///     Slot::new(3, 0),
-    ///     vec![1, 2, 3, 4],
-    ///     None,
-    ///     None
-    /// );
-    /// let mut async_pool_changes = AsyncPoolChanges::default();
-    /// async_pool_changes
-    ///    .0
-    ///    .insert(message.compute_id(), SetUpdateOrDelete::Set(message.clone()));
-    /// state_changes.async_pool_changes = async_pool_changes;
-    ///
-    /// let amount = Amount::from_str("1").unwrap();
-    /// let bytecode = Bytecode(vec![1, 2, 3]);
-    /// let ledger_entry = LedgerEntryUpdate {
-    ///    balance: SetOrKeep::Set(amount),
-    ///    bytecode: SetOrKeep::Set(bytecode),
-    ///    datastore: BTreeMap::default(),
-    /// };
-    /// let mut ledger_changes = LedgerChanges::default();
-    /// ledger_changes.0.insert(
-    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-    ///    SetUpdateOrDelete::Update(ledger_entry),
-    /// );
-    /// state_changes.ledger_changes = ledger_changes;
-    /// let mut serialized = Vec::new();
-    /// StateChangesSerializer::new().serialize(&state_changes, &mut serialized).unwrap();
-    /// let (rest, state_changes_deser) = StateChangesDeserializer::new(32, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 32, 1000).deserialize::<DeserializeError>(&serialized).unwrap();
-    /// assert!(rest.is_empty());
-    /// assert_eq!(state_changes_deser.ledger_changes, state_changes.ledger_changes);
-    /// assert_eq!(state_changes_deser.async_pool_changes, state_changes.async_pool_changes);
-    /// ```
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
@@ -317,5 +219,108 @@ impl StateChanges {
             .extend(changes.executed_ops_changes);
         self.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::collections::BTreeMap;
+    use std::str::FromStr;
+
+    use massa_async_pool::AsyncMessage;
+    use massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
+    use massa_models::address::Address;
+    use massa_models::amount::Amount;
+    use massa_models::bytecode::Bytecode;
+    use massa_models::slot::Slot;
+    use massa_serialization::DeserializeError;
+
+    use massa_models::config::{
+        ENDORSEMENT_COUNT, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_DATASTORE_ENTRY_COUNT,
+        MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+        MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_LEDGER_CHANGES_COUNT, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+        MAX_ROLLS_COUNT_LENGTH, THREAD_COUNT,
+    };
+
+    use super::*;
+
+    impl PartialEq<StateChanges> for StateChanges {
+        fn eq(&self, other: &StateChanges) -> bool {
+            self.ledger_changes == other.ledger_changes &&
+                self.async_pool_changes == other.async_pool_changes &&
+                // pos_changes
+                self.pos_changes.seed_bits == other.pos_changes.seed_bits &&
+                self.pos_changes.roll_changes == other.pos_changes.roll_changes &&
+                self.pos_changes.production_stats == other.pos_changes.production_stats &&
+                self.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &&
+                self.executed_ops_changes == other.executed_ops_changes &&
+                self.executed_denunciations_changes == other.executed_denunciations_changes &&
+                self.execution_trail_hash_change == other.execution_trail_hash_change
+        }
+    }
+
+    #[test]
+    fn test_state_changes_ser_der() {
+        let mut state_changes = StateChanges::default();
+        let message = AsyncMessage::new(
+            Slot::new(1, 0),
+            0,
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            String::from("test"),
+            10000000,
+            Amount::from_str("1").unwrap(),
+            Amount::from_str("1").unwrap(),
+            Slot::new(2, 0),
+            Slot::new(3, 0),
+            vec![1, 2, 3, 4],
+            None,
+            None,
+        );
+        let mut async_pool_changes = AsyncPoolChanges::default();
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
+        state_changes.async_pool_changes = async_pool_changes;
+
+        let amount = Amount::from_str("1").unwrap();
+        let bytecode = Bytecode(vec![1, 2, 3]);
+        let ledger_entry = LedgerEntryUpdate {
+            balance: SetOrKeep::Set(amount),
+            bytecode: SetOrKeep::Set(bytecode),
+            datastore: BTreeMap::default(),
+        };
+        let mut ledger_changes = LedgerChanges::default();
+        ledger_changes.0.insert(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            SetUpdateOrDelete::Update(ledger_entry),
+        );
+        state_changes.ledger_changes = ledger_changes;
+        let mut serialized = Vec::new();
+        StateChangesSerializer::new()
+            .serialize(&state_changes, &mut serialized)
+            .unwrap();
+
+        let (rest, state_changes_deser) = StateChangesDeserializer::new(
+            THREAD_COUNT,
+            MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE as u64,
+            MAX_LEDGER_CHANGES_COUNT,
+            MAX_DATASTORE_KEY_LENGTH,
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DATASTORE_ENTRY_COUNT,
+            MAX_ROLLS_COUNT_LENGTH,
+            MAX_PRODUCTION_STATS_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH,
+            MAX_EXECUTED_OPS_CHANGES_LENGTH,
+            ENDORSEMENT_COUNT,
+            MAX_DENUNCIATION_CHANGES_LENGTH,
+        )
+        .deserialize::<DeserializeError>(&serialized)
+        .unwrap();
+        assert!(rest.is_empty());
+        assert_eq!(state_changes, state_changes_deser);
     }
 }

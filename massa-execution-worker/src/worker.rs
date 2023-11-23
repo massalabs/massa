@@ -13,7 +13,7 @@ use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
 };
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::block_id::BlockId;
 use massa_models::slot::Slot;
@@ -148,7 +148,7 @@ impl ExecutionThread {
             // Compute when the next slot will be
             // This is useful to wait for the next speculative miss to append to active slots.
             let wakeup_deadline = self.slot_sequencer.get_next_slot_deadline();
-            let now = MassaTime::now().expect("could not get current time");
+            let now = MassaTime::now();
             if wakeup_deadline <= now {
                 // next slot is right now: the loop needs to iterate
                 return (input_data, false);
@@ -247,7 +247,7 @@ impl ExecutionThread {
 /// * `execution_controller`: allows sending requests and notifications to the worker
 pub fn start_execution_worker(
     config: ExecutionConfig,
-    final_state: Arc<RwLock<FinalState>>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
     selector: Box<dyn SelectorController>,
     mip_store: MipStore,
     channels: ExecutionChannels,

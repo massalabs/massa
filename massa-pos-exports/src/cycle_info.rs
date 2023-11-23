@@ -471,3 +471,98 @@ impl Deserializer<Vec<CycleInfo>> for CycleHistoryDeserializer {
         .parse(buffer)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use massa_models::config::{MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH};
+    use massa_serialization::DeserializeError;
+    use std::str::FromStr;
+
+    fn create_cycle_info() -> (CycleInfo, Address, Address) {
+        let addr1 =
+            Address::from_str("AU1jUbxeXW49QRT6Le5aPuNdcGWQV2kpnDyQkKoka4MmEUW3m8Xm").unwrap();
+        let addr2 =
+            Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
+        let mut prod_stats = PreHashMap::default();
+        prod_stats.insert(addr1, ProductionStats::default());
+        prod_stats.insert(
+            addr2,
+            ProductionStats {
+                block_success_count: 65539,
+                block_failure_count: 2,
+            },
+        );
+
+        let mut cycle_info1 = CycleInfo::new(
+            0,
+            false,
+            BTreeMap::from([(addr1, 1), (addr2, 100)]),
+            BitVec::new(),
+            prod_stats,
+        );
+        cycle_info1.final_state_hash_snapshot = Some(HashXof::from_bytes(&[2u8; 512]));
+
+        (cycle_info1, addr1, addr2)
+    }
+
+    #[test]
+    fn test_cycle_info_ser_der() {
+        let (cycle_info1, _, _) = create_cycle_info();
+
+        let mut buf = Vec::new();
+        let serializer = CycleInfoSerializer::new();
+        let deserializer =
+            CycleInfoDeserializer::new(MAX_ROLLS_COUNT_LENGTH, MAX_PRODUCTION_STATS_LENGTH);
+
+        serializer.serialize(&cycle_info1, &mut buf).unwrap();
+        let (rem, cycle_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
+        assert!(rem.is_empty());
+        assert_eq!(cycle_der, cycle_info1);
+
+        // With limits
+        let deserializer2 = CycleInfoDeserializer::new(1, MAX_PRODUCTION_STATS_LENGTH);
+        let deserializer3 = CycleInfoDeserializer::new(MAX_ROLLS_COUNT_LENGTH, 1);
+
+        buf.clear();
+        serializer.serialize(&cycle_info1, &mut buf).unwrap();
+        let res2 = deserializer2.deserialize::<DeserializeError>(&buf);
+        assert!(res2.is_err());
+        buf.clear();
+        serializer.serialize(&cycle_info1, &mut buf).unwrap();
+        let res3 = deserializer3.deserialize::<DeserializeError>(&buf);
+        assert!(res3.is_err());
+    }
+
+    #[test]
+    fn test_cycle_history_ser_der() {
+        let (mut cycle_info1, _addr1, _addr2) = create_cycle_info();
+        let mut cycle_info2 = cycle_info1.clone();
+        cycle_info2.cycle += 1;
+        cycle_info1.complete = true;
+
+        let serializer = CycleHistorySerializer::new();
+        let deserializer =
+            CycleHistoryDeserializer::new(2, MAX_ROLLS_COUNT_LENGTH, MAX_PRODUCTION_STATS_LENGTH);
+        let deserializer2 =
+            CycleHistoryDeserializer::new(1, MAX_ROLLS_COUNT_LENGTH, MAX_PRODUCTION_STATS_LENGTH);
+        let cycle_history = VecDeque::from([cycle_info1, cycle_info2]);
+
+        let mut buf = Vec::new();
+        serializer.serialize(&cycle_history, &mut buf).unwrap();
+        let (rem, cycle_history_der) = deserializer.deserialize::<DeserializeError>(&buf).unwrap();
+        assert!(rem.is_empty());
+        assert_eq!(
+            cycle_history_der,
+            cycle_history
+                .clone()
+                .into_iter()
+                .collect::<Vec<CycleInfo>>()
+        );
+
+        buf.clear();
+        serializer.serialize(&cycle_history, &mut buf).unwrap();
+        let res2 = deserializer2.deserialize::<DeserializeError>(&buf);
+        assert!(res2.is_err());
+    }
+}

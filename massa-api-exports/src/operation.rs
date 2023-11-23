@@ -52,9 +52,9 @@ impl std::fmt::Display for OperationInfo {
                 self.is_operation_final,
                 "operation is final",
                 "operation is not final",
-                "finality unkown"
+                "finality unknown"
             ),
-            display_option_bool(self.op_exec_status, "succes", "failed", "status unkown")
+            display_option_bool(self.op_exec_status, "succes", "failed", "status unknown")
         )?;
         writeln!(f, "In blocks:")?;
         for block_id in &self.in_blocks {

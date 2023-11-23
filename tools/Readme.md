@@ -45,3 +45,18 @@ If required, please update the Git tag in setup_test.rs (line 25)
 * In massa repo, edit [tools/setup_test.rs](setup_test.rs) to update the line:
   * const TAG: &str = "..."
   * run the script
+
+## Coverage
+
+### llmv-cov
+
+* For all packages:
+  * tools/llvm-cov.sh
+
+* For a particular package:
+  * python3 tools/llvm-cov.py -p {MASSA_PACKAGE_NAME}
+    * python3 tools/llvm-cov.py -p massa-versioning
+
+### grcov
+
+* tools/grcov.sh

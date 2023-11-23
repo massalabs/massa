@@ -12,7 +12,7 @@
 #![warn(unused_crate_dependencies)]
 
 use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
-use massa_final_state::FinalState;
+use massa_final_state::FinalStateController;
 use massa_protocol_exports::BootstrapPeers;
 use parking_lot::RwLock;
 use std::io::{self, ErrorKind};
@@ -47,7 +47,7 @@ pub(crate) mod tests;
 /// a collection of the bootstrap state snapshots of all relevant modules
 pub struct GlobalBootstrapState {
     /// state of the final state
-    pub final_state: Arc<RwLock<FinalState>>,
+    pub final_state: Arc<RwLock<dyn FinalStateController>>,
 
     /// state of the consensus graph
     pub graph: Option<BootstrapableGraph>,
@@ -57,7 +57,7 @@ pub struct GlobalBootstrapState {
 }
 
 impl GlobalBootstrapState {
-    fn new(final_state: Arc<RwLock<FinalState>>) -> Self {
+    fn new(final_state: Arc<RwLock<dyn FinalStateController>>) -> Self {
         Self {
             final_state,
             graph: None,

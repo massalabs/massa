@@ -1,0 +1,11 @@
+[package]
+name = "massa_test_framework"
+version = "0.27.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[dependencies]
+massa_hash = { path = "../massa-hash" }
+massa_models = { path = "../massa-models", features = ["test-exports"]}
+massa_signature = { path = "../massa-signature" }
+tracing-subscriber = { workspace = true, features = ["env-filter"]}

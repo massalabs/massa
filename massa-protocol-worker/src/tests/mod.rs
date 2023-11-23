@@ -1,11 +1,11 @@
 use num::rational::Ratio;
 use std::{collections::HashMap, fs::read_to_string, time::Duration};
 
-use massa_consensus_exports::test_exports::ConsensusControllerImpl;
+use massa_consensus_exports::MockConsensusController;
 use massa_metrics::MassaMetrics;
 use massa_models::config::MIP_STORE_STATS_BLOCK_CONSIDERED;
-use massa_pool_exports::test_exports::MockPoolController;
-use massa_pos_exports::test_exports::MockSelectorController;
+use massa_pool_exports::MockPoolController;
+use massa_pos_exports::MockSelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerData, PeerId, ProtocolConfig};
 use massa_signature::KeyPair;
 use massa_storage::Storage;
@@ -17,14 +17,10 @@ use crate::{create_protocol_controller, start_protocol_controller};
 
 mod ban_nodes_scenarios;
 mod block_scenarios;
-mod cache_scenarios;
-mod context;
 mod endorsements_scenarios;
-mod in_block_operations_scenarios;
-mod mock_network;
 mod operations_scenarios;
 mod peer_priorization;
-mod tools;
+mod universe;
 
 #[test]
 fn basic() {
@@ -38,14 +34,26 @@ fn basic() {
         std::process::exit(1);
     }));
 
-    let (pool_controller1, _) = MockPoolController::new_with_receiver();
-    let (pool_controller2, _) = MockPoolController::new_with_receiver();
+    let mut pool_controller1 = Box::new(MockPoolController::new());
+    pool_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
+    let mut pool_controller2 = Box::new(MockPoolController::new());
+    pool_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(MockConsensusController::new());
+    let consensus_controller2 = Box::new(MockConsensusController::new());
 
-    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
-    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
+    let mut selector_controller1 = Box::new(MockSelectorController::new());
+    selector_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
+    let mut selector_controller2 = Box::new(MockSelectorController::new());
+    selector_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -173,7 +181,7 @@ fn basic() {
     )
     .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(15));
+    std::thread::sleep(Duration::from_secs(2));
     // Stop the protocols
     sender_manager1.stop();
     manager1.stop();
@@ -189,14 +197,26 @@ fn stop_with_controller_still_exists() {
         std::process::exit(1);
     }));
 
-    let (pool_controller1, _) = MockPoolController::new_with_receiver();
-    let (pool_controller2, _) = MockPoolController::new_with_receiver();
+    let mut pool_controller1 = Box::new(MockPoolController::new());
+    pool_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
+    let mut pool_controller2 = Box::new(MockPoolController::new());
+    pool_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(MockPoolController::new()));
 
-    let (consensus_controller1, _) = ConsensusControllerImpl::new_with_receiver();
-    let (consensus_controller2, _) = ConsensusControllerImpl::new_with_receiver();
+    let consensus_controller1 = Box::new(MockConsensusController::new());
+    let consensus_controller2 = Box::new(MockConsensusController::new());
 
-    let (selector_controller1, _) = MockSelectorController::new_with_receiver();
-    let (selector_controller2, _) = MockSelectorController::new_with_receiver();
+    let mut selector_controller1 = Box::new(MockSelectorController::new());
+    selector_controller1
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
+    let mut selector_controller2 = Box::new(MockSelectorController::new());
+    selector_controller2
+        .expect_clone_box()
+        .returning(|| Box::new(MockSelectorController::new()));
     // Setup the configs
     let mut config1 = ProtocolConfig::default();
     config1
@@ -322,7 +342,7 @@ fn stop_with_controller_still_exists() {
     )
     .expect("Failed to start protocol 2");
 
-    std::thread::sleep(Duration::from_secs(15));
+    std::thread::sleep(Duration::from_secs(2));
     // Stop the protocols
     sender_manager1.stop();
     sender_manager2.stop();

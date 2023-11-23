@@ -107,7 +107,8 @@ impl BootstrapClientBinder {
         let message = {
             if let Some(prev_msg) = prev_msg {
                 // Consume the rest of the message from the stream
-                let mut stream_bytes = vec![0u8; msg_len as usize];
+                let mut stream_bytes =
+                    vec![0u8; msg_len.try_into().expect("Overflow on msg_len to usize")];
 
                 // TODO: handle a partial read
                 self.read_exact_timeout(&mut stream_bytes[..], deadline)
@@ -127,7 +128,8 @@ impl BootstrapClientBinder {
                 msg
             } else {
                 // Consume the rest of the message from the stream
-                let mut stream_bytes = vec![0u8; msg_len as usize];
+                let mut stream_bytes =
+                    vec![0u8; msg_len.try_into().expect("Overflow on msg_len to usize")];
 
                 // TODO: handle a partial read
                 self.read_exact_timeout(&mut stream_bytes[..], deadline)

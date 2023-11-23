@@ -1,11 +1,11 @@
 [package]
 name = "massa_pos_exports"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["crossbeam-channel", "massa_models/testing", "mockall"]
+test-exports = ["crossbeam-channel", "massa_models/test-exports", "mockall", "mockall_wrap"]
 
 [dependencies]
 bitvec = {workspace = true, "features" = ["serde"]}
@@ -19,6 +19,7 @@ num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {
 parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
 crossbeam-channel = {workspace = true, "optional" = true}
 mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
+mockall_wrap = {workspace = true, "optional" = true}
 massa_hash = {workspace = true}
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
@@ -28,4 +29,5 @@ massa_db_exports = {workspace = true}
 [dev-dependencies]
 mockall = {workspace = true}
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+assert_matches = {workspace = true}
 massa_db_worker = {workspace = true}

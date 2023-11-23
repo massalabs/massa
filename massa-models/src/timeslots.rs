@@ -89,7 +89,7 @@ pub fn get_current_latest_block_slot(
     t0: MassaTime,
     genesis_timestamp: MassaTime,
 ) -> Result<Option<Slot>, ModelsError> {
-    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now()?)
+    get_latest_block_slot_at_timestamp(thread_count, t0, genesis_timestamp, MassaTime::now())
 }
 
 /// Turns an `MassaTime` range [start, end) with optional start/end to a `Slot` range [start, end) with optional start/end

@@ -128,6 +128,39 @@
             ],
             "params": [
                 {
+                    "name": "address filter",
+                    "description": "Need to provide at least one valid address filter",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AddressFilter"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": "Addresses bytecode array"
+            },
+            "name": "get_addresses_bytecode",
+            "summary": "Returns the bytecode of the given addresses.",
+            "description": "Returns the bytecode of the given addresses."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
                     "name": "blockId",
                     "description": "Need to provide at least one valid block id",
                     "schema": {
@@ -1374,6 +1407,20 @@
                 "description": "Address",
                 "type": "string"
             },
+            "AddressFilter": {
+                "description": "Address filter",
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address",
+                        "description": "The address"
+                    },
+                    "is_final": {
+                        "type": "boolean",
+                        "description": "true means final, false means candidate"
+                    }
+                }
+            },
             "AddressInfo": {
                 "title": "AddressInfo",
                 "required": [
@@ -2576,7 +2623,7 @@
                     },
                     "op_exec_status": {
                         "description": "true if the operation execution succeeded, false if failed, None means unknown",
-                        "type" : "boolean"
+                        "type": "boolean"
                     }
                 },
                 "additionalProperties": false
@@ -2772,6 +2819,14 @@
                     "is_final": {
                         "description": "Whether to start execution from final or active state",
                         "type": "boolean"
+                    },
+                    "coins": {
+                        "description": "Amount in coins, optional",
+                        "type": "number"
+                    },
+                    "fee": {
+                        "description": "Fee, optional",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -2806,6 +2861,14 @@
                     "caller_address": {
                         "description": "Caller's address, optional",
                         "type": "string"
+                    },
+                    "coins": {
+                        "description": "Amount in coins, optional",
+                        "type": "number"
+                    },
+                    "fee": {
+                        "description": "Fee, optional",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false
@@ -3102,6 +3165,22 @@
             }
         },
         "contentDescriptors": {
+            "Address": {
+                "name": "Address",
+                "summary": "Address",
+                "description": "A Address object",
+                "schema": {
+                    "$ref": "#/components/schemas/Address"
+                }
+            },
+            "AddressFilter": {
+                "name": "AddressFilter",
+                "summary": "Address filter",
+                "description": "A AddressFilter object",
+                "schema": {
+                    "$ref": "#/components/schemas/AddressFilter"
+                }
+            },
             "AddressInfo": {
                 "name": "AddressInfo",
                 "summary": "Address information",

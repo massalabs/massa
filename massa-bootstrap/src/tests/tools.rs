@@ -1,42 +1,42 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::settings::{BootstrapConfig, IpType};
+use crate::{BootstrapClientMessage, BootstrapServerMessage};
 use bitvec::vec::BitVec;
 use massa_async_pool::AsyncPoolChanges;
 use massa_async_pool::{test_exports::get_random_message, AsyncPool};
 use massa_consensus_exports::{
-    bootstrapable_graph::{
-        BootstrapableGraph, BootstrapableGraphDeserializer, BootstrapableGraphSerializer,
-    },
-    export_active_block::{ExportActiveBlock, ExportActiveBlockSerializer},
+    bootstrapable_graph::BootstrapableGraph, export_active_block::ExportActiveBlock,
 };
-use massa_db_exports::{DBBatch, ShareableMassaDBController};
+use massa_db_exports::{DBBatch, ShareableMassaDBController, StreamBatch};
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
 };
 use massa_final_state::test_exports::create_final_state;
-use massa_final_state::{FinalState, FinalStateConfig};
-use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, LedgerEntry, SetOrKeep, SetUpdateOrDelete};
+use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
+use massa_hash::{Hash, HASH_SIZE_BYTES};
+use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
 use massa_ledger_worker::test_exports::create_final_ledger;
-use massa_models::block::BlockDeserializerArgs;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
-    MAX_ADVERTISE_LENGTH, MAX_ASYNC_MESSAGE_DATA, MAX_ASYNC_POOL_LENGTH,
-    MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
-    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
-    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
-    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-    MAX_LEDGER_CHANGES_COUNT, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
     MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
     PERIODS_PER_CYCLE, THREAD_COUNT,
 };
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
+use massa_models::prehash::{CapacityAllocator, PreHashSet};
+use massa_models::streaming_step::StreamingStep;
+use massa_models::version::Version;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -54,14 +54,15 @@ use massa_models::{
 };
 use massa_pos_exports::{DeferredCredits, PoSChanges, PoSFinalState, ProductionStats};
 use massa_protocol_exports::{BootstrapPeers, PeerId, TransportType};
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use num::rational::Ratio;
-use rand::Rng;
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
+use std::unreachable;
 use std::{
     collections::BTreeMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -96,21 +97,6 @@ fn get_random_ledger_entry() -> LedgerEntry {
         bytecode,
         datastore,
     }
-}
-
-pub fn get_random_ledger_changes(r_limit: u64) -> LedgerChanges {
-    let mut changes = LedgerChanges::default();
-    for _ in 0..r_limit {
-        changes.0.insert(
-            get_random_address(),
-            SetUpdateOrDelete::Set(LedgerEntry {
-                balance: Amount::from_raw(r_limit),
-                bytecode: Bytecode::default(),
-                datastore: BTreeMap::default(),
-            }),
-        );
-    }
-    changes
 }
 
 /// generates random PoS cycles info
@@ -190,43 +176,13 @@ fn get_random_pos_state(r_limit: u64, mut pos: PoSFinalState) -> PoSFinalState {
     pos
 }
 
-/// generates random PoS changes
-pub fn get_random_pos_changes(r_limit: u64) -> PoSChanges {
-    let deferred_credits = get_random_deferred_credits(r_limit);
-    let (roll_counts, production_stats, seed_bits) = get_random_pos_cycles_info(r_limit);
-    PoSChanges {
-        seed_bits,
-        roll_changes: roll_counts.into_iter().collect(),
-        production_stats,
-        deferred_credits,
-    }
-}
-
-pub fn get_random_async_pool_changes(r_limit: u64, thread_count: u8) -> AsyncPoolChanges {
-    let mut changes = AsyncPoolChanges::default();
-    for _ in 0..(r_limit / 2) {
-        let message = get_random_message(Some(Amount::from_str("10").unwrap()), thread_count);
-        changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-    }
-    for _ in (r_limit / 2)..r_limit {
-        let message =
-            get_random_message(Some(Amount::from_str("1_000_000").unwrap()), thread_count);
-        changes
-            .0
-            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
-    }
-    changes
-}
-
 pub fn get_random_executed_ops(
     _r_limit: u64,
     slot: Slot,
     config: ExecutedOpsConfig,
     db: ShareableMassaDBController,
 ) -> ExecutedOps {
-    let mut executed_ops = ExecutedOps::new(config.clone(), db.clone());
+    let mut executed_ops = ExecutedOps::new(config, db.clone());
     let mut batch = DBBatch::new();
     executed_ops.apply_changes_to_batch(get_random_executed_ops_changes(10), slot, &mut batch);
     db.write().write_batch(batch, Default::default(), None);
@@ -285,15 +241,6 @@ pub fn get_random_executed_de_changes(r_limit: u64) -> ExecutedDenunciationsChan
     }
 
     de_changes
-}
-
-/// generates a random execution trail hash change
-pub fn get_random_execution_trail_hash_change(always_set: bool) -> SetOrKeep<massa_hash::Hash> {
-    if always_set || rand::thread_rng().gen() {
-        SetOrKeep::Set(Hash::compute_from(&get_some_random_bytes()))
-    } else {
-        SetOrKeep::Keep
-    }
 }
 
 /// generates a random bootstrap state for the final state
@@ -372,10 +319,6 @@ pub fn get_random_final_state_bootstrap(
     final_state
 }
 
-pub fn get_dummy_block_id(s: &str) -> BlockId {
-    BlockId::generate_from_hash(Hash::compute_from(s.as_bytes()))
-}
-
 pub fn get_random_address() -> Address {
     let priv_key = KeyPair::generate(0).unwrap();
     Address::from_public_key(&priv_key.get_public_key())
@@ -419,10 +362,8 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
-        max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
-        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -446,121 +387,883 @@ pub fn get_bootstrap_config(bootstrap_public_key: NodeId) -> BootstrapConfig {
     }
 }
 
-/// asserts that two `BootstrapableGraph` are equal
-pub fn assert_eq_bootstrap_graph(v1: &BootstrapableGraph, v2: &BootstrapableGraph) {
-    assert_eq!(
-        v1.final_blocks.len(),
-        v2.final_blocks.len(),
-        "length mismatch"
-    );
-    let serializer = ExportActiveBlockSerializer::new();
-    let mut data1: Vec<u8> = Vec::new();
-    let mut data2: Vec<u8> = Vec::new();
-    for (item1, item2) in v1.final_blocks.iter().zip(v2.final_blocks.iter()) {
-        serializer.serialize(item1, &mut data1).unwrap();
-        serializer.serialize(item2, &mut data2).unwrap();
-    }
-    assert_eq!(data1, data2, "BootstrapableGraph mismatch")
-}
-
-pub fn get_boot_state() -> BootstrapableGraph {
+fn gen_export_active_blocks<R: Rng>(rng: &mut R) -> ExportActiveBlock {
     let keypair = KeyPair::generate(0).unwrap();
-
-    let block = Block::new_verifiable(
-        Block {
-            header: BlockHeader::new_verifiable(
-                BlockHeader {
-                    current_version: 0,
-                    announced_version: None,
-                    // associated slot
-                    // all header endorsements are supposed to point towards this one
-                    slot: Slot::new(1, 0),
-                    parents: vec![get_dummy_block_id("p1"); THREAD_COUNT as usize],
-                    operation_merkle_root: Hash::compute_from("op_hash".as_bytes()),
-                    endorsements: vec![
-                        Endorsement::new_verifiable(
-                            Endorsement {
-                                slot: Slot::new(1, 0),
-                                index: 1,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            EndorsementSerializer::new(),
-                            &keypair,
-                        )
-                        .unwrap(),
-                        Endorsement::new_verifiable(
-                            Endorsement {
-                                slot: Slot::new(1, 0),
-                                index: 3,
-                                endorsed_block: get_dummy_block_id("p1"),
-                            },
-                            EndorsementSerializer::new(),
-                            &keypair,
-                        )
-                        .unwrap(),
-                    ],
-                    denunciations: vec![],
-                },
-                BlockHeaderSerializer::new(),
-                &keypair,
-            )
-            .unwrap(),
-            operations: Default::default(),
-        },
-        BlockSerializer::new(),
-        &keypair,
-    )
-    .unwrap();
-
-    // TODO: We currently lost information. Need to use shared storage
-    let block1 = ExportActiveBlock {
+    let block = gen_random_block(&keypair, rng)
+        .new_verifiable(BlockSerializer::new(), &keypair)
+        .unwrap();
+    let parents = (0..32)
+        .map(|_| (gen_random_block_id(rng), rng.gen()))
+        .collect();
+    ExportActiveBlock {
         block,
-        parents: vec![(get_dummy_block_id("b1"), 4777); THREAD_COUNT as usize],
-        is_final: true,
-    };
-
-    let boot_graph = BootstrapableGraph {
-        final_blocks: vec![block1],
-    };
-
-    let bootstrapable_graph_serializer = BootstrapableGraphSerializer::new();
-    let args = BlockDeserializerArgs {
-        thread_count: THREAD_COUNT,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        endorsement_count: ENDORSEMENT_COUNT,
-        max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        last_start_period: Some(0),
-    };
-    let bootstrapable_graph_deserializer =
-        BootstrapableGraphDeserializer::new(args, MAX_BOOTSTRAP_BLOCKS);
-
-    let mut bootstrapable_graph_serialized = Vec::new();
-    bootstrapable_graph_serializer
-        .serialize(&boot_graph, &mut bootstrapable_graph_serialized)
-        .unwrap();
-    let (_, bootstrapable_graph_deserialized) = bootstrapable_graph_deserializer
-        .deserialize::<DeserializeError>(&bootstrapable_graph_serialized)
-        .unwrap();
-
-    assert_eq_bootstrap_graph(&bootstrapable_graph_deserialized, &boot_graph);
-
-    boot_graph
+        parents,
+        is_final: rng.gen_bool(0.5),
+    }
 }
 
-pub fn get_peers(keypair: &KeyPair) -> BootstrapPeers {
-    let mut listeners1 = HashMap::default();
-    listeners1.insert("82.245.123.77:8080".parse().unwrap(), TransportType::Tcp);
+fn gen_random_stream_batch<T, R>(max: u32, change_id: T, rng: &mut R) -> StreamBatch<T>
+where
+    T: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug,
+    R: Rng,
+{
+    let batch_size = rng.gen_range(0..max);
+    let new_elements_size = rng.gen_range(0..batch_size);
+    let mut new_elements = BTreeMap::new();
+    let mut size = 0;
+    loop {
+        let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
+        let val = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
+        size += key.len() as u64;
+        size += val.len() as u64;
+        if size > new_elements_size.into() {
+            break;
+        }
+        new_elements.insert(key, val);
+    }
+    let mut updates_on_previous_elements = BTreeMap::new();
+    loop {
+        let key = gen_random_vector(MAX_DATASTORE_KEY_LENGTH as usize, rng);
+        let mut s = key.len();
+        let val = if rng.gen_bool(0.5) {
+            let v = gen_random_vector(MAX_DATASTORE_VALUE_LENGTH as usize, rng);
+            s += v.len();
+            Some(v)
+        } else {
+            None
+        };
+        size += s as u64;
+        if size > batch_size.into() {
+            break;
+        }
+        updates_on_previous_elements.insert(key, val);
+    }
+    StreamBatch {
+        new_elements,
+        updates_on_previous_elements,
+        change_id,
+    }
+}
 
-    let mut listeners2 = HashMap::default();
-    listeners2.insert("82.220.123.78:8080".parse().unwrap(), TransportType::Tcp);
-    BootstrapPeers(vec![
-        (
-            PeerId::from_public_key(keypair.get_public_key()),
-            listeners1,
-        ),
-        (
-            PeerId::from_public_key(keypair.get_public_key()),
-            listeners2,
-        ),
-    ])
+fn gen_random_string<R: Rng>(max: usize, rng: &mut R) -> String {
+    let res = gen_random_vector(max, rng);
+    res.into_iter()
+        .map(|c| char::from_u32(((c as u32) % (122 - 65)) + 65).unwrap())
+        .collect()
+}
+
+fn gen_random_vector<R: Rng>(max: usize, rng: &mut R) -> Vec<u8> {
+    let nb = rng.gen_range(0..=max);
+    let mut res = vec![0; nb];
+    rng.fill_bytes(&mut res);
+    res
+}
+
+fn stream_batch_equal<T: PartialOrd + Ord + PartialEq + Eq + Clone + std::fmt::Debug>(
+    s1: &StreamBatch<T>,
+    s2: &StreamBatch<T>,
+) -> bool {
+    let mut new_elements_equal = true;
+    for (key1, val1) in s1.new_elements.iter() {
+        if let Some(val2) = s2.new_elements.get(key1) {
+            new_elements_equal &= val1 == val2;
+        } else {
+            new_elements_equal = false;
+            break;
+        }
+    }
+    let mut update_prevels_equal = true;
+    for (key1, val1) in s1.updates_on_previous_elements.iter() {
+        if let Some(val2) = s2.updates_on_previous_elements.get(key1) {
+            update_prevels_equal &= val1 == val2;
+        } else {
+            update_prevels_equal = false;
+            break;
+        }
+    }
+    new_elements_equal && update_prevels_equal && (s1.change_id == s2.change_id)
+}
+
+fn gen_random_hash<R: Rng>(rng: &mut R) -> Hash {
+    let bytes: [u8; HASH_SIZE_BYTES] = rng.gen();
+    Hash::from_bytes(&bytes)
+}
+
+fn gen_random_slot<R: Rng>(rng: &mut R) -> Slot {
+    Slot {
+        period: rng.gen(),
+        thread: rng.gen_range(0..32),
+    }
+}
+
+fn gen_random_block_id<R: Rng>(rng: &mut R) -> BlockId {
+    BlockId::generate_from_hash(gen_random_hash(rng))
+}
+
+fn gen_random_block<R: Rng>(keypair: &KeyPair, rng: &mut R) -> Block {
+    let slot = gen_random_slot(rng);
+    let parents: Vec<BlockId> = (0..32).map(|_| gen_random_block_id(rng)).collect();
+    let mut endorsements = vec![];
+    for index in 0..rng.gen_range(1..ENDORSEMENT_COUNT) {
+        let endorsement = Endorsement {
+            index,
+            slot,
+            endorsed_block: parents[slot.thread as usize],
+        };
+
+        let endorsement = endorsement
+            .new_verifiable(EndorsementSerializer::new(), keypair)
+            .unwrap();
+        endorsements.push(endorsement);
+    }
+
+    let denunciations = vec![];
+    // for index in 0..rng.gen_range(0..(MAX_DENUNCIATIONS_PER_BLOCK_HEADER as usize)) {
+    //    // TODO    Denunciations generation
+    // }
+
+    let header = BlockHeader {
+        current_version: rng.gen(),
+        announced_version: rng.gen(),
+        slot,
+        parents,
+        operation_merkle_root: gen_random_hash(rng),
+        endorsements,
+        denunciations,
+    }
+    .new_verifiable(BlockHeaderSerializer::new(), keypair)
+    .unwrap();
+    let mut operations = vec![];
+    for _ in 0..rng.gen_range(0..MAX_OPERATIONS_PER_BLOCK) {
+        let op = OperationId::new(gen_random_hash(rng));
+        operations.push(op);
+    }
+    Block { header, operations }
+}
+
+pub fn gen_random_streaming_step<T, R: Rng>(rng: &mut R, content: T) -> StreamingStep<T> {
+    match rng.gen_range(0..3) {
+        0 => StreamingStep::Started,
+        1 => StreamingStep::Ongoing(content),
+        2 => StreamingStep::Finished(if rng.gen_bool(0.8) {
+            Some(content)
+        } else {
+            None
+        }),
+        _ => unreachable!(),
+    }
+}
+
+#[allow(clippy::enum_variant_names)]
+#[derive(PartialEq, Debug)]
+pub enum BootstrapServerMessageFaultyPart {
+    MaxBootstrapErrorLengthOverflow = 0,
+    MaxBootstrapPeersOverflow = 1,
+    MaxListenersPerPeerOverflow = 2,
+    SlotThreadOverflow = 3,
+    MaxStateDatastoreKeyLengthOverflow = 4,
+    MaxStateDatastoreValueLengthOverflow = 5,
+    MaxStateNewElementsSizeOverflow = 6,
+    StateChangeIdThreadOverflow = 7,
+    MaxVersioningNewElementsSizeOverflow = 8,
+    MaxVersioningDatastoreKeyLengthOverflow = 9,
+    MaxVersioningDatastoreValueLengthOverflow = 10,
+    VersioningChangeIdThreadOverflow = 11,
+    MaxBootstrapBlocksOverflow = 12,
+    MaxParentsPerBlockOverflow = 13,
+    BlockSlotThreadOverflow = 14,
+    MaxEndorsementsPerBlockOverflow = 15,
+    MaxDenunciationsPerBlockOverflow = 16,
+    MaxOperationsPerBlockOverflow = 17,
+    MaxOutdatedIdsOverflow = 18,
+    LastSlotBeforeDowntimeThreadOverflow = 19,
+}
+
+impl BootstrapServerMessageFaultyPart {
+    pub fn from_u8(v_u8: u8) -> Self {
+        match v_u8 {
+            0 => Self::MaxBootstrapErrorLengthOverflow,
+            1 => Self::MaxBootstrapPeersOverflow,
+            2 => Self::MaxListenersPerPeerOverflow,
+            3 => Self::SlotThreadOverflow,
+            4 => Self::MaxStateDatastoreKeyLengthOverflow,
+            5 => Self::MaxStateDatastoreValueLengthOverflow,
+            6 => Self::MaxStateNewElementsSizeOverflow,
+            7 => Self::StateChangeIdThreadOverflow,
+            8 => Self::MaxVersioningNewElementsSizeOverflow,
+            9 => Self::MaxVersioningDatastoreKeyLengthOverflow,
+            10 => Self::MaxVersioningDatastoreValueLengthOverflow,
+            11 => Self::VersioningChangeIdThreadOverflow,
+            12 => Self::MaxBootstrapBlocksOverflow,
+            13 => Self::MaxParentsPerBlockOverflow,
+            14 => Self::BlockSlotThreadOverflow,
+            15 => Self::MaxEndorsementsPerBlockOverflow,
+            16 => Self::MaxDenunciationsPerBlockOverflow,
+            17 => Self::MaxOperationsPerBlockOverflow,
+            18 => Self::MaxOutdatedIdsOverflow,
+            19 => Self::LastSlotBeforeDowntimeThreadOverflow,
+            _ => panic!("invalid value"),
+        }
+    }
+}
+
+impl BootstrapServerMessage {
+    pub fn generate<R: Rng>(rng: &mut R) -> Self {
+        let variant = rng.gen_range(0..6);
+        match variant {
+            0 => {
+                let t: u64 = rng.gen();
+                // Taken from INSTANCE_LEN in version.rs
+                let vi: String = (0..4)
+                    .map(|_| char::from_u32(rng.gen_range(65..91)).unwrap())
+                    .collect();
+                let major: u32 = rng.gen();
+                let minor: u32 = rng.gen();
+                let version =
+                    Version::from_str(format!("{}.{}.{}", vi, major, minor).as_str()).unwrap();
+                let server_time = MassaTime::from_millis(t);
+                BootstrapServerMessage::BootstrapTime {
+                    server_time,
+                    version,
+                }
+            }
+            1 => {
+                let peer_nb = rng.gen_range(0..100);
+                let mut peers_list = vec![];
+                for _ in 0..peer_nb {
+                    peers_list.push((
+                        PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key()),
+                        HashMap::new(),
+                    ));
+                }
+                let peers = BootstrapPeers(peers_list);
+                BootstrapServerMessage::BootstrapPeers { peers }
+            }
+            2 => {
+                let slot = gen_random_slot(rng);
+                let state_part =
+                    gen_random_stream_batch(MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, slot, rng);
+                let slot = gen_random_slot(rng);
+                let versioning_part =
+                    gen_random_stream_batch(MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, slot, rng);
+                let mut final_blocks = vec![];
+                let block_nb = rng.gen_range(5..100); //MAX_BOOTSTRAP_BLOCKS);
+                for _ in 0..block_nb {
+                    final_blocks.push(gen_export_active_blocks(rng));
+                }
+                let nb = rng.gen_range(0..MAX_BOOTSTRAP_BLOCKS);
+                let mut consensus_outdated_ids = PreHashSet::default();
+                for _ in 0..nb {
+                    consensus_outdated_ids.insert(gen_random_block_id(rng));
+                }
+                let consensus_part = BootstrapableGraph { final_blocks };
+                let last_start_period = rng.gen();
+                let last_slot_before_downtime = if rng.gen_bool(0.5) {
+                    Some(Some(gen_random_slot(rng)))
+                } else {
+                    None
+                };
+                let slot = gen_random_slot(rng);
+                BootstrapServerMessage::BootstrapPart {
+                    slot,
+                    state_part,
+                    versioning_part,
+                    consensus_part,
+                    consensus_outdated_ids,
+                    last_start_period,
+                    last_slot_before_downtime,
+                }
+            }
+            3 => BootstrapServerMessage::BootstrapFinished,
+            4 => BootstrapServerMessage::SlotTooOld,
+            5 => BootstrapServerMessage::BootstrapError {
+                error: gen_random_string(MAX_BOOTSTRAP_ERROR_LENGTH as usize, rng),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    // Generate a message with errors added inside the message.
+    // Has to be generated quickly, and have a previsible error case based on the
+    // "faulty_part" input number.
+    pub fn generate_faulty<R: Rng>(
+        rng: &mut R,
+        faulty_part: BootstrapServerMessageFaultyPart,
+    ) -> Self {
+        // Error
+        if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapErrorLengthOverflow {
+            let mut res = vec![0; (MAX_BOOTSTRAP_ERROR_LENGTH as usize) + 10];
+            rng.fill_bytes(&mut res);
+            let error = res
+                .into_iter()
+                .map(|c| char::from_u32(((c as u32) % (122 - 65)) + 65).unwrap())
+                .collect();
+            BootstrapServerMessage::BootstrapError { error }
+
+        // BootstrapPeers too many peers
+        } else if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapPeersOverflow {
+            // Too many peers sent in the message
+            let mut peers = vec![];
+            for _ in 0..(MAX_ADVERTISE_LENGTH + 1) {
+                let peer_id =
+                    PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+                let listeners = HashMap::new();
+                peers.push((peer_id, listeners));
+            }
+            BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(peers),
+            }
+
+        // BootstrapPeers too many listeners per peer
+        } else if faulty_part == BootstrapServerMessageFaultyPart::MaxListenersPerPeerOverflow {
+            // Too many listeners inside a peer
+            let mut peers = vec![];
+            let peer_id = PeerId::from_public_key(KeyPair::generate(0).unwrap().get_public_key());
+            let mut listeners = HashMap::new();
+            assert!(
+                MAX_LISTENERS_PER_PEER < (u16::MAX as u64),
+                "Max listener per peer too high, adapt code to fit"
+            );
+            for n in 0..(MAX_LISTENERS_PER_PEER + 1) {
+                let addr = format!("1.2.3.4:{n}").parse().unwrap();
+                let ttype = TransportType::Tcp;
+                listeners.insert(addr, ttype);
+            }
+            peers.push((peer_id, listeners));
+            BootstrapServerMessage::BootstrapPeers {
+                peers: BootstrapPeers(peers),
+            }
+
+        // BootstrapServerMessage::BootstrapPart
+        } else {
+            let mut slot = gen_random_slot(rng);
+            if faulty_part == BootstrapServerMessageFaultyPart::SlotThreadOverflow {
+                slot.thread = THREAD_COUNT;
+            }
+            let mut new_elements = BTreeMap::new();
+            let mut new_elements_size: usize = 0;
+            let key_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateDatastoreKeyLengthOverflow
+            {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                MAX_DATASTORE_KEY_LENGTH as usize
+            };
+            let value_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateDatastoreValueLengthOverflow
+            {
+                (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
+            } else {
+                MAX_DATASTORE_VALUE_LENGTH as usize
+            };
+            let new_elements_size_max = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxStateNewElementsSizeOverflow
+            {
+                // (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize) + key_len + value_len
+                (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE * 2) as usize
+            } else {
+                5
+            };
+            while new_elements_size
+                .saturating_sub(key_len)
+                .saturating_sub(value_len)
+                < new_elements_size_max
+            {
+                let mut key = vec![0; key_len];
+                rng.fill_bytes(&mut key);
+                let mut value = vec![0; value_len];
+                rng.fill_bytes(&mut value);
+                new_elements.insert(key, value);
+                new_elements_size += key_len + value_len;
+            }
+            if faulty_part == BootstrapServerMessageFaultyPart::MaxStateNewElementsSizeOverflow {
+                assert!(
+                    new_elements_size > (MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize),
+                    "Error in the code of the test for faulty_part 4"
+                );
+            }
+            // No limit on the size of this except the u64 boundery
+            let updates_on_previous_elements = BTreeMap::new();
+            let mut change_id = gen_random_slot(rng);
+            if faulty_part == BootstrapServerMessageFaultyPart::StateChangeIdThreadOverflow {
+                change_id.thread = THREAD_COUNT;
+            }
+            let state_part = StreamBatch {
+                new_elements,
+                updates_on_previous_elements,
+                change_id,
+            };
+
+            let mut new_elements = BTreeMap::new();
+            let mut new_elements_size: usize = 0;
+            let new_elements_size_max = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningNewElementsSizeOverflow
+            {
+                (MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE + 1) as usize
+            } else {
+                5
+            };
+            let key_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreKeyLengthOverflow
+            {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                MAX_DATASTORE_KEY_LENGTH as usize
+            };
+            let value_len = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxVersioningDatastoreValueLengthOverflow
+            {
+                (MAX_DATASTORE_VALUE_LENGTH as usize) + 1
+            } else {
+                MAX_DATASTORE_VALUE_LENGTH as usize
+            };
+            while new_elements_size
+                .saturating_sub(key_len)
+                .saturating_sub(value_len)
+                < new_elements_size_max
+            {
+                let mut key = vec![0; key_len];
+                rng.fill_bytes(&mut key);
+                let mut value = vec![0; value_len];
+                rng.fill_bytes(&mut value);
+                new_elements.insert(key, value);
+                new_elements_size += key_len + value_len;
+            }
+            // No limit on the size of this except the u64 boundery
+            let updates_on_previous_elements = BTreeMap::new();
+            let mut change_id = gen_random_slot(rng);
+            if faulty_part == BootstrapServerMessageFaultyPart::VersioningChangeIdThreadOverflow {
+                change_id.thread = THREAD_COUNT;
+            }
+            let versioning_part = StreamBatch {
+                new_elements,
+                updates_on_previous_elements,
+                change_id,
+            };
+
+            // Consensus part
+            // Generate all blocks, as the count is high, to reduce testing time,
+            // Pre-generate everything that will go inside the block (it's not a problem)
+            // That they are all the same as we care only about serialization / deserialization
+            let block_nb =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxBootstrapBlocksOverflow {
+                    MAX_BOOTSTRAP_BLOCKS + 1
+                } else {
+                    5
+                };
+
+            let mut final_blocks = vec![];
+
+            let mut block_slot = gen_random_slot(rng);
+            let keypair = KeyPair::generate(0).unwrap();
+
+            let mut parents_nb =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxParentsPerBlockOverflow {
+                    THREAD_COUNT + 1
+                } else {
+                    THREAD_COUNT
+                };
+
+            if faulty_part == BootstrapServerMessageFaultyPart::BlockSlotThreadOverflow {
+                block_slot.thread = THREAD_COUNT;
+                parents_nb = THREAD_COUNT + 1;
+            }
+
+            let parents: Vec<BlockId> = (0..parents_nb).map(|_| gen_random_block_id(rng)).collect();
+
+            // Generate block header
+            let mut endorsements = vec![];
+            let nb_endorsements = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxEndorsementsPerBlockOverflow
+            {
+                ENDORSEMENT_COUNT + 1
+            } else {
+                5
+            };
+
+            for index in 0..nb_endorsements {
+                let endorsement = Endorsement {
+                    index,
+                    slot: block_slot,
+                    endorsed_block: parents[block_slot.thread as usize],
+                };
+
+                let endorsement = endorsement
+                    .new_verifiable(EndorsementSerializer::new(), &keypair)
+                    .unwrap();
+                endorsements.push(endorsement);
+            }
+
+            let _nb_denunciations = if faulty_part
+                == BootstrapServerMessageFaultyPart::MaxDenunciationsPerBlockOverflow
+            {
+                MAX_DENUNCIATIONS_PER_BLOCK_HEADER + 1
+            } else {
+                5
+            } as usize;
+
+            let denunciations = vec![];
+            // for index in 0..rng.gen_range(0..nb_denunciations) {
+            //    // TODO    Denunciations generation
+            // }
+
+            let nb_operations =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxOperationsPerBlockOverflow {
+                    MAX_OPERATIONS_PER_BLOCK + 1
+                } else {
+                    5
+                };
+
+            let mut operations = vec![];
+            for _ in 0..nb_operations {
+                let op = OperationId::new(gen_random_hash(rng));
+                operations.push(op);
+            }
+
+            let header = BlockHeader {
+                current_version: rng.gen(),
+                announced_version: rng.gen(),
+                slot: block_slot,
+                parents: parents.clone(),
+                operation_merkle_root: gen_random_hash(rng),
+                endorsements: endorsements.clone(),
+                denunciations,
+            }
+            .new_verifiable(BlockHeaderSerializer::new(), &keypair)
+            .unwrap();
+
+            let block = Block {
+                header,
+                operations: operations.clone(),
+            };
+            let export_active_block = ExportActiveBlock {
+                parents: parents
+                    .iter()
+                    .enumerate()
+                    .map(|(n, id)| (*id, n as u64))
+                    .collect(),
+                is_final: false,
+                block: block
+                    .new_verifiable(BlockSerializer::new(), &keypair)
+                    .unwrap(),
+            };
+            for _ in 0..block_nb {
+                final_blocks.push(export_active_block.clone());
+            }
+            let outdated_ids =
+                if faulty_part == BootstrapServerMessageFaultyPart::MaxOutdatedIdsOverflow {
+                    MAX_BOOTSTRAP_BLOCKS + 1
+                } else {
+                    5
+                };
+            let mut consensus_outdated_ids = PreHashSet::default();
+            for _ in 0..outdated_ids {
+                consensus_outdated_ids.insert(gen_random_block_id(rng));
+            }
+            let last_start_period = rng.gen();
+            let last_slot_before_downtime = if faulty_part
+                == BootstrapServerMessageFaultyPart::LastSlotBeforeDowntimeThreadOverflow
+            {
+                let mut slot = gen_random_slot(rng);
+                slot.thread = THREAD_COUNT;
+                Some(Some(slot))
+            } else {
+                None
+            };
+            BootstrapServerMessage::BootstrapPart {
+                slot,
+                state_part,
+                versioning_part,
+                consensus_part: BootstrapableGraph { final_blocks },
+                consensus_outdated_ids,
+                last_start_period,
+                last_slot_before_downtime,
+            }
+        }
+    }
+
+    pub fn equals(&self, other: &BootstrapServerMessage) -> bool {
+        match (self, other) {
+            (
+                BootstrapServerMessage::BootstrapTime {
+                    server_time: t1,
+                    version: v1,
+                },
+                BootstrapServerMessage::BootstrapTime {
+                    server_time: t2,
+                    version: v2,
+                },
+            ) => (t1 == t2) && (v1 == v2),
+            (
+                BootstrapServerMessage::BootstrapPeers { peers: p1 },
+                BootstrapServerMessage::BootstrapPeers { peers: p2 },
+            ) => p1 == p2,
+            (
+                BootstrapServerMessage::BootstrapPart {
+                    slot: s1,
+                    state_part: state1,
+                    versioning_part: v1,
+                    consensus_part: c1,
+                    consensus_outdated_ids: co1,
+                    last_start_period: lp1,
+                    last_slot_before_downtime: ls1,
+                },
+                BootstrapServerMessage::BootstrapPart {
+                    slot: s2,
+                    state_part: state2,
+                    versioning_part: v2,
+                    consensus_part: c2,
+                    consensus_outdated_ids: co2,
+                    last_start_period: lp2,
+                    last_slot_before_downtime: ls2,
+                },
+            ) => {
+                let state_equal = stream_batch_equal(state1, state2);
+                let versionning_equal = stream_batch_equal(v1, v2);
+                let mut consensus_equal = true;
+                if c1.final_blocks.len() != c2.final_blocks.len() {
+                    return false;
+                }
+                for (n, active_block1) in c1.final_blocks.iter().enumerate() {
+                    let active_block2 = c2.final_blocks.get(n).unwrap();
+                    consensus_equal &= active_block1.parents == active_block2.parents;
+                    consensus_equal &= active_block1.is_final == active_block2.is_final;
+                    consensus_equal &=
+                        active_block1.block.serialized_data == active_block2.block.serialized_data;
+                }
+                (s1 == s2)
+                    && state_equal
+                    && versionning_equal
+                    && consensus_equal
+                    && (co1 == co2)
+                    && (lp1 == lp2)
+                    && (ls1 == ls2)
+            }
+            (
+                BootstrapServerMessage::BootstrapFinished,
+                BootstrapServerMessage::BootstrapFinished,
+            ) => true,
+            (BootstrapServerMessage::SlotTooOld, BootstrapServerMessage::SlotTooOld) => true,
+            (
+                BootstrapServerMessage::BootstrapError { error: e1 },
+                BootstrapServerMessage::BootstrapError { error: e2 },
+            ) => e1 == e2,
+            _ => false,
+        }
+    }
+}
+
+#[allow(clippy::enum_variant_names)]
+#[derive(PartialEq, Clone, Debug)]
+pub enum BootstrapClientMessageFaultyPart {
+    LastSlotThreadOverflow = 0,
+    LastStateStepMaxKeyOverflow = 1,
+    LastVersioningStepMaxKeyOverflow = 2,
+    LastConsensusStepMaxBlockOverflow = 3,
+}
+
+impl BootstrapClientMessageFaultyPart {
+    pub fn from_u8(v_u8: u8) -> Self {
+        match v_u8 {
+            0 => Self::LastSlotThreadOverflow,
+            1 => Self::LastStateStepMaxKeyOverflow,
+            2 => Self::LastVersioningStepMaxKeyOverflow,
+            3 => Self::LastConsensusStepMaxBlockOverflow,
+            _ => panic!("invalid value"),
+        }
+    }
+}
+
+impl BootstrapClientMessage {
+    // Checks that two messages are equal or not
+    pub fn equals(&self, other: &BootstrapClientMessage) -> bool {
+        match (self, other) {
+            (
+                BootstrapClientMessage::AskBootstrapPeers,
+                BootstrapClientMessage::AskBootstrapPeers,
+            ) => true,
+            (
+                BootstrapClientMessage::AskBootstrapPart {
+                    last_slot: ls1,
+                    last_state_step: lstate1,
+                    last_versioning_step: lv1,
+                    last_consensus_step: lcs1,
+                    send_last_start_period: slp1,
+                },
+                BootstrapClientMessage::AskBootstrapPart {
+                    last_slot: ls2,
+                    last_state_step: lstate2,
+                    last_versioning_step: lv2,
+                    last_consensus_step: lcs2,
+                    send_last_start_period: slp2,
+                },
+            ) => {
+                (ls1 == ls2)
+                    && (lstate1 == lstate2)
+                    && (lv1 == lv2)
+                    && (lcs1 == lcs2)
+                    && (slp1 == slp2)
+            }
+            (
+                BootstrapClientMessage::BootstrapError { error: e1 },
+                BootstrapClientMessage::BootstrapError { error: e2 },
+            ) => e1 == e2,
+            (
+                BootstrapClientMessage::BootstrapSuccess,
+                BootstrapClientMessage::BootstrapSuccess,
+            ) => true,
+            _ => false,
+        }
+    }
+
+    // Generates a message filled with random data of random size based on the limit given in
+    // constants. Used for parametric testing
+    pub fn generate<R: Rng>(rng: &mut R) -> Self {
+        let variant = rng.gen_range(0..4);
+        match variant {
+            0 => BootstrapClientMessage::AskBootstrapPeers,
+            1 => {
+                let last_slot = if rng.gen_bool(0.95) {
+                    Some(gen_random_slot(rng))
+                } else {
+                    None
+                };
+                let last_state_step = if last_slot.is_some() {
+                    let data = gen_random_vector(10, rng);
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+
+                let last_versioning_step = if last_slot.is_some() {
+                    let data = gen_random_vector(10, rng);
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+
+                let last_consensus_step = if last_slot.is_some() {
+                    let nb = rng.gen_range(0..CONSENSUS_BOOTSTRAP_PART_SIZE);
+                    let mut data = PreHashSet::with_capacity(nb as usize);
+                    for _ in 0..nb {
+                        data.insert(gen_random_block_id(rng));
+                    }
+                    gen_random_streaming_step(rng, data)
+                } else {
+                    StreamingStep::Started
+                };
+
+                let send_last_start_period = if last_slot.is_none() {
+                    true
+                } else {
+                    rng.gen_bool(0.5)
+                };
+                BootstrapClientMessage::AskBootstrapPart {
+                    last_slot,
+                    last_state_step,
+                    last_versioning_step,
+                    last_consensus_step,
+                    send_last_start_period,
+                }
+            }
+            2 => BootstrapClientMessage::BootstrapError {
+                error: gen_random_string(MAX_BOOTSTRAP_ERROR_LENGTH as usize, rng),
+            },
+            3 => BootstrapClientMessage::BootstrapSuccess,
+            _ => unreachable!(),
+        }
+    }
+
+    // Generate a message with errors added inside the message.
+    // Has to be generated quickly, and have a previsible error case based on the
+    // "faulty_part" input number.
+    pub fn generate_faulty<R: Rng>(
+        rng: &mut R,
+        faulty_part: BootstrapClientMessageFaultyPart,
+    ) -> Self {
+        let mut last_slot = gen_random_slot(rng);
+        if faulty_part == BootstrapClientMessageFaultyPart::LastSlotThreadOverflow {
+            last_slot.thread = THREAD_COUNT;
+        }
+        let last_slot = Some(last_slot);
+
+        let last_state_step_nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastStateStepMaxKeyOverflow {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                5
+            };
+        let mut last_state_step = vec![0; last_state_step_nb];
+        rng.fill_bytes(&mut last_state_step);
+        let last_state_step = StreamingStep::Ongoing(last_state_step);
+
+        let last_versioning_step_nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastVersioningStepMaxKeyOverflow {
+                (MAX_DATASTORE_KEY_LENGTH as usize) + 1
+            } else {
+                5
+            };
+        let mut last_versioning_step = vec![0; last_versioning_step_nb];
+        rng.fill_bytes(&mut last_versioning_step);
+        let last_versioning_step = StreamingStep::Ongoing(last_versioning_step);
+
+        let nb =
+            if faulty_part == BootstrapClientMessageFaultyPart::LastConsensusStepMaxBlockOverflow {
+                (MAX_CONSENSUS_BLOCKS_IDS as usize) + 1
+            } else {
+                5
+            };
+        let mut last_consensus_step = PreHashSet::with_capacity(nb);
+        for _ in 0..nb {
+            last_consensus_step.insert(gen_random_block_id(rng));
+        }
+        let last_consensus_step = StreamingStep::Ongoing(last_consensus_step);
+
+        BootstrapClientMessage::AskBootstrapPart {
+            last_slot,
+            last_state_step,
+            last_versioning_step,
+            last_consensus_step,
+            send_last_start_period: false,
+        }
+    }
+}
+
+// Perform a parametric test, meaning that it checks conditions that should be met whatever the
+// data is.
+// The idea is to generate random cases, tests them, and let the random check for every edge
+// case a humain brain can't think of.
+// This function will call the `test_fct` as long as we are under the `duration` time,
+// passing some fixed data `data` to it.
+// IMPORTANT
+//    If a bug is encounteded with a given seed, add it to `regressions` so this case gets
+//    always tested afterwards
+// Also adds a new feature "heavy_testing" in order to extend the length of the testing
+pub fn parametric_test<F, T>(
+    duration: std::time::Duration,
+    data: T,
+    regressions: Vec<u64>,
+    test_fct: F,
+) where
+    F: Fn(&T, &mut SmallRng),
+{
+    #[cfg(feature = "heavy_testing")]
+    let duration = duration * 120;
+
+    for reg in regressions {
+        println!("[*] Regression {reg}");
+        let mut rng = SmallRng::seed_from_u64(reg);
+        test_fct(&data, &mut rng);
+    }
+
+    let tstart = std::time::Instant::now();
+    let mut seeder = SmallRng::from_entropy();
+    let mut n = 0;
+    while tstart.elapsed() < duration {
+        let new_seed: u64 = seeder.gen();
+        println!("[{n}] Seed {new_seed}");
+        let mut rng = SmallRng::seed_from_u64(new_seed);
+        test_fct(&data, &mut rng);
+        n += 1;
+    }
 }

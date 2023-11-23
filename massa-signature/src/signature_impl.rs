@@ -458,7 +458,7 @@ impl std::hash::Hash for PublicKey {
 
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        self.to_bytes().partial_cmp(&other.to_bytes())
+        Some(self.to_bytes().cmp(&other.to_bytes()))
     }
 }
 
@@ -486,7 +486,7 @@ fn pubkey_ordering() {
 
     let mut map = BTreeSet::new();
     // map.extend(v1);
-    map.extend(v0.clone());
+    map.extend(v0);
     // assert_eq!(map.first(), v0.first())
 }
 
@@ -617,7 +617,7 @@ impl std::hash::Hash for PublicKey {
 #[transition::impl_version(versions("0"))]
 impl PartialOrd for PublicKey {
     fn partial_cmp(&self, other: &PublicKey) -> Option<Ordering> {
-        self.0.to_bytes().partial_cmp(&other.0.to_bytes())
+        Some(self.0.to_bytes().cmp(&other.0.to_bytes()))
     }
 }
 

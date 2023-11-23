@@ -2,7 +2,7 @@ use mio::net::TcpListener;
 use mio::{Events, Interest, Poll, Token, Waker};
 use std::io::ErrorKind;
 use std::net::{SocketAddr, TcpStream};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::error::BootstrapError;
 use crate::tools::mio_stream_to_std;
@@ -17,7 +17,7 @@ pub struct BootstrapTcpListener {
     server: TcpListener,
 }
 
-pub struct BootstrapListenerStopHandle(Waker);
+pub struct BootstrapListenerStopHandle(pub(crate) Waker);
 
 pub enum PollEvent {
     NewConnections(Vec<(TcpStream, SocketAddr)>),
@@ -74,7 +74,8 @@ impl BootstrapTcpListener {
         ))
     }
 
-    pub(crate) fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
+    /// Poll the listener for new connections
+    pub fn poll(&mut self) -> Result<PollEvent, BootstrapError> {
         self.poll.poll(&mut self.events, None).unwrap();
 
         let mut results = Vec::with_capacity(self.events.iter().count());
@@ -82,27 +83,23 @@ impl BootstrapTcpListener {
         // Process each event.
         for event in self.events.iter() {
             match event.token() {
-                NEW_CONNECTION => {
-                    loop {
-                        match self.server.accept() {
-                            Ok((mut stream, remote_addr)) => {
-                                if let Err(e) = self.poll.registry().deregister(&mut stream) {
-                                    error!("Could not deregister the stream {:?} from the mio poll: {:?}", stream, e);
-                                };
-                                let stream: std::net::TcpStream = mio_stream_to_std(stream);
-                                stream.set_nonblocking(false)?;
-                                results.push((stream, remote_addr));
-                            }
-                            Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                                break;
-                            }
-                            Err(e) => {
-                                warn!("Error accepting connection in bootstrap: {:?}", e);
-                                continue;
-                            }
+                NEW_CONNECTION => loop {
+                    match self.server.accept() {
+                        Ok((mut stream, remote_addr)) => {
+                            let _ = self.poll.registry().deregister(&mut stream);
+                            let stream: std::net::TcpStream = mio_stream_to_std(stream);
+                            stream.set_nonblocking(false)?;
+                            results.push((stream, remote_addr));
+                        }
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                            break;
+                        }
+                        Err(e) => {
+                            warn!("Error accepting connection in bootstrap: {:?}", e);
+                            continue;
                         }
                     }
-                }
+                },
                 STOP_LISTENER => {
                     return Ok(PollEvent::Stop);
                 }

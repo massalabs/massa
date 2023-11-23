@@ -1,11 +1,11 @@
 [package]
 name = "massa_factory_exports"
-version = "0.26.1"
+version = "0.27.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-testing = ["massa_models/testing", "massa_protocol_exports/testing", "massa_pool_exports/testing"]
+test-exports = ["massa_models/test-exports", "massa_protocol_exports/test-exports", "massa_pool_exports/test-exports"]
 sandbox = []
 
 [dependencies]

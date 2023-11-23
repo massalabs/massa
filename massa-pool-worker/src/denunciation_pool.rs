@@ -1,7 +1,7 @@
 //! Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use std::collections::{btree_map::Entry, BTreeMap};
-use tracing::{debug, info};
+use tracing::debug;
 
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::slot::Slot;
@@ -44,8 +44,8 @@ impl DenunciationPool {
     }
 
     /// Checks whether an element is stored in the pool - only used in unit tests for now
-    #[cfg(feature = "testing")]
-    pub fn contains(&self, denunciation: &Denunciation) -> bool {
+    #[cfg(feature = "test-exports")]
+    pub fn _contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()
             .find(|(_, de_st)| match *de_st {
@@ -68,7 +68,7 @@ impl DenunciationPool {
             return;
         }
 
-        let now = MassaTime::now().expect("could not get current time");
+        let now = MassaTime::now();
 
         // get closest slot according to the current absolute time
         let slot_now = get_closest_slot_to_timestamp(
@@ -175,7 +175,7 @@ impl DenunciationPool {
         };
 
         if let Some(denunciation) = denunciation_ {
-            info!("Created a new denunciation : {:?}", denunciation);
+            debug!("Created a new denunciation : {:?}", denunciation);
         }
 
         // Because at the start of the function, we have already checked that DE precursor is not
@@ -334,9 +334,7 @@ mod tests {
             .expect("error while producing block header");
 
             // let s_h = SecuredShare::
-            DenunciationStatus::Accumulating {
-                0: DenunciationPrecursor::from(&s_block_header_1),
-            }
+            DenunciationStatus::Accumulating(DenunciationPrecursor::from(&s_block_header_1))
         });
 
         let de_index_iter_2 = (bound_2_st..bound_2).map(|i: u32| DenunciationIndex::Endorsement {
@@ -354,9 +352,7 @@ mod tests {
                 Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
                     .unwrap();
 
-            DenunciationStatus::Accumulating {
-                0: DenunciationPrecursor::from(&s_endorsement1),
-            }
+            DenunciationStatus::Accumulating(DenunciationPrecursor::from(&s_endorsement1))
         });
 
         let de_cache: BTreeMap<DenunciationIndex, DenunciationStatus> = BTreeMap::from_iter(
@@ -406,7 +402,7 @@ mod tests {
             de_cache_cleanup_2,
             de_cache
                 .range((bound, Unbounded))
-                .map(|(k, v)| (k.clone(), v.clone()))
+                .map(|(k, v)| (*k, v.clone()))
                 .collect::<BTreeMap<DenunciationIndex, DenunciationStatus>>()
         );
     }

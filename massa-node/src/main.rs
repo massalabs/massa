@@ -10,6 +10,7 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 use crate::survey::MassaSurvey;
 
+use clap::{crate_version, Parser};
 use crossbeam_channel::TryRecvError;
 use dialoguer::Password;
 use massa_api::{ApiServer, ApiV2, Private, Public, RpcServer, StopHandle, API};
@@ -23,7 +24,9 @@ use massa_bootstrap::{
 use massa_channel::receiver::MassaReceiver;
 use massa_channel::MassaChannel;
 use massa_consensus_exports::events::ConsensusEvent;
-use massa_consensus_exports::{ConsensusChannels, ConsensusConfig, ConsensusManager};
+use massa_consensus_exports::{
+    ConsensusBroadcasts, ConsensusChannels, ConsensusConfig, ConsensusManager,
+};
 use massa_consensus_worker::start_consensus_worker;
 use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
@@ -34,7 +37,7 @@ use massa_execution_exports::{
 use massa_execution_worker::start_execution_worker;
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
-use massa_final_state::{FinalState, FinalStateConfig};
+use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_grpc::config::{GrpcConfig, ServiceName};
 use massa_grpc::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use massa_ledger_exports::LedgerConfig;
@@ -43,22 +46,22 @@ use massa_logging::massa_trace;
 use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
 use massa_models::config::constants::{
-    BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE,
-    DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY,
-    GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS, MAX_ASYNC_MESSAGE_DATA,
-    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_ASYNC_POOL_CHANGES, MAX_BOOTSTRAP_BLOCKS,
-    MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS,
-    MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
-    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT,
+    END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE,
+    LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS,
+    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -71,12 +74,13 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAPPED_NEW_ELEMENTS, MAX_EVENT_DATA_SIZE,
-    MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
-use massa_pool_exports::{PoolChannels, PoolConfig, PoolManager};
+use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
 use massa_pos_worker::start_selector_worker;
@@ -98,7 +102,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
-use structopt::StructOpt;
+
 use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
@@ -130,8 +134,7 @@ async fn launch(
     MetricsStopper,
     MassaSurveyStopper,
 ) {
-    info!("Node version : {}", *VERSION);
-    let now = MassaTime::now().expect("could not get now time");
+    let now = MassaTime::now();
     // Do not start if genesis is in the future. This is meant to prevent nodes
     // from desync if the bootstrap nodes keep a previous ledger
     #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
@@ -154,36 +157,40 @@ async fn launch(
         }
     }
 
-    use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-    use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-    // Simulate downtime
-    // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
     #[cfg(not(feature = "bootstrap_server"))]
-    if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
-        let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-            .saturating_sub(now)
-            .days_hours_mins_secs()
-            .unwrap();
+    {
+        use massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
+        use massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
 
-        if let Ok(Some(end_period)) = massa_models::timeslots::get_latest_block_slot_at_timestamp(
-            THREAD_COUNT,
-            T0,
-            *GENESIS_TIMESTAMP,
-            DOWNTIME_END_TIMESTAMP,
-        ) {
-            panic!(
+        // Simulate downtime
+        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
+        #[cfg(not(feature = "bootstrap_server"))]
+        if now >= DOWNTIME_START_TIMESTAMP && now <= DOWNTIME_END_TIMESTAMP {
+            let (days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
+                .saturating_sub(now)
+                .days_hours_mins_secs()
+                .unwrap();
+
+            if let Ok(Some(end_period)) =
+                massa_models::timeslots::get_latest_block_slot_at_timestamp(
+                    THREAD_COUNT,
+                    T0,
+                    *GENESIS_TIMESTAMP,
+                    DOWNTIME_END_TIMESTAMP,
+                )
+            {
+                panic!(
                 "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}",
                 days, hours, mins, secs, end_period.period
             );
-        }
+            }
 
-        panic!(
+            panic!(
             "We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime",
             days, hours, mins, secs,
         );
+        }
     }
-
     // Storage shared by multiple components.
     let shared_storage: Storage = Storage::create_root();
 
@@ -191,14 +198,14 @@ async fn launch(
     let ledger_config = LedgerConfig {
         thread_count: THREAD_COUNT,
         initial_ledger_path: SETTINGS.ledger.initial_ledger_path.clone(),
-        disk_ledger_path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
     };
     let async_pool_config = AsyncPoolConfig {
         max_length: MAX_ASYNC_POOL_LENGTH,
         thread_count: THREAD_COUNT,
-        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_function_length: MAX_FUNCTION_NAME_LENGTH,
+        max_function_params_length: MAX_PARAMETERS_SIZE as u64,
         max_key_length: MAX_DATASTORE_KEY_LENGTH as u32,
     };
     let pos_config = PoSConfig {
@@ -264,7 +271,8 @@ async fn launch(
     let db_config = MassaDBConfig {
         path: SETTINGS.ledger.disk_ledger_path.clone(),
         max_history_length: SETTINGS.ledger.final_history_length,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS as usize,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
     };
     let db = Arc::new(RwLock::new(
@@ -296,7 +304,7 @@ async fn launch(
     // Ratio::new_raw(*SETTINGS.versioning.warn_announced_version_ratio, 100),
 
     // Create final state, either from a snapshot, or from scratch
-    let final_state = Arc::new(parking_lot::RwLock::new(
+    let final_state: Arc<RwLock<dyn FinalStateController>> = Arc::new(parking_lot::RwLock::new(
         match args.restart_from_snapshot_at_period {
             Some(last_start_period) => {
                 // The node is restarted from a snapshot:
@@ -342,7 +350,7 @@ async fn launch(
         },
     ));
 
-    let mip_store = final_state.read().mip_store.clone();
+    let mip_store = final_state.read().get_mip_store().clone();
 
     let bootstrap_config: BootstrapConfig = BootstrapConfig {
         bootstrap_list: SETTINGS.bootstrap.bootstrap_list.clone(),
@@ -374,10 +382,8 @@ async fn launch(
         max_advertise_length: MAX_ADVERTISE_LENGTH,
         max_bootstrap_blocks_length: MAX_BOOTSTRAP_BLOCKS,
         max_bootstrap_error_length: MAX_BOOTSTRAP_ERROR_LENGTH,
-        max_new_elements: MAX_BOOTSTRAPPED_NEW_ELEMENTS,
-        max_async_pool_changes: MAX_BOOTSTRAP_ASYNC_POOL_CHANGES,
-        max_async_pool_length: MAX_ASYNC_POOL_LENGTH,
-        max_async_message_data: MAX_ASYNC_MESSAGE_DATA,
+        max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+        max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
         max_datastore_entry_count: MAX_DATASTORE_ENTRY_COUNT,
         max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
@@ -412,7 +418,7 @@ async fn launch(
         massa_metrics.clone(),
     ) {
         Ok(vals) => vals,
-        Err(BootstrapError::Interupted(msg)) => {
+        Err(BootstrapError::Interrupted(msg)) => {
             info!("{}", msg);
             process::exit(0);
         }
@@ -434,18 +440,18 @@ async fn launch(
             .expect("could not compute initial draws"); // TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     }
 
-    let last_slot_before_downtime_ = final_state.read().last_slot_before_downtime;
+    let last_slot_before_downtime_ = *final_state.read().get_last_slot_before_downtime();
     if let Some(last_slot_before_downtime) = last_slot_before_downtime_ {
         let last_shutdown_start = last_slot_before_downtime
             .get_next_slot(THREAD_COUNT)
             .unwrap();
-        let last_shutdown_end = Slot::new(final_state.read().last_start_period, 0)
+        let last_shutdown_end = Slot::new(final_state.read().get_last_start_period(), 0)
             .get_prev_slot(THREAD_COUNT)
             .unwrap();
 
         final_state
             .read()
-            .mip_store
+            .get_mip_store()
             .is_consistent_with_shutdown_period(
                 last_shutdown_start,
                 last_shutdown_end,
@@ -465,12 +471,20 @@ async fn launch(
             .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
     };
 
+    // gas costs
+    let gas_costs = GasCosts::new(
+        SETTINGS.execution.abi_gas_costs_file.clone(),
+        SETTINGS.execution.wasm_gas_costs_file.clone(),
+    )
+    .expect("Failed to load gas costs");
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
         readonly_queue_length: SETTINGS.execution.readonly_queue_length,
         cursor_delay: SETTINGS.execution.cursor_delay,
         max_async_gas: MAX_ASYNC_GAS,
+        async_msg_cst_gas_cost: ASYNC_MSG_CST_GAS_COST,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
         roll_price: ROLL_PRICE,
         thread_count: THREAD_COUNT,
@@ -487,12 +501,9 @@ async fn launch(
         max_datastore_value_size: MAX_DATASTORE_VALUE_LENGTH,
         storage_costs_constants,
         max_read_only_gas: SETTINGS.execution.max_read_only_gas,
-        gas_costs: GasCosts::new(
-            SETTINGS.execution.abi_gas_costs_file.clone(),
-            SETTINGS.execution.wasm_gas_costs_file.clone(),
-        )
-        .expect("Failed to load gas costs"),
-        last_start_period: final_state.read().last_start_period,
+        gas_costs: gas_costs.clone(),
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        last_start_period: final_state.read().get_last_start_period(),
         hd_cache_path: SETTINGS.execution.hd_cache_path.clone(),
         lru_cache_size: SETTINGS.execution.lru_cache_size,
         hd_cache_size: SETTINGS.execution.hd_cache_size,
@@ -530,6 +541,8 @@ async fn launch(
         thread_count: THREAD_COUNT,
         max_block_size: MAX_BLOCK_SIZE,
         max_block_gas: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost: gas_costs.sp_compilation_cost,
         roll_price: ROLL_PRICE,
         max_block_endorsement_count: ENDORSEMENT_COUNT,
         operation_validity_periods: OPERATION_VALIDITY_PERIODS,
@@ -552,13 +565,18 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
     };
 
     let pool_channels = PoolChannels {
-        endorsement_sender: broadcast::channel(pool_config.broadcast_endorsements_channel_capacity)
+        broadcasts: PoolBroadcasts {
+            endorsement_sender: broadcast::channel(
+                pool_config.broadcast_endorsements_channel_capacity,
+            )
             .0,
-        operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity).0,
+            operation_sender: broadcast::channel(pool_config.broadcast_operations_channel_capacity)
+                .0,
+        },
         selector: selector_controller.clone(),
         execution_controller: execution_controller.clone(),
     };
@@ -606,7 +624,7 @@ async fn launch(
         max_ops_kept_for_propagation: SETTINGS.protocol.max_ops_kept_for_propagation,
         max_operations_propagation_time: SETTINGS.protocol.max_operations_propagation_time,
         max_endorsements_propagation_time: SETTINGS.protocol.max_endorsements_propagation_time,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
         max_endorsements_per_message: MAX_ENDORSEMENTS_PER_MESSAGE as u64,
         max_denunciations_in_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         initial_peers: SETTINGS.protocol.initial_peers_file.clone(),
@@ -695,7 +713,7 @@ async fn launch(
         broadcast_filled_blocks_channel_capacity: SETTINGS
             .consensus
             .broadcast_filled_blocks_channel_capacity,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
         force_keep_final_periods_without_ops: SETTINGS
             .consensus
             .force_keep_final_periods_without_ops,
@@ -709,15 +727,17 @@ async fn launch(
         pool_controller: pool_controller.clone(),
         controller_event_tx: consensus_event_sender,
         protocol_controller: protocol_controller.clone(),
-        block_header_sender: broadcast::channel(
-            consensus_config.broadcast_blocks_headers_channel_capacity,
-        )
-        .0,
-        block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
-        filled_block_sender: broadcast::channel(
-            consensus_config.broadcast_filled_blocks_channel_capacity,
-        )
-        .0,
+        broadcasts: ConsensusBroadcasts {
+            block_header_sender: broadcast::channel(
+                consensus_config.broadcast_blocks_headers_channel_capacity,
+            )
+            .0,
+            block_sender: broadcast::channel(consensus_config.broadcast_blocks_channel_capacity).0,
+            filled_block_sender: broadcast::channel(
+                consensus_config.broadcast_filled_blocks_channel_capacity,
+            )
+            .0,
+        },
     };
 
     let (consensus_controller, consensus_manager) = start_consensus_worker(
@@ -750,7 +770,7 @@ async fn launch(
         max_block_size: MAX_BLOCK_SIZE as u64,
         max_block_gas: MAX_GAS_PER_BLOCK,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         stop_production_when_zero_connections: SETTINGS
@@ -817,6 +837,7 @@ async fn launch(
         max_op_datastore_entry_count: MAX_OPERATION_DATASTORE_ENTRY_COUNT,
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
@@ -824,15 +845,15 @@ async fn launch(
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
     };
 
     // spawn Massa API
     let api = API::<ApiV2>::new(
         consensus_controller.clone(),
-        consensus_channels.clone(),
+        consensus_channels.broadcasts.clone(),
         execution_controller.clone(),
-        pool_channels.clone(),
+        pool_channels.broadcasts.clone(),
         api_config.clone(),
         *VERSION,
     );
@@ -861,10 +882,10 @@ async fn launch(
 
         let grpc_public_api = MassaPublicGrpc {
             consensus_controller: consensus_controller.clone(),
-            consensus_channels: consensus_channels.clone(),
+            consensus_broadcasts: consensus_channels.broadcasts.clone(),
             execution_controller: execution_controller.clone(),
             execution_channels,
-            pool_channels,
+            pool_broadcasts: pool_channels.broadcasts.clone(),
             pool_controller: pool_controller.clone(),
             protocol_controller: protocol_controller.clone(),
             selector_controller: selector_controller.clone(),
@@ -1050,7 +1071,7 @@ fn configure_grpc(
     name: ServiceName,
     settings: &GrpcSettings,
     keypair: KeyPair,
-    final_state: &Arc<RwLock<FinalState>>,
+    final_state: &Arc<RwLock<dyn FinalStateController>>,
 ) -> GrpcConfig {
     GrpcConfig {
         name,
@@ -1092,13 +1113,14 @@ fn configure_grpc(
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         max_operations_per_message: MAX_OPERATIONS_PER_MESSAGE,
+        max_gas_per_block: MAX_GAS_PER_BLOCK,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         keypair,
         max_channel_size: settings.max_channel_size,
         draw_lookahead_period_count: settings.draw_lookahead_period_count,
-        last_start_period: final_state.read().last_start_period,
+        last_start_period: final_state.read().get_last_start_period(),
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_addresses_per_request: settings.max_addresses_per_request,
         max_slot_ranges_per_request: settings.max_slot_ranges_per_request,
@@ -1106,6 +1128,7 @@ fn configure_grpc(
         max_endorsement_ids_per_request: settings.max_endorsement_ids_per_request,
         max_operation_ids_per_request: settings.max_operation_ids_per_request,
         max_filters_per_request: settings.max_filters_per_request,
+        max_query_items_per_request: settings.max_query_items_per_request,
         certificate_authority_root_path: settings.certificate_authority_root_path.clone(),
         server_certificate_path: settings.server_certificate_path.clone(),
         server_private_key_path: settings.server_private_key_path.clone(),
@@ -1211,24 +1234,26 @@ async fn stop(
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
+#[command(version = crate_version!())]
 struct Args {
-    #[structopt(long = "keep-ledger")]
+    #[arg(long = "keep-ledger")]
     keep_ledger: bool,
     /// Wallet password
-    #[structopt(short = "p", long = "pwd")]
+    // #[arg(short = "p", long = "pwd")]
+    #[arg(short = 'p', long = "pwd")]
     password: Option<String>,
 
     /// restart_from_snapshot_at_period
-    #[structopt(long = "restart-from-snapshot-at-period")]
+    #[arg(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
 
     #[cfg(feature = "op_spammer")]
     /// number of operations
-    #[structopt(
+    #[arg(
         name = "number of operations",
-        about = "Define the number of operations the node can spam.",
-        short = "nb-op",
+        long_help = "Define the number of operations the node can spam.",
+        short = 'n',
         long = "number-operations"
     )]
     nb_op: u64,
@@ -1237,8 +1262,8 @@ struct Args {
     /// Deadlocks detector
     #[structopt(
         name = "deadlocks interval",
-        about = "Define the interval of launching a deadlocks checking.",
-        short = "i",
+        long_help = "Define the interval of launching a deadlocks checking.",
+        short = 'i',
         long = "dli",
         default_value = "10"
     )]
@@ -1247,7 +1272,7 @@ struct Args {
 
 /// Load wallet, asking for passwords if necessary
 fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
-    let password = if path.is_file() {
+    let password = if path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
                 .with_prompt("Enter staking keys file password")
@@ -1269,8 +1294,9 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     )?)))
 }
 
-#[paw::main]
-fn main(args: Args) -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
     let tokio_rt = tokio::runtime::Builder::new_multi_thread()
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
@@ -1314,6 +1340,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
         default_panic(info);
         std::process::exit(1);
     }));
+
+    info!("Node version : {}", *VERSION);
 
     // load or create wallet, asking for password if necessary
     let node_wallet = load_wallet(

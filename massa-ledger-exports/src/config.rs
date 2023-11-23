@@ -11,8 +11,6 @@ pub struct LedgerConfig {
     pub thread_count: u8,
     /// initial SCE ledger file
     pub initial_ledger_path: PathBuf,
-    /// disk ledger db directory
-    pub disk_ledger_path: PathBuf,
     /// max key length
     pub max_key_length: u8,
     /// max datastore value length
