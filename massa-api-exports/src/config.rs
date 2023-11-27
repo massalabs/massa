@@ -61,6 +61,10 @@ pub struct APIConfig {
     pub max_parameter_size: u32,
     /// max gas in a block
     pub max_gas_per_block: u64,
+    /// base gas used by any operation
+    pub base_operation_gas_cost: u64,
+    /// Amount required for a SinglePass compilation (ExecuteSC operation)
+    pub sp_compilation_cost: u64,
     /// thread count
     pub thread_count: u8,
     /// `genesis_timestamp`
