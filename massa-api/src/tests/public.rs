@@ -49,7 +49,10 @@ use massa_models::{
     stats::{ConsensusStats, ExecutionStats, NetworkStats},
 };
 use massa_protocol_exports::{
-    test_exports::tools::{create_block, create_endorsement, create_operation_with_expire_period},
+    test_exports::tools::{
+        create_block, create_call_sc_op_with_too_much_gas, create_endorsement,
+        create_execute_sc_op_with_too_much_gas, create_operation_with_expire_period,
+    },
     MockProtocolController,
 };
 use massa_signature::KeyPair;
@@ -480,6 +483,9 @@ async fn send_operations() {
         ))
         .unwrap();
     let keypair = KeyPair::generate(0).unwrap();
+
+    ////
+    // send transaction
     let operation = create_operation_with_expire_period(&keypair, 500000);
 
     let input: OperationInput = OperationInput {
@@ -494,6 +500,45 @@ async fn send_operations() {
         .unwrap();
 
     assert_eq!(response.len(), 1);
+
+    ////
+    // send ExecuteSC with too much gas and check error message
+
+    let operation = create_execute_sc_op_with_too_much_gas(&keypair, 10);
+    let input: OperationInput = OperationInput {
+        creator_public_key: keypair.get_public_key(),
+        signature: operation.signature,
+        serialized_content: operation.serialized_data,
+    };
+
+    let response: Result<Vec<OperationId>, _> = client
+        .request("send_operations", rpc_params![vec![input]])
+        .await;
+    let err = response.unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("Upper gas limit for ExecuteSC operation is"));
+    println!("{}", err);
+
+    ////
+    // send CallSC with too much gas and check error message
+
+    let operation = create_call_sc_op_with_too_much_gas(&keypair, 10);
+    let input: OperationInput = OperationInput {
+        creator_public_key: keypair.get_public_key(),
+        signature: operation.signature,
+        serialized_content: operation.serialized_data,
+    };
+
+    let response: Result<Vec<OperationId>, _> = client
+        .request("send_operations", rpc_params![vec![input]])
+        .await;
+    let err = response.unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("Upper gas limit for CallSC operation is"));
+    println!("{}", err);
+
     api_public_handle.stop().await;
 }
 
