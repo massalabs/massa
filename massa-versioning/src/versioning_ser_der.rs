@@ -58,17 +58,8 @@ impl Serializer<MipInfo> for MipInfoSerializer {
     fn serialize(&self, value: &MipInfo, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // name
         let name_len_ = value.name.len();
-        if name_len_ > MIP_INFO_NAME_MAX_LEN as usize {
-            return Err(SerializeError::StringTooBig(format!(
-                "MIP info name len is {}, max: {}",
-                name_len_, MIP_INFO_NAME_MAX_LEN
-            )));
-        }
         let name_len = u32::try_from(name_len_).map_err(|_| {
-            SerializeError::GeneralError(format!(
-                "Cannot convert to name_len: {} to u32",
-                name_len_
-            ))
+            SerializeError::GeneralError(format!("Cannot convert name_len ({}) to u32", name_len_))
         })?;
         self.u32_serializer.serialize(&name_len, buffer)?;
         buffer.extend(value.name.as_bytes());
@@ -77,16 +68,10 @@ impl Serializer<MipInfo> for MipInfoSerializer {
 
         // Components
         let components_len_ = value.components.len();
-        if components_len_ > MIP_INFO_COMPONENTS_MAX_ENTRIES as usize {
-            return Err(SerializeError::NumberTooBig(format!(
-                "MIP info cannot have more than {} components, got: {}",
-                MIP_STORE_MAX_ENTRIES, components_len_
-            )));
-        }
         let components_len = u32::try_from(components_len_).map_err(|_| {
             SerializeError::GeneralError(format!(
-                "Cannot convert to component_len: {} to u32",
-                name_len_
+                "Cannot convert component_len ({}) to u32",
+                components_len_
             ))
         })?;
         // ser hashmap len
@@ -114,7 +99,8 @@ impl Serializer<MipInfo> for MipInfoSerializer {
 /// Deserializer for `MipInfo`
 pub struct MipInfoDeserializer {
     u32_deserializer: U32VarIntDeserializer,
-    len_deserializer: U32VarIntDeserializer,
+    name_len_deserializer: U32VarIntDeserializer,
+    components_len_deserializer: U32VarIntDeserializer,
     time_deserializer: MassaTimeDeserializer,
 }
 
@@ -123,9 +109,13 @@ impl MipInfoDeserializer {
     pub fn new() -> Self {
         Self {
             u32_deserializer: U32VarIntDeserializer::new(Included(0), Excluded(u32::MAX)),
-            len_deserializer: U32VarIntDeserializer::new(
+            name_len_deserializer: U32VarIntDeserializer::new(
                 Included(0),
-                Excluded(MIP_INFO_NAME_MAX_LEN),
+                Included(MIP_INFO_NAME_MAX_LEN),
+            ),
+            components_len_deserializer: U32VarIntDeserializer::new(
+                Included(0),
+                Included(MIP_INFO_COMPONENTS_MAX_ENTRIES),
             ),
             time_deserializer: MassaTimeDeserializer::new((
                 Included(MassaTime::from_millis(0)),
@@ -152,7 +142,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
             tuple((
                 context("Failed name deserialization", |input| {
                     // Note: this is bounded to MIP_INFO_NAME_MAX_LEN
-                    let (input_, len_) = self.len_deserializer.deserialize(input)?;
+                    let (input_, len_) = self.name_len_deserializer.deserialize(input)?;
                     // Safe to unwrap as it returns Result<usize, Infallible>
                     let len = usize::try_from(len_).unwrap();
                     let slice = &input_[..len];
@@ -171,7 +161,8 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                     "Failed components deserialization",
                     length_count(
                         context("Failed components length deserialization", |input| {
-                            self.u32_deserializer.deserialize(input)
+                            // Note: this is bounded to MIP_INFO_COMPONENTS_MAX_ENTRIES
+                            self.components_len_deserializer.deserialize(input)
                         }),
                         tuple((
                             context("Failed component deserialization", |input| {
@@ -789,7 +780,7 @@ impl Serializer<MipStoreRaw> for MipStoreRawSerializer {
 
 /// A Deserializer for `VersioningStoreRaw
 pub struct MipStoreRawDeserializer {
-    u32_deserializer: U32VarIntDeserializer,
+    entry_count_deserializer: U32VarIntDeserializer,
     info_deserializer: MipInfoDeserializer,
     state_deserializer: MipStateDeserializer,
     stats_deserializer: MipStoreStatsDeserializer,
@@ -799,7 +790,7 @@ impl MipStoreRawDeserializer {
     /// Creates a new ``
     pub fn new(block_count_considered: usize, warn_announced_version_ratio: Ratio<u64>) -> Self {
         Self {
-            u32_deserializer: U32VarIntDeserializer::new(
+            entry_count_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(MIP_STORE_MAX_ENTRIES),
             ),
@@ -823,8 +814,7 @@ impl Deserializer<MipStoreRaw> for MipStoreRawDeserializer {
             tuple((
                 length_count(
                     context("Failed entry count der", |input| {
-                        let (rem, count) = self.u32_deserializer.deserialize(input)?;
-                        IResult::Ok((rem, count))
+                        self.entry_count_deserializer.deserialize(input)
                     }),
                     context("Failed items der", |input| {
                         let (rem, vi) = self.info_deserializer.deserialize(input)?;
@@ -894,7 +884,7 @@ mod test {
 
     #[test]
     fn test_mip_info_ser_der() {
-        let vi_1 = MipInfo {
+        let mi_1 = MipInfo {
             name: "MIP-0002".to_string(),
             version: 2,
             components: BTreeMap::from([(MipComponent::Address, 1)]),
@@ -905,40 +895,120 @@ mod test {
 
         let mut buf = Vec::new();
         let mip_info_ser = MipInfoSerializer::new();
-        mip_info_ser.serialize(&vi_1, &mut buf).unwrap();
+        mip_info_ser.serialize(&mi_1, &mut buf).unwrap();
 
         let mip_info_der = MipInfoDeserializer::new();
 
-        let (rem, vi_1_der) = mip_info_der.deserialize::<DeserializeError>(&buf).unwrap();
+        let (rem, mi_1_der) = mip_info_der.deserialize::<DeserializeError>(&buf).unwrap();
 
         assert!(rem.is_empty());
-        assert_eq!(vi_1, vi_1_der);
+        assert_eq!(mi_1, mi_1_der);
+    }
+
+    #[test]
+    fn test_mip_info_ser_der_err() {
+        // A MIP info with too many MIP Component
+        let mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([
+                (MipComponent::Address, 1),
+                (MipComponent::KeyPair, 2),
+                (MipComponent::Block, 3),
+                (MipComponent::VM, 4),
+                (MipComponent::FinalStateHashKind, 5),
+                (MipComponent::__Nonexhaustive, 6),
+            ]),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
+        };
+
+        {
+            let mut buf = Vec::new();
+            let mip_info_ser = MipInfoSerializer::new();
+            mip_info_ser.serialize(&mi_1, &mut buf).unwrap();
+
+            let mut mip_info_der = MipInfoDeserializer::new();
+            // Allow only a max of 2 components per MIP info
+            mip_info_der.components_len_deserializer =
+                U32VarIntDeserializer::new(Included(0), Included(2));
+
+            let res = mip_info_der.deserialize::<DeserializeError>(&buf);
+            assert!(res.is_err());
+        }
+
+        // A MIP info with a very long name
+        let mi_2 = MipInfo {
+            name: "a".repeat(MIP_INFO_NAME_MAX_LEN as usize + 1),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(2),
+            timeout: MassaTime::from_millis(5),
+            activation_delay: MassaTime::from_millis(2),
+        };
+
+        {
+            let mut buf = Vec::new();
+            let mip_info_ser = MipInfoSerializer::new();
+            mip_info_ser.serialize(&mi_2, &mut buf).unwrap();
+
+            let mip_info_der = MipInfoDeserializer::new();
+
+            let res = mip_info_der.deserialize::<DeserializeError>(&buf);
+            assert!(res.is_err());
+        }
     }
 
     #[test]
     fn test_component_state_ser_der() {
-        let st_1 = ComponentState::failed();
+        let state_ser = ComponentStateSerializer::new();
+        let state_der = ComponentStateDeserializer::new();
+
+        {
+            let st_1 = ComponentState::failed();
+
+            let mut buf = Vec::new();
+            state_ser.serialize(&st_1, &mut buf).unwrap();
+
+            let (rem, st_1_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+            assert!(rem.is_empty());
+            assert_eq!(st_1, st_1_der);
+        }
+
+        {
+            let st_2 = ComponentState::Started(Started {
+                vote_ratio: Ratio::from_f32(0.9842).unwrap(),
+            });
+
+            let mut buf = Vec::new();
+            state_ser.serialize(&st_2, &mut buf).unwrap();
+            let (rem, st_2_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+
+            assert!(rem.is_empty());
+            assert_eq!(st_2, st_2_der);
+        }
+    }
+
+    #[test]
+    fn test_component_state_ser_der_err() {
+        let state_ser = ComponentStateSerializer::new();
+        let state_der = ComponentStateDeserializer::new();
+
         let st_2 = ComponentState::Started(Started {
             vote_ratio: Ratio::from_f32(0.9842).unwrap(),
         });
 
         let mut buf = Vec::new();
-        let state_ser = ComponentStateSerializer::new();
-        state_ser.serialize(&st_1, &mut buf).unwrap();
-
-        let state_der = ComponentStateDeserializer::new();
-
-        let (rem, st_1_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
-
-        assert!(rem.is_empty());
-        assert_eq!(st_1, st_1_der);
-
-        buf.clear();
         state_ser.serialize(&st_2, &mut buf).unwrap();
-        let (rem, st_2_der) = state_der.deserialize::<DeserializeError>(&buf).unwrap();
+        // ComponentState is encoded as a u32 varint
+        // Here by modifying the first value of buf, we set the ComponentState encoded value to
+        // a unknown value
+        buf[0] = 99;
 
-        assert!(rem.is_empty());
-        assert_eq!(st_2, st_2_der);
+        let res = state_der.deserialize::<DeserializeError>(&buf);
+        assert!(res.is_err());
     }
 
     #[test]
