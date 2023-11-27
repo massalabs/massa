@@ -617,6 +617,133 @@ fn send_and_receive_async_message() {
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
 }
 
+#[test]
+fn cancel_async_message() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let sender_addr =
+        Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
+    let message = AsyncMessage {
+        emission_slot: Slot {
+            period: 1,
+            thread: 0,
+        },
+        emission_index: 0,
+        sender: sender_addr.clone(),
+        destination: Address::from_str("AU12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+            .unwrap(),
+        function: String::from("receive"),
+        max_gas: 3000000,
+        fee: Amount::from_raw(1),
+        coins: Amount::from_raw(100),
+        validity_start: Slot {
+            period: 1,
+            thread: 1,
+        },
+        validity_end: Slot {
+            period: 20,
+            thread: 20,
+        },
+        function_params: vec![42, 42, 42, 42],
+        trigger: None,
+        can_be_executed: true,
+    };
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                let mut saved_bytecode = saved_bytecode_edit.write();
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
+            // async msg was canceled
+            // check that the coins were returned to the sender
+            assert_eq!(
+                changes.ledger_changes.0.get(&sender_addr).unwrap(),
+                &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    balance: massa_ledger_exports::SetOrKeep::Set(
+                        Amount::from_str("100.670399899").unwrap()
+                    ),
+                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    datastore: BTreeMap::new()
+                })
+            );
+
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
+    let mut changes = BTreeMap::default();
+    changes.insert(
+        (
+            Reverse(Ratio::new(1, 100000)),
+            Slot {
+                period: 1,
+                thread: 0,
+            },
+            0,
+        ),
+        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+    );
+    let mut db_batch = DBBatch::default();
+    async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        Some(async_pool),
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
+    std::thread::sleep(Duration::from_millis(exec_cfg.t0.as_millis()));
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+    assert!(events[0]
+        .data
+        .contains("the target address is not a smart contract address"));
+}
+
 /// Context
 ///
 /// Functional test for local smart-contract execution
@@ -646,6 +773,7 @@ fn local_execution() {
         finalized_waitpoint.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
+
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
