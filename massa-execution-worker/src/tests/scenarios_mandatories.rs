@@ -645,7 +645,7 @@ fn cancel_async_message() {
             thread: 0,
         },
         emission_index: 0,
-        sender: sender_addr.clone(),
+        sender: sender_addr,
         destination: Address::from_str("AU12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
             .unwrap(),
         function: String::from("receive"),
