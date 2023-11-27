@@ -458,10 +458,10 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
             res.assert_invariants(self.thread_count, self.endorsement_count)
                 .unwrap();
 
-            return Ok((
-                &rest[2..], // Because there is 0 endorsements & 0 denunciations, we have a remaining [0, 0] in rest and we don't need it
-                res,
-            ));
+            // As we have 0 endorsements & 0 denunciations, rest = [0, 0] (length 0 & length 0)
+            // As we want to return an empty "res" we use nom tag
+            let (rest2, _) = tag(&[0, 0])(rest)?;
+            return Ok((rest2, res));
         }
 
         // Now deser the endorsements (which were light-weight serialized)
@@ -658,6 +658,35 @@ mod test {
             operation_merkle_root: Hash::compute_from("mno".as_bytes()),
             endorsements: vec![s_endorsement_1],
             denunciations: vec![de_a, de_b],
+        };
+
+        let mut buffer = Vec::new();
+        let ser = BlockHeaderSerializer::new();
+        ser.serialize(&block_header_1, &mut buffer).unwrap();
+        let der = BlockHeaderDeserializer::new(
+            THREAD_COUNT,
+            ENDORSEMENT_COUNT,
+            MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            None,
+        );
+
+        let (rem, block_header_der) = der.deserialize::<DeserializeError>(&buffer).unwrap();
+
+        assert!(rem.is_empty());
+        assert_eq!(block_header_1, block_header_der);
+    }
+
+    #[test]
+    fn test_block_header_no_parents_ser_der() {
+        let slot = Slot::new(0, 1);
+        let block_header_1 = BlockHeader {
+            current_version: 0,
+            announced_version: None,
+            slot,
+            parents: vec![],
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![],
+            denunciations: vec![],
         };
 
         let mut buffer = Vec::new();

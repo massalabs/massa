@@ -5,6 +5,7 @@ use massa_hash::Hash;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use nom::bytes::complete::take;
 use nom::error::{context, ContextError, ParseError};
 use serde::{Deserialize, Serialize};
 use std::ops::{Bound, RangeBounds};
@@ -103,12 +104,8 @@ impl Deserializer<Slot> for SlotDeserializer {
     ) -> nom::IResult<&'a [u8], Slot, E> {
         context("Failed Slot deserialization", |input: &'a [u8]| {
             let (rest, period) = self.period_deserializer.deserialize(input)?;
-            let thread = *rest.first().ok_or_else(|| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                ))
-            })?;
+            let (rest2, thread_) = take(1usize)(rest)?;
+            let thread = thread_[0];
             if !self.range_thread.contains(&thread) {
                 return Err(nom::Err::Error(ParseError::from_error_kind(
                     &rest[0..1],
@@ -116,7 +113,7 @@ impl Deserializer<Slot> for SlotDeserializer {
                 )));
             }
             // Safe because we throw just above if there is no character.
-            Ok((&rest[1..], Slot { period, thread }))
+            Ok((rest2, Slot { period, thread }))
         })(buffer)
     }
 }
