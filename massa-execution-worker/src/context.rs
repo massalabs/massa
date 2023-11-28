@@ -1031,7 +1031,7 @@ impl ExecutionContext {
 
     /// in case of
     ///
-    /// async_msg, exec call OP, call SC to SC, exec read only
+    /// async_msg, call OP, call SC to SC, read only call
     ///
     /// check if the given address is a smart contract address and if it exist
     /// returns an error instead
