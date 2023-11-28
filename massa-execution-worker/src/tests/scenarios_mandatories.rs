@@ -10,7 +10,9 @@ use massa_execution_exports::{
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper, SetUpdateOrDelete};
+use massa_ledger_exports::{
+    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -563,6 +565,44 @@ fn send_and_receive_async_message() {
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes
+                .ledger_changes
+                .0
+                .get(
+                    &Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+                        .unwrap(),
+                )
+                .unwrap()
+            {
+                // sc has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            match changes.async_pool_changes.0.first_key_value().unwrap().1 {
+                SetUpdateOrDelete::Delete => {
+                    // msg was deleted
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
     let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
     let mut changes = BTreeMap::default();
     changes.insert(
@@ -602,8 +642,12 @@ fn send_and_receive_async_message() {
     );
     finalized_waitpoint.wait();
 
-    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
-    std::thread::sleep(Duration::from_millis(exec_cfg.t0.as_millis()));
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
         .module_controller
@@ -675,8 +719,6 @@ fn cancel_async_message() {
                 let mut saved_bytecode = saved_bytecode_edit.write();
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
             }
-            // async msg was canceled
-            // check that the coins were returned to the sender
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
@@ -690,6 +732,37 @@ fn cancel_async_message() {
 
             finalized_waitpoint_trigger_handle.trigger();
         });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes.ledger_changes.0.get(&sender_addr).unwrap() {
+                // at slot (1,1) msg was canceled so sender has received the coins (0.0000001)
+                // sender has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sender_update) => {
+                    assert_eq!(
+                        change_sender_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            match changes.async_pool_changes.0.first_key_value().unwrap().1 {
+                SetUpdateOrDelete::Delete => {
+                    // msg was deleted
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
     let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
     let mut changes = BTreeMap::default();
     changes.insert(
@@ -727,6 +800,13 @@ fn cancel_async_message() {
         include_bytes!("./wasm/send_message.wasm"),
         include_bytes!("./wasm/receive_message.wasm"),
     );
+    finalized_waitpoint.wait();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
 
     // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
@@ -2074,7 +2154,6 @@ fn sc_builtins() {
     assert!(events[0]
         .data
         .contains("runtime error when executing operation"));
-    dbg!(events[0].data.clone());
     assert!(events[0]
         .data
         .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
