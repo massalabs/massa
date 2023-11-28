@@ -4,13 +4,15 @@ use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfi
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
-    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::MockLedgerControllerWrapper;
+use massa_ledger_exports::{
+    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
+};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -215,6 +217,16 @@ fn test_readonly_execution() {
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller.expect_get_bytecode().returning(move |_| {
+                Some(Bytecode(
+                    include_bytes!("./wasm/get_call_coins_test.wasm").to_vec(),
+                ))
+            });
+        });
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -226,21 +238,82 @@ fn test_readonly_execution() {
     );
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
+    let addr = Address::from_str("AU1LQrXPJ3DVL8SFRqACk31E9MVxBcmCATFiRdpEmgztGxWAx48D").unwrap();
+
     let mut res = universe
         .module_controller
         .execute_readonly_request(ReadOnlyExecutionRequest {
             max_gas: 100_000_000,
-            call_stack: vec![],
+            call_stack: vec![ExecutionStackElement {
+                address: addr,
+                coins: Amount::zero(),
+                owned_addresses: vec![],
+                operation_datastore: None,
+            }],
             target: ReadOnlyExecutionTarget::BytecodeExecution(
                 include_bytes!("./wasm/event_test.wasm").to_vec(),
             ),
             coins: None,
-            fee: None,
+            fee: Some(Amount::from_str("40").unwrap()),
         })
         .expect("readonly execution failed");
 
     assert!(res.gas_cost > 0);
     assert_eq!(res.out.events.take().len(), 1, "wrong number of events");
+    assert_eq!(
+        res.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
+        &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("60").unwrap()),
+            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            datastore: BTreeMap::new()
+        })
+    );
+
+    let mut res2 = universe
+        .module_controller
+        .execute_readonly_request(ReadOnlyExecutionRequest {
+            max_gas: 414_000_000, // 314_000_000 (SP COMPIL) + 100_000_000 (FOR EXECUTION)
+            call_stack: vec![
+                ExecutionStackElement {
+                    address: addr,
+                    coins: Amount::zero(),
+                    owned_addresses: vec![],
+                    operation_datastore: None,
+                },
+                ExecutionStackElement {
+                    address: Address::from_str(
+                        "AU1DHJY6zd6oKJPos8gQ6KYqmsTR669wes4ZhttLD9gE7PYUF3Rs",
+                    )
+                    .unwrap(),
+                    coins: Amount::zero(),
+                    owned_addresses: vec![],
+                    operation_datastore: None,
+                },
+            ],
+            target: ReadOnlyExecutionTarget::FunctionCall {
+                target_addr: Address::from_str(
+                    "AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA",
+                )
+                .unwrap(),
+                target_func: "test".to_string(),
+                parameter: vec![],
+            },
+            coins: Some(Amount::from_str("20").unwrap()),
+            fee: Some(Amount::from_str("30").unwrap()),
+        })
+        .expect("readonly execution failed");
+
+    assert_eq!(res2.out.slot, Slot::new(0, 1));
+    assert!(res2.gas_cost > 0);
+    assert_eq!(res2.out.events.take().len(), 1, "wrong number of events");
+    assert_eq!(
+        res2.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
+        &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("50").unwrap()),
+            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            datastore: BTreeMap::new()
+        })
+    );
 }
 
 /// Test the gas usage in nested calls using call SC operation
@@ -492,6 +565,44 @@ fn send_and_receive_async_message() {
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes
+                .ledger_changes
+                .0
+                .get(
+                    &Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+                        .unwrap(),
+                )
+                .unwrap()
+            {
+                // sc has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            match changes.async_pool_changes.0.first_key_value().unwrap().1 {
+                SetUpdateOrDelete::Delete => {
+                    // msg was deleted
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
     let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
     let mut changes = BTreeMap::default();
     changes.insert(
@@ -531,8 +642,12 @@ fn send_and_receive_async_message() {
     );
     finalized_waitpoint.wait();
 
-    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
-    std::thread::sleep(Duration::from_millis(exec_cfg.t0.as_millis()));
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
         .module_controller
@@ -544,6 +659,169 @@ fn send_and_receive_async_message() {
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
+}
+
+#[test]
+fn cancel_async_message() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let sender_addr =
+        Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
+    let message = AsyncMessage {
+        emission_slot: Slot {
+            period: 1,
+            thread: 0,
+        },
+        emission_index: 0,
+        sender: sender_addr,
+        destination: Address::from_str("AU12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+            .unwrap(),
+        function: String::from("receive"),
+        max_gas: 3000000,
+        fee: Amount::from_raw(1),
+        coins: Amount::from_raw(100),
+        validity_start: Slot {
+            period: 1,
+            thread: 1,
+        },
+        validity_end: Slot {
+            period: 20,
+            thread: 20,
+        },
+        function_params: vec![42, 42, 42, 42],
+        trigger: None,
+        can_be_executed: true,
+    };
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                let mut saved_bytecode = saved_bytecode_edit.write();
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
+            assert_eq!(
+                changes.ledger_changes.0.get(&sender_addr).unwrap(),
+                &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    balance: massa_ledger_exports::SetOrKeep::Set(
+                        Amount::from_str("100.670399899").unwrap()
+                    ),
+                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    datastore: BTreeMap::new()
+                })
+            );
+
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes.ledger_changes.0.get(&sender_addr).unwrap() {
+                // at slot (1,1) msg was canceled so sender has received the coins (0.0000001)
+                // sender has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sender_update) => {
+                    assert_eq!(
+                        change_sender_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            match changes.async_pool_changes.0.first_key_value().unwrap().1 {
+                SetUpdateOrDelete::Delete => {
+                    // msg was deleted
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
+    let mut changes = BTreeMap::default();
+    changes.insert(
+        (
+            Reverse(Ratio::new(1, 100000)),
+            Slot {
+                period: 1,
+                thread: 0,
+            },
+            0,
+        ),
+        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+    );
+    let mut db_batch = DBBatch::default();
+    async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        Some(async_pool),
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
+
+    // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
+    std::thread::sleep(Duration::from_millis(exec_cfg.t0.as_millis()));
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+    assert!(events[0]
+        .data
+        .contains("the target address is not a smart contract address"));
 }
 
 /// Context
@@ -575,6 +853,7 @@ fn local_execution() {
         finalized_waitpoint.get_trigger_handle(),
         &mut foreign_controllers.final_state,
     );
+
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -868,12 +1147,12 @@ fn send_and_receive_transaction() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // 200 because 100 in the get_balance in the `final_state_boilerplate` and 100 from the transfer.
+            // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&recipient_address, || None),
-                Some(Amount::from_str("200").unwrap())
+                Some(Amount::from_str("190").unwrap())
             );
             // 1.02 for the block rewards
             assert_eq!(
@@ -883,7 +1162,11 @@ fn send_and_receive_transaction() {
                     ),
                     || None
                 ),
-                Some(exec_cfg.block_reward)
+                Some(
+                    exec_cfg
+                        .block_reward
+                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
+                )
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -891,11 +1174,11 @@ fn send_and_receive_transaction() {
     // create the operation
     let operation = Operation::new_verifiable(
         Operation {
-            fee: Amount::zero(),
+            fee: Amount::from_str("10").unwrap(),
             expire_period: 10,
             op: OperationType::Transaction {
                 recipient_address,
-                amount: Amount::from_str("100").unwrap(),
+                amount: Amount::from_str("90").unwrap(),
             },
         },
         OperationSerializer::new(),
@@ -945,6 +1228,18 @@ fn roll_buy() {
             assert_eq!(changes.pos_changes.roll_changes.len(), 1);
             // 100 base + 1 bought
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
+
+            // address has 100 coins before buying roll
+            // -> (100 (balance) - 100 (roll price)) + 1.02 (block reward)
+            assert_eq!(
+                changes.ledger_changes.0.get(&address).unwrap(),
+                &SetUpdateOrDelete::Update(LedgerEntryUpdate {
+                    balance: massa_ledger_exports::SetOrKeep::Set(exec_cfg.block_reward),
+                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    datastore: BTreeMap::new()
+                })
+            );
+
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -1859,7 +2154,6 @@ fn sc_builtins() {
     assert!(events[0]
         .data
         .contains("runtime error when executing operation"));
-    dbg!(events[0].data.clone());
     assert!(events[0]
         .data
         .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
