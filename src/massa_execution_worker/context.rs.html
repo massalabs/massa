@@ -1073,6 +1073,35 @@
 <a href="#1073" id="1073">1073</a>
 <a href="#1074" id="1074">1074</a>
 <a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -2102,6 +2131,35 @@
             .expect(<span class="string">&quot;unexpected slot overflow in context.get_addresses_deferred_credits&quot;</span>);
         <span class="self">self</span>.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
+    }
+
+    <span class="doccomment">/// in case of
+    ///
+    /// async_msg, exec call OP, call SC to SC, exec read only
+    ///
+    /// check if the given address is a smart contract address and if it exist
+    /// returns an error instead
+    </span><span class="kw">pub fn </span>check_target_sc_address(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        target_sc_address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="kw">match </span>target_sc_address {
+            Address::SC(..) =&gt; {
+                <span class="comment">// if the target address does not exist: fail
+                </span><span class="kw">if </span>!<span class="self">self</span>.speculative_ledger.entry_exists(<span class="kw-2">&amp;</span>target_sc_address) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;The called smart contract address {} does not exist&quot;</span>,
+                        target_sc_address
+                    )));
+                }
+                <span class="prelude-val">Ok</span>(())
+            }
+            <span class="comment">// if the target address is not SC: fail
+            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                <span class="string">&quot;The called address {} is not a smart contract address&quot;</span>,
+                target_sc_address
+            ))),
+        }
     }
 }
 
