@@ -965,9 +965,26 @@ impl ExecutionState {
 
             // if the target address is not SC: fail
             if !matches!(message.destination, Address::SC(..)) {
-                let err = ExecutionError::RuntimeError(
-                    "the target address is not a smart contract address".into(),
-                );
+                let err = ExecutionError::RuntimeError(format!(
+                    "the called address {} is not a smart contract address",
+                    message.destination
+                ));
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(&message);
+                return Err(err);
+            }
+
+            // if the target address does not exist: fail
+            if !self
+                .final_state
+                .read()
+                .get_ledger()
+                .entry_exists(&message.destination)
+            {
+                let err = ExecutionError::RuntimeError(format!(
+                    "The called smart contract address {} does not exist",
+                    message.destination
+                ));
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
