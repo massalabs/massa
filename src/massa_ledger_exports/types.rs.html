@@ -369,16 +369,11 @@
 <a href="#369" id="369">369</a>
 <a href="#370" id="370">370</a>
 <a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Provides various tools to manipulate ledger entries and changes happening on them.
 
 </span><span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
-<span class="kw">use </span>nom::bytes::complete::take;
 <span class="kw">use </span>nom::{
     error::{ContextError, ParseError},
     IResult,
@@ -448,17 +443,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SetUpdateOrDelete&lt;T, V&gt;, E&gt; {
-        <span class="kw">let </span>(rest0, buffer0) = take(<span class="number">1usize</span>)(buffer)<span class="question-mark">?</span>;
-        <span class="kw">match </span>buffer0[<span class="number">0</span>] {
+        <span class="kw">match </span>buffer[<span class="number">0</span>] {
             <span class="number">0 </span>=&gt; {
-                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer_set.deserialize(rest0)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer_set.deserialize(<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..])<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((rest, SetUpdateOrDelete::Set(value)))
             }
             <span class="number">1 </span>=&gt; {
-                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer_update.deserialize(rest0)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer_update.deserialize(<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..])<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((rest, SetUpdateOrDelete::Update(value)))
             }
-            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>((rest0, SetUpdateOrDelete::Delete)),
+            <span class="number">2 </span>=&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..], SetUpdateOrDelete::Delete)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
@@ -592,13 +586,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SetOrDelete&lt;T&gt;, E&gt; {
-        <span class="kw">let </span>(rest0, buffer0) = take(<span class="number">1usize</span>)(buffer)<span class="question-mark">?</span>;
-        <span class="kw">match </span>buffer0[<span class="number">0</span>] {
+        <span class="kw">match </span>buffer[<span class="number">0</span>] {
             <span class="number">0 </span>=&gt; {
-                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer.deserialize(rest0)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer.deserialize(<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..])<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((rest, SetOrDelete::Set(value)))
             }
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>((rest0, SetOrDelete::Delete)),
+            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..], SetOrDelete::Delete)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
@@ -677,13 +670,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SetOrKeep&lt;T&gt;, E&gt; {
-        <span class="kw">let </span>(rest0, buffer0) = take(<span class="number">1usize</span>)(buffer)<span class="question-mark">?</span>;
-        <span class="kw">match </span>buffer0[<span class="number">0</span>] {
+        <span class="kw">match </span>buffer[<span class="number">0</span>] {
             <span class="number">0 </span>=&gt; {
-                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer.deserialize(rest0)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(rest, value) = <span class="self">self</span>.inner_deserializer.deserialize(<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..])<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>((rest, SetOrKeep::Set(value)))
             }
-            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>((rest0, SetOrKeep::Keep)),
+            <span class="number">1 </span>=&gt; <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..], SetOrKeep::Keep)),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
