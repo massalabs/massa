@@ -1897,6 +1897,13 @@
 <a href="#1897" id="1897">1897</a>
 <a href="#1898" id="1898">1898</a>
 <a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2776,12 +2783,8 @@
             ];
 
             <span class="comment">// Ensure that the target address is an SC address
-            </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;cannot callSC towards non-SC address {}&quot;</span>,
-                    target_addr
-                )));
-            }
+            // Ensure that the target address exists
+            </span><span class="self">self</span>.check_target_sc_address(target_addr)<span class="question-mark">?</span>;
 
             <span class="comment">// Transfer coins from the sender to the target
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -2862,28 +2865,8 @@
                 },
             ];
 
-            <span class="comment">// if the target address is not SC: fail
-            </span><span class="kw">if </span>!<span class="macro">matches!</span>(message.destination, Address::SC(..)) {
-                <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;the called address {} is not a smart contract address&quot;</span>,
-                    message.destination
-                ));
-                context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
-            }
-
-            <span class="comment">// if the target address does not exist: fail
-            </span><span class="kw">if </span>!<span class="self">self
-                </span>.final_state
-                .read()
-                .get_ledger()
-                .entry_exists(<span class="kw-2">&amp;</span>message.destination)
-            {
-                <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;The called smart contract address {} does not exist&quot;</span>,
-                    message.destination
-                ));
+            <span class="comment">// check the target address
+            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.check_target_sc_address(message.destination) {
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(<span class="kw-2">&amp;</span>message);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err);
@@ -3794,6 +3777,37 @@
                 .as_ref()
                 .map(|i| (i.current_version, i.announced_version)),
         );
+    }
+
+    <span class="doccomment">/// in case of
+    ///
+    /// async_msg, exec call OP, call SC to SC, exec read only
+    ///
+    /// check if the given address is a smart contract address and if it exist
+    /// returns an error instead
+    </span><span class="kw">fn </span>check_target_sc_address(<span class="kw-2">&amp;</span><span class="self">self</span>, target_sc_address: Address) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="comment">// if the target address is not SC: fail
+        </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_sc_address, Address::SC(..)) {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                <span class="string">&quot;The called address {} is not a smart contract address&quot;</span>,
+                target_sc_address
+            )));
+        }
+
+        <span class="comment">// if the target address does not exist: fail
+        </span><span class="kw">if </span>!<span class="self">self
+            </span>.final_state
+            .read()
+            .get_ledger()
+            .entry_exists(<span class="kw-2">&amp;</span>target_sc_address)
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                <span class="string">&quot;The called smart contract address {} does not exist&quot;</span>,
+                target_sc_address
+            )));
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 </code></pre></div></section></main></body></html>
