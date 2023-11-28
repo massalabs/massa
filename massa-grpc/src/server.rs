@@ -142,7 +142,6 @@ impl MassaPublicGrpc {
                 service = service.send_compressed(CompressionEncoding::Gzip);
             };
         }
-
         serve(service, config).await
     }
 }
@@ -268,7 +267,7 @@ where
                 .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
                 // Allow requests from any origin
                 .allow_origin(Any)
-                .allow_headers([hyper::header::CONTENT_TYPE]);
+                .allow_headers(Any);
 
             let router_with_http1 = server_builder
                 .accept_http1(true)

@@ -10,12 +10,12 @@ use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::Sta
 
 use anyhow::{anyhow, Result as AnyResult};
 use massa_async_pool::AsyncPool;
-use massa_db_exports::EXECUTION_TRAIL_HASH_PREFIX;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
+use massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_hash::Hash;
@@ -635,7 +635,16 @@ impl FinalState {
                     ));
                 }
             } else if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes()) {
-                // TODO: check MIP_STORE_PREFIX
+                if !self
+                    .mip_store
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!("Wrong key/value for MIP Store");
+                    return Err(anyhow!(
+                        "Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}", 
+                        serialized_key, serialized_value
+                    ));
+                }
             } else if serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
                 // no checks here as they are performed above by direct reading
             } else {
@@ -643,8 +652,38 @@ impl FinalState {
                     "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
                     serialized_key, serialized_value
                 );
-                return Err(anyhow!(""));
-                // return false;
+                return Err(anyhow!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                ));
+            }
+        }
+
+        for (serialized_key, serialized_value) in
+            db.iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
+        {
+            if serialized_key.starts_with(MIP_STORE_PREFIX.as_bytes())
+                || serialized_key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes())
+            {
+                if !self
+                    .mip_store
+                    .is_key_value_valid(&serialized_key, &serialized_value)
+                {
+                    warn!("Wrong key/value for MIP Store");
+                    return Err(anyhow!(
+                        "Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}",
+                        serialized_key, serialized_value
+                    ));
+                }
+            } else {
+                warn!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                );
+                return Err(anyhow!(
+                    "Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}",
+                    serialized_key, serialized_value
+                ));
             }
         }
 
