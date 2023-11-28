@@ -331,6 +331,24 @@ fn test_nested_call_gas_usage() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
     let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
         Some(Slot::new(1, 1)),
@@ -407,6 +425,25 @@ fn test_get_call_coins() {
     let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+
     selector_boilerplate(&mut foreign_controllers.selector_controller);
     let saved_bytecode = expect_finalize_deploy_and_call_blocks(
         Slot::new(1, 0),
@@ -428,6 +465,7 @@ fn test_get_call_coins() {
         .write()
         .expect_get_ops_exec_status()
         .returning(move |_| vec![Some(true)]);
+
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
     // load bytecodes
@@ -513,6 +551,24 @@ fn send_and_receive_async_message() {
                         &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
                     ))
                 });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
         });
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
