@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["check_input_operation"]};
+window.SIDEBAR_ITEMS = {};
