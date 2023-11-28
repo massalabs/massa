@@ -93,22 +93,19 @@ jobs:
           fi
           cd -
         working-directory: ${{ github.workspace }}
-      - name: Create Checksums
-        id: checksums
-        run: |
-          checksums=""
-          for file in massa/*.{gz,zip}; do
-            if [ -f "$file" ]; then
-              checksum=$(sha256sum "$file" | cut -d ' ' -f 1)
-              checksums="$checksums\n$checksum $(basename $file)"
-            fi
-          done
-          echo -e "$checksums" > checksums.txt
-        working-directory: ${{ github.workspace }}
+      - name: Generate checksum
+        uses: jmgilman/actions-generate-checksum@v1
+        with:
+          method: sha256
+          patterns: |
+            massa/*.zip
+            massa/*.tar.gz
+          output: checksums_${{ matrix.name }}.txt
+
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
           files: |
             massa_*.zip
             massa_*.gz
-            checksums.txt
+            checksums_*.txt
