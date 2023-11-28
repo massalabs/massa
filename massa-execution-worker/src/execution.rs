@@ -1451,6 +1451,9 @@ impl ExecutionState {
                     let mut context = context_guard!(self);
                     *context = execution_context;
 
+                    // Ensure that the target address is an SC address and exists
+                    context.check_target_sc_address(target_addr)?;
+
                     let call_stack_addr = context.get_call_stack();
 
                     // transfer fee

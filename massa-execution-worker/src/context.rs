@@ -1039,23 +1039,23 @@ impl ExecutionContext {
         &self,
         target_sc_address: Address,
     ) -> Result<(), ExecutionError> {
-        // if the target address is not SC: fail
-        if !matches!(target_sc_address, Address::SC(..)) {
-            return Err(ExecutionError::RuntimeError(format!(
+        match target_sc_address {
+            Address::SC(..) => {
+                // if the target address does not exist: fail
+                if !self.speculative_ledger.entry_exists(&target_sc_address) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "The called smart contract address {} does not exist",
+                        target_sc_address
+                    )));
+                }
+                Ok(())
+            }
+            // if the target address is not SC: fail
+            _ => Err(ExecutionError::RuntimeError(format!(
                 "The called address {} is not a smart contract address",
                 target_sc_address
-            )));
+            ))),
         }
-
-        // if the target address does not exist: fail
-        if self.get_balance(&target_sc_address).is_none() {
-            return Err(ExecutionError::RuntimeError(format!(
-                "The called smart contract address {} does not exist",
-                target_sc_address
-            )));
-        }
-
-        Ok(())
     }
 }
 
