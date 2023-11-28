@@ -227,6 +227,18 @@ fn test_readonly_execution() {
                 ))
             });
         });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
@@ -875,9 +887,7 @@ fn cancel_async_message() {
             end: Some(Slot::new(20, 1)),
             ..Default::default()
         });
-    assert!(events[0]
-        .data
-        .contains("the target address is not a smart contract address"));
+    assert!(events[0].data.contains(" is not a smart contract address"));
 }
 
 /// Context
