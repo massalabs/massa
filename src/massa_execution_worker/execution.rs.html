@@ -1880,6 +1880,23 @@
 <a href="#1880" id="1880">1880</a>
 <a href="#1881" id="1881">1881</a>
 <a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2847,9 +2864,26 @@
 
             <span class="comment">// if the target address is not SC: fail
             </span><span class="kw">if </span>!<span class="macro">matches!</span>(message.destination, Address::SC(..)) {
-                <span class="kw">let </span>err = ExecutionError::RuntimeError(
-                    <span class="string">&quot;the target address is not a smart contract address&quot;</span>.into(),
-                );
+                <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;the called address {} is not a smart contract address&quot;</span>,
+                    message.destination
+                ));
+                context.reset_to_snapshot(context_snapshot, err.clone());
+                context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+            }
+
+            <span class="comment">// if the target address does not exist: fail
+            </span><span class="kw">if </span>!<span class="self">self
+                </span>.final_state
+                .read()
+                .get_ledger()
+                .entry_exists(<span class="kw-2">&amp;</span>message.destination)
+            {
+                <span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">&quot;The called smart contract address {} does not exist&quot;</span>,
+                    message.destination
+                ));
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(<span class="kw-2">&amp;</span>message);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err);

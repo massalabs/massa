@@ -341,9 +341,6 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -351,6 +348,7 @@
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+<span class="kw">use </span>nom::bytes::complete::take;
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::{Bound, RangeBounds};
@@ -449,12 +447,8 @@
     ) -&gt; nom::IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Slot, E&gt; {
         context(<span class="string">&quot;Failed Slot deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
             <span class="kw">let </span>(rest, period) = <span class="self">self</span>.period_deserializer.deserialize(input)<span class="question-mark">?</span>;
-            <span class="kw">let </span>thread = <span class="kw-2">*</span>rest.first().ok_or_else(|| {
-                nom::Err::Error(ParseError::from_error_kind(
-                    input,
-                    nom::error::ErrorKind::LengthValue,
-                ))
-            })<span class="question-mark">?</span>;
+            <span class="kw">let </span>(rest2, thread_) = take(<span class="number">1usize</span>)(rest)<span class="question-mark">?</span>;
+            <span class="kw">let </span>thread = thread_[<span class="number">0</span>];
             <span class="kw">if </span>!<span class="self">self</span>.range_thread.contains(<span class="kw-2">&amp;</span>thread) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                     <span class="kw-2">&amp;</span>rest[<span class="number">0</span>..<span class="number">1</span>],
@@ -462,7 +456,7 @@
                 )));
             }
             <span class="comment">// Safe because we throw just above if there is no character.
-            </span><span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..], Slot { period, thread }))
+            </span><span class="prelude-val">Ok</span>((rest2, Slot { period, thread }))
         })(buffer)
     }
 }
