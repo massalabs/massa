@@ -3,7 +3,6 @@
 //! Provides various tools to manipulate ledger entries and changes happening on them.
 
 use massa_serialization::{Deserializer, SerializeError, Serializer};
-use nom::bytes::complete::take;
 use nom::{
     error::{ContextError, ParseError},
     IResult,
@@ -73,17 +72,16 @@ impl<
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SetUpdateOrDelete<T, V>, E> {
-        let (rest0, buffer0) = take(1usize)(buffer)?;
-        match buffer0[0] {
+        match buffer[0] {
             0 => {
-                let (rest, value) = self.inner_deserializer_set.deserialize(rest0)?;
+                let (rest, value) = self.inner_deserializer_set.deserialize(&buffer[1..])?;
                 Ok((rest, SetUpdateOrDelete::Set(value)))
             }
             1 => {
-                let (rest, value) = self.inner_deserializer_update.deserialize(rest0)?;
+                let (rest, value) = self.inner_deserializer_update.deserialize(&buffer[1..])?;
                 Ok((rest, SetUpdateOrDelete::Update(value)))
             }
-            2 => Ok((rest0, SetUpdateOrDelete::Delete)),
+            2 => Ok((&buffer[1..], SetUpdateOrDelete::Delete)),
             _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
@@ -217,13 +215,12 @@ impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrDelete<T>>
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SetOrDelete<T>, E> {
-        let (rest0, buffer0) = take(1usize)(buffer)?;
-        match buffer0[0] {
+        match buffer[0] {
             0 => {
-                let (rest, value) = self.inner_deserializer.deserialize(rest0)?;
+                let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
                 Ok((rest, SetOrDelete::Set(value)))
             }
-            1 => Ok((rest0, SetOrDelete::Delete)),
+            1 => Ok((&buffer[1..], SetOrDelete::Delete)),
             _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,
@@ -302,13 +299,12 @@ impl<T: Clone, DT: Deserializer<T>> Deserializer<SetOrKeep<T>> for SetOrKeepDese
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], SetOrKeep<T>, E> {
-        let (rest0, buffer0) = take(1usize)(buffer)?;
-        match buffer0[0] {
+        match buffer[0] {
             0 => {
-                let (rest, value) = self.inner_deserializer.deserialize(rest0)?;
+                let (rest, value) = self.inner_deserializer.deserialize(&buffer[1..])?;
                 Ok((rest, SetOrKeep::Set(value)))
             }
-            1 => Ok((rest0, SetOrKeep::Keep)),
+            1 => Ok((&buffer[1..], SetOrKeep::Keep)),
             _ => Err(nom::Err::Error(ParseError::from_error_kind(
                 buffer,
                 nom::error::ErrorKind::Digit,

@@ -961,8 +961,7 @@ impl Deserializer<DenunciationIndex> for DenunciationIndexDeserializer {
                     self.slot_deserializer.deserialize(input)
                 })
                 .map(|slot| DenunciationIndex::BlockHeader { slot })
-                // .parse(&buffer[1..])
-                .parse(input)
+                .parse(&buffer[1..])
             }
             DenunciationIndexTypeId::Endorsement => context(
                 "Failed Endorsement denunciation index",
@@ -1198,7 +1197,6 @@ mod tests {
     use crate::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     use crate::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
     use crate::secure_share::{Id, SecureShareContent};
-
     use crate::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
