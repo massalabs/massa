@@ -877,12 +877,8 @@ impl ExecutionState {
             ];
 
             // Ensure that the target address is an SC address
-            if !matches!(target_addr, Address::SC(..)) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "cannot callSC towards non-SC address {}",
-                    target_addr
-                )));
-            }
+            // Ensure that the target address exists
+            self.check_target_sc_address(target_addr)?;
 
             // Transfer coins from the sender to the target
             if let Err(err) =
@@ -963,28 +959,8 @@ impl ExecutionState {
                 },
             ];
 
-            // if the target address is not SC: fail
-            if !matches!(message.destination, Address::SC(..)) {
-                let err = ExecutionError::RuntimeError(format!(
-                    "the called address {} is not a smart contract address",
-                    message.destination
-                ));
-                context.reset_to_snapshot(context_snapshot, err.clone());
-                context.cancel_async_message(&message);
-                return Err(err);
-            }
-
-            // if the target address does not exist: fail
-            if !self
-                .final_state
-                .read()
-                .get_ledger()
-                .entry_exists(&message.destination)
-            {
-                let err = ExecutionError::RuntimeError(format!(
-                    "The called smart contract address {} does not exist",
-                    message.destination
-                ));
+            // check the target address
+            if let Err(err) = self.check_target_sc_address(message.destination) {
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
@@ -1895,5 +1871,36 @@ impl ExecutionState {
                 .as_ref()
                 .map(|i| (i.current_version, i.announced_version)),
         );
+    }
+
+    /// in case of
+    ///
+    /// async_msg, exec call OP, call SC to SC, exec read only
+    ///
+    /// check if the given address is a smart contract address and if it exist
+    /// returns an error instead
+    fn check_target_sc_address(&self, target_sc_address: Address) -> Result<(), ExecutionError> {
+        // if the target address is not SC: fail
+        if !matches!(target_sc_address, Address::SC(..)) {
+            return Err(ExecutionError::RuntimeError(format!(
+                "The called address {} is not a smart contract address",
+                target_sc_address
+            )));
+        }
+
+        // if the target address does not exist: fail
+        if !self
+            .final_state
+            .read()
+            .get_ledger()
+            .entry_exists(&target_sc_address)
+        {
+            return Err(ExecutionError::RuntimeError(format!(
+                "The called smart contract address {} does not exist",
+                target_sc_address
+            )));
+        }
+
+        Ok(())
     }
 }
