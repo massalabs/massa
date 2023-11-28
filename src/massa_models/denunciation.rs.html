@@ -1482,8 +1482,6 @@
 <a href="#1482" id="1482">1482</a>
 <a href="#1483" id="1483">1483</a>
 <a href="#1484" id="1484">1484</a>
-<a href="#1485" id="1485">1485</a>
-<a href="#1486" id="1486">1486</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -2447,8 +2445,7 @@
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 })
                 .map(|slot| DenunciationIndex::BlockHeader { slot })
-                <span class="comment">// .parse(&amp;buffer[1..])
-                </span>.parse(input)
+                .parse(<span class="kw-2">&amp;</span>buffer[<span class="number">1</span>..])
             }
             DenunciationIndexTypeId::Endorsement =&gt; context(
                 <span class="string">&quot;Failed Endorsement denunciation index&quot;</span>,
@@ -2684,7 +2681,6 @@
     <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
     <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
     <span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShareContent};
-
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
     };
