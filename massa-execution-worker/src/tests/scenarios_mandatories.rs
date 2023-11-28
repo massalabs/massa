@@ -404,7 +404,6 @@ fn test_get_call_coins() {
     );
     finalized_waitpoint.wait();
     let address = universe.get_address_sc_deployed(Slot::new(1, 0));
-    dbg!(&address);
 
     // Call the function test of the smart contract
     let coins_sent = Amount::from_str("10").unwrap();
@@ -431,7 +430,6 @@ fn test_get_call_coins() {
             start: Some(Slot::new(1, 1)),
             ..Default::default()
         });
-    dbg!(&events);
     assert!(events[0].data.contains(&format!(
         "tokens sent to the SC during the call : {}",
         coins_sent.to_raw()
@@ -1917,7 +1915,6 @@ fn sc_builtins() {
     assert!(events[0]
         .data
         .contains("runtime error when executing operation"));
-    dbg!(events[0].data.clone());
     assert!(events[0]
         .data
         .contains("abort with date and rnd at use_builtins.ts:0 col: 0"));
