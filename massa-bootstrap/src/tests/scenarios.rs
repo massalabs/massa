@@ -71,8 +71,10 @@ fn test_bootstrap_server() {
 #[test]
 #[serial]
 fn test_bootstrap_accept_err() {
+    let port = 8071;
     let server_universe = BootstrapServerTestUniverseBuilder::new()
         .set_accept_error(true)
+        .set_port(port)
         .build();
     drop(server_universe);
 }
