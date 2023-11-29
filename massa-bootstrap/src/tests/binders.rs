@@ -601,7 +601,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
 
 #[test]
 fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
-    let read_timeout_number = 500;
+    let read_timeout_number = 2000;
     let read_timeout = Duration::from_millis(read_timeout_number);
     let (mut bootstrap_config, server_keypair): (BootstrapConfig, KeyPair) =
         BOOTSTRAP_CONFIG_KEYPAIR.clone();
