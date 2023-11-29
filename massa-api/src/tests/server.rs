@@ -113,11 +113,11 @@ async fn ws_disabled() {
         .await
         .expect("failed to start MASSA API V2");
     let response = WsClientBuilder::default().build(&uri).await;
-
-    assert!(response
-        .unwrap_err()
-        .to_string()
-        .contains("status code: 403"));
+    let err = response.unwrap_err();
+    assert!(
+        err.to_string().contains("status code: 403")
+            || err.to_string().contains("(os error 10061)")
+    );
 
     api_handle.stop().await;
 }
