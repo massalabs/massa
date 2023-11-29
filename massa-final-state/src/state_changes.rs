@@ -323,4 +323,51 @@ mod test {
         assert!(rest.is_empty());
         assert_eq!(state_changes, state_changes_deser);
     }
+
+    #[test]
+    fn test_state_changes_serde() {
+        let mut state_changes = StateChanges::default();
+        let message = AsyncMessage::new(
+            Slot::new(1, 0),
+            0,
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+            String::from("test"),
+            10000000,
+            Amount::from_str("1").unwrap(),
+            Amount::from_str("1").unwrap(),
+            Slot::new(2, 0),
+            Slot::new(3, 0),
+            vec![1, 2, 3, 4],
+            None,
+            None,
+        );
+        let mut async_pool_changes = AsyncPoolChanges::default();
+        async_pool_changes
+            .0
+            .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
+        state_changes.async_pool_changes = async_pool_changes;
+
+        let amount = Amount::from_str("1").unwrap();
+        let bytecode = Bytecode(vec![1, 2, 3]);
+        let ledger_entry = LedgerEntryUpdate {
+            balance: SetOrKeep::Set(amount),
+            bytecode: SetOrKeep::Set(bytecode),
+            datastore: BTreeMap::default(),
+        };
+        let mut ledger_changes = LedgerChanges::default();
+        ledger_changes.0.insert(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            SetUpdateOrDelete::Update(ledger_entry),
+        );
+        state_changes.ledger_changes = ledger_changes;
+        let serialized = serde_json::to_string_pretty(&state_changes);
+        if let Err(err) = serialized {
+            panic!("Failed to serialize state changes: {:?}", err);
+        }
+        let serialized = serialized.unwrap();
+        print!("{}", serialized);
+        let state_changes_deser = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(state_changes, state_changes_deser);
+    }
 }

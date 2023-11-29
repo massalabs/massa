@@ -12,9 +12,11 @@ use nom::error::{context, ContextError, ParseError};
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::ops::Bound::Included;
 
 /// Structure defining an entry associated to an address in the `FinalLedger`
+#[serde_as]
 #[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LedgerEntry {
     /// The balance of that entry.
@@ -24,6 +26,7 @@ pub struct LedgerEntry {
     pub bytecode: Bytecode,
 
     /// A key-value store associating a hash to arbitrary bytes
+    #[serde_as(as = "Vec<(_, _)>")]
     pub datastore: Datastore,
 }
 

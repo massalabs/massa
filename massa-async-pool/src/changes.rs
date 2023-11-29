@@ -29,11 +29,14 @@ use nom::{
     IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 /// Consolidated changes to the asynchronous message pool
+#[serde_as]
 #[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AsyncPoolChanges(
-    pub BTreeMap<AsyncMessageId, SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>>,
+    #[serde_as(as = "Vec<(_, _)>")]
+    pub  BTreeMap<AsyncMessageId, SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>>,
 );
 
 impl Applicable<AsyncPoolChanges> for AsyncPoolChanges {
