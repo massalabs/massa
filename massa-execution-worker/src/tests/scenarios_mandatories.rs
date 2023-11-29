@@ -1500,6 +1500,7 @@ fn roll_slash() {
         .final_state
         .write()
         .expect_finalize()
+        .returning(move |_, changes| {
             let rolls = changes.pos_changes.roll_changes.get(&address).unwrap();
             // 97 sold and 3 slashed
             assert_eq!(rolls, &0);
