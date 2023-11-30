@@ -1,4 +1,4 @@
-var sourcesIndex = JSON.parse('{\
+var srcIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
 "massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","mapping_grpc.rs","message.rs","pool.rs"]],\
@@ -41,4 +41,4 @@ var sourcesIndex = JSON.parse('{\
 "massa_wallet":["",[],["error.rs","lib.rs"]],\
 "massa_xtask":["",[],["main.rs","update_package_versions.rs"]]\
 }');
-createSourceSidebar();
+createSrcSidebar();
