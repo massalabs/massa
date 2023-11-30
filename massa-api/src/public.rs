@@ -39,7 +39,6 @@ use massa_models::{
     endorsement::SecureShareEndorsement,
     error::ModelsError,
     execution::EventFilter,
-    ledger::LedgerChanges,
     node::NodeId,
     operation::OperationDeserializer,
     operation::OperationId,
@@ -62,7 +61,7 @@ use massa_versioning::versioning_factory::FactoryStrategy;
 use massa_versioning::{
     keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
 
 impl API<Public> {

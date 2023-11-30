@@ -358,7 +358,7 @@ mod test {
         let ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),
             bytecode: SetOrKeep::Set(bytecode),
-            datastore: datastore,
+            datastore,
         };
         let mut ledger_changes = LedgerChanges::default();
         ledger_changes.0.insert(
