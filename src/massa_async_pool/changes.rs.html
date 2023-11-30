@@ -344,6 +344,9 @@
 <a href="#344" id="344">344</a>
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the asynchronous message pool
@@ -375,11 +378,14 @@
     IResult, Parser,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 
 <span class="doccomment">/// Consolidated changes to the asynchronous message pool
-</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+</span><span class="attr">#[serde_as]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 </span><span class="kw">pub struct </span>AsyncPoolChanges(
-    <span class="kw">pub </span>BTreeMap&lt;AsyncMessageId, SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt;,
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(_, _)&gt;&quot;</span>)]
+    </span><span class="kw">pub  </span>BTreeMap&lt;AsyncMessageId, SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt;,
 );
 
 <span class="kw">impl </span>Applicable&lt;AsyncPoolChanges&gt; <span class="kw">for </span>AsyncPoolChanges {
