@@ -1,48 +1,62 @@
 [package]
 name = "massa_final_state"
-version = "0.27.1"
+version = "0.27.2"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["massa_ledger_worker/test-exports", "massa_async_pool/test-exports", "massa_pos_exports/test-exports", "serde_json", "parking_lot", "tempfile", "massa_signature", "mockall"]
+test-exports = [
+    "massa_ledger_worker/test-exports",
+    "massa_async_pool/test-exports",
+    "massa_pos_exports/test-exports",
+    "serde_json",
+    "parking_lot",
+    "tempfile",
+    "massa_signature",
+    "mockall",
+]
 sandbox = ["massa_async_pool/sandbox"]
 bootstrap_server = []
 
 [dependencies]
-displaydoc = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-nom = {workspace = true}
-bs58 = {workspace = true, "features" = ["check"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["check"]} if problem
-thiserror = {workspace = true}
-tracing = {workspace = true}
-num = {workspace = true}
-mockall = {workspace = true, optional = true}
-anyhow = {workspace = true}
-massa_ledger_exports = {workspace = true}
-massa_ledger_worker = {workspace = true, "optional" = true}
-massa_executed_ops = {workspace = true}
-massa_models = {workspace = true}
-massa_async_pool = {workspace = true}
-massa_serialization = {workspace = true}
-massa_pos_exports = {workspace = true}
-massa_db_exports = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_versioning = {workspace = true}
-massa_time = {workspace = true}
-massa_hash = {workspace = true}
+displaydoc = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+nom = { workspace = true }
+bs58 = { workspace = true, "features" = [
+    "check",
+] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["check"]} if problem
+thiserror = { workspace = true }
+tracing = { workspace = true }
+num = { workspace = true }
+mockall = { workspace = true, optional = true }
+anyhow = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_ledger_worker = { workspace = true, "optional" = true }
+massa_executed_ops = { workspace = true }
+massa_models = { workspace = true }
+massa_async_pool = { workspace = true }
+massa_serialization = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_db_exports = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+massa_versioning = { workspace = true }
+massa_time = { workspace = true }
+massa_hash = { workspace = true }
 
-serde_json = {workspace = true, optional = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"], optional = true}
-massa_signature = {workspace = true, optional = true}
-tempfile = {workspace = true, optional = true}
+serde_json = { workspace = true, optional = true }
+parking_lot = { workspace = true, "features" = [
+    "deadlock_detection",
+], optional = true }
+massa_signature = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-massa_async_pool = {workspace = true, "features" = ["test-exports"]}
-massa_ledger_worker = {workspace = true, "features" = ["test-exports"]}
-massa_pos_worker = {workspace = true, "features" = ["test-exports"]}
-massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
-massa_db_worker = {workspace = true}
-parking_lot = {workspace = true, "features" = ["deadlock_detection"]}
-tempfile = {workspace = true}
+massa_async_pool = { workspace = true, "features" = ["test-exports"] }
+massa_ledger_worker = { workspace = true, "features" = ["test-exports"] }
+massa_pos_worker = { workspace = true, "features" = ["test-exports"] }
+massa_pos_exports = { workspace = true, "features" = ["test-exports"] }
+massa_db_worker = { workspace = true }
+parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
+tempfile = { workspace = true }
+serde_json = { workspace = true }

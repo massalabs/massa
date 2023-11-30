@@ -240,13 +240,11 @@ impl Interface for InterfaceImpl {
         // get target address
         let to_address = Address::from_str(address)?;
 
-        // check that the target address is an SC address
-        if !matches!(to_address, Address::SC(..)) {
-            bail!("called address {} is not an SC address", to_address);
-        }
-
         // write-lock context
         let mut context = context_guard!(self);
+
+        // check that the target address is a SC address and if it exists
+        context.check_target_sc_address(to_address)?;
 
         // get target bytecode
         let bytecode = match context.get_bytecode(&to_address) {

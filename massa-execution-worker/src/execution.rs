@@ -877,12 +877,8 @@ impl ExecutionState {
             ];
 
             // Ensure that the target address is an SC address
-            if !matches!(target_addr, Address::SC(..)) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "cannot callSC towards non-SC address {}",
-                    target_addr
-                )));
-            }
+            // Ensure that the target address exists
+            context.check_target_sc_address(target_addr)?;
 
             // Transfer coins from the sender to the target
             if let Err(err) =
@@ -963,11 +959,8 @@ impl ExecutionState {
                 },
             ];
 
-            // if the target address is not SC: fail
-            if !matches!(message.destination, Address::SC(..)) {
-                let err = ExecutionError::RuntimeError(
-                    "the target address is not a smart contract address".into(),
-                );
+            // check the target address
+            if let Err(err) = context.check_target_sc_address(message.destination) {
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
@@ -1457,6 +1450,9 @@ impl ExecutionState {
                 {
                     let mut context = context_guard!(self);
                     *context = execution_context;
+
+                    // Ensure that the target address is an SC address and exists
+                    context.check_target_sc_address(target_addr)?;
 
                     let call_stack_addr = context.get_call_stack();
 

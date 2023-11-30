@@ -992,20 +992,12 @@ impl MassaRpcServer for API<Public> {
     async fn send_operations(&self, ops: Vec<OperationInput>) -> RpcResult<Vec<OperationId>> {
         let mut cmd_sender = self.0.pool_command_sender.clone();
         let protocol_sender = self.0.protocol_controller.clone();
-        let api_cfg = self.0.api_settings.clone();
+        let api_cfg = &self.0.api_settings;
         let mut to_send = self.0.storage.clone_without_refs();
 
         if ops.len() as u64 > api_cfg.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
-        let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
-            api_cfg.max_datastore_value_length,
-            api_cfg.max_function_name_length,
-            api_cfg.max_parameter_size,
-            api_cfg.max_op_datastore_entry_count,
-            api_cfg.max_op_datastore_key_length,
-            api_cfg.max_op_datastore_value_length,
-        ));
         let now = MassaTime::now();
         let last_slot = get_latest_block_slot_at_timestamp(
             api_cfg.thread_count,
@@ -1014,40 +1006,10 @@ impl MassaRpcServer for API<Public> {
             now,
         )
         .map_err(ApiError::ModelsError)?;
+
         let verified_ops = ops
             .into_iter()
-            .map(|op_input| {
-                let mut op_serialized = Vec::new();
-                op_serialized.extend(op_input.signature.to_bytes());
-                op_serialized.extend(op_input.creator_public_key.to_bytes());
-                op_serialized.extend(op_input.serialized_content);
-                let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
-                    .deserialize::<DeserializeError>(&op_serialized)
-                    .map_err(|err| {
-                        ApiError::ModelsError(ModelsError::DeserializeError(err.to_string()))
-                    })?;
-                match op.content.op {
-                    OperationType::CallSC { max_gas, .. } | OperationType::ExecuteSC { max_gas, .. } => {
-                        if max_gas > api_cfg.max_gas_per_block {
-                            return Err(ApiError::InconsistencyError("Gas limit of the operation is higher than the block gas limit. Your operation will never be included in a block.".into()).into());
-                        }
-                    },
-                    _ => {}
-                };
-                if let Some(slot) = last_slot {
-                    if op.content.expire_period < slot.period {
-                        return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
-                    }
-                }
-                if rest.is_empty() {
-                    Ok(op)
-                } else {
-                    Err(ApiError::ModelsError(ModelsError::DeserializeError(
-                        "There is data left after operation deserialization".to_owned(),
-                    ))
-                    .into())
-                }
-            })
+            .map(|op_input| check_input_operation(op_input, api_cfg, last_slot))
             .map(|op| match op {
                 Ok(operation) => {
                     let _verify_signature = match operation.verify_signature() {
@@ -1153,5 +1115,78 @@ impl MassaRpcServer for API<Public> {
             });
 
         openrpc
+    }
+}
+
+/// Checks the validity of an input operation.
+///
+/// This function takes an `OperationInput`, an `APIConfig`, and an optional `Slot` as input parameters.
+/// It performs various checks on the input operation and returns a `SecureShareOperation` if the checks pass.
+/// Otherwise, it returns an `RpcResult` with an appropriate error.
+///
+/// # Arguments
+///
+/// * `op_input` - The input operation to be checked.
+/// * `api_cfg` - The API configuration used for checking the operation.
+/// * `last_slot` - An optional `Slot` representing the last slot used.
+///
+/// # Returns
+///
+/// Returns a `RpcResult` containing a `SecureShareOperation` if the input operation is valid.
+/// Otherwise, returns an `RpcResult` with an appropriate error.
+fn check_input_operation(
+    op_input: OperationInput,
+    api_cfg: &APIConfig,
+    last_slot: Option<Slot>,
+) -> RpcResult<SecureShareOperation> {
+    let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
+        api_cfg.max_datastore_value_length,
+        api_cfg.max_function_name_length,
+        api_cfg.max_parameter_size,
+        api_cfg.max_op_datastore_entry_count,
+        api_cfg.max_op_datastore_key_length,
+        api_cfg.max_op_datastore_value_length,
+    ));
+
+    let mut op_serialized = Vec::new();
+    op_serialized.extend(op_input.signature.to_bytes());
+    op_serialized.extend(op_input.creator_public_key.to_bytes());
+    op_serialized.extend(op_input.serialized_content);
+    let (rest, op): (&[u8], SecureShareOperation) = operation_deserializer
+        .deserialize::<DeserializeError>(&op_serialized)
+        .map_err(|err| ApiError::ModelsError(ModelsError::DeserializeError(err.to_string())))?;
+    match op.content.op {
+        OperationType::CallSC { .. } => {
+            let gas_usage =
+                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
+            if gas_usage > api_cfg.max_gas_per_block {
+                let err_msg = format!("Upper gas limit for CallSC operation is {}. Your operation will never be included in a block.",
+                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
+                return Err(ApiError::InconsistencyError(err_msg).into());
+            }
+        }
+        OperationType::ExecuteSC { .. } => {
+            let gas_usage =
+                op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
+            if gas_usage > api_cfg.max_gas_per_block {
+                let err_msg = format!("Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block.",
+                    api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
+                return Err(ApiError::InconsistencyError(err_msg).into());
+            }
+        }
+        _ => {}
+    };
+    if let Some(slot) = last_slot {
+        if op.content.expire_period < slot.period {
+            return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
+        }
+    }
+    if rest.is_empty() {
+        Ok(op)
+    } else {
+        Err(ApiError::ModelsError(ModelsError::DeserializeError(
+            "There is data left after operation deserialization".to_owned(),
+        ))
+        .into())
     }
 }
