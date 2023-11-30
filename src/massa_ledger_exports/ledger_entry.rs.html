@@ -195,6 +195,9 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
@@ -209,10 +212,12 @@
 <span class="kw">use </span>nom::sequence::tuple;
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="doccomment">/// Structure defining an entry associated to an address in the `FinalLedger`
-</span><span class="attr">#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+</span><span class="attr">#[serde_as]
+#[derive(Default, Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>LedgerEntry {
     <span class="doccomment">/// The balance of that entry.
     </span><span class="kw">pub </span>balance: Amount,
@@ -221,6 +226,7 @@
     </span><span class="kw">pub </span>bytecode: Bytecode,
 
     <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(_, _)&gt;&quot;</span>)]
     </span><span class="kw">pub </span>datastore: Datastore,
 }
 
