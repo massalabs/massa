@@ -350,10 +350,15 @@ mod test {
 
         let amount = Amount::from_str("1").unwrap();
         let bytecode = Bytecode(vec![1, 2, 3]);
+        let mut datastore = BTreeMap::new();
+        datastore.insert(
+            b"hello".to_vec(),
+            massa_ledger_exports::SetOrDelete::Set(b"world".to_vec()),
+        );
         let ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),
             bytecode: SetOrKeep::Set(bytecode),
-            datastore: BTreeMap::default(),
+            datastore: datastore,
         };
         let mut ledger_changes = LedgerChanges::default();
         ledger_changes.0.insert(
@@ -361,7 +366,7 @@ mod test {
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
-        let serialized = serde_json::to_string_pretty(&state_changes);
+        let serialized = serde_json::to_string(&state_changes);
         if let Err(err) = serialized {
             panic!("Failed to serialize state changes: {:?}", err);
         }
