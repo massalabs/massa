@@ -50,6 +50,11 @@ resolver = "2"
 [profile.dev.package."*"]
 opt-level = 3 # Speed-up the CI
 
+# This profile is used for prebuilt binaries.
+[profile.release_prebuilt]
+inherits = "release"
+codegen-units = 1
+
 # # Features
 #
 # * test-exports: enable some tests specific exports.

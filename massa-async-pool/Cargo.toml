@@ -1,6 +1,6 @@
 [package]
 name = "massa_async_pool"
-version = "0.27.1"
+version = "0.27.2"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -9,20 +9,22 @@ test-exports = []
 sandbox = []
 
 [dependencies]
-nom = {workspace = true}
-num = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-rand = {workspace = true}
-massa_ledger_exports = {workspace = true}
-massa_models = {workspace = true}
-massa_serialization = {workspace = true}
-massa_signature = {workspace = true}
-massa_db_exports = {workspace = true}
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
+nom = { workspace = true }
+num = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+rand = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
+massa_db_exports = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+serde_json = { workspace = true }                             # BOM UPGRADE     Revert to "1.0" if problem
+serde_with = { workspace = true }
 
 [dev-dependencies]
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-parking_lot = {workspace = true}
+tempfile = { workspace = true }            # BOM UPGRADE     Revert to "3.3" if problem
+parking_lot = { workspace = true }
 assert_matches = { workspace = true }
-massa_ledger_worker = {workspace = true}
-massa_db_worker = {workspace = true}
+massa_ledger_worker = { workspace = true }
+massa_db_worker = { workspace = true }

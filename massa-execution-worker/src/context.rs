@@ -1028,6 +1028,35 @@ impl ExecutionContext {
         self.speculative_roll_state
             .get_address_deferred_credits(address, min_slot)
     }
+
+    /// in case of
+    ///
+    /// async_msg, call OP, call SC to SC, read only call
+    ///
+    /// check if the given address is a smart contract address and if it exist
+    /// returns an error instead
+    pub fn check_target_sc_address(
+        &self,
+        target_sc_address: Address,
+    ) -> Result<(), ExecutionError> {
+        match target_sc_address {
+            Address::SC(..) => {
+                // if the target address does not exist: fail
+                if !self.speculative_ledger.entry_exists(&target_sc_address) {
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "The called smart contract address {} does not exist",
+                        target_sc_address
+                    )));
+                }
+                Ok(())
+            }
+            // if the target address is not SC: fail
+            _ => Err(ExecutionError::RuntimeError(format!(
+                "The called address {} is not a smart contract address",
+                target_sc_address
+            ))),
+        }
+    }
 }
 
 /// Generate the execution trail hash

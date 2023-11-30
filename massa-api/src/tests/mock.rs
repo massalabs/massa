@@ -6,14 +6,14 @@ use std::{collections::HashMap, net::SocketAddr};
 
 use massa_api_exports::config::APIConfig;
 use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
-use massa_execution_exports::MockExecutionController;
+use massa_execution_exports::{GasCosts, MockExecutionController};
 use massa_models::{
     config::{
-        ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
-        MAX_GAS_PER_BLOCK, MAX_MESSAGE_SIZE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        MAX_PARAMETERS_SIZE, MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
-        VERSION,
+        BASE_OPERATION_GAS_COST, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
+        MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_MESSAGE_SIZE,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
+        MIP_STORE_STATS_BLOCK_CONSIDERED, PERIODS_PER_CYCLE, T0, THREAD_COUNT, VERSION,
     },
     node::NodeId,
 };
@@ -55,6 +55,8 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost: GasCosts::default().sp_compilation_cost,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,
@@ -126,6 +128,8 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         max_op_datastore_key_length: MAX_OPERATION_DATASTORE_KEY_LENGTH,
         max_op_datastore_value_length: MAX_OPERATION_DATASTORE_VALUE_LENGTH,
         max_gas_per_block: MAX_GAS_PER_BLOCK,
+        base_operation_gas_cost: BASE_OPERATION_GAS_COST,
+        sp_compilation_cost: GasCosts::default().sp_compilation_cost,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
         thread_count: THREAD_COUNT,

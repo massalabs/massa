@@ -52,7 +52,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.72.1
+          toolchain: 1.74.0
           target: ${{ matrix.target }}
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -60,24 +60,24 @@ jobs:
         if: matrix.platform != 'arm64'
         with:
           command: build
-          args: --release
+          args: --profile release_prebuilt
       - uses: actions-rs/cargo@v1
         if: matrix.platform == 'arm64'
         with:
           use-cross: true
           command: build
-          args: --release --target ${{ matrix.target }}
+          args: --profile release_prebuilt --target ${{ matrix.target }}
       - name: Package
         shell: bash
         run: |
           mkdir massa && cd massa && mkdir massa-node && mkdir massa-client
           if [[ "${{ matrix.platform }}" == "arm64" ]]
           then
-            cp -v ../target/${{ matrix.target }}/release/massa-node massa-node/massa-node
-            cp -v ../target/${{ matrix.target }}/release/massa-client massa-client/massa-client
+            cp -v ../target/${{ matrix.target }}/release_prebuilt/massa-node massa-node/massa-node
+            cp -v ../target/${{ matrix.target }}/release_prebuilt/massa-client massa-client/massa-client
           else
-            cp -v ../target/release/massa-node massa-node/massa-node
-            cp -v ../target/release/massa-client massa-client/massa-client
+            cp -v ../target/release_prebuilt/massa-node massa-node/massa-node
+            cp -v ../target/release_prebuilt/massa-client massa-client/massa-client
           fi
           cp -rv ../massa-node/config massa-node/config
           cp -rv ../massa-node/base_config massa-node/base_config
@@ -93,22 +93,19 @@ jobs:
           fi
           cd -
         working-directory: ${{ github.workspace }}
-      - name: Create Checksums
-        id: checksums
-        run: |
-          checksums=""
-          for file in massa/*.{gz,zip}; do
-            if [ -f "$file" ]; then
-              checksum=$(sha256sum "$file" | cut -d ' ' -f 1)
-              checksums="$checksums\n$checksum $(basename $file)"
-            fi
-          done
-          echo -e "$checksums" > checksums.txt
-        working-directory: ${{ github.workspace }}
+      - name: Generate checksum
+        uses: jmgilman/actions-generate-checksum@v1
+        with:
+          method: sha256
+          patterns: |
+            massa/*.zip
+            massa/*.tar.gz
+          output: checksums_${{ matrix.name }}.txt
+
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
           files: |
             massa_*.zip
             massa_*.gz
-            checksums.txt
+            checksums_*.txt

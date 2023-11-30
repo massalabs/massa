@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_hash::Hash;
+use massa_models::datastore::Datastore;
 use massa_models::endorsement::EndorsementSerializer;
 use massa_models::operation::{
     compute_operations_hash, OperationIdSerializer, OperationSerializer,
@@ -158,6 +159,49 @@ pub fn create_operation_with_expire_period(
     let op = OperationType::Transaction {
         recipient_address: Address::from_public_key(&recv_keypair.get_public_key()),
         amount: Amount::default(),
+    };
+    let content = Operation {
+        fee: Amount::default(),
+        op,
+        expire_period,
+    };
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
+}
+
+/// Create an ExecuteSC operation with too much gas.
+pub fn create_execute_sc_op_with_too_much_gas(
+    keypair: &KeyPair,
+    expire_period: u64,
+) -> SecureShareOperation {
+    let op = OperationType::ExecuteSC {
+        data: Vec::new(),
+        max_gas: (u32::MAX - 1) as u64,
+        max_coins: Amount::default(),
+        datastore: Datastore::default(),
+    };
+    let content = Operation {
+        fee: Amount::default(),
+        op,
+        expire_period,
+    };
+    Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
+}
+
+/// Create a CallSC operation with too much gas.
+pub fn create_call_sc_op_with_too_much_gas(
+    keypair: &KeyPair,
+    expire_period: u64,
+) -> SecureShareOperation {
+    use massa_models::address::{SCAddress, SCAddressV0};
+    let sc_addr = Address::SC(SCAddress::SCAddressV0(SCAddressV0(
+        massa_hash::Hash::compute_from("ADDR".as_bytes()),
+    )));
+    let op = OperationType::CallSC {
+        target_addr: sc_addr,
+        target_func: "some_fn".to_string(),
+        param: Vec::new(),
+        max_gas: (u32::MAX - 1) as u64,
+        coins: Amount::default(),
     };
     let content = Operation {
         fee: Amount::default(),

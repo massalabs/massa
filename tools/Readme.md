@@ -2,6 +2,7 @@
 
 Massa tools:
 * setup_test: cargo script to retrieve compiled wasm files (for unit tests)
+* extract_array_indexing: list array indexing in rust files
 
 ## Script: setup_test
 
@@ -60,3 +61,10 @@ If required, please update the Git tag in setup_test.rs (line 25)
 ### grcov
 
 * tools/grcov.sh
+
+## Extract array indexing
+
+* cd massa-models/src
+* ../../tools/extract_array_indexing_op.sh
+
+
