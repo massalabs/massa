@@ -98,8 +98,8 @@ jobs:
         with:
           method: sha256
           patterns: |
-            massa/*.zip
-            massa/*.tar.gz
+            ${{ github.workspace }}/massa/*.zip
+            ${{ github.workspace }}/massa/*.tar.gz
           output: checksums_${{ matrix.name }}.txt
 
       - name: Publish
