@@ -628,7 +628,6 @@ impl ExecutionState {
                 true => panic!("You are being slashed at slot {} for double-staking using address {}. The node is stopping to prevent any further loss. Block header denunciation of block at slot {:?}. Denunciation's public key: {:?}", block_slot, addr_denounced, denunciation.get_slot(), denunciation.get_public_key()),
                 false => panic!("You are being slashed at slot {} for double-staking using address {}. The node is stopping to prevent any further loss. Endorsement denunciation of endorsement at slot {:?} and index {:?}. Denunciation's public key: {:?}", block_slot, addr_denounced, denunciation.get_slot(), denunciation.get_index(), denunciation.get_public_key())
             }
-            
         }
 
         Ok(())
