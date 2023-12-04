@@ -367,11 +367,7 @@ mod test {
         );
         state_changes.ledger_changes = ledger_changes;
         let serialized = serde_json::to_string(&state_changes);
-        if let Err(err) = serialized {
-            panic!("Failed to serialize state changes: {:?}", err);
-        }
         let serialized = serialized.unwrap();
-        print!("{}", serialized);
         let state_changes_deser = serde_json::from_str(&serialized).unwrap();
         assert_eq!(state_changes, state_changes_deser);
     }

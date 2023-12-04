@@ -428,6 +428,7 @@ mod test {
     use massa_hash::Hash;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
+    use serde_json::Value;
     use serial_test::serial;
     use std::str::FromStr;
 
@@ -1222,5 +1223,79 @@ mod test {
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
         assert!(res.is_err());
+    }
+
+    #[test]
+    #[serial]
+    fn test_block_serde() {
+        let keypair =
+            KeyPair::from_str("S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG").unwrap();
+        let parents = (0..THREAD_COUNT)
+            .map(|_i| {
+                BlockId::generate_from_hash(
+                    Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
+                        .unwrap(),
+                )
+            })
+            .collect();
+
+        let endo1 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(1, 0),
+                index: 0,
+                endorsed_block: BlockId::generate_from_hash(
+                    Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+        let endo2 = Endorsement::new_verifiable(
+            Endorsement {
+                slot: Slot::new(1, 0),
+                index: ENDORSEMENT_COUNT - 1,
+                endorsed_block: BlockId::generate_from_hash(
+                    Hash::from_bs58_check("bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf")
+                        .unwrap(),
+                ),
+            },
+            EndorsementSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block header
+        let orig_header = BlockHeader::new_verifiable(
+            BlockHeader {
+                current_version: 0,
+                announced_version: None,
+                slot: Slot::new(1, 0),
+                parents,
+                operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+                endorsements: vec![endo1, endo2],
+                denunciations: Vec::new(), // FIXME
+            },
+            BlockHeaderSerializer::new(),
+            &keypair,
+        )
+        .unwrap();
+
+        // create block
+        let orig_block = Block {
+            header: orig_header.clone(),
+            operations: Default::default(),
+        };
+
+        let serialized = serde_json::to_string(&orig_block);
+        let serialized = serialized.unwrap();
+        let res_block: Value = serde_json::from_str(&serialized).unwrap();
+        // check equality
+        assert_eq!(orig_block.header.id.to_string(), res_block["header"]["id"]);
+        assert_eq!(
+            orig_block.header.signature.to_string(),
+            res_block["header"]["signature"]
+        );
     }
 }
