@@ -1288,9 +1288,8 @@ mod test {
             operations: Default::default(),
         };
 
-        let serialized = serde_json::to_string(&orig_block);
-        let serialized = serialized.unwrap();
-        let res_block: Value = serde_json::from_str(&serialized).unwrap();
+        let serialized_block = serde_json::to_string(&orig_block).unwrap();
+        let res_block: Value = serde_json::from_str(&serialized_block).unwrap();
         // check equality
         assert_eq!(orig_block.header.id.to_string(), res_block["header"]["id"]);
         assert_eq!(
