@@ -1292,8 +1292,8 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_endorsement).unwrap();
-        <span class="kw">let </span>res_endorsement: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
+        <span class="kw">let </span>serialized_endorsement = serde_json::to_string(<span class="kw-2">&amp;</span>orig_endorsement).unwrap();
+        <span class="kw">let </span>res_endorsement: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_endorsement).unwrap();
         <span class="comment">// check equality
         </span><span class="macro">assert_eq!</span>(
             orig_endorsement.slot.period,
