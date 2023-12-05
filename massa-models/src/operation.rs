@@ -1741,4 +1741,87 @@ mod tests {
         assert_eq!(orig_operation.fee.to_string(), res_operation["fee"]);
         assert_eq!(orig_operation.expire_period, res_operation["expire_period"]);
     }
+
+    #[test]
+    #[serial]
+    fn test_executesc_serde() {
+        let op = OperationType::ExecuteSC {
+            max_gas: 123,
+            max_coins: Amount::from_str("1.0").unwrap(),
+            data: vec![23u8, 123u8, 44u8],
+            datastore: BTreeMap::from([
+                (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
+                (vec![22, 33, 44, 55, 66, 77], vec![11]),
+            ]),
+        };
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
+        assert_eq!(res_type, op);
+
+        let orig_operation = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            op,
+            expire_period: 50,
+        };
+
+        let serialized_operation = serde_json::to_string(&orig_operation).unwrap();
+        let res_operation: Value = serde_json::from_str(&serialized_operation).unwrap();
+        // check equality
+        assert_eq!(orig_operation.fee.to_string(), res_operation["fee"]);
+        assert_eq!(orig_operation.expire_period, res_operation["expire_period"]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_callsc_serde() {
+        let target_keypair = KeyPair::generate(0).unwrap();
+        let target_addr = Address::from_public_key(&target_keypair.get_public_key());
+
+        let op = OperationType::CallSC {
+            max_gas: 123,
+            target_addr,
+            coins: Amount::from_str("456.789").unwrap(),
+            target_func: "target function".to_string(),
+            param: b"parameter".to_vec(),
+        };
+        let mut ser_type = Vec::new();
+        OperationTypeSerializer::new()
+            .serialize(&op, &mut ser_type)
+            .unwrap();
+        let (_, res_type) = OperationTypeDeserializer::new(
+            MAX_DATASTORE_VALUE_LENGTH,
+            MAX_FUNCTION_NAME_LENGTH,
+            MAX_PARAMETERS_SIZE,
+            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+            MAX_OPERATION_DATASTORE_KEY_LENGTH,
+            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+        )
+        .deserialize::<DeserializeError>(&ser_type)
+        .unwrap();
+        assert_eq!(res_type, op);
+
+        let orig_operation = Operation {
+            fee: Amount::from_str("20").unwrap(),
+            op,
+            expire_period: 50,
+        };
+
+        let serialized_operation = serde_json::to_string(&orig_operation).unwrap();
+        let res_operation: Value = serde_json::from_str(&serialized_operation).unwrap();
+        // check equality
+        assert_eq!(orig_operation.fee.to_string(), res_operation["fee"]);
+        assert_eq!(orig_operation.expire_period, res_operation["expire_period"]);
+    }
 }
