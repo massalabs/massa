@@ -697,11 +697,11 @@ mod test {
 
     #[test]
     fn test_address_serde() {
-        let actual_addr =
+        let expected_addr =
             Address::from_str("AU12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
 
-        let serialized = serde_json::to_string(&actual_addr).unwrap();
-        let expected_addr: Address = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&expected_addr).unwrap();
+        let actual_addr: Address = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(actual_addr, expected_addr);
     }

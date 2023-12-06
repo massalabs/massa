@@ -433,3 +433,19 @@ impl serde::Serialize for Amount {
         serializer.serialize_str(&self.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_amount_serde() {
+        let expected_amount = Amount::from_str("11.111").unwrap();
+
+        let serialized = serde_json::to_string(&expected_amount).unwrap();
+        let actual_amount: Amount = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(actual_amount, expected_amount);
+    }
+}

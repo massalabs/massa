@@ -179,6 +179,12 @@ mod tests {
 
     use super::*;
     use massa_serialization::DeserializeError;
+    use serde::{Deserialize, Serialize};
+    use serde_with::serde_as;
+
+    #[serde_as]
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct SerdeWrapper(#[serde_as(as = "Vec<(_, _)>")] Datastore);
 
     #[test]
     fn test_ser_der() {
@@ -232,5 +238,21 @@ mod tests {
         let (_, _datastore_der) = datastore_deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
+    }
+
+    #[test]
+    fn test_datastore_serde() {
+        let expected_datastore: Datastore = BTreeMap::from([
+            (vec![1, 2], vec![3, 4]),
+            (vec![5, 6, 7], vec![8]),
+            (vec![9], vec![10, 11, 12, 13, 14]),
+            (vec![], vec![]),
+        ]);
+
+        let wrapper = SerdeWrapper(expected_datastore.clone());
+        let serialized = serde_json::to_string(&wrapper).unwrap();
+        let actual_wrapper: SerdeWrapper = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(actual_wrapper.0, expected_datastore);
     }
 }
