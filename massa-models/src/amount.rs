@@ -441,11 +441,22 @@ mod tests {
 
     #[test]
     fn test_amount_serde() {
-        let expected_amount = Amount::from_str("11.111").unwrap();
+        // Test with a regular value
+        let expected_amount_1 = Amount::from_str("11.111").unwrap();
+        let serialized_1 = serde_json::to_string(&expected_amount_1).unwrap();
+        let actual_amount_1: Amount = serde_json::from_str(&serialized_1).unwrap();
+        assert_eq!(actual_amount_1, expected_amount_1);
 
-        let serialized = serde_json::to_string(&expected_amount).unwrap();
-        let actual_amount: Amount = serde_json::from_str(&serialized).unwrap();
+        // Test with a zero value
+        let expected_amount_2 = Amount::from_str("0").unwrap();
+        let serialized_2 = serde_json::to_string(&expected_amount_2).unwrap();
+        let actual_amount_2: Amount = serde_json::from_str(&serialized_2).unwrap();
+        assert_eq!(actual_amount_2, expected_amount_2);
 
-        assert_eq!(actual_amount, expected_amount);
+        // Test with a maximum value
+        let expected_amount_3 = Amount::from_str("9999999999.999").unwrap();
+        let serialized_3 = serde_json::to_string(&expected_amount_3).unwrap();
+        let actual_amount_3: Amount = serde_json::from_str(&serialized_3).unwrap();
+        assert_eq!(actual_amount_3, expected_amount_3);
     }
 }

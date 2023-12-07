@@ -366,8 +366,7 @@ mod test {
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
-        let serialized = serde_json::to_string(&state_changes);
-        let serialized = serialized.unwrap();
+        let serialized = serde_json::to_string(&state_changes).unwrap();
         let state_changes_deser = serde_json::from_str(&serialized).unwrap();
         assert_eq!(state_changes, state_changes_deser);
     }
