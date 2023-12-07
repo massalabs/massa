@@ -371,7 +371,6 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -740,8 +739,7 @@
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
-        <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>state_changes);
-        <span class="kw">let </span>serialized = serialized.unwrap();
+        <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>state_changes).unwrap();
         <span class="kw">let </span>state_changes_deser = serde_json::from_str(<span class="kw-2">&amp;</span>serialized).unwrap();
         <span class="macro">assert_eq!</span>(state_changes, state_changes_deser);
     }
