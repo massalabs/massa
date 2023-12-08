@@ -453,8 +453,8 @@ mod tests {
         let actual_amount_2: Amount = serde_json::from_str(&serialized_2).unwrap();
         assert_eq!(actual_amount_2, expected_amount_2);
 
-        // Test with a maximum value
-        let expected_amount_3 = Amount::from_str("9999999999.999").unwrap();
+        // Test with a maximum value 9_999_999_999.1_000_000_000
+        let expected_amount_3 = Amount::from_str("9_999_999_999.1_000_000_000").unwrap();
         let serialized_3 = serde_json::to_string(&expected_amount_3).unwrap();
         let actual_amount_3: Amount = serde_json::from_str(&serialized_3).unwrap();
         assert_eq!(actual_amount_3, expected_amount_3);
