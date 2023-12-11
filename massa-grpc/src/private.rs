@@ -7,7 +7,7 @@ use crate::error::GrpcError;
 use crate::server::MassaPrivateGrpc;
 use massa_execution_exports::ExecutionQueryRequest;
 use massa_hash::Hash;
-use massa_models::config::CompactConfig;
+use massa_models::config::{CompactConfig, CHAINID};
 use massa_models::node::NodeId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
@@ -304,6 +304,7 @@ pub(crate) fn get_node_status(
         network_stats: Some(network_stats.into()),
         execution_stats: Some(execution_stats.into()),
         config: Some(config.into()),
+        chain_id: *CHAINID,
     };
 
     Ok(grpc_api::GetNodeStatusResponse {
