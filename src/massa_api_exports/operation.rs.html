@@ -108,6 +108,7 @@
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -186,7 +187,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_execute_sc_with_datastore() {
-        <span class="kw">let </span>expected_op = OperationType::ExecuteSC {
+        <span class="kw">let </span>given_op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
             max_coins: Amount::from_str(<span class="string">&quot;5000000&quot;</span>).unwrap(),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
@@ -197,7 +198,8 @@
             ]),
         };
 
-        <span class="kw">let </span>op_json_str = serde_json::to_string(<span class="kw-2">&amp;</span>expected_op).unwrap();
+        <span class="kw">let </span>op_json_str = serde_json::to_string(<span class="kw-2">&amp;</span>given_op).unwrap();
+
         <span class="kw">let </span>op_json_value: Value = serde_json::from_str(<span class="kw-2">&amp;</span>op_json_str).unwrap();
         <span class="kw">let </span>datastore = op_json_value[<span class="string">&quot;ExecuteSC&quot;</span>]
             .as_object()
@@ -214,8 +216,8 @@
         <span class="macro">assert_eq!</span>(first_key.len(), <span class="number">3</span>);
         <span class="macro">assert_eq!</span>(first_value.len(), <span class="number">6</span>);
 
-        <span class="kw">let </span>actual_op: OperationType = serde_json::from_str(<span class="kw-2">&amp;</span>op_json_str).unwrap();
-        <span class="macro">assert_eq!</span>(actual_op, expected_op);
+        <span class="kw">let </span>expected_op = serde_json::from_str(<span class="kw-2">&amp;</span>op_json_str).unwrap();
+        <span class="macro">assert_eq!</span>(given_op, expected_op);
     }
 }
 </code></pre></div></section></main></body></html>
