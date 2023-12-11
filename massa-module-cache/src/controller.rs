@@ -126,12 +126,12 @@ impl ModuleCache {
     /// Load a cached module for execution and check its validity for execution.
     /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     ///
-    /// Returns the module and the remaining gas after loading.
+    /// Returns the module after loading.
     pub fn load_module(
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,
-    ) -> Result<(RuntimeModule, u64), CacheError> {
+    ) -> Result<RuntimeModule, CacheError> {
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
         execution_gas
@@ -160,18 +160,18 @@ impl ModuleCache {
                 }
             }
         };
-        Ok((module, execution_gas))
+        Ok(module)
     }
 
     /// Load a temporary module from arbitrary bytecode.
     /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     ///
-    /// Returns the module and the remaining gas after compilation.
+    /// Returns the module after compilation.
     pub fn load_tmp_module(
         &self,
         bytecode: &[u8],
         limit: u64,
-    ) -> Result<(RuntimeModule, u64), CacheError> {
+    ) -> Result<RuntimeModule, CacheError> {
         debug!("load_tmp_module");
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
@@ -182,6 +182,6 @@ impl ModuleCache {
                 limit, self.cfg.gas_costs.max_instance_cost
             )))?;
         let module = RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::SP)?;
-        Ok((module, limit))
+        Ok(module)
     }
 }

@@ -242,7 +242,7 @@ pub struct ExecutionOutput {
 pub struct ReadOnlyExecutionOutput {
     /// Output of a single execution
     pub out: ExecutionOutput,
-    /// Gas cost for this execution
+    /// Gas cost for this execution, with needed adjustments
     pub gas_cost: u64,
     /// Returned value from the module call
     pub call_result: Vec<u8>,

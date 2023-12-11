@@ -42,6 +42,7 @@ use std::collections::BTreeSet;
 use std::str::FromStr;
 use std::sync::Arc;
 use tracing::debug;
+use tracing::warn;
 
 #[cfg(any(
     feature = "gas_calibration",
@@ -301,26 +302,22 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
-    fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
-        let context = context_guard!(self);
-        let (module, remaining_gas) = context
+    fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
+        Ok((context_guard!(self))
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit)?;
-        Ok((module, remaining_gas))
+            .load_module(bytecode, gas_limit)?)
     }
 
     /// Compile and return a temporary module
     ///
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
-    fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<(RuntimeModule, u64)> {
-        let context = context_guard!(self);
-        let (module, remaining_gas) = context
+    fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
+        Ok((context_guard!(self))
             .module_cache
             .write()
-            .load_tmp_module(bytecode, gas_limit)?;
-        Ok((module, remaining_gas))
+            .load_tmp_module(bytecode, gas_limit)?)
     }
 
     /// Gets the balance of the current address address (top of the stack).
@@ -1674,6 +1671,21 @@ impl Interface for InterfaceImpl {
 
     fn chain_id(&self) -> Result<u64> {
         Ok(self.config.chain_id)
+    }
+
+    /// Try to get a write lock on the execution context then set the
+    /// gas_used_until_the_last_subexecution field to the given `gas_remaining` value.
+    ///
+    /// If the context is locked, this function does nothing but log a warning.
+    fn save_gas_remaining_before_subexecution(&self, gas_remaining: u64) {
+        match self.context.try_lock() {
+            Some(mut context) => {
+                context.gas_remaining_before_subexecution = Some(gas_remaining);
+            }
+            None => {
+                warn!("Context is locked, cannot save gas remaining before subexecution");
+            }
+        }
     }
 }
 
