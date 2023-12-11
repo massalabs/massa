@@ -31,7 +31,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -55,7 +55,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -80,7 +80,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -189,7 +189,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
@@ -206,7 +206,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --retries 10 --profile ci 
+          args: run --retries 10 --profile ci
       - uses: actions-rs/cargo@v1
         with:
           command: clean
@@ -236,7 +236,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -271,7 +271,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.0
+          toolchain: 1.74.1
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
