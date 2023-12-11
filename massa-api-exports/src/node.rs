@@ -41,6 +41,8 @@ pub struct NodeStatus {
     pub execution_stats: ExecutionStats,
     /// compact configuration
     pub config: CompactConfig,
+    /// chain id
+    pub chain_id: u64,
 }
 
 impl std::fmt::Display for NodeStatus {
