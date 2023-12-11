@@ -86,7 +86,6 @@ lazy_static::lazy_static! {
     };
     /// node chain id (to avoid replay attacks)
     pub static ref CHAINID: u64 = {
-        // MASSA..
         // MASM (MainNet):           77658377
         // MASB (BuildNet):          77658366
         // MASS (SecureNet):         77658383
