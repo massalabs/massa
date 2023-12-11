@@ -11,7 +11,7 @@ use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
+use massa_models::config::{CHAINID, MAX_DATASTORE_KEY_LENGTH};
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
@@ -1670,6 +1670,10 @@ impl Interface for InterfaceImpl {
         };
 
         Ok(res)
+    }
+
+    fn chain_id(&self) -> Result<u64> {
+        Ok(*CHAINID)
     }
 }
 
