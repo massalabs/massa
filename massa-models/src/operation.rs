@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressSerializer;
+use crate::config::CHAINID;
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::secure_share::{
@@ -18,6 +19,7 @@ use massa_serialization::{
     U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+use massa_signature::PublicKey;
 use nom::error::{context, ErrorKind};
 use nom::multi::length_count;
 use nom::sequence::tuple;
@@ -412,7 +414,16 @@ impl std::fmt::Display for Operation {
 /// signed operation
 pub type SecureShareOperation = SecureShare<Operation, OperationId>;
 
-impl SecureShareContent for Operation {}
+impl SecureShareContent for Operation {
+    fn compute_signed_hash(&self, _public_key: &PublicKey, content_hash: &Hash) -> Hash {
+        // Note: Add chain id before content hash in order to avoid replay attacks,
+        //       otherwise someone can copy an operation from testnet and execute it on main net
+        let mut signed_data: Vec<u8> = Vec::new();
+        signed_data.extend(CHAINID.to_be_bytes());
+        signed_data.extend(content_hash.to_bytes());
+        Hash::compute_from(&signed_data)
+    }
+}
 
 /// Serializer for `Operation`
 pub struct OperationSerializer {

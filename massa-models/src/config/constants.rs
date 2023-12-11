@@ -84,6 +84,21 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
+    /// node chain id (to avoid replay attacks)
+    pub static ref CHAINID: u64 = {
+        // MASSA..
+        // MASSAM (MainNet):           776583836578
+        // MASSAB (BuildNet):          776583836566
+        // MASSAS (SecureNet):         776583836583
+        // MASSAS275 (SecureNet 27.5): 776583836583505553
+        // MASSAL (Labnet):            776583836576
+        // SANDBOX (Sandbox):          77
+        if cfg!(feature = "sandbox") {
+            77
+        } else {
+            776583836583
+        }
+    };
 }
 
 /// Helper function to parse args for lazy_static evaluations

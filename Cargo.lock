@@ -2558,7 +2558,6 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=30b91d705b704287662b0e42457ece442005fa46#30b91d705b704287662b0e42457ece442005fa46"
 dependencies = [
  "glob",
  "prost",
@@ -2569,9 +2568,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa-proto-rs"
+version = "0.1.0"
+source = "git+https://github.com/massalabs/massa-proto-rs.git?rev=84678fb77cf6d06d85d55e2c20502908ff292e61#84678fb77cf6d06d85d55e2c20502908ff292e61"
+dependencies = [
+ "glob",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "tonic-build",
+]
+
+[[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=0bef3a9c0013e61b0c2b18105238649ac74007c9#0bef3a9c0013e61b0c2b18105238649ac74007c9"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2580,7 +2590,7 @@ dependencies = [
  "displaydoc",
  "function_name",
  "loupe",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0 (git+https://github.com/massalabs/massa-proto-rs.git?rev=84678fb77cf6d06d85d55e2c20502908ff292e61)",
  "more-asserts 0.3.1",
  "num_enum",
  "parking_lot",
@@ -2666,7 +2676,7 @@ name = "massa_async_pool"
 version = "0.27.6"
 dependencies = [
  "assert_matches",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_db_exports",
  "massa_db_worker",
  "massa_ledger_exports",
@@ -2851,7 +2861,7 @@ name = "massa_execution_exports"
 version = "0.27.6"
 dependencies = [
  "displaydoc",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa-sc-runtime",
  "massa_final_state",
  "massa_hash",
@@ -2878,7 +2888,7 @@ dependencies = [
  "criterion",
  "hex-literal",
  "libsecp256k1",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa-sc-runtime",
  "massa_async_pool",
  "massa_channel",
@@ -2962,7 +2972,7 @@ dependencies = [
  "anyhow",
  "bs58",
  "displaydoc",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_async_pool",
  "massa_db_exports",
  "massa_db_worker",
@@ -2997,7 +3007,7 @@ dependencies = [
  "h2",
  "hyper",
  "itertools 0.12.0",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_bootstrap",
  "massa_consensus_exports",
  "massa_execution_exports",
@@ -3048,7 +3058,7 @@ name = "massa_ledger_exports"
 version = "0.27.6"
 dependencies = [
  "displaydoc",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_db_exports",
  "massa_hash",
  "massa_models",
@@ -3109,7 +3119,7 @@ dependencies = [
  "directories",
  "displaydoc",
  "lazy_static",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_hash",
  "massa_serialization",
  "massa_signature",
@@ -3291,7 +3301,7 @@ dependencies = [
  "jsonrpsee",
  "jsonrpsee-http-client",
  "jsonrpsee-ws-client",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_api_exports",
  "massa_models",
  "massa_time",
@@ -3357,7 +3367,7 @@ name = "massa_time"
 version = "0.27.6"
 dependencies = [
  "displaydoc",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_serialization",
  "nom",
  "serde",
@@ -3371,7 +3381,7 @@ version = "0.27.6"
 dependencies = [
  "assert_matches",
  "machine",
- "massa-proto-rs",
+ "massa-proto-rs 0.1.0",
  "massa_db_exports",
  "massa_db_worker",
  "massa_hash",
