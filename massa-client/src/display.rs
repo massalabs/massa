@@ -272,6 +272,9 @@ impl Output for NodeStatus {
                 )
             }
         }
+
+        println!();
+        println!("Chain id: {}", self.chain_id);
     }
 }
 
