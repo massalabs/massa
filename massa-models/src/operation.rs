@@ -415,13 +415,15 @@ impl std::fmt::Display for Operation {
 pub type SecureShareOperation = SecureShare<Operation, OperationId>;
 
 impl SecureShareContent for Operation {
-    fn compute_signed_hash(&self, _public_key: &PublicKey, content_hash: &Hash) -> Hash {
+    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
+        let mut hash_data = Vec::new();
         // Note: Add chain id before content hash in order to avoid replay attacks,
         //       otherwise someone can copy an operation from testnet and execute it on main net
-        let mut signed_data: Vec<u8> = Vec::new();
-        signed_data.extend(CHAINID.to_be_bytes());
-        signed_data.extend(content_hash.to_bytes());
-        Hash::compute_from(&signed_data)
+        // Note 2: This makes the OperationId unique (per chain id)
+        hash_data.extend(CHAINID.to_be_bytes());
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content_serialized);
+        Hash::compute_from(&hash_data)
     }
 }
 
