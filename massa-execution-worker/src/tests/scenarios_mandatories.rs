@@ -2429,3 +2429,62 @@ fn test_rewards() {
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
 }
+
+#[test]
+fn chain_id() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/chain_id.wasm"),
+        //unused
+        include_bytes!("./wasm/chain_id.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert_eq!(events.len(), 1);
+    println!("event 0 data: {}", events[0].data.as_str());
+
+    /*
+    assert!(
+        events[0].data.ends_with("true"),
+        "Expected 'true': {:?}",
+        events[0].data
+    );
+    */
+
+    // assert!(
+    //     events[0].data.ends_with("true"),
+    //     "Expected 'true': {:?}",
+    //     events[0].data
+    // );
+    // assert!(
+    //     events[1].data.ends_with("false"),
+    //     "Expected 'false': {:?}",
+    //     events[1].data
+    // );
+}
