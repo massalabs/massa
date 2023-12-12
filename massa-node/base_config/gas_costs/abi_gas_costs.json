@@ -57,6 +57,7 @@
   "assembly_script_transfer_coins_for": 238,
   "assembly_script_unsafe_random": 158,
   "assembly_script_validate_address": 178,
+  "assembly_script_chain_id": 157,
   "launch": 15702,
   "abi_abort": 0,
   "abi_add_native_amount": 483,
@@ -123,5 +124,6 @@
   "abi_transfer_coins": 450,
   "abi_unsafe_random": 402,
   "abi_verify_signature": 1192,
+  "abi_chain_id": 301,
   "launch_wasmv1": 18641
 }

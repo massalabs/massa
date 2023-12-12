@@ -14,7 +14,9 @@ use massa_ledger_exports::{
     LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
-use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
+use massa_models::config::{
+    CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -2467,24 +2469,5 @@ fn chain_id() {
         .get_filtered_sc_output_event(EventFilter::default());
     // match the events
     assert_eq!(events.len(), 1);
-    println!("event 0 data: {}", events[0].data.as_str());
-
-    /*
-    assert!(
-        events[0].data.ends_with("true"),
-        "Expected 'true': {:?}",
-        events[0].data
-    );
-    */
-
-    // assert!(
-    //     events[0].data.ends_with("true"),
-    //     "Expected 'true': {:?}",
-    //     events[0].data
-    // );
-    // assert!(
-    //     events[1].data.ends_with("false"),
-    //     "Expected 'false': {:?}",
-    //     events[1].data
-    // );
+    assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
 }
