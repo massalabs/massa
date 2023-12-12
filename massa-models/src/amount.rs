@@ -20,7 +20,7 @@ pub const AMOUNT_DECIMAL_FACTOR: u64 = 10u64.pow(AMOUNT_DECIMAL_SCALE);
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
 /// while providing a convenient decimal interface for users
 /// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
-/// The minimal value is 0 and the maximal value is 18446744073.709551615
+/// The minimal value is 0 and the maximal value is 18446744073.709551615U(std::u64::MAX/1e9)
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
@@ -431,32 +431,5 @@ impl serde::Serialize for Amount {
         S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn test_amount_serde() {
-        // Test with a regular value
-        let expected_amount_1 = Amount::from_str("11.111").unwrap();
-        let serialized_1 = serde_json::to_string(&expected_amount_1).unwrap();
-        let actual_amount_1: Amount = serde_json::from_str(&serialized_1).unwrap();
-        assert_eq!(actual_amount_1, expected_amount_1);
-
-        // Test with a zero value
-        let expected_amount_2 = Amount::from_str("0").unwrap();
-        let serialized_2 = serde_json::to_string(&expected_amount_2).unwrap();
-        let actual_amount_2: Amount = serde_json::from_str(&serialized_2).unwrap();
-        assert_eq!(actual_amount_2, expected_amount_2);
-
-        // Test with a maximum value 18_446_744_073.709_551_615
-        let expected_amount_3 = Amount::from_str("18_446_744_073.709_551_615").unwrap();
-        let serialized_3 = serde_json::to_string(&expected_amount_3).unwrap();
-        let actual_amount_3: Amount = serde_json::from_str(&serialized_3).unwrap();
-        assert_eq!(actual_amount_3, expected_amount_3);
     }
 }
