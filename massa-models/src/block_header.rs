@@ -603,6 +603,7 @@ impl BlockHeaderDenunciationData {
 mod test {
     use super::*;
     use massa_serialization::DeserializeError;
+    use serde_json::Value;
 
     use crate::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
 
@@ -737,5 +738,60 @@ mod test {
             ),
         ];
         verify_signature_batch(&batch_2).unwrap();
+    }
+
+    #[test]
+    fn test_block_header_serde() {
+        let keypair = KeyPair::generate(0).unwrap();
+
+        let slot = Slot::new(7, 1);
+        let parents_1: Vec<BlockId> = (0..THREAD_COUNT)
+            .map(|i| BlockId::generate_from_hash(Hash::compute_from(&[i])))
+            .collect();
+
+        let endorsement_1 = Endorsement {
+            slot,
+            index: 1,
+            endorsed_block: parents_1[1],
+        };
+
+        assert_eq!(parents_1[1], endorsement_1.endorsed_block);
+
+        let s_endorsement_1: SecureShareEndorsement =
+            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
+                .unwrap();
+
+        let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
+        assert!(slot_a < slot);
+        let de_a = Denunciation::try_from((&s_header_1, &s_header_2)).unwrap();
+        let (slot_b, _, s_endo_1, s_endo_2, _) = gen_endorsements_for_denunciation(None, None);
+        assert!(slot_b < slot);
+        let de_b = Denunciation::try_from((&s_endo_1, &s_endo_2)).unwrap();
+
+        let block_header_1 = BlockHeader {
+            current_version: 0,
+            announced_version: None,
+            slot,
+            parents: parents_1,
+            operation_merkle_root: Hash::compute_from("mno".as_bytes()),
+            endorsements: vec![s_endorsement_1],
+            denunciations: vec![de_a, de_b],
+        };
+
+        let serialized_block_header = serde_json::to_string(&block_header_1).unwrap();
+        let res_block_header: Value = serde_json::from_str(&serialized_block_header).unwrap();
+        // check equality
+        assert_eq!(
+            block_header_1.current_version,
+            res_block_header["current_version"]
+        );
+        assert_eq!(
+            block_header_1.slot.period,
+            res_block_header["slot"]["period"]
+        );
+        assert_eq!(
+            block_header_1.slot.thread,
+            res_block_header["slot"]["thread"]
+        );
     }
 }

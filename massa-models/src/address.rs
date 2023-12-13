@@ -668,13 +668,17 @@ mod test {
 
     #[test]
     fn test_address() {
+        let expected_user_addr_0 =
+            Address::from_str("AU12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
+        let expected_sc_addr_0 =
+            Address::from_str("AS12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
+
         let hash = massa_hash::Hash::compute_from("ADDR".as_bytes());
+        let actual_user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
+        let actual_sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0(hash)));
 
-        let user_addr_0 = Address::User(UserAddress::UserAddressV0(UserAddressV0(hash)));
-        let sc_addr_0 = Address::SC(SCAddress::SCAddressV0(SCAddressV0(hash)));
-
-        println!("user_addr_0: {}", user_addr_0);
-        println!("sc_addr_0: {}", sc_addr_0);
+        assert_eq!(actual_user_addr_0, expected_user_addr_0);
+        assert_eq!(actual_sc_addr_0, expected_sc_addr_0);
     }
 
     #[test]
@@ -689,5 +693,16 @@ mod test {
         let thread_addr_1 = user_addr_1.get_thread(THREAD_COUNT);
 
         assert_ne!(thread_addr_0, thread_addr_1);
+    }
+
+    #[test]
+    fn test_address_serde() {
+        let expected_addr =
+            Address::from_str("AU12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
+
+        let serialized = serde_json::to_string(&expected_addr).unwrap();
+        let actual_addr: Address = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(actual_addr, expected_addr);
     }
 }
