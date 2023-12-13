@@ -20,7 +20,7 @@ pub const AMOUNT_DECIMAL_FACTOR: u64 = 10u64.pow(AMOUNT_DECIMAL_SCALE);
 /// this allows ensuring that there is never an uncontrolled overflow or precision loss
 /// while providing a convenient decimal interface for users
 /// The underlying `u64` raw representation if a fixed-point value with factor `AMOUNT_DECIMAL_FACTOR`
-/// The minimal value is 0 and the maximal value is 18446744073.709551615U(std::u64::MAX/1e9)
+/// The minimal value is 0 and the maximal value is 18446744073.709551615(std::u64::MAX/1e9)
 #[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub struct Amount(u64);
 
