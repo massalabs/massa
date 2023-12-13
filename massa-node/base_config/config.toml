@@ -190,7 +190,7 @@
     max_final_events = 10000
     # maximum length of the read-only execution requests queue
     readonly_queue_length = 10
-    # by how many milliseconds shoud the execution lag behind real time
+    # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
     # duration of the statistics time window in milliseconds
