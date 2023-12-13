@@ -175,7 +175,7 @@ checksum = "96d30a06541fbafbc7f82ed10c06164cfbd2c401138f6addd8404629c4b16711"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.4#385153ab62d1de53882ac8c11d245e03116d1e7f"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.5#a1c338eedc68502e85995123a384261a90cbb409"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2559,6 +2559,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=84678fb77cf6d06d85d55e2c20502908ff292e61#84678fb77cf6d06d85d55e2c20502908ff292e61"
 dependencies = [
  "glob",
  "prost",
