@@ -269,22 +269,6 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::Id;
@@ -554,22 +538,6 @@
             <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.hash_deserializer.deserialize(input)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>((rest, BlockId(hash)))
         })(buffer)
-    }
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>test {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_block_id_serde() {
-        <span class="kw">let </span>expected_block_id =
-            BlockId::from_str(<span class="string">&quot;B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg&quot;</span>).unwrap();
-
-        <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>expected_block_id).unwrap();
-        <span class="kw">let </span>actual_block_id: BlockId = serde_json::from_str(<span class="kw-2">&amp;</span>serialized).unwrap();
-
-        <span class="macro">assert_eq!</span>(actual_block_id, expected_block_id);
     }
 }
 </code></pre></div></section></main></body></html>
