@@ -230,7 +230,7 @@
             },
             "name": "get_cliques",
             "summary": "Get cliques",
-            "description": "Returns informations about cliques."
+            "description": "Returns information about cliques."
         },
         {
             "tags": [
