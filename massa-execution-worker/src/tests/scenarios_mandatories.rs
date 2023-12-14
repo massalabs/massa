@@ -980,7 +980,7 @@ fn local_execution() {
 /// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
 ///
 /// 1. a block is created with one ExecuteSC operation containing
-///    a deployment sc as bytecode to execute and a deplyed sc as an op datatsore entry
+///    a deployment sc as bytecode to execute and a deployed sc as an op datatsore entry
 /// 2. store and set the block as final
 /// 3. wait for execution
 /// 4. retrieve events emitted by the initial an sub functions

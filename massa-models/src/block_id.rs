@@ -269,3 +269,19 @@ impl Deserializer<BlockId> for BlockIdDeserializer {
         })(buffer)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_block_id_serde() {
+        let expected_block_id =
+            BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap();
+
+        let serialized = serde_json::to_string(&expected_block_id).unwrap();
+        let actual_block_id: BlockId = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(actual_block_id, expected_block_id);
+    }
+}
