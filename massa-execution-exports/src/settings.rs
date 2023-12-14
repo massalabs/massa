@@ -92,4 +92,6 @@ pub struct ExecutionConfig {
     pub broadcast_slot_execution_output_channel_capacity: usize,
     /// max size of event data, in bytes
     pub max_event_size: usize,
+    /// chain id
+    pub chain_id: u64,
 }

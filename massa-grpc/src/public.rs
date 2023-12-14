@@ -15,7 +15,7 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
-use massa_models::config::{CompactConfig, CHAINID};
+use massa_models::config::{CompactConfig};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
@@ -726,7 +726,7 @@ pub(crate) fn get_status(
         last_executed_speculative_slot: Some(state.candidate_cursor.into()),
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: Some(config.into()),
-        chain_id: *CHAINID,
+        chain_id: grpc.grpc_config.chain_id,
     };
 
     Ok(grpc_api::GetStatusResponse {

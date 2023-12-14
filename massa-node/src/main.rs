@@ -74,7 +74,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -517,6 +517,7 @@ async fn launch(
         max_event_size: MAX_EVENT_DATA_SIZE,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
+        chain_id: *CHAINID,
     };
 
     let execution_channels = ExecutionChannels {
@@ -848,6 +849,7 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
+        chain_id: *CHAINID,
     };
 
     // spawn Massa API
@@ -1139,6 +1141,7 @@ fn configure_grpc(
             .clone(),
         client_certificate_path: settings.client_certificate_path.clone(),
         client_private_key_path: settings.client_private_key_path.clone(),
+        chain_id: *CHAINID,
     }
 }
 

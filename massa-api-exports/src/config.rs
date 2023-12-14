@@ -77,4 +77,6 @@ pub struct APIConfig {
     pub keypair: KeyPair,
     /// last_start_period value, used to know if we are during a restart or not
     pub last_start_period: u64,
+    /// chain id
+    pub chain_id: u64,
 }

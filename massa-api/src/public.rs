@@ -33,7 +33,7 @@ use massa_models::{
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
-    config::{CompactConfig, CHAINID},
+    config::CompactConfig,
     datastore::DatastoreDeserializer,
     endorsement::EndorsementId,
     endorsement::SecureShareEndorsement,
@@ -423,7 +423,7 @@ impl MassaRpcServer for API<Public> {
             pool_stats,
             config,
             current_cycle,
-            chain_id: *CHAINID,
+            chain_id: self.0.api_settings.chain_id,
         })
     }
 
