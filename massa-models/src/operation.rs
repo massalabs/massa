@@ -1494,6 +1494,57 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_transaction_massa_docs() {
+        // Serialize an operation with values found in massa docs
+        // This print the values as reported here:
+        // https://docs.massa.net/docs/learn/operation-format-execution#example-of-legal-operation-with-valid-signature
+        // Warning: check if the current chain id matches the chain id in the doc
+
+        let sk = "S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA";
+        let pk = "P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd";
+        let _addr = "AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7";
+        let op_fee = "0.001";
+        let op_expiry_period = 1000;
+
+        let tx_dest_addr = "AU12v83xmHg2UrLM8GLsXRMrm7LQgn3DZVT6kUeFsuFyhZKLkbQtY";
+        let tx_amount = "3.1";
+
+        let op_type = OperationType::Transaction {
+            recipient_address: Address::from_str(tx_dest_addr).unwrap(),
+            amount: Amount::from_str(tx_amount).unwrap(),
+        };
+
+        let content = Operation {
+            fee: Amount::from_str(op_fee).unwrap(),
+            op: op_type,
+            expire_period: op_expiry_period,
+        };
+
+        let op_serializer = OperationSerializer::new();
+        let sender_keypair = KeyPair::from_str(sk).unwrap();
+
+        assert_eq!(
+            sender_keypair.get_public_key(),
+            PublicKey::from_str(pk).unwrap()
+        );
+
+        let op: SecureShare<Operation, OperationId> =
+            Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
+
+        println!("Chain id: {}", *CHAINID);
+        println!("Operation id: {:?}", op.id);
+
+        let mut ser_op = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(&op, &mut ser_op)
+            .unwrap();
+
+        println!("Operation serialized:");
+        println!("{:02X?}", ser_op);
+    }
+
+    #[test]
+    #[serial]
     fn test_transaction() {
         let sender_keypair = KeyPair::generate(0).unwrap();
         let recv_keypair = KeyPair::generate(0).unwrap();
