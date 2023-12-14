@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><title>operation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><title>operation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.0 (79e9716c9 2023-11-13)" data-channel="1.74.0" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1766,68 +1766,10 @@
 <a href="#1766" id="1766">1766</a>
 <a href="#1767" id="1767">1767</a>
 <a href="#1768" id="1768">1768</a>
-<a href="#1769" id="1769">1769</a>
-<a href="#1770" id="1770">1770</a>
-<a href="#1771" id="1771">1771</a>
-<a href="#1772" id="1772">1772</a>
-<a href="#1773" id="1773">1773</a>
-<a href="#1774" id="1774">1774</a>
-<a href="#1775" id="1775">1775</a>
-<a href="#1776" id="1776">1776</a>
-<a href="#1777" id="1777">1777</a>
-<a href="#1778" id="1778">1778</a>
-<a href="#1779" id="1779">1779</a>
-<a href="#1780" id="1780">1780</a>
-<a href="#1781" id="1781">1781</a>
-<a href="#1782" id="1782">1782</a>
-<a href="#1783" id="1783">1783</a>
-<a href="#1784" id="1784">1784</a>
-<a href="#1785" id="1785">1785</a>
-<a href="#1786" id="1786">1786</a>
-<a href="#1787" id="1787">1787</a>
-<a href="#1788" id="1788">1788</a>
-<a href="#1789" id="1789">1789</a>
-<a href="#1790" id="1790">1790</a>
-<a href="#1791" id="1791">1791</a>
-<a href="#1792" id="1792">1792</a>
-<a href="#1793" id="1793">1793</a>
-<a href="#1794" id="1794">1794</a>
-<a href="#1795" id="1795">1795</a>
-<a href="#1796" id="1796">1796</a>
-<a href="#1797" id="1797">1797</a>
-<a href="#1798" id="1798">1798</a>
-<a href="#1799" id="1799">1799</a>
-<a href="#1800" id="1800">1800</a>
-<a href="#1801" id="1801">1801</a>
-<a href="#1802" id="1802">1802</a>
-<a href="#1803" id="1803">1803</a>
-<a href="#1804" id="1804">1804</a>
-<a href="#1805" id="1805">1805</a>
-<a href="#1806" id="1806">1806</a>
-<a href="#1807" id="1807">1807</a>
-<a href="#1808" id="1808">1808</a>
-<a href="#1809" id="1809">1809</a>
-<a href="#1810" id="1810">1810</a>
-<a href="#1811" id="1811">1811</a>
-<a href="#1812" id="1812">1812</a>
-<a href="#1813" id="1813">1813</a>
-<a href="#1814" id="1814">1814</a>
-<a href="#1815" id="1815">1815</a>
-<a href="#1816" id="1816">1816</a>
-<a href="#1817" id="1817">1817</a>
-<a href="#1818" id="1818">1818</a>
-<a href="#1819" id="1819">1819</a>
-<a href="#1820" id="1820">1820</a>
-<a href="#1821" id="1821">1821</a>
-<a href="#1822" id="1822">1822</a>
-<a href="#1823" id="1823">1823</a>
-<a href="#1824" id="1824">1824</a>
-<a href="#1825" id="1825">1825</a>
-<a href="#1826" id="1826">1826</a>
-<a href="#1827" id="1827">1827</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
+<span class="kw">use </span><span class="kw">crate</span>::config::CHAINID;
 <span class="kw">use </span><span class="kw">crate</span>::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::prehash::{PreHashSet, PreHashed};
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::{
@@ -1845,6 +1787,7 @@
     U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+<span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>nom::error::{context, ErrorKind};
 <span class="kw">use </span>nom::multi::length_count;
 <span class="kw">use </span>nom::sequence::tuple;
@@ -2239,7 +2182,18 @@
 <span class="doccomment">/// signed operation
 </span><span class="kw">pub type </span>SecureShareOperation = SecureShare&lt;Operation, OperationId&gt;;
 
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Operation {}
+<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Operation {
+    <span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, content_serialized: <span class="kw-2">&amp;</span>[u8], content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        <span class="comment">// Note: Add chain id before content hash in order to avoid replay attacks,
+        //       otherwise someone can copy an operation from testnet and execute it on main net
+        // Note 2: This makes the OperationId unique (per chain id)
+        </span>hash_data.extend(CHAINID.to_be_bytes());
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content_serialized);
+        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    }
+}
 
 <span class="doccomment">/// Serializer for `Operation`
 </span><span class="kw">pub struct </span>OperationSerializer {
@@ -3302,9 +3256,59 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_signature::KeyPair;
-    <span class="kw">use </span>serde_json::Value;
     <span class="kw">use </span>serial_test::serial;
     <span class="kw">use </span>std::collections::BTreeMap;
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_transaction_massa_docs() {
+        <span class="comment">// Serialize an operation with values found in massa docs
+        // This print the values as reported here:
+        // https://docs.massa.net/docs/learn/operation-format-execution#example-of-legal-operation-with-valid-signature
+        // Warning: check if the current chain id matches the chain id in the doc
+
+        </span><span class="kw">let </span>sk = <span class="string">&quot;S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA&quot;</span>;
+        <span class="kw">let </span>pk = <span class="string">&quot;P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd&quot;</span>;
+        <span class="kw">let </span>_addr = <span class="string">&quot;AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7&quot;</span>;
+        <span class="kw">let </span>op_fee = <span class="string">&quot;0.001&quot;</span>;
+        <span class="kw">let </span>op_expiry_period = <span class="number">1000</span>;
+
+        <span class="kw">let </span>tx_dest_addr = <span class="string">&quot;AU12v83xmHg2UrLM8GLsXRMrm7LQgn3DZVT6kUeFsuFyhZKLkbQtY&quot;</span>;
+        <span class="kw">let </span>tx_amount = <span class="string">&quot;3.1&quot;</span>;
+
+        <span class="kw">let </span>op_type = OperationType::Transaction {
+            recipient_address: Address::from_str(tx_dest_addr).unwrap(),
+            amount: Amount::from_str(tx_amount).unwrap(),
+        };
+
+        <span class="kw">let </span>content = Operation {
+            fee: Amount::from_str(op_fee).unwrap(),
+            op: op_type,
+            expire_period: op_expiry_period,
+        };
+
+        <span class="kw">let </span>op_serializer = OperationSerializer::new();
+        <span class="kw">let </span>sender_keypair = KeyPair::from_str(sk).unwrap();
+
+        <span class="macro">assert_eq!</span>(
+            sender_keypair.get_public_key(),
+            PublicKey::from_str(pk).unwrap()
+        );
+
+        <span class="kw">let </span>op: SecureShare&lt;Operation, OperationId&gt; =
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+
+        <span class="macro">println!</span>(<span class="string">&quot;Chain id: {}&quot;</span>, <span class="kw-2">*</span>CHAINID);
+        <span class="macro">println!</span>(<span class="string">&quot;Operation id: {:?}&quot;</span>, op.id);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
+            .unwrap();
+
+        <span class="macro">println!</span>(<span class="string">&quot;Operation serialized:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;{:02X?}&quot;</span>, ser_op);
+    }
 
     <span class="attr">#[test]
     #[serial]
@@ -3528,128 +3532,6 @@
         <span class="macro">assert_eq!</span>(res_op, op);
 
         <span class="macro">assert_eq!</span>(op.get_validity_range(<span class="number">10</span>), <span class="number">40</span>..=<span class="number">50</span>);
-    }
-
-    <span class="attr">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_transaction_serde() {
-        <span class="kw">let </span>recv_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
-
-        <span class="kw">let </span>op: OperationType = OperationType::Transaction {
-            recipient_address: Address::from_public_key(<span class="kw-2">&amp;</span>recv_keypair.get_public_key()),
-            amount: Amount::default(),
-        };
-        <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
-        OperationTypeSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
-            .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_FUNCTION_NAME_LENGTH,
-            MAX_PARAMETERS_SIZE,
-            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        )
-        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
-        .unwrap();
-
-        <span class="macro">assert_eq!</span>(res_type, op);
-
-        <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
-            op,
-            expire_period: <span class="number">50</span>,
-        };
-
-        <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
-        <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
-        <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
-    }
-
-    <span class="attr">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_executesc_serde() {
-        <span class="kw">let </span>op = OperationType::ExecuteSC {
-            max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
-            data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
-            datastore: BTreeMap::from([
-                (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
-                (<span class="macro">vec!</span>[<span class="number">22</span>, <span class="number">33</span>, <span class="number">44</span>, <span class="number">55</span>, <span class="number">66</span>, <span class="number">77</span>], <span class="macro">vec!</span>[<span class="number">11</span>]),
-            ]),
-        };
-        <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
-        OperationTypeSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
-            .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_FUNCTION_NAME_LENGTH,
-            MAX_PARAMETERS_SIZE,
-            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        )
-        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
-        .unwrap();
-        <span class="macro">assert_eq!</span>(res_type, op);
-
-        <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
-            op,
-            expire_period: <span class="number">50</span>,
-        };
-
-        <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
-        <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
-        <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
-    }
-
-    <span class="attr">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_callsc_serde() {
-        <span class="kw">let </span>target_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
-        <span class="kw">let </span>target_addr = Address::from_public_key(<span class="kw-2">&amp;</span>target_keypair.get_public_key());
-
-        <span class="kw">let </span>op = OperationType::CallSC {
-            max_gas: <span class="number">123</span>,
-            target_addr,
-            coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
-            target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
-            param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
-        };
-        <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
-        OperationTypeSerializer::new()
-            .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_type)
-            .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_type) = OperationTypeDeserializer::new(
-            MAX_DATASTORE_VALUE_LENGTH,
-            MAX_FUNCTION_NAME_LENGTH,
-            MAX_PARAMETERS_SIZE,
-            MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-            MAX_OPERATION_DATASTORE_KEY_LENGTH,
-            MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        )
-        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_type)
-        .unwrap();
-        <span class="macro">assert_eq!</span>(res_type, op);
-
-        <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
-            op,
-            expire_period: <span class="number">50</span>,
-        };
-
-        <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
-        <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
-        <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
     }
 }
 </code></pre></div></section></main></body></html>
