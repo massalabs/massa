@@ -92,7 +92,18 @@ jobs:
             tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           fi
           cd -
+      - name: Generate checksum
+        uses: jmgilman/actions-generate-checksum@v1
+        with:
+          method: sha256
+          patterns: |
+            massa_*.zip
+            massa_*.tar.gz
+          output: checksums_${{ matrix.name }}.txt
       - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-          files: 'massa_*'
+          files: |
+           massa_*.zip
+           massa_*.tar.gz
+           checksums_*.txt
