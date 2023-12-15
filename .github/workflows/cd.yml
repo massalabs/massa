@@ -92,15 +92,15 @@ jobs:
             tar czvf massa_${GITHUB_REF/refs\/tags\//}_${{ matrix.name }} massa
           fi
           cd -
-      - name: Upload ${{ matrix.os }} artifacts
+      - name: Upload ${{ matrix.os }}_${{ matrix.platform }} artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: massa_artifacts_${{ matrix.os }}
+          name: massa_artifacts_${{ matrix.name }}
           path: |
             massa_*.zip
             massa_*.tar.gz
           if-no-files-found: error
-      - name: Publish ${{ matrix.os }} artifacts
+      - name: Publish ${{ matrix.os }}_${{ matrix.platform }} artifacts
         uses: softprops/action-gh-release@v1
         with:
           files: |
