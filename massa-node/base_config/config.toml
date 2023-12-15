@@ -190,7 +190,7 @@
     max_final_events = 10000
     # maximum length of the read-only execution requests queue
     readonly_queue_length = 10
-    # by how many milliseconds shoud the execution lag behind real time
+    # by how many milliseconds should the execution lag behind real time
     # higher values increase speculative execution lag but improve performance
     cursor_delay = 2000
     # duration of the statistics time window in milliseconds
@@ -260,7 +260,7 @@
     initial_peers_file = "base_config/initial_peers.json"
     # Limit of read/write number of bytes per second with a peer (Should be a 10 multiple)
     read_write_limit_bytes_per_second = 2_000_000_000
-    # timeout after which without answer a hanshake is ended
+    # timeout after which without answer a handshake is ended
     message_timeout = 5000
     # timeout after which a peer tester will consider the peer unreachable
     tester_timeout = 10000
@@ -345,18 +345,15 @@
 [bootstrap]
     # list of bootstrap (ip, node id)
     bootstrap_list = [
-        ["149.202.86.103:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
-        ["149.202.89.125:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
-        ["158.69.120.215:31245", "N12rPDBmpnpnbECeAKDjbmeR19dYjAUwyLzsa8wmYJnkXLCNF28E"],
-        ["158.69.23.120:31245", "N1XxexKa3XNzvmakNmPawqFrE9Z2NFhfq1AhvV1Qx4zXq5p1Bp9"],
-        ["198.27.74.5:31245", "N1qxuqNnx9kyAMYxUfsYiv2gQd5viiBX126SzzexEdbbWd2vQKu"],
-        ["198.27.74.52:31245", "N1hdgsVsd4zkNp8cF1rdqqG6JPRQasAmx12QgJaJHBHFU1fRHEH"],
-        ["54.36.174.177:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
-        ["51.75.60.228:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
-        ["[2001:41d0:1004:67::]:31245", "N12UbyLJDS7zimGWf3LTHe8hYY67RdLke1iDRZqJbQQLHQSKPW8j"],
-        ["[2001:41d0:a:7f7d::]:31245", "N12vxrYTQzS5TRzxLfFNYxn6PyEsphKWkdqx2mVfEuvJ9sPF43uq"],
-        ["[2001:41d0:602:db1::]:31245", "N1gEdBVEbRFbBxBtrjcTDDK9JPbJFDay27uiJRE3vmbFAFDKNh7"],
-        ["[2001:41d0:602:21e4::]:31245", "N13Ykon8Zo73PTKMruLViMMtE2rEG646JQ4sCcee2DnopmVM3P5"],
+        ["149.202.86.103:31245", "N1o5rMYJesvxG95r6hXxhhUR1RaPdh9jn98qmqVaNbjESDEikgw"],
+        ["149.202.89.125:31245", "N127Mk2JNqJ3H5DX1Cr9Zt6PA3MkxhTpsnLS1kFwg1mxoPHvSHjT"],
+        ["158.69.120.215:31245", "N12h3BMD6KWn5w7Yfi9Ne4PEgbBzqZRXQvGkNHf6ZMif541GJDY5"],
+        ["158.69.23.120:31245", "N12349v9sgHx2XsDZi83NhMiK1dkYq25wPQn9KrxWLaNnVgKfsoL"],
+        ["198.27.74.5:31245", "N12AiHa16Yvfcqv35fCCNZnsqRSqVVCYYqfRqJQmGr9Zik2Ctqbk"],
+        ["51.75.60.228:31245", "N12PLM45E6zDtnxg946toWz8zDSVbNEUXXSqJkAjeweqAK5metxS"],
+        ["[2001:41d0:1004:67::]:31245", "N1o5rMYJesvxG95r6hXxhhUR1RaPdh9jn98qmqVaNbjESDEikgw"],
+        ["[2001:41d0:a:7f7d::]:31245", "N127Mk2JNqJ3H5DX1Cr9Zt6PA3MkxhTpsnLS1kFwg1mxoPHvSHjT"],
+        ["[2001:41d0:602:21e4::]:31245", "N12PLM45E6zDtnxg946toWz8zDSVbNEUXXSqJkAjeweqAK5metxS"],
     ]
     # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
     bootstrap_protocol = "Both"

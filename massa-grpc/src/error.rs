@@ -13,7 +13,7 @@ use massa_signature::MassaSignatureError;
 use massa_time::TimeError;
 use massa_versioning::versioning_factory::FactoryError;
 use massa_wallet::WalletError;
-use tracing::log::error;
+use tracing::error;
 
 /// Errors of the gRPC component.
 #[non_exhaustive]

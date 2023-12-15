@@ -76,7 +76,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_execute_sc_with_datastore() {
-        let given_op = OperationType::ExecuteSC {
+        let expected_op = OperationType::ExecuteSC {
             max_gas: 123,
             max_coins: Amount::from_str("5000000").unwrap(),
             data: vec![23u8, 123u8, 44u8],
@@ -87,8 +87,7 @@ mod tests {
             ]),
         };
 
-        let op_json_str = serde_json::to_string(&given_op).unwrap();
-
+        let op_json_str = serde_json::to_string(&expected_op).unwrap();
         let op_json_value: Value = serde_json::from_str(&op_json_str).unwrap();
         let datastore = op_json_value["ExecuteSC"]
             .as_object()
@@ -105,7 +104,7 @@ mod tests {
         assert_eq!(first_key.len(), 3);
         assert_eq!(first_value.len(), 6);
 
-        let expected_op = serde_json::from_str(&op_json_str).unwrap();
-        assert_eq!(given_op, expected_op);
+        let actual_op: OperationType = serde_json::from_str(&op_json_str).unwrap();
+        assert_eq!(actual_op, expected_op);
     }
 }

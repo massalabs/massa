@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::time::Duration;
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
-use tracing::log::info;
+use tracing::info;
 
 use crate::wrap_peer_db::PeerDBTrait;
 

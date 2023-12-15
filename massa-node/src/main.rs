@@ -329,7 +329,7 @@ async fn launch(
             None => {
                 // The node is started in a normal way
                 // Read the mip list supported by the current software
-                // The resulting MIP store will likely be updated by the boostrap process in order
+                // The resulting MIP store will likely be updated by the bootstrap process in order
                 // to get the latest information for the MIP store (new states, votes...)
 
                 let mip_list = get_mip_list();

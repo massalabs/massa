@@ -67,3 +67,8 @@ server. If you're comfortable enough to get started on you're own, check out our
 ### Contributors
 
 A list of all the contributors can be found [here](CONTRIBUTORS.md)
+
+### Community Charter
+
+The Massa Community Charter is designed to protect decentralization.
+You can find it here: [COMMUNITY_CHARTER.md](COMMUNITY_CHARTER.md)
