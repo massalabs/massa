@@ -20,7 +20,7 @@ use massa_models::{
 use massa_storage::Storage;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use tracing::log::{debug, trace, warn};
+use tracing::{debug, trace, warn};
 
 use crate::{commands::ConsensusCommand, state::ConsensusState};
 

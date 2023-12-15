@@ -36,7 +36,7 @@ use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::{Any, CorsLayer};
-use tracing::log::{info, warn};
+use tracing::{info, warn};
 
 /// gRPC PRIVATE API content
 #[derive(Clone)]

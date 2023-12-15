@@ -511,6 +511,7 @@ impl EndorsementDenunciationData {
 mod tests {
     use crate::secure_share::{SecureShareContent, SecureShareDeserializer, SecureShareSerializer};
     use massa_signature::verify_signature_batch;
+    use serde_json::Value;
 
     use super::*;
     use massa_serialization::DeserializeError;
@@ -625,5 +626,31 @@ mod tests {
             ),
         ];
         verify_signature_batch(&batch_2).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_endorsement_serde() {
+        let orig_endorsement = Endorsement {
+            slot: Slot::new(10, 1),
+            index: 0,
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk".as_bytes())),
+        };
+        let serialized_endorsement = serde_json::to_string(&orig_endorsement).unwrap();
+        let res_endorsement: Value = serde_json::from_str(&serialized_endorsement).unwrap();
+        // check equality
+        assert_eq!(
+            orig_endorsement.slot.period,
+            res_endorsement["slot"]["period"]
+        );
+        assert_eq!(
+            orig_endorsement.slot.thread,
+            res_endorsement["slot"]["thread"]
+        );
+        assert_eq!(orig_endorsement.index, res_endorsement["index"]);
+        assert_eq!(
+            orig_endorsement.endorsed_block.to_string(),
+            res_endorsement["endorsed_block"]
+        );
     }
 }

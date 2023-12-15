@@ -1,7 +1,7 @@
 use massa_channel::sender::MassaSender;
 use massa_consensus_exports::ConsensusManager;
 use std::thread::JoinHandle;
-use tracing::log::info;
+use tracing::info;
 
 use crate::commands::ConsensusCommand;
 

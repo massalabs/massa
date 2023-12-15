@@ -17,7 +17,7 @@ use std::pin::Pin;
 use std::str::FromStr;
 use tokio::select;
 use tonic::{Request, Streaming};
-use tracing::log::{error, warn};
+use tracing::{error, warn};
 
 /// Type declaration for NewFilledBlocks
 pub type NewFilledBlocksStreamType = Pin<
