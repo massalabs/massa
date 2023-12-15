@@ -29,4 +29,6 @@ pub struct FactoryConfig {
     pub denunciation_expire_periods: u64,
     /// choose whether to stop production when zero connections on protocol
     pub stop_production_when_zero_connections: bool,
+    /// chain id
+    pub chain_id: u64,
 }

@@ -13,6 +13,7 @@ use massa_execution_exports::{
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_metrics::MassaMetrics;
+use massa_models::config::CHAINID;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -147,6 +148,7 @@ impl ExecutionTestUniverse {
             },
             OperationSerializer::new(),
             sender_keypair,
+            *CHAINID,
         )?;
         Ok(op)
     }
@@ -176,6 +178,7 @@ impl ExecutionTestUniverse {
             },
             OperationSerializer::new(),
             sender_keypair,
+            *CHAINID,
         )?;
         Ok(op)
     }

@@ -2,6 +2,7 @@
 
 use crate::FactoryConfig;
 use massa_time::MassaTime;
+use std::sync::mpsc::channel;
 
 impl Default for FactoryConfig {
     fn default() -> Self {
@@ -18,6 +19,7 @@ impl Default for FactoryConfig {
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             stop_production_when_zero_connections: false,
+            chain_id: *CHAINID,
         }
     }
 }

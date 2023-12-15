@@ -513,6 +513,7 @@ mod tests {
     use massa_signature::verify_signature_batch;
 
     use super::*;
+    use crate::config::CHAINID;
     use massa_serialization::DeserializeError;
     use massa_signature::KeyPair;
     use serial_test::serial;
@@ -526,9 +527,13 @@ mod tests {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializer::new(), &sender_keypair)
-                .unwrap();
+        let endorsement: SecureShareEndorsement = Endorsement::new_verifiable(
+            content,
+            EndorsementSerializer::new(),
+            &sender_keypair,
+            *CHAINID,
+        )
+        .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = SecureShareSerializer::new();
@@ -536,7 +541,7 @@ mod tests {
             .serialize(&endorsement, &mut ser_endorsement)
             .unwrap();
         let (_, res_endorsement): (&[u8], SecureShareEndorsement) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_endorsement)
                 .unwrap();
         assert_eq!(res_endorsement, endorsement);
@@ -551,9 +556,13 @@ mod tests {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk".as_bytes())),
         };
-        let endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), &sender_keypair)
-                .unwrap();
+        let endorsement: SecureShareEndorsement = Endorsement::new_verifiable(
+            content,
+            EndorsementSerializerLW::new(),
+            &sender_keypair,
+            *CHAINID,
+        )
+        .unwrap();
 
         let mut ser_endorsement: Vec<u8> = Vec::new();
         let serializer = SecureShareSerializer::new();
@@ -565,6 +574,7 @@ mod tests {
 
         let (_, res_endorsement): (&[u8], SecureShareEndorsement) = SecureShareDeserializer::new(
             EndorsementDeserializerLW::new(1, Slot::new(10, 1), parent),
+            *CHAINID,
         )
         .deserialize::<DeserializeError>(&ser_endorsement)
         .unwrap();
@@ -582,15 +592,19 @@ mod tests {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
         };
-        let s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), &sender_keypair)
-                .unwrap();
+        let s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            content_1,
+            EndorsementSerializer::new(),
+            &sender_keypair,
+            *CHAINID,
+        )
+        .unwrap();
         let mut serialized = vec![];
         SecureShareSerializer::new()
             .serialize(&s_endorsement_1, &mut serialized)
             .unwrap();
         let (_, s_endorsement_1): (&[u8], SecureShare<Endorsement, EndorsementId>) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 32))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(32, 32), *CHAINID)
                 .deserialize::<DeserializeError>(&serialized)
                 .unwrap();
         let sender_keypair = KeyPair::generate(0).unwrap();
@@ -599,9 +613,13 @@ mod tests {
             index: 0,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
         };
-        let s_endorsement_2: SecureShareEndorsement =
-            Endorsement::new_verifiable(content_2, EndorsementSerializerLW::new(), &sender_keypair)
-                .unwrap();
+        let s_endorsement_2: SecureShareEndorsement = Endorsement::new_verifiable(
+            content_2,
+            EndorsementSerializerLW::new(),
+            &sender_keypair,
+            *CHAINID,
+        )
+        .unwrap();
 
         // Test with batch len == 1 (no // verif)
         let batch_1 = [(

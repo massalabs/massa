@@ -299,6 +299,7 @@ pub fn start_retrieval_thread(
             thread_count: config.thread_count,
             max_length_endorsements: config.max_endorsements_per_message,
             endorsement_count: config.endorsement_count,
+            chain_id: config.chain_id,
         });
     std::thread::Builder::new()
         .name("protocol-endorsement-handler-retrieval".to_string())

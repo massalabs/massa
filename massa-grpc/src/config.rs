@@ -131,6 +131,8 @@ pub struct GrpcConfig {
     pub client_certificate_path: PathBuf,
     /// client private key path
     pub client_private_key_path: PathBuf,
+    /// chain id
+    pub chain_id: u64,
 }
 
 /// gRPC API configuration.

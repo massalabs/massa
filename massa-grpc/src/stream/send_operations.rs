@@ -80,15 +80,17 @@ pub(crate) async fn send_operations(
                             .await;
                         } else {
                             // Deserialize and verify each operation in the incoming message
-                            let operation_deserializer =
-                                SecureShareDeserializer::new(OperationDeserializer::new(
+                            let operation_deserializer = SecureShareDeserializer::new(
+                                OperationDeserializer::new(
                                     config.max_datastore_value_length,
                                     config.max_function_name_length,
                                     config.max_parameter_size,
                                     config.max_op_datastore_entry_count,
                                     config.max_op_datastore_key_length,
                                     config.max_op_datastore_value_length,
-                                ));
+                                ),
+                                config.chain_id,
+                            );
                             let verified_ops_res: Result<HashMap<String, SecureShareOperation>, GrpcError> = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {

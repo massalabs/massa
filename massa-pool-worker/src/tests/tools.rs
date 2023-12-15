@@ -6,6 +6,7 @@ use crate::start_pool_controller;
 use crossbeam_channel as _;
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
+use massa_models::config::CHAINID;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -83,7 +84,7 @@ impl OpGenerator {
             op,
             expire_period: expirery,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), &creator).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), &creator, *CHAINID).unwrap()
     }
 }
 
@@ -182,7 +183,13 @@ pub fn create_endorsement(
         index,
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blabla".as_bytes())),
     };
-    Endorsement::new_verifiable(content, EndorsementSerializer::new(), sender_keypair).unwrap()
+    Endorsement::new_verifiable(
+        content,
+        EndorsementSerializer::new(),
+        sender_keypair,
+        *CHAINID,
+    )
+    .unwrap()
 }
 
 // Create a execution controller that will return the same result for all as it's not always used

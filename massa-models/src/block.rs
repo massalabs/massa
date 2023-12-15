@@ -70,6 +70,7 @@ impl SecureShareContent for Block {
         self,
         content_serializer: SC,
         _keypair: &KeyPair,
+        _chain_id: u64,
     ) -> Result<SecureShare<Self, U>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&self, &mut content_serialized)?;
@@ -104,6 +105,7 @@ impl SecureShareContent for Block {
         _creator_public_key_deserializer: &massa_signature::PublicKeyDeserializer,
         content_deserializer: &DC,
         buffer: &'a [u8],
+        _chain_id: u64,
     ) -> IResult<&'a [u8], SecureShare<Self, U>, E> {
         let (rest, content) = content_deserializer.deserialize(buffer)?;
         Ok((
@@ -148,6 +150,7 @@ impl Serializer<Block> for BlockSerializer {
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_models::block_id::{BlockId};
     /// use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
@@ -172,6 +175,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -182,6 +186,7 @@ impl Serializer<Block> for BlockSerializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///         ],
@@ -189,6 +194,7 @@ impl Serializer<Block> for BlockSerializer {
     ///     },
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
+    ///     *CHAINID
     /// )
     /// .unwrap();
     ///
@@ -221,6 +227,8 @@ pub struct BlockDeserializerArgs {
     pub max_denunciations_per_block_header: u32,
     /// If Some(lsp), this will through if trying to deserialize a block with a period before the genesis blocks
     pub last_start_period: Option<u64>,
+    /// chain id
+    pub chain_id: u64,
 }
 
 /// Deserializer for `Block`
@@ -233,12 +241,16 @@ impl BlockDeserializer {
     /// Creates a new `BlockDeserializer`
     pub fn new(args: BlockDeserializerArgs) -> Self {
         BlockDeserializer {
-            header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
-                args.thread_count,
-                args.endorsement_count,
-                args.max_denunciations_per_block_header,
-                args.last_start_period,
-            )),
+            header_deserializer: SecureShareDeserializer::new(
+                BlockHeaderDeserializer::new(
+                    args.thread_count,
+                    args.endorsement_count,
+                    args.max_denunciations_per_block_header,
+                    args.last_start_period,
+                    args.chain_id,
+                ),
+                args.chain_id,
+            ),
             op_ids_deserializer: OperationIdsDeserializer::new(args.max_operations_per_block),
         }
     }
@@ -251,6 +263,7 @@ impl Deserializer<Block> for BlockDeserializer {
     /// use massa_models::block_id::BlockId;
     /// use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     /// use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let keypair = KeyPair::generate(0).unwrap();
@@ -275,6 +288,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -285,6 +299,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///         ],
@@ -292,6 +307,7 @@ impl Deserializer<Block> for BlockDeserializer {
     ///     },
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
+    ///     *CHAINID
     /// )
     /// .unwrap();
     ///
@@ -308,7 +324,8 @@ impl Deserializer<Block> for BlockDeserializer {
     ///     max_operations_per_block: 100,
     ///     endorsement_count: 9,
     ///     max_denunciations_per_block_header: 10,
-    ///     last_start_period: Some(0)
+    ///     last_start_period: Some(0),
+    ///     chain_id: *CHAINID
     /// };
     /// let (rest, res_block) = BlockDeserializer::new(args).deserialize::<DeserializeError>(&mut buffer).unwrap();
     ///
@@ -417,7 +434,7 @@ pub enum BlockGraphStatus {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::MAX_DENUNCIATIONS_PER_BLOCK_HEADER;
+    use crate::config::{CHAINID, MAX_DENUNCIATIONS_PER_BLOCK_HEADER};
     use crate::{
         block_header::BlockHeaderSerializer,
         config::{ENDORSEMENT_COUNT, MAX_OPERATIONS_PER_BLOCK, THREAD_COUNT},
@@ -456,6 +473,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -469,6 +487,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -485,6 +504,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -495,8 +515,13 @@ mod test {
         };
 
         // serialize block
-        let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock = Block::new_verifiable(
+            orig_block.clone(),
+            BlockSerializer::new(),
+            &keypair,
+            *CHAINID,
+        )
+        .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -509,9 +534,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
@@ -569,6 +595,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -579,8 +606,13 @@ mod test {
         };
 
         // serialize block
-        let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block.clone(), BlockSerializer::new(), &keypair).unwrap();
+        let secured_block: SecureShareBlock = Block::new_verifiable(
+            orig_block.clone(),
+            BlockSerializer::new(),
+            &keypair,
+            *CHAINID,
+        )
+        .unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -593,9 +625,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let (rest, res_block): (&[u8], SecureShareBlock) =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
@@ -656,12 +689,14 @@ mod test {
                     endorsement,
                     EndorsementSerializer::new(),
                     &keypair,
+                    *CHAINID,
                 )
                 .unwrap()],
                 denunciations: vec![],
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -673,7 +708,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -686,9 +721,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -719,6 +755,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -730,7 +767,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -743,9 +780,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -771,6 +809,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -782,7 +821,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -795,9 +834,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -826,6 +866,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -837,7 +878,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -850,9 +891,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -887,6 +929,7 @@ mod test {
                     },
                     EndorsementSerializer::new(),
                     &keypair,
+                    *CHAINID,
                 )
                 .unwrap()
             })
@@ -904,6 +947,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -915,7 +959,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -928,9 +972,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let (_, res): (&[u8], SecureShareBlock) =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block)
                 .unwrap();
 
@@ -961,6 +1006,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -972,7 +1018,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -985,9 +1031,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -1013,6 +1060,7 @@ mod test {
                     },
                     EndorsementSerializer::new(),
                     &keypair,
+                    *CHAINID,
                 )
                 .unwrap()
             })
@@ -1030,6 +1078,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1041,7 +1090,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1054,9 +1103,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
@@ -1088,6 +1138,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1104,6 +1155,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1115,7 +1167,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1128,9 +1180,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
         // TODO: Catch an failed deser being a fail, instead of a recoverable error
         // TODO: assert that the error variant/context/etc. matches the expected failure
@@ -1161,6 +1214,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -1174,6 +1228,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1190,6 +1245,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1201,7 +1257,7 @@ mod test {
 
         // serialize block
         let secured_block: SecureShareBlock =
-            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+            Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
         let mut ser_block = Vec::new();
         SecureShareSerializer::new()
             .serialize(&secured_block, &mut ser_block)
@@ -1214,9 +1270,10 @@ mod test {
             endorsement_count: ENDORSEMENT_COUNT,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             last_start_period: Some(0),
+            chain_id: *CHAINID,
         };
         let res: Result<(&[u8], SecureShareBlock), _> =
-            SecureShareDeserializer::new(BlockDeserializer::new(args))
+            SecureShareDeserializer::new(BlockDeserializer::new(args), *CHAINID)
                 .deserialize::<DeserializeError>(&ser_block);
 
         // TODO: Catch an failed deser being a fail, instead of a recoverable error

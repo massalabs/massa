@@ -123,10 +123,12 @@ impl ExportActiveBlockDeserializer {
     #[allow(clippy::too_many_arguments)]
     pub fn new(block_der_args: BlockDeserializerArgs) -> Self {
         let thread_count = block_der_args.thread_count;
+        let chain_id = block_der_args.chain_id;
         ExportActiveBlockDeserializer {
-            sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                block_der_args,
-            )),
+            sec_share_block_deserializer: SecureShareDeserializer::new(
+                BlockDeserializer::new(block_der_args),
+                chain_id,
+            ),
             block_id_deserializer: BlockIdDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             thread_count,

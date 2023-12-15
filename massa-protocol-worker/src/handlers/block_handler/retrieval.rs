@@ -125,6 +125,7 @@ impl RetrievalThread {
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
                 max_denunciations_in_block_header: self.config.max_denunciations_in_block_header,
                 last_start_period: Some(self.config.last_start_period),
+                chain_id: self.config.chain_id,
             });
 
         let tick_update_metrics = tick(self.massa_metrics.tick_delay);

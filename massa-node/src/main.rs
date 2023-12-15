@@ -74,7 +74,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -404,6 +404,7 @@ async fn launch(
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        chain_id: *CHAINID,
     };
 
     let bootstrap_state = match get_state(
@@ -681,6 +682,7 @@ async fn launch(
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
         rate_limit: SETTINGS.protocol.rate_limit,
+        chain_id: *CHAINID,
     };
 
     let (protocol_controller, protocol_channels) =
@@ -717,6 +719,7 @@ async fn launch(
         force_keep_final_periods_without_ops: SETTINGS
             .consensus
             .force_keep_final_periods_without_ops,
+        chain_id: *CHAINID,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -776,6 +779,7 @@ async fn launch(
         stop_production_when_zero_connections: SETTINGS
             .factory
             .stop_production_when_zero_connections,
+        chain_id: *CHAINID,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -848,6 +852,7 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
+        chain_id: *CHAINID,
     };
 
     // spawn Massa API
@@ -1139,6 +1144,7 @@ fn configure_grpc(
             .clone(),
         client_certificate_path: settings.client_certificate_path.clone(),
         client_private_key_path: settings.client_private_key_path.clone(),
+        chain_id: *CHAINID,
     }
 }
 

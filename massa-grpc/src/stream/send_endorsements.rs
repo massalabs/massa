@@ -64,11 +64,13 @@ pub(crate) async fn send_endorsements(
                             .await;
                         } else {
                             // Deserialize and verify each endorsement in the incoming message
-                            let endorsement_deserializer =
-                                SecureShareDeserializer::new(EndorsementDeserializer::new(
+                            let endorsement_deserializer = SecureShareDeserializer::new(
+                                EndorsementDeserializer::new(
                                     config.thread_count,
                                     config.endorsement_count,
-                                ));
+                                ),
+                                config.chain_id,
+                            );
                             let verified_eds_res: Result<HashMap<String, SecureShareEndorsement>, GrpcError> = proto_endorsement
                                 .into_iter()
                                 .map(|proto_endorsement| {

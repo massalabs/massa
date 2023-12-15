@@ -23,6 +23,7 @@ use massa_time::MassaTime;
 use massa_versioning::keypair_factory::KeyPairFactory;
 use massa_versioning::versioning::{MipStatsConfig, MipStore};
 // use massa_wallet::test_exports::create_test_wallet;
+use massa_models::config::CHAINID;
 use num::rational::Ratio;
 use std::path::PathBuf;
 
@@ -107,6 +108,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         client_certificate_path: PathBuf::default(),
         client_private_key_path: PathBuf::default(),
         max_query_items_per_request: 50,
+        chain_id: *CHAINID,
     };
 
     let mip_stats_config = MipStatsConfig {

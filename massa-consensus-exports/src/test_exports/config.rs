@@ -3,7 +3,7 @@ use massa_models::config::{
         CHANNEL_SIZE, DELTA_F0, ENDORSEMENT_COUNT, GENESIS_KEY, GENESIS_TIMESTAMP,
         MAX_GAS_PER_BLOCK, OPERATION_VALIDITY_PERIODS, PERIODS_PER_CYCLE, T0, THREAD_COUNT,
     },
-    CONSENSUS_BOOTSTRAP_PART_SIZE,
+    CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE,
 };
 use massa_time::MassaTime;
 
@@ -36,6 +36,7 @@ impl Default for ConsensusConfig {
             broadcast_blocks_channel_capacity: 128,
             broadcast_filled_blocks_channel_capacity: 128,
             last_start_period: 0,
+            chain_id: *CHAINID,
         }
     }
 }
