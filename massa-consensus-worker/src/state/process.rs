@@ -22,7 +22,7 @@ use massa_models::{
 use massa_signature::PublicKey;
 use massa_storage::Storage;
 use massa_time::MassaTime;
-use tracing::log::{debug, info};
+use tracing::{debug, info};
 
 use crate::state::{
     clique_computation::compute_max_cliques,

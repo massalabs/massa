@@ -12,7 +12,7 @@ use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::sync::mpsc::Sender;
 use tonic::Request;
-use tracing::log::{error, warn};
+use tracing::{error, warn};
 
 /// Type declaration for SendBlockStream
 pub type SendBlocksStreamType = Pin<

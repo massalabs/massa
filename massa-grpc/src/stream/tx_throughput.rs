@@ -6,7 +6,7 @@ use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::{select, time};
-use tracing::log::error;
+use tracing::error;
 
 /// default throughput interval in seconds
 ///

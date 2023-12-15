@@ -23,7 +23,7 @@ use peernet::{
     peer::InitConnectionHandler,
     transports::{endpoint::Endpoint, TransportType},
 };
-use tracing::log::{debug, error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::context::Context;
 use crate::handlers::peer_handler::models::PeerState;

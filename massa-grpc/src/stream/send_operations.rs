@@ -13,7 +13,7 @@ use massa_time::MassaTime;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tracing::log::{error, warn};
+use tracing::{error, warn};
 
 /// Type declaration for SendOperations
 pub type SendOperationsStreamType = Pin<

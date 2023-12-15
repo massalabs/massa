@@ -5,7 +5,7 @@ use massa_time::MassaTime;
 use std::cmp::max;
 
 #[cfg(not(feature = "sandbox"))]
-use tracing::log::warn;
+use tracing::warn;
 
 #[cfg(not(feature = "sandbox"))]
 use massa_consensus_exports::events::ConsensusEvent;
