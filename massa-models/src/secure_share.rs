@@ -170,7 +170,6 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        // TODO
         let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key, chain_id);
 
         Ok((

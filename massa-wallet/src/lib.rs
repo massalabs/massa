@@ -31,6 +31,8 @@ pub struct Wallet {
     wallet_path: PathBuf,
     /// Password
     password: String,
+    /// chain id
+    chain_id: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -49,7 +51,7 @@ struct WalletFileFormat {
 //TODO: Use exports and mock it
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
-    pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
+    pub fn new(path: PathBuf, password: String, chain_id: u64) -> Result<Wallet, WalletError> {
         if path.is_dir() {
             let mut keys = PreHashMap::default();
             for entry in std::fs::read_dir(&path)? {
@@ -76,12 +78,14 @@ impl Wallet {
                 keys,
                 wallet_path: path,
                 password,
+                chain_id,
             })
         } else {
             let wallet = Wallet {
                 keys: PreHashMap::default(),
                 wallet_path: path,
                 password,
+                chain_id,
             };
             wallet.save()?;
             Ok(wallet)
@@ -207,11 +211,13 @@ impl Wallet {
         let sender_keypair = self
             .find_associated_keypair(&address)
             .ok_or_else(|| WalletError::MissingKeyError(address))?;
-        // TODO: chain id from config
-        Ok(
-            Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair, 0)
-                .unwrap(),
+        Ok(Operation::new_verifiable(
+            content,
+            OperationSerializer::new(),
+            sender_keypair,
+            self.chain_id,
         )
+        .unwrap())
     }
 }
 

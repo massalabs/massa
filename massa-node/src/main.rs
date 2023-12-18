@@ -1279,7 +1279,11 @@ struct Args {
 }
 
 /// Load wallet, asking for passwords if necessary
-fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
+fn load_wallet(
+    password: Option<String>,
+    path: &Path,
+    chain_id: u64,
+) -> anyhow::Result<Arc<RwLock<Wallet>>> {
     let password = if path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
@@ -1299,6 +1303,7 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     Ok(Arc::new(RwLock::new(Wallet::new(
         PathBuf::from(path),
         password,
+        chain_id,
     )?)))
 }
 
@@ -1355,6 +1360,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let node_wallet = load_wallet(
         cur_args.password.clone(),
         &SETTINGS.factory.staking_wallet_path,
+        *CHAINID,
     )?;
 
     // interrupt signal listener

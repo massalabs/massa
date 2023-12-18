@@ -75,6 +75,8 @@ pub struct Client {
     pub grpc_public: Option<PublicServiceClient<tonic::transport::Channel>>,
     /// grpc private client
     pub grpc_private: Option<PrivateServiceClient<tonic::transport::Channel>>,
+    /// Chain id
+    pub chain_id: u64,
 }
 
 impl Client {
@@ -85,6 +87,7 @@ impl Client {
         private_port: u16,
         grpc_public_port: u16,
         grpc_private_port: u16,
+        chain_id: u64,
         http_config: &HttpConfig,
     ) -> Result<Client, ClientError> {
         let public_socket_addr = SocketAddr::new(ip, public_port);
@@ -125,6 +128,7 @@ impl Client {
             private: RpcClient::from_url(&private_url, http_config).await,
             grpc_public: grpc_pub_client,
             grpc_private: grpc_priv_client,
+            chain_id,
         })
     }
 }
