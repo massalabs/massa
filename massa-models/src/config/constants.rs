@@ -90,7 +90,6 @@ lazy_static::lazy_static! {
         // MASM (MainNet):           77658377
         // MASB (BuildNet):          77658366
         // MASS (SecureNet):         77658383
-        // MASS275 (SecureNet 27.5): 77658383505553
         // MASL (Labnet):            77658376
         // SANDBOX (Sandbox):        77
         if cfg!(feature = "sandbox") {
