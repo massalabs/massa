@@ -68,6 +68,7 @@ impl Default for ExecutionConfig {
             max_event_size: 50_000,
             max_function_length: 1000,
             max_parameter_length: 1000,
+            chain_id: *CHAINID,
         }
     }
 }

@@ -1510,6 +1510,7 @@ mod tests {
         // https://docs.massa.net/docs/learn/operation-format-execution#example-of-legal-operation-with-valid-signature
         // Warning: check if the current chain id matches the chain id in the doc
 
+        let chain_id: u64 = 77658383;
         let sk = "S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA";
         let pk = "P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd";
         let _addr = "AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7";
@@ -1539,7 +1540,7 @@ mod tests {
         );
 
         let op: SecureShare<Operation, OperationId> =
-            Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
+            Operation::new_verifiable(content, op_serializer, &sender_keypair, chain_id).unwrap();
 
         println!("Chain id: {}", *CHAINID);
         println!("Operation id: {:?}", op.id);
