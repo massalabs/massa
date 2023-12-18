@@ -57,7 +57,7 @@ pub struct FinalState {
     /// * If from snapshot: retrieve from the slot attached to the snapshot
     /// * If from bootstrap: set during bootstrap
     pub last_slot_before_downtime: Option<Slot>,
-    /// the rocksdb instance used to write every final_state struct on disk
+    /// the RocksDB instance used to write every final_state struct on disk
     pub db: ShareableMassaDBController,
 }
 
