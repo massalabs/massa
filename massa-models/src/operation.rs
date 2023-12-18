@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressSerializer;
-use crate::config::CHAINID;
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::secure_share::{
