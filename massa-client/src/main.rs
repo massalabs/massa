@@ -40,6 +40,9 @@ struct Args {
     /// Port to listen on (Massa GRPC Private API).
     #[arg(long)]
     grpc_private_port: Option<u16>,
+    /// Chain id
+    #[arg(long)]
+    chain_id: Option<u64>,
     /// Address to listen on
     #[arg(long)]
     ip: Option<IpAddr>,
@@ -136,6 +139,10 @@ async fn run(args: Args) -> Result<()> {
         Some(grpc_port) => grpc_port,
         None => settings.default_node.grpc_private_port,
     };
+    let chain_id = match args.chain_id {
+        Some(chain_id) => chain_id,
+        None => settings.default_node.chain_id,
+    };
 
     // Setup panic handlers,
     // and when a panic occurs,
@@ -154,6 +161,7 @@ async fn run(args: Args) -> Result<()> {
         private_port,
         grpc_port,
         grpc_priv_port,
+        chain_id,
         &http_config,
     )
     .await?;
@@ -172,7 +180,7 @@ async fn run(args: Args) -> Result<()> {
                     _ => ask_password(&args.wallet),
                 };
 
-                let wallet = Wallet::new(args.wallet, password)?;
+                let wallet = Wallet::new(args.wallet, password, chain_id)?;
                 Some(wallet)
             }
             false => None,

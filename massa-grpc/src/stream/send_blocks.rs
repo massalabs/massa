@@ -64,10 +64,14 @@ pub(crate) async fn send_blocks(
                         max_denunciations_per_block_header: config
                             .max_denunciations_per_block_header,
                         last_start_period: Some(config.last_start_period),
+                        chain_id: config.chain_id,
                     };
                     // Deserialize and verify received block in the incoming message
-                    match SecureShareDeserializer::new(BlockDeserializer::new(args))
-                        .deserialize::<DeserializeError>(&req_content.block)
+                    match SecureShareDeserializer::new(
+                        BlockDeserializer::new(args),
+                        config.chain_id,
+                    )
+                    .deserialize::<DeserializeError>(&req_content.block)
                     {
                         Ok(tuple) => {
                             let (rest, res_block): (&[u8], SecureShareBlock) = tuple;

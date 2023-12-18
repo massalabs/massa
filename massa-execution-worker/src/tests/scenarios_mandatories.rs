@@ -1250,6 +1250,7 @@ fn send_and_receive_transaction() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the transaction operation
@@ -1319,6 +1320,7 @@ fn roll_buy() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1432,6 +1434,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     let operation2 = Operation::new_verifiable(
@@ -1444,6 +1447,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1551,6 +1555,7 @@ fn roll_slash() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -1668,6 +1673,7 @@ fn roll_slash_2() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -2156,6 +2162,7 @@ fn not_enough_instance_gas() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);

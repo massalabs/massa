@@ -1147,7 +1147,7 @@ fn check_input_operation(
         api_cfg.max_op_datastore_entry_count,
         api_cfg.max_op_datastore_key_length,
         api_cfg.max_op_datastore_value_length,
-    ));
+    ), api_cfg.chain_id);
 
     let mut op_serialized = Vec::new();
     op_serialized.extend(op_input.signature.to_bytes());

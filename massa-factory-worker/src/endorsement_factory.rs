@@ -186,6 +186,7 @@ impl EndorsementFactoryWorker {
                 },
                 self.endorsement_serializer.clone(),
                 &keypair,
+                self.cfg.chain_id,
             )
             .expect("could not create endorsement");
 

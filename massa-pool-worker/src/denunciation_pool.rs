@@ -295,7 +295,7 @@ mod tests {
     use massa_hash::Hash;
     use massa_models::block_header::{BlockHeader, BlockHeaderSerializer};
     use massa_models::block_id::BlockId;
-    use massa_models::config::ENDORSEMENT_COUNT;
+    use massa_models::config::{CHAINID, ENDORSEMENT_COUNT};
     use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     use massa_models::secure_share::SecureShareContent;
     use massa_signature::KeyPair;
@@ -330,6 +330,7 @@ mod tests {
                 block_header_1,
                 BlockHeaderSerializer::new(),
                 &keypair,
+                *CHAINID,
             )
             .expect("error while producing block header");
 
@@ -348,9 +349,13 @@ mod tests {
                 endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
             };
 
-            let s_endorsement1 =
-                Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
-                    .unwrap();
+            let s_endorsement1 = Endorsement::new_verifiable(
+                endorsement_1,
+                EndorsementSerializer::new(),
+                &keypair,
+                *CHAINID,
+            )
+            .unwrap();
 
             DenunciationStatus::Accumulating(DenunciationPrecursor::from(&s_endorsement1))
         });

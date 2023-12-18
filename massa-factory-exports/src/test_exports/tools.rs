@@ -1,4 +1,5 @@
 use massa_hash::Hash;
+use massa_models::config::CHAINID;
 use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
@@ -21,6 +22,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
         },
         BlockHeaderSerializer::new(),
         keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -31,6 +33,7 @@ pub fn create_empty_block(keypair: &KeyPair, slot: &Slot) -> SecureShareBlock {
         },
         BlockSerializer::new(),
         keypair,
+        *CHAINID,
     )
     .unwrap()
 }

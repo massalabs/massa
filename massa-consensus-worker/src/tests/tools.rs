@@ -8,6 +8,7 @@ use massa_consensus_exports::{
 use massa_execution_exports::MockExecutionController;
 use massa_hash::Hash;
 use massa_metrics::MassaMetrics;
+use massa_models::config::CHAINID;
 use massa_models::{
     block::{Block, BlockSerializer, SecureShareBlock},
     block_header::{BlockHeader, BlockHeaderSerializer},
@@ -111,6 +112,7 @@ pub fn create_block_with_merkle_root(
         },
         BlockHeaderSerializer::new(),
         creator,
+        *CHAINID,
     )
     .unwrap();
 
@@ -121,6 +123,7 @@ pub fn create_block_with_merkle_root(
         },
         BlockSerializer::new(),
         creator,
+        *CHAINID,
     )
     .unwrap()
 }

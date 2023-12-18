@@ -12,7 +12,7 @@ use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_final_state::FinalStateConfig;
 use massa_models::config::{
-    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
+    BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHAINID, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
     MAX_ADVERTISE_LENGTH, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
@@ -83,6 +83,7 @@ impl BootstrapClientBinder {
             mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+            chain_id: *CHAINID,
         }
     }
 }

@@ -111,6 +111,8 @@ pub struct OperationMessageDeserializerArgs {
     pub max_op_datastore_key_length: u8,
     /// Maximum size of a op datastore value
     pub max_op_datastore_value_length: u64,
+    /// Chain id
+    pub chain_id: u64,
 }
 
 impl OperationMessageDeserializer {
@@ -128,6 +130,7 @@ impl OperationMessageDeserializer {
                 args.max_op_datastore_entry_count,
                 args.max_op_datastore_key_length,
                 args.max_op_datastore_value_length,
+                args.chain_id,
             ),
         }
     }

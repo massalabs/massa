@@ -125,6 +125,8 @@ pub struct BootstrapConfig {
     pub max_denunciations_per_block_header: u32,
     /// max executed denunciations changes
     pub max_denunciation_changes_length: u64,
+    /// chain id
+    pub chain_id: u64,
 }
 
 /// Bootstrap server binding
@@ -169,6 +171,7 @@ pub struct BootstrapClientConfig {
     pub mip_store_stats_block_considered: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
+    pub chain_id: u64,
 }
 
 /// Bootstrap Message der args
@@ -198,6 +201,7 @@ pub struct BootstrapServerMessageDeserializerArgs {
     pub mip_store_stats_block_considered: usize,
     pub max_denunciations_per_block_header: u32,
     pub max_denunciation_changes_length: u64,
+    pub chain_id: u64,
 }
 
 // TODO: add a proc macro for this case
@@ -210,6 +214,7 @@ impl From<&BootstrapServerMessageDeserializerArgs> for BlockDeserializerArgs {
             endorsement_count: value.endorsement_count,
             max_denunciations_per_block_header: value.max_denunciations_per_block_header,
             last_start_period: None,
+            chain_id: value.chain_id,
         }
     }
 }

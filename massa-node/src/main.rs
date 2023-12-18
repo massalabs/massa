@@ -404,6 +404,7 @@ async fn launch(
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        chain_id: *CHAINID,
     };
 
     let bootstrap_state = match get_state(
@@ -682,6 +683,7 @@ async fn launch(
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
         rate_limit: SETTINGS.protocol.rate_limit,
+        chain_id: *CHAINID,
     };
 
     let (protocol_controller, protocol_channels) =
@@ -718,6 +720,7 @@ async fn launch(
         force_keep_final_periods_without_ops: SETTINGS
             .consensus
             .force_keep_final_periods_without_ops,
+        chain_id: *CHAINID,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -777,6 +780,7 @@ async fn launch(
         stop_production_when_zero_connections: SETTINGS
             .factory
             .stop_production_when_zero_connections,
+        chain_id: *CHAINID,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -1276,7 +1280,11 @@ struct Args {
 }
 
 /// Load wallet, asking for passwords if necessary
-fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
+fn load_wallet(
+    password: Option<String>,
+    path: &Path,
+    chain_id: u64,
+) -> anyhow::Result<Arc<RwLock<Wallet>>> {
     let password = if path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
@@ -1296,6 +1304,7 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     Ok(Arc::new(RwLock::new(Wallet::new(
         PathBuf::from(path),
         password,
+        chain_id,
     )?)))
 }
 
@@ -1352,6 +1361,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let node_wallet = load_wallet(
         cur_args.password.clone(),
         &SETTINGS.factory.staking_wallet_path,
+        *CHAINID,
     )?;
 
     // interrupt signal listener

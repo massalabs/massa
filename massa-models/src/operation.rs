@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::address::AddressSerializer;
-use crate::config::CHAINID;
 use crate::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
 use crate::prehash::{PreHashSet, PreHashed};
 use crate::secure_share::{
@@ -415,12 +414,17 @@ impl std::fmt::Display for Operation {
 pub type SecureShareOperation = SecureShare<Operation, OperationId>;
 
 impl SecureShareContent for Operation {
-    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
+    fn compute_hash(
+        &self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+        chain_id: u64,
+    ) -> Hash {
         let mut hash_data = Vec::new();
         // Note: Add chain id before content hash in order to avoid replay attacks,
         //       otherwise someone can copy an operation from testnet and execute it on main net
         // Note 2: This makes the OperationId unique (per chain id)
-        hash_data.extend(CHAINID.to_be_bytes());
+        hash_data.extend(chain_id.to_be_bytes());
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
         Hash::compute_from(&hash_data)
@@ -1339,6 +1343,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
+    /// use massa_models::config::CHAINID;
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
@@ -1350,7 +1355,7 @@ impl Serializer<Vec<SecureShareOperation>> for OperationsSerializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
@@ -1387,20 +1392,24 @@ impl OperationsDeserializer {
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        chain_id: u64,
     ) -> Self {
         Self {
             length_deserializer: U32VarIntDeserializer::new(
                 Included(0),
                 Included(max_operations_per_message),
             ),
-            signed_op_deserializer: SecureShareDeserializer::new(OperationDeserializer::new(
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
-            )),
+            signed_op_deserializer: SecureShareDeserializer::new(
+                OperationDeserializer::new(
+                    max_datastore_value_length,
+                    max_function_name_length,
+                    max_parameters_size,
+                    max_op_datastore_entry_count,
+                    max_op_datastore_key_length,
+                    max_op_datastore_value_length,
+                ),
+                chain_id,
+            ),
         }
     }
 }
@@ -1412,6 +1421,7 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
+    /// use massa_models::config::CHAINID;
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
@@ -1423,11 +1433,11 @@ impl Deserializer<Vec<SecureShareOperation>> for OperationsDeserializer {
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &keypair, *CHAINID).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&operations, &mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::<DeserializeError>(&buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000, *CHAINID).deserialize::<DeserializeError>(&buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
@@ -1480,9 +1490,9 @@ pub fn compute_operations_hash(
 #[cfg(test)]
 mod tests {
     use crate::config::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        MAX_PARAMETERS_SIZE,
+        CHAINID, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     };
 
     use super::*;
@@ -1594,23 +1604,26 @@ mod tests {
 
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
+        let op =
+            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op): (&[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::<DeserializeError>(&ser_op)
-            .unwrap();
+            ),
+            *CHAINID,
+        )
+        .deserialize::<DeserializeError>(&ser_op)
+        .unwrap();
         assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1669,23 +1682,26 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
+        let op =
+            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op): (&[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::<DeserializeError>(&ser_op)
-            .unwrap();
+            ),
+            *CHAINID,
+        )
+        .deserialize::<DeserializeError>(&ser_op)
+        .unwrap();
         assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);
@@ -1745,23 +1761,26 @@ mod tests {
         assert_eq!(res_content, content);
         let op_serializer = OperationSerializer::new();
 
-        let op = Operation::new_verifiable(content, op_serializer, &sender_keypair).unwrap();
+        let op =
+            Operation::new_verifiable(content, op_serializer, &sender_keypair, *CHAINID).unwrap();
 
         let mut ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(&op, &mut ser_op)
             .unwrap();
-        let (_, res_op): (&[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        let (_, res_op): (&[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::<DeserializeError>(&ser_op)
-            .unwrap();
+            ),
+            *CHAINID,
+        )
+        .deserialize::<DeserializeError>(&ser_op)
+        .unwrap();
         assert_eq!(res_op, op);
 
         assert_eq!(op.get_validity_range(10), 40..=50);

@@ -75,6 +75,7 @@ impl RetrievalThread {
                 max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
                 max_op_datastore_key_length: self.config.max_op_datastore_key_length,
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
+                chain_id: self.config.chain_id
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
 

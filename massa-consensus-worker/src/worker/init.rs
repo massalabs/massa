@@ -56,6 +56,7 @@ pub fn create_genesis_block(
         },
         BlockHeaderSerializer::new(),
         keypair,
+        cfg.chain_id,
     )?;
 
     Ok(Block::new_verifiable(
@@ -65,6 +66,7 @@ pub fn create_genesis_block(
         },
         BlockSerializer::new(),
         keypair,
+        cfg.chain_id,
     )?)
 }
 
