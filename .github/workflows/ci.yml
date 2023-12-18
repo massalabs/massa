@@ -10,6 +10,8 @@ on:
     - reopened
     - synchronize
     - ready_for_review
+  merge_group:
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -108,7 +110,7 @@ jobs:
       - uses: actions-rust-lang/audit@v1
         name: Audit Rust Dependencies
 
-  # Full cross-platform tests required by bors to merge on main branch
+  # Full cross-platform tests required to merge on main branch
   full:
     name: full
     needs: sanity
@@ -219,7 +221,7 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
 
-  build: # quick hack because bors wrongly detect matrix jobs status
+  build: # quick hack because bors wrongly detect matrix jobs status. Note: May not be needed with GitHub Merge Queues.
     needs: full
     runs-on: ubuntu-latest
     steps:
