@@ -10,6 +10,8 @@ on:
     - reopened
     - synchronize
     - ready_for_review
+  merge_group:
+    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
