@@ -1,3 +1,0 @@
-status = ["build"]
-delete_merged_branches = false
-timeout_sec = 36000 # ten hours
