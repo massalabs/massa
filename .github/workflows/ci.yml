@@ -221,7 +221,7 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
 
-  build: # quick hack because bors wrongly detect matrix jobs status. Note: May not be needed with HitHub Merge Queues.
+  build: # quick hack because bors wrongly detect matrix jobs status. Note: May not be needed with GitHub Merge Queues.
     needs: full
     runs-on: ubuntu-latest
     steps:
