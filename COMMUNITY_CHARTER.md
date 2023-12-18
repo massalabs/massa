@@ -4,19 +4,19 @@ Code for open collaboration & truly decentralized blockchain
 
 This is the “social” contract that all members of the Massa community are committed to read and to follow (hereinafter the “Charter”). By member we mean anyone who owns Massa tokens, who hosts a node, or who creates blocks on the Massa blockchain (hereinafter a “Member”).
 
-This Charter aims to reflect the values of openness, transparency, decentralization, and the prohibition of delegation that are intrinsic to the community. By signing this Charter, any individual, institution, or social group of any kind commits to fulfill the principles established below. 
+This Charter aims to reflect the values of openness, transparency, and decentralization. By signing this Charter, any individual, institution, or social group of any kind commits to fulfill the principles established below. 
 
 ## Decentralization
 
-In order to preserve the fully decentralized character of the blockchain, the members undertake to make direct use of their Massa and more specifically not to delegate or transmit the management of their Massa to other members for staking; or to take on such delegation or management to stake on their behalf (as described in ###Prohibition on delegation by any means). Such a prohibition is effective when the amount of tokens transmitted or delegated is greater than or equal to 1,000,000 MAS tokens.
+In order to preserve the fully decentralized character of the blockchain, the members undertake to make direct use of their Massa and more specifically not to delegate or transmit the management of their Massa to other members for staking; or to take on such delegation or management to stake on their behalf (as described in the section Prohibition on delegation by any means). Such a prohibition is effective when the amount of tokens transmitted or delegated to a given member is greater than or equal to 1,000,000 MAS tokens in total.
 
 
-Thus, any Member commits themselves not to act within the Massa community as professional delegates (person or entity whose economic activity, whether principal or accessory, is to receive coins from other members to stake them on their behalf). For the avoidance of doubt, listing Massa on an exchange platform is allowed and other exchange platform activities (receive, manage and trade cryptocurrencies between blockchain networks) are allowed except staking.
+Thus, any Member commits themselves not to act within the Massa community as professional delegates (person or entity whose economic activity, whether principal or accessory, is to receive coins from other members to stake them on their behalf). For the avoidance of doubt, listing Massa on an exchange platform is allowed and other exchange platform activities (receive, manage and trade cryptocurrencies between blockchain networks) are allowed except staking of Massa tokens.
 
 ## Prohibition of delegation by any means 
 
-As mentioned above (Decentralization section), the Massa ecosystem community recognizes that, for reasons of decentralization, delegating or transferring the management of tokens held by a given Member to another one constitutes an assumption of delegation contrary to the terms of this Charter. This includes, but is not limited to, delegation contrary to the provisions of the Charter:
-Delegating tokens to a third party, whether professional or not, to stake or validate blocks on behalf of a given token holder;
+As mentioned above (see Decentralization section above), the Massa ecosystem community recognizes that, for reasons of decentralization, delegating or transferring the management of tokens held by a given Member to another one constitutes an assumption of delegation contrary to the terms of this Charter. This includes, but is not limited to:
+Delegating or transferring tokens to a third party, whether professional or not, to stake or validate blocks on behalf of a given token holder;
 Participating in a delegation pool.
 Any violation of the prohibition of delegation is subject to sanctions, such as:
 Suspension or exclusion of the given Member from the Massa community;
@@ -32,17 +32,17 @@ Massa members agree about what constitutes fair use of the platform, and are com
 
 ## Transparency and integrity
 
-The Massa network, and its current or future configuration, development, deployment and use must ensure and prioritize [1]transparency, [2]traceability and [3]integrity within the community at all times.
+The Massa network, and its current or future configuration, development, deployment and use must ensure and prioritize transparency [1], traceability [2] and integrity [3] within the community at all times.
 
-* [1]Transparency is a necessary condition for monitoring participatory processes and mechanisms, but will never, in any case, be applied to the processing of personal data or in violation of the privacy of Massa participants. 
+* [1] Transparency is a necessary condition for monitoring participatory processes and mechanisms, but will never, in any case, be applied to the processing of personal data or in violation of the privacy of Massa participants. 
 
-* [2]Traceability refers to the ability to fully account for what happens in any participatory or decision-making process related to the Massa community in the past and, to guarantee similar conditions for present and future ones. Each member acts on his or her own behalf or undertakes to make his or her position clear when acting on behalf of another Massa user or member. 
+* [2] Traceability refers to the ability to fully account for what happens in any participatory or decision-making process related to the Massa community in the past and, to guarantee similar conditions for present and future ones. Each member acts on his or her own behalf or undertakes to make his or her position clear when acting on behalf of another Massa user or member. 
 
-* [3]Integrity is understood as the authenticity of a specific vote, or decision process, in order to avoid manipulation of proposals or results of participatory processes or mechanisms.
+* [3] Integrity is understood as the authenticity of a specific operation, vote, or decision process, in order to avoid manipulation of the blockchain or results of participatory processes or mechanisms.
 
-## Continuous improvement and governance
+# Continuous improvement and governance
 
-The Charter will be accessible on the blockchain at charter.massa. The community will be responsible for updating the present Charter in light of its collective needs and on the basis of a majority vote of the stakers, once the governance framework has been implemented. It suggests shared governance procedures based on Massa and a non-centralized decision-making process. Mechanisms for periodic review and evaluation of this Charter will be provided in order to facilitate its continuous improvement.
+The Charter will be accessible within the blockchain source code available at https://github.com/massalabs/massa. The community will be responsible for updating the present Charter in light of its collective needs. Mechanisms for periodic review and evaluation of this Charter will be provided in order to facilitate its continuous improvement.
 
 Every Member of the Massa community is responsible for the application of this Charter.
 
@@ -50,6 +50,6 @@ Every Member of the Massa community is responsible for the application of this C
 
 In addition to the rights set forth in the Open Source license(s) included in the distribution for this software, data, and/or documentation (collectively the "Software," and such licenses collectively with this additional terms the "Software License"), the copyright holders wish to facilitate interoperability and regulate such data exchange with other software (including constants, function signatures, data structures and other invocation methods used to run or interact with each of them).
 
-The implementation of the Massa protocol is conditional to the acceptance of and compliance with the Massa Charter available at charter.massa (the "Charter"). The mere use of any software implementing the Massa protocol makes you a Member of the Massa community and requires the reading and acceptance of the Charter. You must therefore accept the terms of the Charter and undertake to ensure that  other members of the community respect them as well. 
+The implementation of the Massa protocol is conditional to the acceptance of and compliance with the Massa Charter available (the "Charter"). The mere use of any software implementing the Massa protocol makes you a Member of the Massa community and requires the reading and acceptance of the Charter. You must therefore accept the terms of the Charter and undertake to ensure that other members of the community respect them as well. 
 
 Failure to comply with these terms may result in legal action, as specified in the present provisions.
