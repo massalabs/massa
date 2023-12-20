@@ -1140,14 +1140,17 @@ fn check_input_operation(
     api_cfg: &APIConfig,
     last_slot: Option<Slot>,
 ) -> RpcResult<SecureShareOperation> {
-    let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
-        api_cfg.max_datastore_value_length,
-        api_cfg.max_function_name_length,
-        api_cfg.max_parameter_size,
-        api_cfg.max_op_datastore_entry_count,
-        api_cfg.max_op_datastore_key_length,
-        api_cfg.max_op_datastore_value_length,
-    ), api_cfg.chain_id);
+    let operation_deserializer = SecureShareDeserializer::new(
+        OperationDeserializer::new(
+            api_cfg.max_datastore_value_length,
+            api_cfg.max_function_name_length,
+            api_cfg.max_parameter_size,
+            api_cfg.max_op_datastore_entry_count,
+            api_cfg.max_op_datastore_key_length,
+            api_cfg.max_op_datastore_value_length,
+        ),
+        api_cfg.chain_id,
+    );
 
     let mut op_serialized = Vec::new();
     op_serialized.extend(op_input.signature.to_bytes());
@@ -1179,7 +1182,11 @@ fn check_input_operation(
     };
     if let Some(slot) = last_slot {
         if op.content.expire_period < slot.period {
-            return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
+            return Err(
+                ApiError::InconsistencyError(
+                    "Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()
+                ).into()
+            );
         }
     }
     if rest.is_empty() {

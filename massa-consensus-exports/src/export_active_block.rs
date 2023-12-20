@@ -146,6 +146,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_models::block::BlockDeserializerArgs;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -171,6 +172,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -181,12 +183,14 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///         ],
     ///     denunciations: vec![],},
     ///     BlockHeaderSerializer::new(),
     ///     &keypair,
+    ///     *CHAINID
     /// )
     /// .unwrap();
     ///
@@ -196,7 +200,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &keypair, *CHAINID).unwrap();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],
@@ -206,7 +210,7 @@ impl Deserializer<ExportActiveBlock> for ExportActiveBlockDeserializer {
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&export_active_block, &mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),};
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),chain_id: *CHAINID};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::<DeserializeError>(&serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);

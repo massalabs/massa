@@ -1307,6 +1307,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
         let endo2 = Endorsement::new_verifiable(
@@ -1320,6 +1321,7 @@ mod test {
             },
             EndorsementSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 
@@ -1336,6 +1338,7 @@ mod test {
             },
             BlockHeaderSerializer::new(),
             &keypair,
+            *CHAINID,
         )
         .unwrap();
 

@@ -776,9 +776,13 @@ mod test {
 
         assert_eq!(parents_1[1], endorsement_1.endorsed_block);
 
-        let s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), &keypair)
-                .unwrap();
+        let s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            endorsement_1,
+            EndorsementSerializer::new(),
+            &keypair,
+            *CHAINID,
+        )
+        .unwrap();
 
         let (slot_a, _, s_header_1, s_header_2, _) = gen_block_headers_for_denunciation(None, None);
         assert!(slot_a < slot);

@@ -555,6 +555,7 @@ fn send_and_receive_async_message() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
     foreign_controllers
         .selector_controller
         .set_expectations(|selector_controller| {
@@ -586,6 +587,7 @@ fn send_and_receive_async_message() {
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
     let message = AsyncMessage {
         emission_slot: Slot {
             period: 1,
@@ -593,9 +595,12 @@ fn send_and_receive_async_message() {
         },
         emission_index: 0,
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
-        destination: Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+        // Note: generated address (from send_message.ts createSC call)
+        //       this can changes when modification to the final state are done (see create_new_sc_address function)
+        destination: Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
             .unwrap(),
         function: String::from("receive"),
+        // value from SC: send_message.ts
         max_gas: 3000000,
         fee: Amount::from_raw(1),
         coins: Amount::from_raw(100),
@@ -624,6 +629,7 @@ fn send_and_receive_async_message() {
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
             }
             assert_eq!(changes.async_pool_changes.0.len(), 1);
+            println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
                 &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
@@ -647,7 +653,7 @@ fn send_and_receive_async_message() {
                 .ledger_changes
                 .0
                 .get(
-                    &Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+                    &Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
                         .unwrap(),
                 )
                 .unwrap()

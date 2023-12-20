@@ -1321,7 +1321,9 @@ async fn send_operations() {
         }
     }
 
-    let op2 = create_operation_with_expire_period(&keypair, 550000);
+    // Note: expire_period is set to be higher than current slot (which is computed from config genesis timestamp)
+    //       CHeck send_operation.rs where last_slot value is computed
+    let op2 = create_operation_with_expire_period(&keypair, 950000);
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
         .serialize(&op2, &mut buffer)
@@ -1346,8 +1348,8 @@ async fn send_operations() {
             assert_eq!(ope_id.operation_ids.len(), 1);
             assert_eq!(ope_id.operation_ids[0], op2.id.to_string());
         }
-        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(_) => {
-            panic!("should be ok")
+        massa_proto_rs::massa::api::v1::send_operations_response::Result::Error(e) => {
+            panic!("Send operations error: {:?}", e);
         }
     }
 
