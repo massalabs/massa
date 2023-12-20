@@ -683,30 +683,30 @@ mod test {
 
     #[test]
     fn test_address_errors() {
+        let expected_error_0 = "address parsing error: UnexpectedAddress".to_string();
         let actual_error_0 = Address::from_str("UnexpectedAddress")
             .unwrap_err()
             .to_string();
-        let expected_error_0 = "address parsing error: UnexpectedAddress".to_string();
 
+        let expected_error_1 = "address parsing error: in SCAddress from_str_without_prefixed_type: invalid checksum, calculated checksum: '[255, 246, 254, 58]', expected checksum: [188, 126, 221, 98]".to_string();
         let actual_error_1 = Address::from_str("ASSomeUnexpectedAddress")
             .unwrap_err()
             .to_string();
-        let expected_error_1 = "address parsing error: in SCAddress from_str_without_prefixed_type: invalid checksum, calculated checksum: '[255, 246, 254, 58]', expected checksum: [188, 126, 221, 98]".to_string();
 
+        let expected_error_2 = "address parsing error: in SCAddress from_str_without_prefixed_type: provided string contained invalid character '_' at byte 0".to_string();
         let actual_error_2 = Address::from_str("AS_SomeUnexpectedAddress")
             .unwrap_err()
             .to_string();
-        let expected_error_2 = "address parsing error: in SCAddress from_str_without_prefixed_type: provided string contained invalid character '_' at byte 0".to_string();
 
+        let expected_error_3 = "address parsing error: in UserAddress from_str_without_prefixed_type: invalid checksum, calculated checksum: '[255, 246, 254, 58]', expected checksum: [188, 126, 221, 98]".to_string();
         let actual_error_3 = Address::from_str("AUSomeUnexpectedAddress")
             .unwrap_err()
             .to_string();
-        let expected_error_3 = "address parsing error: in UserAddress from_str_without_prefixed_type: invalid checksum, calculated checksum: '[255, 246, 254, 58]', expected checksum: [188, 126, 221, 98]".to_string();
 
+        let expected_error_4 = "address parsing error: in UserAddress from_str_without_prefixed_type: provided string contained invalid character '_' at byte 0".to_string();
         let actual_error_4 = Address::from_str("AU_SomeUnexpectedAddress")
             .unwrap_err()
             .to_string();
-        let expected_error_4 = "address parsing error: in UserAddress from_str_without_prefixed_type: provided string contained invalid character '_' at byte 0".to_string();
 
         assert_eq!(actual_error_0, expected_error_0);
         assert_eq!(actual_error_1, expected_error_1);

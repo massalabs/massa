@@ -648,6 +648,28 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_endorsement_id() {
+        let expected_endorsement_id =
+            EndorsementId::from_str("E12Uy7hrAUHpmHQTWu68p17v7VtZJ6syBTWEJH6jwMTWJB6fdSc7")
+                .unwrap();
+        let actual_endorsement_id = EndorsementId::new(Hash::compute_from("edm".as_bytes()));
+
+        assert_eq!(actual_endorsement_id, expected_endorsement_id);
+    }
+
+    #[test]
+    #[serial]
+    fn test_endorsement_id_errors() {
+        let actual_error = EndorsementId::from_str("SomeUnvalidEndorsementId")
+            .unwrap_err()
+            .to_string();
+        let expected_error = "endorsement id parsing error".to_string();
+
+        assert_eq!(actual_error, expected_error);
+    }
+
+    #[test]
+    #[serial]
     fn test_endorsement_serde() {
         let orig_endorsement = Endorsement {
             slot: Slot::new(10, 1),
