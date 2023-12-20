@@ -40,7 +40,7 @@ The Massa network, and its current or future configuration, development, deploym
 
 * [3] Integrity is understood as the authenticity of a specific operation, vote, or decision process, in order to avoid manipulation of the blockchain or results of participatory processes or mechanisms.
 
-# Continuous improvement and governance
+## Continuous improvement and governance
 
 The Charter will be accessible within the blockchain source code available at https://github.com/massalabs/massa. The community will be responsible for updating the present Charter in light of its collective needs. Mechanisms for periodic review and evaluation of this Charter will be provided in order to facilitate its continuous improvement.
 
