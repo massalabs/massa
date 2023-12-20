@@ -285,6 +285,25 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
 <span class="kw">use </span><span class="kw">crate</span>::prehash::PreHashed;
 <span class="kw">use </span><span class="kw">crate</span>::secure_share::Id;
@@ -560,6 +579,25 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_block_id() {
+        <span class="kw">let </span>expected_block_id =
+            BlockId::from_str(<span class="string">&quot;B12iL52kye2CraMXdkdKDxjZJXF9it6E4hz8KEj656QnhvwocvBX&quot;</span>).unwrap();
+        <span class="kw">let </span>actual_block_id = BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes()));
+
+        <span class="macro">assert_eq!</span>(actual_block_id, expected_block_id);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_block_id_errors() {
+        <span class="kw">let </span>actual_error = BlockId::from_str(<span class="string">&quot;SomeUnvalidBlockId&quot;</span>)
+            .unwrap_err()
+            .to_string();
+        <span class="kw">let </span>expected_error = <span class="string">&quot;block id parsing error&quot;</span>.to_string();
+
+        <span class="macro">assert_eq!</span>(actual_error, expected_error);
+    }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_id_serde() {
