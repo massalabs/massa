@@ -15,7 +15,7 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
-use massa_models::config::{CompactConfig};
+use massa_models::config::CompactConfig;
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};

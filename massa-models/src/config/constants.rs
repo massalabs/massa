@@ -101,7 +101,7 @@ lazy_static::lazy_static! {
             // MainNet
             s if s.starts_with("MAIN") => 77658377,
             _ => {
-                panic!("Unhandled VERSION ({}), cannot compute chain id", VERSION.to_string());
+                panic!("Unhandled VERSION ({}), cannot compute chain id", *VERSION);
             }
         }
     };

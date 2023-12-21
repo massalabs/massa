@@ -2,7 +2,6 @@
 
 use crate::FactoryConfig;
 use massa_time::MassaTime;
-use std::sync::mpsc::channel;
 
 impl Default for FactoryConfig {
     fn default() -> Self {

@@ -1383,6 +1383,7 @@ pub struct OperationsDeserializer {
 }
 
 impl OperationsDeserializer {
+    #[allow(clippy::too_many_arguments)]
     /// Creates a new `OperationsDeserializer`
     pub fn new(
         max_operations_per_message: u32,
