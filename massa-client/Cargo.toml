@@ -3,11 +3,6 @@ name = "massa-client"
 version = "0.27.6"
 edition = "2021"
 
-[features]
-sandbox = [
-    "massa_models/sandbox",
-]
-
 [dependencies]
 anyhow = {workspace = true}
 is-terminal = { workspace = true }
