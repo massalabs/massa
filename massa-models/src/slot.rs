@@ -341,3 +341,63 @@ impl std::fmt::Display for IndexedSlot {
         writeln!(f, "Slot: {}, Index: {}", self.slot, self.index)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_new_last_of_cycle() {
+        // Test case 1: Valid inputs
+        let expected_slot = Slot {
+            period: 767,
+            thread: 31,
+        };
+        let actual_slot = Slot::new_last_of_cycle(5, 128, 32).unwrap();
+        assert_eq!(actual_slot, expected_slot);
+
+        // Test case 2: Overflow scenario for period multiplication
+        let expected_error_mul = "period overflow error".to_string();
+        let actual_error_overflow_mul = Slot::new_last_of_cycle(u64::MAX, 128, 32)
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!(actual_error_overflow_mul, expected_error_mul);
+
+        // Test case 3: Overflow scenario for period addition
+        let actual_error_overflow_add = Slot::new_last_of_cycle(u64::MAX - 1, u64::MAX, 32)
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!(actual_error_overflow_add, expected_error_mul);
+    }
+
+    #[test]
+    fn test_new_first_of_cycle() {
+        // Test case 1: Valid inputs for new_first_of_cycle
+        let expected_slot = Slot {
+            period: 640,
+            thread: 0,
+        };
+        let actual_slot = Slot::new_first_of_cycle(5, 128).unwrap();
+        assert_eq!(actual_slot, expected_slot);
+
+        // Test case 2: Overflow scenario for new_first_of_cycle
+        let expected_error = "period overflow error".to_string();
+        let actual_error = Slot::new_first_of_cycle(u64::MAX, 128)
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!(actual_error, expected_error);
+    }
+
+    #[test]
+    fn test_slot_serde() {
+        let expected_slot = Slot::new(12, 32);
+
+        let serialized = serde_json::to_string(&expected_slot).unwrap();
+        let actual_slot: Slot = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(actual_slot, expected_slot);
+    }
+}

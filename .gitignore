@@ -30,3 +30,4 @@ massa-client/wallets/*
 # coverage
 *.profraw
 coverage
+/firedbg
