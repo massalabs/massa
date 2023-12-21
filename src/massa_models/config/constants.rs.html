@@ -457,7 +457,7 @@
             <span class="comment">// MainNet
             </span>s <span class="kw">if </span>s.starts_with(<span class="string">&quot;MAIN&quot;</span>) =&gt; <span class="number">77658377</span>,
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;Unhandled VERSION ({}), cannot compute chain id&quot;</span>, VERSION.to_string());
+                <span class="macro">panic!</span>(<span class="string">&quot;Unhandled VERSION ({}), cannot compute chain id&quot;</span>, <span class="kw-2">*</span>VERSION);
             }
         }
     };

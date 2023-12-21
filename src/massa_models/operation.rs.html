@@ -1909,6 +1909,7 @@
 <a href="#1909" id="1909">1909</a>
 <a href="#1910" id="1910">1910</a>
 <a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -3294,7 +3295,8 @@
 }
 
 <span class="kw">impl </span>OperationsDeserializer {
-    <span class="doccomment">/// Creates a new `OperationsDeserializer`
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="doccomment">/// Creates a new `OperationsDeserializer`
     </span><span class="kw">pub fn </span>new(
         max_operations_per_message: u32,
         max_datastore_value_length: u64,
