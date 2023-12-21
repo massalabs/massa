@@ -1484,6 +1484,22 @@
 <a href="#1484" id="1484">1484</a>
 <a href="#1485" id="1485">1485</a>
 <a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -2681,7 +2697,7 @@
     <span class="kw">use </span>massa_signature::KeyPair;
 
     <span class="kw">use </span><span class="kw">crate</span>::block_id::BlockId;
-    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, THREAD_COUNT};
+    <span class="kw">use </span><span class="kw">crate</span>::config::{CHAINID, ENDORSEMENT_COUNT, THREAD_COUNT};
     <span class="kw">use </span><span class="kw">crate</span>::endorsement::{Endorsement, EndorsementSerializer, SecureShareEndorsement};
     <span class="kw">use </span><span class="kw">crate</span>::secure_share::{Id, SecureShareContent};
 
@@ -2711,9 +2727,13 @@
             index: <span class="number">9</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>s_endorsement_4 =
-            Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_4 = Endorsement::new_verifiable(
+            endorsement_4,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span>denunciation = Denunciation::try_from((<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;</span>s_endorsement_4));
 
@@ -2747,9 +2767,13 @@
             index: <span class="number">9</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>s_endorsement_4 =
-            Endorsement::new_verifiable(endorsement_4, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_4 = Endorsement::new_verifiable(
+            endorsement_4,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="macro">assert!</span>(!denunciation
             .is_also_for_endorsement(<span class="kw-2">&amp;</span>s_endorsement_4)
@@ -2786,9 +2810,13 @@
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
         };
 
-        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            endorsement_1,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span>endorsement_2 = Endorsement {
             slot: slot_2,
@@ -2796,9 +2824,13 @@
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
         };
 
-        <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement =
-            Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement = Endorsement::new_verifiable(
+            endorsement_2,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="comment">// from an attacker - building manually a Denunciation object
         </span><span class="kw">let </span>de_forged_1 = Denunciation::Endorsement(EndorsementDenunciation {

@@ -512,6 +512,16 @@
 <a href="#512" id="512">512</a>
 <a href="#513" id="513">513</a>
 <a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     block_header::{BlockHeader, BlockHeaderDeserializer, SecuredHeader},
     block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer},
@@ -731,18 +741,23 @@
     <span class="kw">pub </span>max_op_datastore_value_length: u64,
     <span class="kw">pub </span>max_denunciations_in_block_header: u32,
     <span class="kw">pub </span>last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+    <span class="kw">pub </span>chain_id: u64,
 }
 
 <span class="kw">impl </span>BlockMessageDeserializer {
     <span class="kw">pub fn </span>new(args: BlockMessageDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             id_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
-            block_header_deserializer: SecureShareDeserializer::new(BlockHeaderDeserializer::new(
-                args.thread_count,
-                args.endorsement_count,
-                args.max_denunciations_in_block_header,
-                args.last_start_period,
-            )),
+            block_header_deserializer: SecureShareDeserializer::new(
+                BlockHeaderDeserializer::new(
+                    args.thread_count,
+                    args.endorsement_count,
+                    args.max_denunciations_in_block_header,
+                    args.last_start_period,
+                    args.chain_id,
+                ),
+                args.chain_id,
+            ),
             block_id_deserializer: BlockIdDeserializer::new(),
             operation_ids_deserializer: OperationIdsDeserializer::new(
                 args.max_operations_per_block,
@@ -755,6 +770,7 @@
                 args.max_op_datastore_entry_count,
                 args.max_op_datastore_key_length,
                 args.max_op_datastore_value_length,
+                args.chain_id,
             ),
         }
     }
@@ -874,6 +890,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::str::FromStr;
 
+    <span class="kw">use </span>massa_models::config::CHAINID;
     <span class="kw">use </span>massa_models::{block_id::BlockId, operation::OperationId};
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 
@@ -900,6 +917,7 @@
                 max_op_datastore_value_length: <span class="number">1</span>,
                 max_denunciations_in_block_header: <span class="number">1</span>,
                 last_start_period: <span class="prelude-val">None</span>,
+                chain_id: <span class="kw-2">*</span>CHAINID,
             });
         <span class="kw">let </span>(rest, deserialized_message) = deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
@@ -986,6 +1004,7 @@
                 max_op_datastore_value_length: <span class="number">1</span>,
                 max_denunciations_in_block_header: <span class="number">1</span>,
                 last_start_period: <span class="prelude-val">None</span>,
+                chain_id: <span class="kw-2">*</span>CHAINID,
             });
         deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
@@ -1003,6 +1022,7 @@
                 max_op_datastore_value_length: <span class="number">1</span>,
                 max_denunciations_in_block_header: <span class="number">1</span>,
                 last_start_period: <span class="prelude-val">None</span>,
+                chain_id: <span class="kw-2">*</span>CHAINID,
             });
         <span class="kw">let </span>(rest, deserialized_message) = deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)

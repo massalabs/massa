@@ -672,10 +672,6 @@
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockIdDeserializer, BlockIdSerializer};
@@ -1192,6 +1188,7 @@
     <span class="kw">use </span>serde_json::Value;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::config::CHAINID;
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>massa_signature::KeyPair;
     <span class="kw">use </span>serial_test::serial;
@@ -1205,9 +1202,13 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
-                .unwrap();
+        <span class="kw">let </span>endorsement: SecureShareEndorsement = Endorsement::new_verifiable(
+            content,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>sender_keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
         <span class="kw">let </span>serializer = SecureShareSerializer::new();
@@ -1215,7 +1216,7 @@
             .serialize(<span class="kw-2">&amp;</span>endorsement, <span class="kw-2">&amp;mut </span>ser_endorsement)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">1</span>), <span class="kw-2">*</span>CHAINID)
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
                 .unwrap();
         <span class="macro">assert_eq!</span>(res_endorsement, endorsement);
@@ -1230,9 +1231,13 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>endorsement: SecureShareEndorsement =
-            Endorsement::new_verifiable(content, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair)
-                .unwrap();
+        <span class="kw">let </span>endorsement: SecureShareEndorsement = Endorsement::new_verifiable(
+            content,
+            EndorsementSerializerLW::new(),
+            <span class="kw-2">&amp;</span>sender_keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_endorsement: Vec&lt;u8&gt; = Vec::new();
         <span class="kw">let </span>serializer = SecureShareSerializer::new();
@@ -1244,6 +1249,7 @@
 
         <span class="kw">let </span>(<span class="kw">_</span>, res_endorsement): (<span class="kw-2">&amp;</span>[u8], SecureShareEndorsement) = SecureShareDeserializer::new(
             EndorsementDeserializerLW::new(<span class="number">1</span>, Slot::new(<span class="number">10</span>, <span class="number">1</span>), parent),
+            <span class="kw-2">*</span>CHAINID,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_endorsement)
         .unwrap();
@@ -1261,15 +1267,19 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(content_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>sender_keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            content_1,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>sender_keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>serialized = <span class="macro">vec!</span>[];
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>s_endorsement_1, <span class="kw-2">&amp;mut </span>serialized)
             .unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, s_endorsement_1): (<span class="kw-2">&amp;</span>[u8], SecureShare&lt;Endorsement, EndorsementId&gt;) =
-            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">32</span>))
+            SecureShareDeserializer::new(EndorsementDeserializer::new(<span class="number">32</span>, <span class="number">32</span>), <span class="kw-2">*</span>CHAINID)
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
                 .unwrap();
         <span class="kw">let </span>sender_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
@@ -1278,9 +1288,13 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
         };
-        <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement =
-            Endorsement::new_verifiable(content_2, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>sender_keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement = Endorsement::new_verifiable(
+            content_2,
+            EndorsementSerializerLW::new(),
+            <span class="kw-2">&amp;</span>sender_keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="comment">// Test with batch len == 1 (no // verif)
         </span><span class="kw">let </span>batch_1 = [(
@@ -1304,28 +1318,6 @@
             ),
         ];
         verify_signature_batch(<span class="kw-2">&amp;</span>batch_2).unwrap();
-    }
-
-    <span class="attr">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_endorsement_id() {
-        <span class="kw">let </span>expected_endorsement_id =
-            EndorsementId::from_str(<span class="string">&quot;E12Uy7hrAUHpmHQTWu68p17v7VtZJ6syBTWEJH6jwMTWJB6fdSc7&quot;</span>)
-                .unwrap();
-        <span class="kw">let </span>actual_endorsement_id = EndorsementId::new(Hash::compute_from(<span class="string">&quot;edm&quot;</span>.as_bytes()));
-
-        <span class="macro">assert_eq!</span>(actual_endorsement_id, expected_endorsement_id);
-    }
-
-    <span class="attr">#[test]
-    #[serial]
-    </span><span class="kw">fn </span>test_endorsement_id_errors() {
-        <span class="kw">let </span>actual_error = EndorsementId::from_str(<span class="string">&quot;SomeUnvalidEndorsementId&quot;</span>)
-            .unwrap_err()
-            .to_string();
-        <span class="kw">let </span>expected_error = <span class="string">&quot;endorsement id parsing error&quot;</span>.to_string();
-
-        <span class="macro">assert_eq!</span>(actual_error, expected_error);
     }
 
     <span class="attr">#[test]

@@ -230,6 +230,8 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -312,15 +314,17 @@
                             .<span class="kw">await</span>;
                         } <span class="kw">else </span>{
                             <span class="comment">// Deserialize and verify each operation in the incoming message
-                            </span><span class="kw">let </span>operation_deserializer =
-                                SecureShareDeserializer::new(OperationDeserializer::new(
+                            </span><span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(
+                                OperationDeserializer::new(
                                     config.max_datastore_value_length,
                                     config.max_function_name_length,
                                     config.max_parameter_size,
                                     config.max_op_datastore_entry_count,
                                     config.max_op_datastore_key_length,
                                     config.max_op_datastore_value_length,
-                                ));
+                                ),
+                                config.chain_id,
+                            );
                             <span class="kw">let </span>verified_ops_res: <span class="prelude-ty">Result</span>&lt;HashMap&lt;String, SecureShareOperation&gt;, GrpcError&gt; = req_content.operations
                                 .into_iter()
                                 .map(|proto_operation| {

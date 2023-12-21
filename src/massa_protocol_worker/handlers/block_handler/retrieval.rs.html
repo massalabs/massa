@@ -1304,6 +1304,7 @@
 <a href="#1304" id="1304">1304</a>
 <a href="#1305" id="1305">1305</a>
 <a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1431,6 +1432,7 @@
                 max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
                 max_denunciations_in_block_header: <span class="self">self</span>.config.max_denunciations_in_block_header,
                 last_start_period: <span class="prelude-val">Some</span>(<span class="self">self</span>.config.last_start_period),
+                chain_id: <span class="self">self</span>.config.chain_id,
             });
 
         <span class="kw">let </span>tick_update_metrics = tick(<span class="self">self</span>.massa_metrics.tick_delay);

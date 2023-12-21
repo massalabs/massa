@@ -333,6 +333,19 @@
 <a href="#333" id="333">333</a>
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -418,6 +431,19 @@
         </span>}
         .parse()
         .unwrap()
+    };
+    <span class="doccomment">/// node chain id (to avoid replay attacks)
+    </span><span class="kw">pub static </span><span class="kw-2">ref </span>CHAINID: u64 = {
+        <span class="comment">// MASM (MainNet):           77658377
+        // MASB (BuildNet):          77658366
+        // MASS (SecureNet):         77658383
+        // MASL (Labnet):            77658376
+        // SANDBOX (Sandbox):        77
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;sandbox&quot;</span>) {
+            <span class="number">77
+        </span>} <span class="kw">else </span>{
+            <span class="number">77658383
+        </span>}
     };
 }
 

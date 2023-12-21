@@ -226,6 +226,16 @@
 <a href="#226" id="226">226</a>
 <a href="#227" id="227">227</a>
 <a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -259,6 +269,8 @@
     </span>wallet_path: PathBuf,
     <span class="doccomment">/// Password
     </span>password: String,
+    <span class="doccomment">/// chain id
+    </span>chain_id: u64,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -277,7 +289,7 @@
 <span class="comment">//TODO: Use exports and mock it
 </span><span class="kw">impl </span>Wallet {
     <span class="doccomment">/// Generates a new wallet initialized with the provided file content
-    </span><span class="kw">pub fn </span>new(path: PathBuf, password: String) -&gt; <span class="prelude-ty">Result</span>&lt;Wallet, WalletError&gt; {
+    </span><span class="kw">pub fn </span>new(path: PathBuf, password: String, chain_id: u64) -&gt; <span class="prelude-ty">Result</span>&lt;Wallet, WalletError&gt; {
         <span class="kw">if </span>path.is_dir() {
             <span class="kw">let </span><span class="kw-2">mut </span>keys = PreHashMap::default();
             <span class="kw">for </span>entry <span class="kw">in </span>std::fs::read_dir(<span class="kw-2">&amp;</span>path)<span class="question-mark">? </span>{
@@ -304,12 +316,14 @@
                 keys,
                 wallet_path: path,
                 password,
+                chain_id,
             })
         } <span class="kw">else </span>{
             <span class="kw">let </span>wallet = Wallet {
                 keys: PreHashMap::default(),
                 wallet_path: path,
                 password,
+                chain_id,
             };
             wallet.save()<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(wallet)
@@ -435,7 +449,13 @@
         <span class="kw">let </span>sender_keypair = <span class="self">self
             </span>.find_associated_keypair(<span class="kw-2">&amp;</span>address)
             .ok_or_else(|| WalletError::MissingKeyError(address))<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
+        <span class="prelude-val">Ok</span>(Operation::new_verifiable(
+            content,
+            OperationSerializer::new(),
+            sender_keypair,
+            <span class="self">self</span>.chain_id,
+        )
+        .unwrap())
     }
 }
 

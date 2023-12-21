@@ -2055,6 +2055,11 @@
 <a href="#2055" id="2055">2055</a>
 <a href="#2056" id="2056">2056</a>
 <a href="#2057" id="2057">2057</a>
+<a href="#2058" id="2058">2058</a>
+<a href="#2059" id="2059">2059</a>
+<a href="#2060" id="2060">2060</a>
+<a href="#2061" id="2061">2061</a>
+<a href="#2062" id="2062">2062</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2068,6 +2073,7 @@
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+<span class="kw">use </span>massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::{
     address::{Address, SCAddress, UserAddress},
@@ -3281,7 +3287,7 @@
                 .map(|(addr, key)| {
                     <span class="kw">let </span>datastore_key = key.map(|k| k.to_vec());
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>k) = datastore_key {
-                        <span class="kw">if </span>k.len() &gt; <span class="self">self</span>.config.max_datastore_key_length <span class="kw">as </span>usize {
+                        <span class="kw">if </span>k.len() &gt; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize {
                             <span class="macro">bail!</span>(<span class="string">&quot;datastore key is too long&quot;</span>)
                         }
                     }
@@ -3726,6 +3732,10 @@
         };
 
         <span class="prelude-val">Ok</span>(res)
+    }
+
+    <span class="kw">fn </span>chain_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.config.chain_id)
     }
 }
 

@@ -207,6 +207,14 @@
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
 <a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![warn(missing_docs)]
@@ -249,6 +257,9 @@
     <span class="doccomment">/// Port to listen on (Massa GRPC Private API).
     </span><span class="attr">#[arg(long)]
     </span>grpc_private_port: <span class="prelude-ty">Option</span>&lt;u16&gt;,
+    <span class="doccomment">/// Chain id
+    </span><span class="attr">#[arg(long)]
+    </span>chain_id: <span class="prelude-ty">Option</span>&lt;u64&gt;,
     <span class="doccomment">/// Address to listen on
     </span><span class="attr">#[arg(long)]
     </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
@@ -345,6 +356,10 @@
         <span class="prelude-val">Some</span>(grpc_port) =&gt; grpc_port,
         <span class="prelude-val">None </span>=&gt; settings.default_node.grpc_private_port,
     };
+    <span class="kw">let </span>chain_id = <span class="kw">match </span>args.chain_id {
+        <span class="prelude-val">Some</span>(chain_id) =&gt; chain_id,
+        <span class="prelude-val">None </span>=&gt; settings.default_node.chain_id,
+    };
 
     <span class="comment">// Setup panic handlers,
     // and when a panic occurs,
@@ -363,6 +378,7 @@
         private_port,
         grpc_port,
         grpc_priv_port,
+        chain_id,
         <span class="kw-2">&amp;</span>http_config,
     )
     .<span class="kw">await</span><span class="question-mark">?</span>;
@@ -381,7 +397,7 @@
                     <span class="kw">_ </span>=&gt; ask_password(<span class="kw-2">&amp;</span>args.wallet),
                 };
 
-                <span class="kw">let </span>wallet = Wallet::new(args.wallet, password)<span class="question-mark">?</span>;
+                <span class="kw">let </span>wallet = Wallet::new(args.wallet, password, chain_id)<span class="question-mark">?</span>;
                 <span class="prelude-val">Some</span>(wallet)
             }
             <span class="bool-val">false </span>=&gt; <span class="prelude-val">None</span>,

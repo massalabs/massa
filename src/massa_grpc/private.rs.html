@@ -470,6 +470,7 @@
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
 <a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::net::IpAddr;
@@ -776,6 +777,7 @@
         network_stats: <span class="prelude-val">Some</span>(network_stats.into()),
         execution_stats: <span class="prelude-val">Some</span>(execution_stats.into()),
         config: <span class="prelude-val">Some</span>(config.into()),
+        chain_id: grpc.grpc_config.chain_id,
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetNodeStatusResponse {

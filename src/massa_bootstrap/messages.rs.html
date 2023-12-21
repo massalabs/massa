@@ -918,6 +918,9 @@
 <a href="#918" id="918">918</a>
 <a href="#919" id="919">919</a>
 <a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1329,6 +1332,7 @@
     /// use massa_time::MassaTime;
     /// use massa_models::version::Version;
     /// use std::str::FromStr;
+    /// use massa_models::config::CHAINID;
     ///
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let args = BootstrapServerMessageDeserializerArgs {
@@ -1343,7 +1347,9 @@
     ///     max_rolls_length: 1000, max_production_stats_length: 1000, max_credits_length: 1000,
     ///     max_executed_ops_length: 1000, max_ops_changes_length: 1000,
     ///     mip_store_stats_block_considered: 100,
-    ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,};
+    ///     max_denunciations_per_block_header: 128, max_denunciation_changes_length: 1000,
+    ///     chain_id: *CHAINID
+    /// };
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
