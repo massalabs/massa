@@ -148,12 +148,6 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_signature::KeyPair;
 
@@ -187,8 +181,7 @@
     };
 
     <span class="kw">let </span>v_endorsement1 =
-        Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>)
-            .unwrap();
+        Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
 
     <span class="kw">let </span>endorsement_2 = Endorsement {
         slot,
@@ -197,8 +190,7 @@
     };
 
     <span class="kw">let </span>v_endorsement2 =
-        Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>)
-            .unwrap();
+        Endorsement::new_verifiable(endorsement_2, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
 
     <span class="kw">let </span>endorsement_3 = Endorsement {
         slot,
@@ -206,8 +198,7 @@
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk3&quot;</span>.as_bytes())),
     };
     <span class="kw">let </span>v_endorsement_3 =
-        Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>)
-            .unwrap();
+        Endorsement::new_verifiable(endorsement_3, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair).unwrap();
 
     (
         slot,
@@ -242,7 +233,7 @@
         endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
     };
     <span class="kw">let </span>s_endorsement_1 =
-        Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair, <span class="number">0</span>)
+        Endorsement::new_verifiable(endorsement_1, EndorsementSerializerLW::new(), <span class="kw-2">&amp;</span>keypair)
             .unwrap();
 
     <span class="kw">let </span>block_header_1 = BlockHeader {
@@ -260,7 +251,6 @@
         block_header_1,
         BlockHeaderSerializer::new(),
         <span class="kw-2">&amp;</span>keypair,
-        <span class="number">0</span>,
     )
     .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
@@ -279,7 +269,6 @@
         block_header_2,
         BlockHeaderSerializer::new(),
         <span class="kw-2">&amp;</span>keypair,
-        <span class="number">0</span>,
     )
     .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
@@ -298,7 +287,6 @@
         block_header_3,
         BlockHeaderSerializer::new(),
         <span class="kw-2">&amp;</span>keypair,
-        <span class="number">0</span>,
     )
     .expect(<span class="string">&quot;error while producing block header&quot;</span>);
 
