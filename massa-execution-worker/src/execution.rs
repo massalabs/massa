@@ -801,7 +801,8 @@ impl ExecutionState {
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
             // * the context will give the operation's sender write access to its own ledger entry
-            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+            // This needs to be defined before anything can fail, so that the emitted event
+            // contains the right stack
             context.stack = vec![ExecutionStackElement {
                 address: sender_addr,
                 coins: Amount::zero(),
@@ -811,7 +812,7 @@ impl ExecutionState {
         };
 
         // load the tmp module
-        let (module, remaining_gas) = self
+        let module = self
             .module_cache
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
@@ -819,7 +820,7 @@ impl ExecutionState {
         massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
-            remaining_gas,
+            *max_gas,
             self.config.gas_costs.clone(),
         )
         .map_err(|error| ExecutionError::VMError {
@@ -904,13 +905,13 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let (module, remaining_gas) = self.module_cache.write().load_module(&bytecode, max_gas)?;
+        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
             target_func,
             param,
-            remaining_gas,
+            max_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -999,7 +1000,7 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let (module, remaining_gas) = self
+        let module = self
             .module_cache
             .write()
             .load_module(&bytecode, message.max_gas)?;
@@ -1008,7 +1009,7 @@ impl ExecutionState {
             module,
             &message.function,
             &message.function_params,
-            remaining_gas,
+            message.max_gas,
             self.config.gas_costs.clone(),
         );
         match response {
@@ -1421,7 +1422,7 @@ impl ExecutionState {
                 }
 
                 // load the tmp module
-                let (module, remaining_gas) = self
+                let module = self
                     .module_cache
                     .read()
                     .load_tmp_module(&bytecode, req.max_gas)?;
@@ -1430,7 +1431,7 @@ impl ExecutionState {
                 massa_sc_runtime::run_main(
                     &*self.execution_interface,
                     module,
-                    remaining_gas,
+                    req.max_gas,
                     self.config.gas_costs.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
@@ -1474,7 +1475,7 @@ impl ExecutionState {
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let (module, remaining_gas) = self
+                let module = self
                     .module_cache
                     .write()
                     .load_module(&bytecode, req.max_gas)?;
@@ -1484,7 +1485,7 @@ impl ExecutionState {
                     module,
                     &target_func,
                     &parameter,
-                    remaining_gas,
+                    req.max_gas,
                     self.config.gas_costs.clone(),
                 );
 
@@ -1507,17 +1508,31 @@ impl ExecutionState {
 
         // return the execution output
         let execution_output = context_guard!(self).settle_slot(None);
-        let exact_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
+        let exact_exec_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
+
+        // compute a gas cost, estimating the gas of the last SC call to be max_instance_cost
+        let corrected_cost = match (context_guard!(self)).gas_remaining_before_subexecution {
+            Some(gas_remaining) => req
+                .max_gas
+                .saturating_sub(gas_remaining) // yield gas used until last subexecution
+                .saturating_add(self.config.gas_costs.max_instance_cost),
+            None => self.config.gas_costs.max_instance_cost, // no subexecution, just max_instance_cost
+        };
+
+        // keep the max of the two so the last SC call has at least max_instance_cost of gas
+        let estimated_cost = u64::max(exact_exec_cost, corrected_cost);
+        debug!(
+            "execute_readonly_request:
+            exec_response.remaining_gas: {}
+            exact_exec_cost: {}
+            corrected_cost: {}
+            estimated_cost: {}",
+            exec_response.remaining_gas, exact_exec_cost, corrected_cost, estimated_cost
+        );
+
         Ok(ReadOnlyExecutionOutput {
             out: execution_output,
-            // return max_instance_cost if the exact cost is below
-            // users can paste the estimated amount into a real call
-            // without having to worry about underlying limits
-            gas_cost: if exact_cost > self.config.gas_costs.max_instance_cost {
-                exact_cost
-            } else {
-                self.config.gas_costs.max_instance_cost
-            },
+            gas_cost: estimated_cost,
             call_result: exec_response.ret,
         })
     }

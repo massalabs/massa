@@ -1323,7 +1323,7 @@ async fn send_operations() {
 
     // Note: expire_period is set to be higher than current slot (which is computed from config genesis timestamp)
     //       CHeck send_operation.rs where last_slot value is computed
-    let op2 = create_operation_with_expire_period(&keypair, 950000);
+    let op2 = create_operation_with_expire_period(&keypair, 1950000);
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
         .serialize(&op2, &mut buffer)

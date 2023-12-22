@@ -87,6 +87,10 @@ pub struct ExecutionContextSnapshot {
 
     /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
+
+    /// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    pub gas_remaining_before_subexecution: Option<u64>,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -171,6 +175,10 @@ pub struct ExecutionContext {
 
     /// Address factory
     pub address_factory: AddressFactory,
+
+    /// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    pub gas_remaining_before_subexecution: Option<u64>,
 }
 
 impl ExecutionContext {
@@ -180,7 +188,8 @@ impl ExecutionContext {
     /// (see read-only and `active_slot` methods).
     ///
     /// # arguments
-    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `final_state`: thread-safe access to the final state.
+    /// Note that this will be used only for reading, never for writing
     ///
     /// # returns
     /// A new (empty) `ExecutionContext` instance
@@ -233,6 +242,7 @@ impl ExecutionContext {
             config,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
+            gas_remaining_before_subexecution: None,
         }
     }
 
@@ -253,6 +263,7 @@ impl ExecutionContext {
             stack: self.stack.clone(),
             event_count: self.events.0.len(),
             unsafe_rng: self.unsafe_rng.clone(),
+            gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
         }
     }
 
@@ -280,6 +291,7 @@ impl ExecutionContext {
         self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
+        self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
