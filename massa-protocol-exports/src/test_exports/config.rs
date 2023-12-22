@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{settings::PeerCategoryInfo, ProtocolConfig};
-use massa_models::config::{ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
+use massa_models::config::{CHAINID, ENDORSEMENT_COUNT, MAX_MESSAGE_SIZE};
 use massa_time::MassaTime;
 use tempfile::NamedTempFile;
 
@@ -96,6 +96,7 @@ impl Default for ProtocolConfig {
             try_connection_timer_same_peer: MassaTime::from_millis(1000),
             test_oldest_peer_cooldown: MassaTime::from_millis(720000),
             rate_limit: 1024 * 1024 * 2,
+            chain_id: *CHAINID,
         }
     }
 }

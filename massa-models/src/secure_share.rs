@@ -80,11 +80,12 @@ where
         self,
         content_serializer: Ser,
         keypair: &KeyPair,
+        chain_id: u64,
     ) -> Result<SecureShare<Self, ID>, ModelsError> {
         let mut content_serialized = Vec::new();
         content_serializer.serialize(&self, &mut content_serialized)?;
         let public_key = keypair.get_public_key();
-        let hash = Self::compute_hash(&self, &content_serialized, &public_key);
+        let hash = Self::compute_hash(&self, &content_serialized, &public_key, chain_id);
         let creator_address = Address::from_public_key(&public_key);
         Ok(SecureShare {
             signature: self.sign(keypair, &hash)?,
@@ -97,7 +98,12 @@ where
     }
 
     /// Compute hash
-    fn compute_hash(&self, content_serialized: &[u8], content_creator_pub_key: &PublicKey) -> Hash {
+    fn compute_hash(
+        &self,
+        content_serialized: &[u8],
+        content_creator_pub_key: &PublicKey,
+        _chain_id: u64,
+    ) -> Hash {
         let mut hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
@@ -134,6 +140,7 @@ where
         creator_public_key_deserializer: &PublicKeyDeserializer,
         content_deserializer: &Deser,
         buffer: &'a [u8],
+        chain_id: u64,
     ) -> IResult<&'a [u8], SecureShare<Self, ID>, E> {
         let (serialized_data, (signature, creator_public_key)) = context(
             "Failed SecureShare deserialization",
@@ -163,7 +170,7 @@ where
             serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         let creator_address = Address::from_public_key(&creator_public_key);
-        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key);
+        let hash = Self::compute_hash(&content, &content_serialized, &creator_public_key, chain_id);
 
         Ok((
             rest,
@@ -301,6 +308,7 @@ where
     signature_deserializer: SignatureDeserializer,
     public_key_deserializer: PublicKeyDeserializer,
     content_deserializer: Deser,
+    chain_id: u64,
     marker_t: std::marker::PhantomData<T>,
 }
 
@@ -313,16 +321,17 @@ where
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content
-    pub const fn new(content_deserializer: Deser) -> Self {
+    pub const fn new(content_deserializer: Deser, chain_id: u64) -> Self {
         Self {
             signature_deserializer: SignatureDeserializer::new(),
             public_key_deserializer: PublicKeyDeserializer::new(),
             content_deserializer,
+            chain_id,
             marker_t: std::marker::PhantomData,
         }
     }
 
-    /// This method is used deserialize data that has been serialized in a lightweight form.
+    /// This method is used to deserialize data that has been serialized in a lightweight form.
     /// The buffer doesn't have the whole content serialized and so
     /// this serialized data isn't coherent with the full structure and can't be used to calculate id and signature.
     /// We pass a serializer to serialize the full structure and retrieve a coherent `serialized_data`
@@ -350,6 +359,7 @@ where
             &self.public_key_deserializer,
             &self.content_deserializer,
             buffer,
+            self.chain_id,
         )
     }
 }
@@ -367,6 +377,7 @@ where
     /// # use massa_signature::KeyPair;
     /// # use std::ops::Bound::Included;
     /// # use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     ///
     /// let content = Endorsement {
     ///    slot: Slot::new(10, 1),
@@ -377,11 +388,12 @@ where
     /// let secured: SecureShare<Endorsement, BlockId> = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
-    ///    &keypair
+    ///    &keypair,
+    ///    *CHAINID
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = SecureShareSerializer::new().serialize(&secured, &mut serialized_data).unwrap();
-    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1));
+    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1), 77);
     /// let (rest, deserialized): (&[u8], SecureShare<Endorsement, BlockId>) = deserializer.deserialize::<DeserializeError>(&serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(secured.id, deserialized.id);
@@ -396,6 +408,7 @@ where
             &self.public_key_deserializer,
             &self.content_deserializer,
             buffer,
+            self.chain_id,
         )
     }
 }

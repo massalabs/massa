@@ -14,7 +14,9 @@ use massa_ledger_exports::{
     LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
-use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
+use massa_models::config::{
+    CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+};
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -553,6 +555,7 @@ fn send_and_receive_async_message() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
     foreign_controllers
         .selector_controller
         .set_expectations(|selector_controller| {
@@ -584,6 +587,7 @@ fn send_and_receive_async_message() {
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
     let message = AsyncMessage {
         emission_slot: Slot {
             period: 1,
@@ -591,9 +595,12 @@ fn send_and_receive_async_message() {
         },
         emission_index: 0,
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
-        destination: Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+        // Note: generated address (from send_message.ts createSC call)
+        //       this can changes when modification to the final state are done (see create_new_sc_address function)
+        destination: Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
             .unwrap(),
         function: String::from("receive"),
+        // value from SC: send_message.ts
         max_gas: 3000000,
         fee: Amount::from_raw(1),
         coins: Amount::from_raw(100),
@@ -622,6 +629,7 @@ fn send_and_receive_async_message() {
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
             }
             assert_eq!(changes.async_pool_changes.0.len(), 1);
+            println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
                 &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
@@ -645,7 +653,7 @@ fn send_and_receive_async_message() {
                 .ledger_changes
                 .0
                 .get(
-                    &Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+                    &Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
                         .unwrap(),
                 )
                 .unwrap()
@@ -1248,6 +1256,7 @@ fn send_and_receive_transaction() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the transaction operation
@@ -1317,6 +1326,7 @@ fn roll_buy() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1430,6 +1440,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     let operation2 = Operation::new_verifiable(
@@ -1442,6 +1453,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1549,6 +1561,7 @@ fn roll_slash() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -1666,6 +1679,7 @@ fn roll_slash_2() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -2154,6 +2168,7 @@ fn not_enough_instance_gas() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
@@ -2428,4 +2443,44 @@ fn test_rewards() {
     );
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
+}
+
+#[test]
+fn chain_id() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/chain_id.wasm"),
+        //unused
+        include_bytes!("./wasm/chain_id.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
 }

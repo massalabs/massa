@@ -3,6 +3,7 @@ use std::{str::FromStr, sync::Arc};
 use super::BlockTestFactory;
 use massa_consensus_exports::MockConsensusController;
 use massa_hash::Hash;
+use massa_models::config::CHAINID;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -134,9 +135,13 @@ fn basic_creation_with_operation() {
                 expire_period: 2,
                 op: OperationType::RollBuy { roll_count: 1 },
             };
-            let operation =
-                Operation::new_verifiable(content, OperationSerializer::new(), &keypair_clone)
-                    .unwrap();
+            let operation = Operation::new_verifiable(
+                content,
+                OperationSerializer::new(),
+                &keypair_clone,
+                *CHAINID,
+            )
+            .unwrap();
             pool_storage.store_operations(vec![operation.clone()]);
             (vec![operation.id], pool_storage.clone())
         });

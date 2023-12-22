@@ -174,4 +174,6 @@ pub struct ProtocolConfig {
     pub test_oldest_peer_cooldown: MassaTime,
     /// Rate limit to apply on the data stream
     pub rate_limit: u64,
+    /// Chain id
+    pub chain_id: u64,
 }

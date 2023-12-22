@@ -74,7 +74,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -404,6 +404,7 @@ async fn launch(
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        chain_id: *CHAINID,
     };
 
     let bootstrap_state = match get_state(
@@ -517,6 +518,7 @@ async fn launch(
         max_event_size: MAX_EVENT_DATA_SIZE,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
+        chain_id: *CHAINID,
     };
 
     let execution_channels = ExecutionChannels {
@@ -681,6 +683,7 @@ async fn launch(
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
         rate_limit: SETTINGS.protocol.rate_limit,
+        chain_id: *CHAINID,
     };
 
     let (protocol_controller, protocol_channels) =
@@ -717,6 +720,7 @@ async fn launch(
         force_keep_final_periods_without_ops: SETTINGS
             .consensus
             .force_keep_final_periods_without_ops,
+        chain_id: *CHAINID,
     };
 
     let (consensus_event_sender, consensus_event_receiver) =
@@ -776,6 +780,7 @@ async fn launch(
         stop_production_when_zero_connections: SETTINGS
             .factory
             .stop_production_when_zero_connections,
+        chain_id: *CHAINID,
     };
     let factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -848,6 +853,7 @@ async fn launch(
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
+        chain_id: *CHAINID,
     };
 
     // spawn Massa API
@@ -1139,6 +1145,7 @@ fn configure_grpc(
             .clone(),
         client_certificate_path: settings.client_certificate_path.clone(),
         client_private_key_path: settings.client_private_key_path.clone(),
+        chain_id: *CHAINID,
     }
 }
 
@@ -1273,7 +1280,11 @@ struct Args {
 }
 
 /// Load wallet, asking for passwords if necessary
-fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLock<Wallet>>> {
+fn load_wallet(
+    password: Option<String>,
+    path: &Path,
+    chain_id: u64,
+) -> anyhow::Result<Arc<RwLock<Wallet>>> {
     let password = if path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
@@ -1293,6 +1304,7 @@ fn load_wallet(password: Option<String>, path: &Path) -> anyhow::Result<Arc<RwLo
     Ok(Arc::new(RwLock::new(Wallet::new(
         PathBuf::from(path),
         password,
+        chain_id,
     )?)))
 }
 
@@ -1349,6 +1361,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
     let node_wallet = load_wallet(
         cur_args.password.clone(),
         &SETTINGS.factory.staking_wallet_path,
+        *CHAINID,
     )?;
 
     // interrupt signal listener

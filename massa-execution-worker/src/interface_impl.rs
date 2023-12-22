@@ -1671,6 +1671,10 @@ impl Interface for InterfaceImpl {
 
         Ok(res)
     }
+
+    fn chain_id(&self) -> Result<u64> {
+        Ok(self.config.chain_id)
+    }
 }
 
 #[cfg(test)]

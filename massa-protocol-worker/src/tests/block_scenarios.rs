@@ -9,6 +9,7 @@ use crate::wrap_network::MockActiveConnectionsTraitWrapper;
 
 use super::universe::{ProtocolForeignControllers, ProtocolTestUniverse};
 use massa_models::block_header::SecuredHeader;
+use massa_models::config::CHAINID;
 use massa_models::operation::{OperationId, OperationPrefixId};
 use massa_models::prehash::PreHashSet;
 use massa_models::{block_id::BlockId, slot::Slot};
@@ -224,7 +225,7 @@ fn test_full_ask_block_workflow() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
     let op_thread = op_1
         .content_creator_address
         .get_thread(protocol_config.thread_count);
@@ -399,8 +400,8 @@ fn test_dont_want_it_anymore() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
-    let op_2 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
+    let op_2 = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
     let op_thread = op_1
         .content_creator_address
         .get_thread(protocol_config.thread_count);
@@ -802,7 +803,7 @@ fn test_noting_block_does_not_panic_with_one_max_node_known_blocks_size() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
     let op_thread = op_1
         .content_creator_address
         .get_thread(protocol_config.thread_count);
@@ -904,7 +905,7 @@ fn test_protocol_does_propagate_operations_received_in_blocks() {
     };
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5);
+    let op_1 = ProtocolTestUniverse::create_operation(&block_creator, 5, *CHAINID);
     let op_thread = op_1
         .content_creator_address
         .get_thread(protocol_config.thread_count);

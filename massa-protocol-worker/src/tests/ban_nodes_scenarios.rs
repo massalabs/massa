@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
+use massa_models::config::CHAINID;
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_protocol_exports::PeerId;
 use massa_protocol_exports::{test_exports::tools, ProtocolConfig};
@@ -229,7 +230,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
     let mut foreign_controllers = ProtocolForeignControllers::new_with_mocks();
 
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let block = ProtocolTestUniverse::create_block(
         &block_creator,
         Slot::new(1, 1),
@@ -237,7 +238,7 @@ fn test_protocol_bans_node_sending_header_with_invalid_signature() {
         vec![],
         vec![],
     );
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
 

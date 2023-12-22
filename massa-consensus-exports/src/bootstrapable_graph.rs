@@ -100,13 +100,14 @@ impl Deserializer<BootstrapableGraph> for BootstrapableGraphDeserializer {
     /// use massa_hash::Hash;
     /// use massa_models::{prehash::PreHashMap, block_id::BlockId, config::THREAD_COUNT};
     /// use massa_models::block::BlockDeserializerArgs;
+    /// use massa_models::config::CHAINID;
     /// let mut bootstrapable_graph = BootstrapableGraph {
     ///   final_blocks: Vec::new(),
     /// };
     /// let mut buffer = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph, &mut buffer).unwrap();
     /// let args = BlockDeserializerArgs {
-    /// thread_count: 32,max_operations_per_block: 16,endorsement_count: 10,max_denunciations_per_block_header: 128,last_start_period: Some(0),};
+    /// thread_count: 32,max_operations_per_block: 16,endorsement_count: 10,max_denunciations_per_block_header: 128,last_start_period: Some(0),chain_id: *CHAINID};
     /// let (rest, bootstrapable_graph_deserialized) = BootstrapableGraphDeserializer::new(args, 10).deserialize::<DeserializeError>(&buffer).unwrap();
     /// let mut buffer2 = Vec::new();
     /// BootstrapableGraphSerializer::new().serialize(&bootstrapable_graph_deserialized, &mut buffer2).unwrap();

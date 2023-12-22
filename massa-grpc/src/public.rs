@@ -726,6 +726,7 @@ pub(crate) fn get_status(
         last_executed_speculative_slot: Some(state.candidate_cursor.into()),
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: Some(config.into()),
+        chain_id: grpc.grpc_config.chain_id,
     };
 
     Ok(grpc_api::GetStatusResponse {

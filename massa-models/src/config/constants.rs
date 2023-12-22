@@ -84,6 +84,27 @@ lazy_static::lazy_static! {
         .parse()
         .unwrap()
     };
+    /// node chain id (to avoid replay attacks)
+    pub static ref CHAINID: u64 = {
+        // MASM (MainNet):           77658377
+        // MASS (SecureNet):         77658383
+        // MASB (BuildNet):          77658366
+        // MASL (Labnet):            77658376
+        // SANDBOX (Sandbox):        77
+        match VERSION.to_string() {
+            // Sandbox
+            s if s.starts_with("SAND") => 77,
+            // BuildNet
+            s if s.starts_with("DEVN") => 77658366,
+            // SecureNet
+            s if s.starts_with("SECU") => 77658383,
+            // MainNet
+            s if s.starts_with("MAIN") => 77658377,
+            _ => {
+                panic!("Unhandled VERSION ({}), cannot compute chain id", *VERSION);
+            }
+        }
+    };
 }
 
 /// Helper function to parse args for lazy_static evaluations
