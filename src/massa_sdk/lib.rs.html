@@ -701,6 +701,10 @@
 <a href="#701" id="701">701</a>
 <a href="#702" id="702">702</a>
 <a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -778,6 +782,8 @@
     </span><span class="kw">pub </span>grpc_public: <span class="prelude-ty">Option</span>&lt;PublicServiceClient&lt;tonic::transport::Channel&gt;&gt;,
     <span class="doccomment">/// grpc private client
     </span><span class="kw">pub </span>grpc_private: <span class="prelude-ty">Option</span>&lt;PrivateServiceClient&lt;tonic::transport::Channel&gt;&gt;,
+    <span class="doccomment">/// Chain id
+    </span><span class="kw">pub </span>chain_id: u64,
 }
 
 <span class="kw">impl </span>Client {
@@ -788,6 +794,7 @@
         private_port: u16,
         grpc_public_port: u16,
         grpc_private_port: u16,
+        chain_id: u64,
         http_config: <span class="kw-2">&amp;</span>HttpConfig,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Client, ClientError&gt; {
         <span class="kw">let </span>public_socket_addr = SocketAddr::new(ip, public_port);
@@ -828,6 +835,7 @@
             private: RpcClient::from_url(<span class="kw-2">&amp;</span>private_url, http_config).<span class="kw">await</span>,
             grpc_public: grpc_pub_client,
             grpc_private: grpc_priv_client,
+            chain_id,
         })
     }
 }

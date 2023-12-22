@@ -1290,6 +1290,7 @@
 <a href="#1290" id="1290">1290</a>
 <a href="#1291" id="1291">1291</a>
 <a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2018,6 +2019,7 @@
         last_executed_speculative_slot: <span class="prelude-val">Some</span>(state.candidate_cursor.into()),
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: <span class="prelude-val">Some</span>(config.into()),
+        chain_id: grpc.grpc_config.chain_id,
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {

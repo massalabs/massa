@@ -143,6 +143,12 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 
 <span class="kw">use </span>massa_hash::Hash;
@@ -209,6 +215,7 @@
             },
             BlockHeaderSerializer::new(),
             keypair,
+            <span class="number">0</span>,
         )
         .unwrap();
 
@@ -219,11 +226,16 @@
             },
             BlockSerializer::new(),
             keypair,
+            <span class="number">0</span>,
         )
         .unwrap()
     }
 
-    <span class="kw">fn </span>create_operation(keypair: <span class="kw-2">&amp;</span>KeyPair, expire_period: u64) -&gt; SecureShareOperation {
+    <span class="kw">fn </span>create_operation(
+        keypair: <span class="kw-2">&amp;</span>KeyPair,
+        expire_period: u64,
+        chain_id: u64,
+    ) -&gt; SecureShareOperation {
         <span class="kw">let </span>recv_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
 
         <span class="kw">let </span>op = OperationType::Transaction {
@@ -235,7 +247,7 @@
             op,
             expire_period,
         };
-        Operation::new_verifiable(content, OperationSerializer::new(), keypair).unwrap()
+        Operation::new_verifiable(content, OperationSerializer::new(), keypair, chain_id).unwrap()
     }
 
     <span class="kw">fn </span>create_endorsement(creator: <span class="kw-2">&amp;</span>KeyPair, slot: Slot) -&gt; SecureShareEndorsement {
@@ -244,7 +256,7 @@
             index: <span class="number">0</span>,
             endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;Genesis 1&quot;</span>.as_bytes())),
         };
-        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator).unwrap()
+        Endorsement::new_verifiable(content, EndorsementSerializer::new(), creator, <span class="number">0</span>).unwrap()
     }
 }
 

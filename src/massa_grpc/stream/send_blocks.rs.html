@@ -201,6 +201,10 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
@@ -267,10 +271,14 @@
                         max_denunciations_per_block_header: config
                             .max_denunciations_per_block_header,
                         last_start_period: <span class="prelude-val">Some</span>(config.last_start_period),
+                        chain_id: config.chain_id,
                     };
                     <span class="comment">// Deserialize and verify received block in the incoming message
-                    </span><span class="kw">match </span>SecureShareDeserializer::new(BlockDeserializer::new(args))
-                        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>req_content.block)
+                    </span><span class="kw">match </span>SecureShareDeserializer::new(
+                        BlockDeserializer::new(args),
+                        config.chain_id,
+                    )
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>req_content.block)
                     {
                         <span class="prelude-val">Ok</span>(tuple) =&gt; {
                             <span class="kw">let </span>(rest, res_block): (<span class="kw-2">&amp;</span>[u8], SecureShareBlock) = tuple;

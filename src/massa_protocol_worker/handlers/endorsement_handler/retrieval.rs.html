@@ -320,6 +320,7 @@
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -621,6 +622,7 @@
             thread_count: config.thread_count,
             max_length_endorsements: config.max_endorsements_per_message,
             endorsement_count: config.endorsement_count,
+            chain_id: config.chain_id,
         });
     std::thread::Builder::new()
         .name(<span class="string">&quot;protocol-endorsement-handler-retrieval&quot;</span>.to_string())

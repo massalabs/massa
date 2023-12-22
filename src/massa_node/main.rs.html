@@ -1462,6 +1462,19 @@
 <a href="#1462" id="1462">1462</a>
 <a href="#1463" id="1463">1463</a>
 <a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1538,7 +1551,7 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    BASE_OPERATION_GAS_COST, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -1868,6 +1881,7 @@
         mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>bootstrap_state = <span class="kw">match </span>get_state(
@@ -1981,6 +1995,7 @@
         max_event_size: MAX_EVENT_DATA_SIZE,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
@@ -2145,6 +2160,7 @@
         try_connection_timer_same_peer: SETTINGS.protocol.try_connection_timer_same_peer,
         test_oldest_peer_cooldown: SETTINGS.protocol.test_oldest_peer_cooldown,
         rate_limit: SETTINGS.protocol.rate_limit,
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>(protocol_controller, protocol_channels) =
@@ -2181,6 +2197,7 @@
         force_keep_final_periods_without_ops: SETTINGS
             .consensus
             .force_keep_final_periods_without_ops,
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
@@ -2240,6 +2257,7 @@
         stop_production_when_zero_connections: SETTINGS
             .factory
             .stop_production_when_zero_connections,
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
     <span class="kw">let </span>factory_channels = FactoryChannels {
         selector: selector_controller.clone(),
@@ -2312,6 +2330,7 @@
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
+        chain_id: <span class="kw-2">*</span>CHAINID,
     };
 
     <span class="comment">// spawn Massa API
@@ -2603,6 +2622,7 @@
             .clone(),
         client_certificate_path: settings.client_certificate_path.clone(),
         client_private_key_path: settings.client_private_key_path.clone(),
+        chain_id: <span class="kw-2">*</span>CHAINID,
     }
 }
 
@@ -2737,7 +2757,11 @@
 }
 
 <span class="doccomment">/// Load wallet, asking for passwords if necessary
-</span><span class="kw">fn </span>load_wallet(password: <span class="prelude-ty">Option</span>&lt;String&gt;, path: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;Arc&lt;RwLock&lt;Wallet&gt;&gt;&gt; {
+</span><span class="kw">fn </span>load_wallet(
+    password: <span class="prelude-ty">Option</span>&lt;String&gt;,
+    path: <span class="kw-2">&amp;</span>Path,
+    chain_id: u64,
+) -&gt; anyhow::Result&lt;Arc&lt;RwLock&lt;Wallet&gt;&gt;&gt; {
     <span class="kw">let </span>password = <span class="kw">if </span>path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
@@ -2757,6 +2781,7 @@
     <span class="prelude-val">Ok</span>(Arc::new(RwLock::new(Wallet::new(
         PathBuf::from(path),
         password,
+        chain_id,
     )<span class="question-mark">?</span>)))
 }
 
@@ -2813,6 +2838,7 @@
     </span><span class="kw">let </span>node_wallet = load_wallet(
         cur_args.password.clone(),
         <span class="kw-2">&amp;</span>SETTINGS.factory.staking_wallet_path,
+        <span class="kw-2">*</span>CHAINID,
     )<span class="question-mark">?</span>;
 
     <span class="comment">// interrupt signal listener

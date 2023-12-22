@@ -1825,6 +1825,91 @@
 <a href="#1825" id="1825">1825</a>
 <a href="#1826" id="1826">1826</a>
 <a href="#1827" id="1827">1827</a>
+<a href="#1828" id="1828">1828</a>
+<a href="#1829" id="1829">1829</a>
+<a href="#1830" id="1830">1830</a>
+<a href="#1831" id="1831">1831</a>
+<a href="#1832" id="1832">1832</a>
+<a href="#1833" id="1833">1833</a>
+<a href="#1834" id="1834">1834</a>
+<a href="#1835" id="1835">1835</a>
+<a href="#1836" id="1836">1836</a>
+<a href="#1837" id="1837">1837</a>
+<a href="#1838" id="1838">1838</a>
+<a href="#1839" id="1839">1839</a>
+<a href="#1840" id="1840">1840</a>
+<a href="#1841" id="1841">1841</a>
+<a href="#1842" id="1842">1842</a>
+<a href="#1843" id="1843">1843</a>
+<a href="#1844" id="1844">1844</a>
+<a href="#1845" id="1845">1845</a>
+<a href="#1846" id="1846">1846</a>
+<a href="#1847" id="1847">1847</a>
+<a href="#1848" id="1848">1848</a>
+<a href="#1849" id="1849">1849</a>
+<a href="#1850" id="1850">1850</a>
+<a href="#1851" id="1851">1851</a>
+<a href="#1852" id="1852">1852</a>
+<a href="#1853" id="1853">1853</a>
+<a href="#1854" id="1854">1854</a>
+<a href="#1855" id="1855">1855</a>
+<a href="#1856" id="1856">1856</a>
+<a href="#1857" id="1857">1857</a>
+<a href="#1858" id="1858">1858</a>
+<a href="#1859" id="1859">1859</a>
+<a href="#1860" id="1860">1860</a>
+<a href="#1861" id="1861">1861</a>
+<a href="#1862" id="1862">1862</a>
+<a href="#1863" id="1863">1863</a>
+<a href="#1864" id="1864">1864</a>
+<a href="#1865" id="1865">1865</a>
+<a href="#1866" id="1866">1866</a>
+<a href="#1867" id="1867">1867</a>
+<a href="#1868" id="1868">1868</a>
+<a href="#1869" id="1869">1869</a>
+<a href="#1870" id="1870">1870</a>
+<a href="#1871" id="1871">1871</a>
+<a href="#1872" id="1872">1872</a>
+<a href="#1873" id="1873">1873</a>
+<a href="#1874" id="1874">1874</a>
+<a href="#1875" id="1875">1875</a>
+<a href="#1876" id="1876">1876</a>
+<a href="#1877" id="1877">1877</a>
+<a href="#1878" id="1878">1878</a>
+<a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::address::AddressSerializer;
@@ -1845,6 +1930,7 @@
     U16VarIntSerializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer,
     U64VarIntSerializer,
 };
+<span class="kw">use </span>massa_signature::PublicKey;
 <span class="kw">use </span>nom::error::{context, ErrorKind};
 <span class="kw">use </span>nom::multi::length_count;
 <span class="kw">use </span>nom::sequence::tuple;
@@ -2239,7 +2325,23 @@
 <span class="doccomment">/// signed operation
 </span><span class="kw">pub type </span>SecureShareOperation = SecureShare&lt;Operation, OperationId&gt;;
 
-<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Operation {}
+<span class="kw">impl </span>SecureShareContent <span class="kw">for </span>Operation {
+    <span class="kw">fn </span>compute_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        content_serialized: <span class="kw-2">&amp;</span>[u8],
+        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
+        chain_id: u64,
+    ) -&gt; Hash {
+        <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
+        <span class="comment">// Note: Add chain id before content hash in order to avoid replay attacks,
+        //       otherwise someone can copy an operation from testnet and execute it on main net
+        // Note 2: This makes the OperationId unique (per chain id)
+        </span>hash_data.extend(chain_id.to_be_bytes());
+        hash_data.extend(content_creator_pub_key.to_bytes());
+        hash_data.extend(content_serialized);
+        Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    }
+}
 
 <span class="doccomment">/// Serializer for `Operation`
 </span><span class="kw">pub struct </span>OperationSerializer {
@@ -3153,6 +3255,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
+    /// use massa_models::config::CHAINID;
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
@@ -3164,7 +3267,7 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
@@ -3192,7 +3295,8 @@
 }
 
 <span class="kw">impl </span>OperationsDeserializer {
-    <span class="doccomment">/// Creates a new `OperationsDeserializer`
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="doccomment">/// Creates a new `OperationsDeserializer`
     </span><span class="kw">pub fn </span>new(
         max_operations_per_message: u32,
         max_datastore_value_length: u64,
@@ -3201,20 +3305,24 @@
         max_op_datastore_entry_count: u64,
         max_op_datastore_key_length: u8,
         max_op_datastore_value_length: u64,
+        chain_id: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             length_deserializer: U32VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(max_operations_per_message),
             ),
-            signed_op_deserializer: SecureShareDeserializer::new(OperationDeserializer::new(
-                max_datastore_value_length,
-                max_function_name_length,
-                max_parameters_size,
-                max_op_datastore_entry_count,
-                max_op_datastore_key_length,
-                max_op_datastore_value_length,
-            )),
+            signed_op_deserializer: SecureShareDeserializer::new(
+                OperationDeserializer::new(
+                    max_datastore_value_length,
+                    max_function_name_length,
+                    max_parameters_size,
+                    max_op_datastore_entry_count,
+                    max_op_datastore_key_length,
+                    max_op_datastore_value_length,
+                ),
+                chain_id,
+            ),
         }
     }
 }
@@ -3226,6 +3334,7 @@
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
+    /// use massa_models::config::CHAINID;
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
@@ -3237,11 +3346,11 @@
     ///   op,
     ///   expire_period: 50,
     /// };
-    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair).unwrap();
+    /// let op_secured = Operation::new_verifiable(content, OperationSerializer::new(), &amp;keypair, *CHAINID).unwrap();
     /// let operations = vec![op_secured.clone(), op_secured.clone()];
     /// let mut buffer = Vec::new();
     /// OperationsSerializer::new().serialize(&amp;operations, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_operations) = OperationsDeserializer::new(10000, 10000, 10000, 10000, 10, 255, 10_000, *CHAINID).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// for (operation1, operation2) in deserialized_operations.iter().zip(operations.iter()) {
     ///     assert_eq!(operation1.id, operation2.id);
     ///     assert_eq!(operation1.signature, operation2.signature);
@@ -3294,9 +3403,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::config::{
-        MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
-        MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-        MAX_PARAMETERS_SIZE,
+        CHAINID, MAX_DATASTORE_VALUE_LENGTH, MAX_FUNCTION_NAME_LENGTH,
+        MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
+        MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_PARAMETERS_SIZE,
     };
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -3305,6 +3414,58 @@
     <span class="kw">use </span>serde_json::Value;
     <span class="kw">use </span>serial_test::serial;
     <span class="kw">use </span>std::collections::BTreeMap;
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_transaction_massa_docs() {
+        <span class="comment">// Serialize an operation with values found in massa docs
+        // This print the values as reported here:
+        // https://docs.massa.net/docs/learn/operation-format-execution#example-of-legal-operation-with-valid-signature
+        // Warning: check if the current chain id matches the chain id in the doc
+
+        </span><span class="kw">let </span>chain_id: u64 = <span class="number">77658383</span>;
+        <span class="kw">let </span>sk = <span class="string">&quot;S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA&quot;</span>;
+        <span class="kw">let </span>pk = <span class="string">&quot;P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd&quot;</span>;
+        <span class="kw">let </span>_addr = <span class="string">&quot;AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7&quot;</span>;
+        <span class="kw">let </span>op_fee = <span class="string">&quot;0.001&quot;</span>;
+        <span class="kw">let </span>op_expiry_period = <span class="number">1000</span>;
+
+        <span class="kw">let </span>tx_dest_addr = <span class="string">&quot;AU12v83xmHg2UrLM8GLsXRMrm7LQgn3DZVT6kUeFsuFyhZKLkbQtY&quot;</span>;
+        <span class="kw">let </span>tx_amount = <span class="string">&quot;3.1&quot;</span>;
+
+        <span class="kw">let </span>op_type = OperationType::Transaction {
+            recipient_address: Address::from_str(tx_dest_addr).unwrap(),
+            amount: Amount::from_str(tx_amount).unwrap(),
+        };
+
+        <span class="kw">let </span>content = Operation {
+            fee: Amount::from_str(op_fee).unwrap(),
+            op: op_type,
+            expire_period: op_expiry_period,
+        };
+
+        <span class="kw">let </span>op_serializer = OperationSerializer::new();
+        <span class="kw">let </span>sender_keypair = KeyPair::from_str(sk).unwrap();
+
+        <span class="macro">assert_eq!</span>(
+            sender_keypair.get_public_key(),
+            PublicKey::from_str(pk).unwrap()
+        );
+
+        <span class="kw">let </span>op: SecureShare&lt;Operation, OperationId&gt; =
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, chain_id).unwrap();
+
+        <span class="macro">println!</span>(<span class="string">&quot;Chain id: {}&quot;</span>, <span class="kw-2">*</span>CHAINID);
+        <span class="macro">println!</span>(<span class="string">&quot;Operation id: {:?}&quot;</span>, op.id);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
+        SecureShareSerializer::new()
+            .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
+            .unwrap();
+
+        <span class="macro">println!</span>(<span class="string">&quot;Operation serialized:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;{:02X?}&quot;</span>, ser_op);
+    }
 
     <span class="attr">#[test]
     #[serial]
@@ -3357,23 +3518,26 @@
 
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op =
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
-            .unwrap();
+            ),
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
+        .unwrap();
         <span class="macro">assert_eq!</span>(res_op, op);
 
         <span class="macro">assert_eq!</span>(op.get_validity_range(<span class="number">10</span>), <span class="number">40</span>..=<span class="number">50</span>);
@@ -3432,23 +3596,26 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op =
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
-            .unwrap();
+            ),
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
+        .unwrap();
         <span class="macro">assert_eq!</span>(res_op, op);
 
         <span class="macro">assert_eq!</span>(op.get_validity_range(<span class="number">10</span>), <span class="number">40</span>..=<span class="number">50</span>);
@@ -3508,23 +3675,26 @@
         <span class="macro">assert_eq!</span>(res_content, content);
         <span class="kw">let </span>op_serializer = OperationSerializer::new();
 
-        <span class="kw">let </span>op = Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair).unwrap();
+        <span class="kw">let </span>op =
+            Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, <span class="kw-2">*</span>CHAINID).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
-        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) =
-            SecureShareDeserializer::new(OperationDeserializer::new(
+        <span class="kw">let </span>(<span class="kw">_</span>, res_op): (<span class="kw-2">&amp;</span>[u8], SecureShareOperation) = SecureShareDeserializer::new(
+            OperationDeserializer::new(
                 MAX_DATASTORE_VALUE_LENGTH,
                 MAX_FUNCTION_NAME_LENGTH,
                 MAX_PARAMETERS_SIZE,
                 MAX_OPERATION_DATASTORE_ENTRY_COUNT,
                 MAX_OPERATION_DATASTORE_KEY_LENGTH,
                 MAX_OPERATION_DATASTORE_VALUE_LENGTH,
-            ))
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
-            .unwrap();
+            ),
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>ser_op)
+        .unwrap();
         <span class="macro">assert_eq!</span>(res_op, op);
 
         <span class="macro">assert_eq!</span>(op.get_validity_range(<span class="number">10</span>), <span class="number">40</span>..=<span class="number">50</span>);

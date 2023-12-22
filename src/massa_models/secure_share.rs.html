@@ -399,6 +399,19 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use crate</span>::{address::Address, error::ModelsError};
@@ -481,11 +494,12 @@
         <span class="self">self</span>,
         content_serializer: Ser,
         keypair: <span class="kw-2">&amp;</span>KeyPair,
+        chain_id: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;SecureShare&lt;<span class="self">Self</span>, ID&gt;, ModelsError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         content_serializer.serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;mut </span>content_serialized)<span class="question-mark">?</span>;
         <span class="kw">let </span>public_key = keypair.get_public_key();
-        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key);
+        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>public_key, chain_id);
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(SecureShare {
             signature: <span class="self">self</span>.sign(keypair, <span class="kw-2">&amp;</span>hash)<span class="question-mark">?</span>,
@@ -498,7 +512,12 @@
     }
 
     <span class="doccomment">/// Compute hash
-    </span><span class="kw">fn </span>compute_hash(<span class="kw-2">&amp;</span><span class="self">self</span>, content_serialized: <span class="kw-2">&amp;</span>[u8], content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey) -&gt; Hash {
+    </span><span class="kw">fn </span>compute_hash(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        content_serialized: <span class="kw-2">&amp;</span>[u8],
+        content_creator_pub_key: <span class="kw-2">&amp;</span>PublicKey,
+        _chain_id: u64,
+    ) -&gt; Hash {
         <span class="kw">let </span><span class="kw-2">mut </span>hash_data = Vec::new();
         hash_data.extend(content_creator_pub_key.to_bytes());
         hash_data.extend(content_serialized);
@@ -535,6 +554,7 @@
         creator_public_key_deserializer: <span class="kw-2">&amp;</span>PublicKeyDeserializer,
         content_deserializer: <span class="kw-2">&amp;</span>Deser,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+        chain_id: u64,
     ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SecureShare&lt;<span class="self">Self</span>, ID&gt;, E&gt; {
         <span class="kw">let </span>(serialized_data, (signature, creator_public_key)) = context(
             <span class="string">&quot;Failed SecureShare deserialization&quot;</span>,
@@ -564,7 +584,7 @@
             </span>serialized_data[..serialized_data.len() - rest.len()].to_vec()
         };
         <span class="kw">let </span>creator_address = Address::from_public_key(<span class="kw-2">&amp;</span>creator_public_key);
-        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>creator_public_key);
+        <span class="kw">let </span>hash = <span class="self">Self</span>::compute_hash(<span class="kw-2">&amp;</span>content, <span class="kw-2">&amp;</span>content_serialized, <span class="kw-2">&amp;</span>creator_public_key, chain_id);
 
         <span class="prelude-val">Ok</span>((
             rest,
@@ -702,6 +722,7 @@
     signature_deserializer: SignatureDeserializer,
     public_key_deserializer: PublicKeyDeserializer,
     content_deserializer: Deser,
+    chain_id: u64,
     marker_t: std::marker::PhantomData&lt;T&gt;,
 }
 
@@ -714,16 +735,17 @@
     ///
     /// # Arguments
     /// * `content_deserializer` - Deserializer for the content
-    </span><span class="kw">pub const fn </span>new(content_deserializer: Deser) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub const fn </span>new(content_deserializer: Deser, chain_id: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             signature_deserializer: SignatureDeserializer::new(),
             public_key_deserializer: PublicKeyDeserializer::new(),
             content_deserializer,
+            chain_id,
             marker_t: std::marker::PhantomData,
         }
     }
 
-    <span class="doccomment">/// This method is used deserialize data that has been serialized in a lightweight form.
+    <span class="doccomment">/// This method is used to deserialize data that has been serialized in a lightweight form.
     /// The buffer doesn&#39;t have the whole content serialized and so
     /// this serialized data isn&#39;t coherent with the full structure and can&#39;t be used to calculate id and signature.
     /// We pass a serializer to serialize the full structure and retrieve a coherent `serialized_data`
@@ -751,6 +773,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.public_key_deserializer,
             <span class="kw-2">&amp;</span><span class="self">self</span>.content_deserializer,
             buffer,
+            <span class="self">self</span>.chain_id,
         )
     }
 }
@@ -768,6 +791,7 @@
     /// # use massa_signature::KeyPair;
     /// # use std::ops::Bound::Included;
     /// # use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     ///
     /// let content = Endorsement {
     ///    slot: Slot::new(10, 1),
@@ -778,11 +802,12 @@
     /// let secured: SecureShare&lt;Endorsement, BlockId&gt; = Endorsement::new_verifiable(
     ///    content,
     ///    EndorsementSerializer::new(),
-    ///    &amp;keypair
+    ///    &amp;keypair,
+    ///    *CHAINID
     /// ).unwrap();
     /// let mut serialized_data = Vec::new();
     /// let serialized = SecureShareSerializer::new().serialize(&amp;secured, &amp;mut serialized_data).unwrap();
-    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1));
+    /// let deserializer = SecureShareDeserializer::new(EndorsementDeserializer::new(32, 1), 77);
     /// let (rest, deserialized): (&amp;[u8], SecureShare&lt;Endorsement, BlockId&gt;) = deserializer.deserialize::&lt;DeserializeError&gt;(&amp;serialized_data).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(secured.id, deserialized.id);
@@ -797,6 +822,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.public_key_deserializer,
             <span class="kw-2">&amp;</span><span class="self">self</span>.content_deserializer,
             buffer,
+            <span class="self">self</span>.chain_id,
         )
     }
 }

@@ -257,6 +257,12 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{block_status::StorageOrBlock, error::ConsensusError};
 <span class="kw">use </span>massa_models::{
     active_block::ActiveBlock,
@@ -382,10 +388,12 @@
     </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(block_der_args: BlockDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>thread_count = block_der_args.thread_count;
+        <span class="kw">let </span>chain_id = block_der_args.chain_id;
         ExportActiveBlockDeserializer {
-            sec_share_block_deserializer: SecureShareDeserializer::new(BlockDeserializer::new(
-                block_der_args,
-            )),
+            sec_share_block_deserializer: SecureShareDeserializer::new(
+                BlockDeserializer::new(block_der_args),
+                chain_id,
+            ),
             block_id_deserializer: BlockIdDeserializer::new(),
             period_deserializer: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
             thread_count,
@@ -403,6 +411,7 @@
     /// use massa_hash::Hash;
     /// use std::collections::HashSet;
     /// use massa_models::block::BlockDeserializerArgs;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -428,6 +437,7 @@
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///             Endorsement::new_verifiable(
@@ -438,12 +448,14 @@
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
+    ///                 *CHAINID
     ///             )
     ///             .unwrap(),
     ///         ],
     ///     denunciations: vec![],},
     ///     BlockHeaderSerializer::new(),
     ///     &amp;keypair,
+    ///     *CHAINID
     /// )
     /// .unwrap();
     ///
@@ -453,7 +465,7 @@
     ///     operations: Vec::new(),
     /// };
     ///
-    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair).unwrap();
+    /// let full_block = Block::new_verifiable(orig_block, BlockSerializer::new(), &amp;keypair, *CHAINID).unwrap();
     /// let export_active_block = ExportActiveBlock {
     ///    block: full_block.clone(),
     ///    parents: vec![],
@@ -463,7 +475,7 @@
     /// let mut serialized = Vec::new();
     /// ExportActiveBlockSerializer::new().serialize(&amp;export_active_block, &amp;mut serialized).unwrap();
     /// let args = BlockDeserializerArgs {
-    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),};
+    ///   thread_count: 32, max_operations_per_block: 16, endorsement_count: 1000,max_denunciations_per_block_header: 128,last_start_period: Some(0),chain_id: *CHAINID};
     /// let (rest, export_deserialized) = ExportActiveBlockDeserializer::new(args).deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert_eq!(export_deserialized.block.id, export_active_block.block.id);
     /// assert_eq!(export_deserialized.block.serialized_data, export_active_block.block.serialized_data);

@@ -504,6 +504,7 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -581,6 +582,7 @@
                 max_op_datastore_entry_count: <span class="self">self</span>.config.max_op_datastore_entry_count,
                 max_op_datastore_key_length: <span class="self">self</span>.config.max_op_datastore_key_length,
                 max_op_datastore_value_length: <span class="self">self</span>.config.max_op_datastore_value_length,
+                chain_id: <span class="self">self</span>.config.chain_id,
             });
         <span class="kw">let </span>tick_ask_operations = tick(<span class="self">self</span>.config.operation_batch_proc_period.to_duration());
 

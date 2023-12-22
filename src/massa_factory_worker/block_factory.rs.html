@@ -273,6 +273,8 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -498,6 +500,7 @@
             },
             BlockHeaderSerializer::new(), <span class="comment">// TODO reuse self.block_header_serializer
             </span>block_producer_keypair,
+            <span class="self">self</span>.cfg.chain_id,
         )
         .expect(<span class="string">&quot;error while producing block header&quot;</span>);
         <span class="comment">// create block
@@ -510,6 +513,7 @@
             block_,
             BlockSerializer::new(), <span class="comment">// TODO reuse self.block_serializer
             </span>block_producer_keypair,
+            <span class="self">self</span>.cfg.chain_id,
         )
         .expect(<span class="string">&quot;error while producing block&quot;</span>);
         <span class="kw">let </span>block_id = block.id;

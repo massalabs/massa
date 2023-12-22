@@ -230,6 +230,7 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_channel::receiver::MassaReceiver;
@@ -418,6 +419,7 @@
                 },
                 <span class="self">self</span>.endorsement_serializer.clone(),
                 <span class="kw-2">&amp;</span>keypair,
+                <span class="self">self</span>.cfg.chain_id,
             )
             .expect(<span class="string">&quot;could not create endorsement&quot;</span>);
 

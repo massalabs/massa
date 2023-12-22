@@ -795,6 +795,29 @@
 <a href="#795" id="795">795</a>
 <a href="#796" id="796">796</a>
 <a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::denunciation::{Denunciation, DenunciationDeserializer, DenunciationSerializer};
 <span class="kw">use </span><span class="kw">crate</span>::endorsement::{
@@ -967,6 +990,7 @@
     /// use massa_models::secure_share::SecureShareContent;
     /// use massa_models::{config::THREAD_COUNT, slot::Slot};
     /// use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::Serializer;
     ///
@@ -989,6 +1013,7 @@
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
+    ///     *CHAINID
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -999,6 +1024,7 @@
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
+    ///     *CHAINID
     ///     )
     ///     .unwrap(),
     ///    ],
@@ -1073,6 +1099,7 @@
     network_versions_deserializer: U32VarIntDeserializer,
     opt_deserializer: OptionDeserializer&lt;u32, U32VarIntDeserializer&gt;,
     block_id_deserializer: BlockIdDeserializer,
+    chain_id: u64,
 }
 
 <span class="kw">impl </span>BlockHeaderDeserializer {
@@ -1083,6 +1110,7 @@
         endorsement_count: u32,
         max_denunciations_in_block_header: u32,
         last_start_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
+        chain_id: u64,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             slot_deserializer: SlotDeserializer::new(
@@ -1115,6 +1143,7 @@
             thread_count,
             endorsement_count,
             last_start_period,
+            chain_id,
         }
     }
 }
@@ -1127,6 +1156,7 @@
     /// use massa_models::{config::THREAD_COUNT, slot::Slot, secure_share::SecureShareContent};
     /// use massa_models::endorsement::{Endorsement, EndorsementSerializer};
     /// use massa_hash::Hash;
+    /// use massa_models::config::CHAINID;
     /// use massa_signature::KeyPair;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     ///
@@ -1149,6 +1179,7 @@
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
+    ///     *CHAINID
     ///     )
     ///     .unwrap(),
     ///     Endorsement::new_verifiable(
@@ -1159,6 +1190,7 @@
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
+    ///     *CHAINID
     ///     )
     ///     .unwrap(),
     ///    ],
@@ -1166,7 +1198,7 @@
     /// };
     /// let mut buffer = vec![];
     /// BlockHeaderSerializer::new().serialize(&amp;header, &amp;mut buffer).unwrap();
-    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, 10, Some(0)).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
+    /// let (rest, deserialized_header) = BlockHeaderDeserializer::new(32, 9, 10, Some(0), 77).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// let mut buffer2 = Vec::new();
     /// BlockHeaderSerializer::new().serialize(&amp;deserialized_header, &amp;mut buffer2).unwrap();
@@ -1262,12 +1294,14 @@
         }
 
         <span class="comment">// Now deser the endorsements (which were light-weight serialized)
-        </span><span class="kw">let </span>endorsement_deserializer =
-            SecureShareDeserializer::new(EndorsementDeserializerLW::new(
+        </span><span class="kw">let </span>endorsement_deserializer = SecureShareDeserializer::new(
+            EndorsementDeserializerLW::new(
                 <span class="self">self</span>.endorsement_count,
                 slot,
                 parents[slot.thread <span class="kw">as </span>usize],
-            ));
+            ),
+            <span class="self">self</span>.chain_id,
+        );
 
         <span class="kw">let </span>parent_id = parents[slot.thread <span class="kw">as </span>usize];
         <span class="kw">let </span>(rest, endorsements): (<span class="kw-2">&amp;</span>[u8], Vec&lt;SecureShare&lt;Endorsement, EndorsementId&gt;&gt;) = context(
@@ -1402,7 +1436,9 @@
     <span class="kw">use </span>massa_serialization::DeserializeError;
     <span class="kw">use </span>serde_json::Value;
 
-    <span class="kw">use </span><span class="kw">crate</span>::config::{ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT};
+    <span class="kw">use </span><span class="kw">crate</span>::config::{
+        CHAINID, ENDORSEMENT_COUNT, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, THREAD_COUNT,
+    };
 
     <span class="kw">use </span><span class="kw">crate</span>::test_exports::{
         gen_block_headers_for_denunciation, gen_endorsements_for_denunciation,
@@ -1437,9 +1473,13 @@
 
         <span class="macro">assert_eq!</span>(parents_1[<span class="number">1</span>], endorsement_1.endorsed_block);
 
-        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            endorsement_1,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_a &lt; slot);
@@ -1466,6 +1506,7 @@
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             <span class="prelude-val">None</span>,
+            <span class="kw-2">*</span>CHAINID,
         );
 
         <span class="kw">let </span>(rem, block_header_der) = der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
@@ -1495,6 +1536,7 @@
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             <span class="prelude-val">None</span>,
+            <span class="kw-2">*</span>CHAINID,
         );
 
         <span class="kw">let </span>(rem, block_header_der) = der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
@@ -1554,9 +1596,13 @@
 
         <span class="macro">assert_eq!</span>(parents_1[<span class="number">1</span>], endorsement_1.endorsed_block);
 
-        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement =
-            Endorsement::new_verifiable(endorsement_1, EndorsementSerializer::new(), <span class="kw-2">&amp;</span>keypair)
-                .unwrap();
+        <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
+            endorsement_1,
+            EndorsementSerializer::new(),
+            <span class="kw-2">&amp;</span>keypair,
+            <span class="kw-2">*</span>CHAINID,
+        )
+        .unwrap();
 
         <span class="kw">let </span>(slot_a, <span class="kw">_</span>, s_header_1, s_header_2, <span class="kw">_</span>) = gen_block_headers_for_denunciation(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert!</span>(slot_a &lt; slot);

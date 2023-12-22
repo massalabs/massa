@@ -1190,6 +1190,14 @@
 <a href="#1190" id="1190">1190</a>
 <a href="#1191" id="1191">1191</a>
 <a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1615,6 +1623,7 @@
             pool_stats,
             config,
             current_cycle,
+            chain_id: <span class="self">self</span>.<span class="number">0</span>.api_settings.chain_id,
         })
     }
 
@@ -2331,14 +2340,17 @@
     api_cfg: <span class="kw-2">&amp;</span>APIConfig,
     last_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
 ) -&gt; RpcResult&lt;SecureShareOperation&gt; {
-    <span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
-        api_cfg.max_datastore_value_length,
-        api_cfg.max_function_name_length,
-        api_cfg.max_parameter_size,
-        api_cfg.max_op_datastore_entry_count,
-        api_cfg.max_op_datastore_key_length,
-        api_cfg.max_op_datastore_value_length,
-    ));
+    <span class="kw">let </span>operation_deserializer = SecureShareDeserializer::new(
+        OperationDeserializer::new(
+            api_cfg.max_datastore_value_length,
+            api_cfg.max_function_name_length,
+            api_cfg.max_parameter_size,
+            api_cfg.max_op_datastore_entry_count,
+            api_cfg.max_op_datastore_key_length,
+            api_cfg.max_op_datastore_value_length,
+        ),
+        api_cfg.chain_id,
+    );
 
     <span class="kw">let </span><span class="kw-2">mut </span>op_serialized = Vec::new();
     op_serialized.extend(op_input.signature.to_bytes());
@@ -2370,7 +2382,11 @@
     };
     <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = last_slot {
         <span class="kw">if </span>op.content.expire_period &lt; slot.period {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(<span class="string">&quot;Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(
+                ApiError::InconsistencyError(
+                    <span class="string">&quot;Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.&quot;</span>.into()
+                ).into()
+            );
         }
     }
     <span class="kw">if </span>rest.is_empty() {
