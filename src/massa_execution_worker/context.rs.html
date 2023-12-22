@@ -1102,6 +1102,18 @@
 <a href="#1102" id="1102">1102</a>
 <a href="#1103" id="1103">1103</a>
 <a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1191,6 +1203,10 @@
 
     <span class="doccomment">/// Unsafe random state
     </span><span class="kw">pub </span>unsafe_rng: Xoshiro256PlusPlus,
+
+    <span class="doccomment">/// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="doccomment">/// An execution context that needs to be initialized before executing bytecode,
@@ -1275,6 +1291,10 @@
 
     <span class="doccomment">/// Address factory
     </span><span class="kw">pub </span>address_factory: AddressFactory,
+
+    <span class="doccomment">/// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1284,7 +1304,8 @@
     /// (see read-only and `active_slot` methods).
     ///
     /// # arguments
-    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `final_state`: thread-safe access to the final state.
+    /// Note that this will be used only for reading, never for writing
     ///
     /// # returns
     /// A new (empty) `ExecutionContext` instance
@@ -1337,6 +1358,7 @@
             config,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
+            gas_remaining_before_subexecution: <span class="prelude-val">None</span>,
         }
     }
 
@@ -1357,6 +1379,7 @@
             stack: <span class="self">self</span>.stack.clone(),
             event_count: <span class="self">self</span>.events.<span class="number">0</span>.len(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
+            gas_remaining_before_subexecution: <span class="self">self</span>.gas_remaining_before_subexecution,
         }
     }
 
@@ -1384,6 +1407,7 @@
         <span class="self">self</span>.created_message_index = snapshot.created_message_index;
         <span class="self">self</span>.stack = snapshot.stack;
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
+        <span class="self">self</span>.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
 
         <span class="comment">// For events, set snapshot delta to error events.
         </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.event_count..) {

@@ -2055,6 +2055,35 @@
 <a href="#2055" id="2055">2055</a>
 <a href="#2056" id="2056">2056</a>
 <a href="#2057" id="2057">2057</a>
+<a href="#2058" id="2058">2058</a>
+<a href="#2059" id="2059">2059</a>
+<a href="#2060" id="2060">2060</a>
+<a href="#2061" id="2061">2061</a>
+<a href="#2062" id="2062">2062</a>
+<a href="#2063" id="2063">2063</a>
+<a href="#2064" id="2064">2064</a>
+<a href="#2065" id="2065">2065</a>
+<a href="#2066" id="2066">2066</a>
+<a href="#2067" id="2067">2067</a>
+<a href="#2068" id="2068">2068</a>
+<a href="#2069" id="2069">2069</a>
+<a href="#2070" id="2070">2070</a>
+<a href="#2071" id="2071">2071</a>
+<a href="#2072" id="2072">2072</a>
+<a href="#2073" id="2073">2073</a>
+<a href="#2074" id="2074">2074</a>
+<a href="#2075" id="2075">2075</a>
+<a href="#2076" id="2076">2076</a>
+<a href="#2077" id="2077">2077</a>
+<a href="#2078" id="2078">2078</a>
+<a href="#2079" id="2079">2079</a>
+<a href="#2080" id="2080">2080</a>
+<a href="#2081" id="2081">2081</a>
+<a href="#2082" id="2082">2082</a>
+<a href="#2083" id="2083">2083</a>
+<a href="#2084" id="2084">2084</a>
+<a href="#2085" id="2085">2085</a>
+<a href="#2086" id="2086">2086</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2068,6 +2097,7 @@
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+<span class="kw">use </span>massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::{
     address::{Address, SCAddress, UserAddress},
@@ -2098,6 +2128,7 @@
 <span class="kw">use </span>std::str::FromStr;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::warn;
 
 <span class="attr">#[cfg(any(
     feature = <span class="string">&quot;gas_calibration&quot;</span>,
@@ -2329,7 +2360,9 @@
             );
         }
 
-        <span class="comment">// push a new call stack element on top of the current call stack
+        <span class="comment">// context.gas_used_until_last_subexecution = context.get;
+
+        // push a new call stack element on top of the current call stack
         </span>context.stack.push(ExecutionStackElement {
             address: to_address,
             coins,
@@ -2357,26 +2390,36 @@
     ///
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module &amp; the remaining gas after loading the module
-    </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64)&gt; {
+    </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>(module, remaining_gas) = context
+        <span class="kw">let </span>module = context
             .module_cache
             .write()
             .load_module(bytecode, gas_limit)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((module, remaining_gas))
+
+        <span class="comment">// can&#39;t call this here because the context is locked
+        // so it&#39;s called in the caller function
+        // interface.set_gas_used_until(remaining_gas);
+
+        </span><span class="prelude-val">Ok</span>(module)
     }
 
     <span class="doccomment">/// Compile and return a temporary module
     ///
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module &amp; the remaining gas after loading the module
-    </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64)&gt; {
+    </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>(module, remaining_gas) = context
+        <span class="kw">let </span>module = context
             .module_cache
             .write()
             .load_tmp_module(bytecode, gas_limit)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((module, remaining_gas))
+
+        <span class="comment">// can&#39;t call this here because the context is locked
+        // so it&#39;s called in the caller function
+        // interface.set_gas_used_until(remaining_gas);
+
+        </span><span class="prelude-val">Ok</span>(module)
     }
 
     <span class="doccomment">/// Gets the balance of the current address address (top of the stack).
@@ -3281,7 +3324,7 @@
                 .map(|(addr, key)| {
                     <span class="kw">let </span>datastore_key = key.map(|k| k.to_vec());
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>k) = datastore_key {
-                        <span class="kw">if </span>k.len() &gt; <span class="self">self</span>.config.max_datastore_key_length <span class="kw">as </span>usize {
+                        <span class="kw">if </span>k.len() &gt; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize {
                             <span class="macro">bail!</span>(<span class="string">&quot;datastore key is too long&quot;</span>)
                         }
                     }
@@ -3726,6 +3769,21 @@
         };
 
         <span class="prelude-val">Ok</span>(res)
+    }
+
+    <span class="doccomment">/// Try to get a write lock on the execution context then set the
+    /// gas_used_until_the_last_subexecution field to the given `gas_remaining` value.
+    ///
+    /// If the context is locked, this function does nothing but log a warning.
+    </span><span class="kw">fn </span>save_gas_remaining_before_subexecution(<span class="kw-2">&amp;</span><span class="self">self</span>, gas_remaining: u64) {
+        <span class="kw">match </span><span class="self">self</span>.context.try_lock() {
+            <span class="prelude-val">Some</span>(<span class="kw-2">mut </span>context) =&gt; {
+                context.gas_remaining_before_subexecution = <span class="prelude-val">Some</span>(gas_remaining);
+            }
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="macro">warn!</span>(<span class="string">&quot;Context is locked, cannot save gas remaining before subexecution&quot;</span>);
+            }
+        }
     }
 }
 
