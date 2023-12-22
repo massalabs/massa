@@ -313,12 +313,12 @@
     <span class="doccomment">/// Load a cached module for execution and check its validity for execution.
     /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     ///
-    /// Returns the module and the remaining gas after loading.
+    /// Returns the module after loading.
     </span><span class="kw">pub fn </span>load_module(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         bytecode: <span class="kw-2">&amp;</span>[u8],
         execution_gas: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64), CacheError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
         <span class="comment">// Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
         </span>execution_gas
@@ -347,18 +347,18 @@
                 }
             }
         };
-        <span class="prelude-val">Ok</span>((module, execution_gas))
+        <span class="prelude-val">Ok</span>(module)
     }
 
     <span class="doccomment">/// Load a temporary module from arbitrary bytecode.
     /// Also checks that the provided execution gas is enough to pay for the instance creation cost.
     ///
-    /// Returns the module and the remaining gas after compilation.
+    /// Returns the module after compilation.
     </span><span class="kw">pub fn </span>load_tmp_module(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         bytecode: <span class="kw-2">&amp;</span>[u8],
         limit: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(RuntimeModule, u64), CacheError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
         <span class="macro">debug!</span>(<span class="string">&quot;load_tmp_module&quot;</span>);
         <span class="comment">// Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
@@ -369,7 +369,7 @@
                 limit, <span class="self">self</span>.cfg.gas_costs.max_instance_cost
             )))<span class="question-mark">?</span>;
         <span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="self">self</span>.cfg.gas_costs.clone(), Compiler::SP)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((module, limit))
+        <span class="prelude-val">Ok</span>(module)
     }
 }
 </code></pre></div></section></main></body></html>
