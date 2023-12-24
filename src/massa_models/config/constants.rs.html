@@ -354,6 +354,8 @@
 <a href="#354" id="354">354</a>
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -456,6 +458,8 @@
             </span>s <span class="kw">if </span>s.starts_with(<span class="string">&quot;SECU&quot;</span>) =&gt; <span class="number">77658383</span>,
             <span class="comment">// MainNet
             </span>s <span class="kw">if </span>s.starts_with(<span class="string">&quot;MAIN&quot;</span>) =&gt; <span class="number">77658377</span>,
+            <span class="comment">// LabNet
+            </span>s <span class="kw">if </span>s.starts_with(<span class="string">&quot;LABN&quot;</span>) =&gt; <span class="number">77658376</span>,
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;Unhandled VERSION ({}), cannot compute chain id&quot;</span>, <span class="kw-2">*</span>VERSION);
             }

@@ -45,8 +45,8 @@ with fancy colors and so on</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.is_pwd_needed" class="method"><a class="src rightside" href="../../src/massa_client/cmds.rs.html#418-421">source</a><h4 class="code-header">pub(crate) fn <a href="#method.is_pwd_needed" class="fn">is_pwd_needed</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/1.74.1/std/primitive.bool.html">bool</a></h4></section></summary><div class="docblock"><p>Returns true if the command needs wallet access</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.run" class="method"><a class="src rightside" href="../../src/massa_client/cmds.rs.html#431-1345">source</a><h4 class="code-header">pub(crate) async fn <a href="#method.run" class="fn">run</a>(
     &amp;self,
-    client: &amp;mut <a class="struct" href="../../massa_sdk/struct.Client.html" title="struct massa_sdk::Client">Client</a>,
-    wallet_opt: &amp;mut <a class="enum" href="https://doc.rust-lang.org/1.74.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../massa_wallet/struct.Wallet.html" title="struct massa_wallet::Wallet">Wallet</a>&gt;,
+    client: &amp;mut Client,
+    wallet_opt: &amp;mut <a class="enum" href="https://doc.rust-lang.org/1.74.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Wallet&gt;,
     parameters: &amp;[<a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>],
     json: <a class="primitive" href="https://doc.rust-lang.org/1.74.1/std/primitive.bool.html">bool</a>
 ) -&gt; <a class="type" href="https://docs.rs/anyhow/1.0.76/anyhow/type.Result.html" title="type anyhow::Result">Result</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="../display/trait.Output.html" title="trait massa_client::display::Output">Output</a>&gt;&gt;</h4></section></summary><div class="docblock"><p>run a given command</p>
