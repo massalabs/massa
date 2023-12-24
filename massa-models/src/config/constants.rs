@@ -100,6 +100,8 @@ lazy_static::lazy_static! {
             s if s.starts_with("SECU") => 77658383,
             // MainNet
             s if s.starts_with("MAIN") => 77658377,
+            // LabNet
+            s if s.starts_with("LABN") => 77658376,
             _ => {
                 panic!("Unhandled VERSION ({}), cannot compute chain id", *VERSION);
             }
