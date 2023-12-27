@@ -11,7 +11,6 @@ use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::MAX_DATASTORE_KEY_LENGTH;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
@@ -1222,7 +1221,7 @@ impl Interface for InterfaceImpl {
                 .map(|(addr, key)| {
                     let datastore_key = key.map(|k| k.to_vec());
                     if let Some(ref k) = datastore_key {
-                        if k.len() > MAX_DATASTORE_KEY_LENGTH as usize {
+                        if k.len() > self.config.max_datastore_key_length as usize {
                             bail!("datastore key is too long")
                         }
                     }
