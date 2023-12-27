@@ -672,6 +672,28 @@
 <a href="#672" id="672">672</a>
 <a href="#673" id="673">673</a>
 <a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::block_id::{BlockIdDeserializer, BlockIdSerializer};
@@ -1318,6 +1340,28 @@
             ),
         ];
         verify_signature_batch(<span class="kw-2">&amp;</span>batch_2).unwrap();
+    }
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_endorsement_id() {
+        <span class="kw">let </span>expected_endorsement_id =
+            EndorsementId::from_str(<span class="string">&quot;E12Uy7hrAUHpmHQTWu68p17v7VtZJ6syBTWEJH6jwMTWJB6fdSc7&quot;</span>)
+                .unwrap();
+        <span class="kw">let </span>actual_endorsement_id = EndorsementId::new(Hash::compute_from(<span class="string">&quot;edm&quot;</span>.as_bytes()));
+
+        <span class="macro">assert_eq!</span>(actual_endorsement_id, expected_endorsement_id);
+    }
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_endorsement_id_errors() {
+        <span class="kw">let </span>actual_error = EndorsementId::from_str(<span class="string">&quot;SomeUnvalidEndorsementId&quot;</span>)
+            .unwrap_err()
+            .to_string();
+        <span class="kw">let </span>expected_error = <span class="string">&quot;endorsement id parsing error&quot;</span>.to_string();
+
+        <span class="macro">assert_eq!</span>(actual_error, expected_error);
     }
 
     <span class="attr">#[test]

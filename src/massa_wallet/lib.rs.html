@@ -236,8 +236,6 @@
 <a href="#236" id="236">236</a>
 <a href="#237" id="237">237</a>
 <a href="#238" id="238">238</a>
-<a href="#239" id="239">239</a>
-<a href="#240" id="240">240</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -261,8 +259,6 @@
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="kw">mod </span>error;
-
-<span class="kw">const </span>WALLET_VERSION: u64 = <span class="number">1</span>;
 
 <span class="doccomment">/// Contains the keypairs created in the wallet.
 </span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
@@ -416,7 +412,7 @@
         </span><span class="kw">for </span>(addr, keypair) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.keys {
             <span class="kw">let </span>encrypted_secret = encrypt(<span class="kw-2">&amp;</span><span class="self">self</span>.password, <span class="kw-2">&amp;</span>keypair.to_bytes())<span class="question-mark">?</span>;
             <span class="kw">let </span>file_formatted = WalletFileFormat {
-                version: WALLET_VERSION,
+                version: keypair.get_version(),
                 nickname: addr.to_string(),
                 address: addr.to_string(),
                 salt: encrypted_secret.salt,
