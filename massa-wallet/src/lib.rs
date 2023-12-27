@@ -61,8 +61,16 @@ impl Wallet {
                 let path = entry.path();
                 if path.is_file() {
                     let content = &std::fs::read(&path)?[..];
-                    let wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
-                    let secret_key = decrypt(
+                    let mut wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
+                    if wallet.version == 0 {
+                        // fix bug in handling version 0
+                        wallet.version = 1;
+                    }
+                    // check version
+                    if wallet.version != WALLET_VERSION {
+                        return Err(WalletError::VersionError(format!("Unsupported wallet version {}", wallet.version)));
+                    }
+                    let mut secret_key = decrypt(
                         &password,
                         CipherData {
                             salt: wallet.salt,
@@ -70,6 +78,23 @@ impl Wallet {
                             encrypted_bytes: wallet.ciphered_data,
                         },
                     )?;
+                    // check secret key length
+                    match secret_key.len() {
+                        33 => {
+                            // standard compliant: version(1B) + privkey(32B)
+                        },
+                        65 => {
+                            // version(1B) + privkey(32B) + pubkey(32B)
+                            // truncate to standard compliant: version(1B) + privkey(32B)
+                            secret_key.truncate(33);
+                        },
+                        32 | 64 if wallet.version == 0 => {
+                            return Err(WalletError::VersionError("Your wallet is from an old version that does not follow the standard. Please create a new wallet.".to_string()))
+                        }
+                        _ => {
+                            return Err(WalletError::VersionError("Invalid wallet/version matching: your wallet does not follow its version's secret key encoding format.".to_string()))
+                        }
+                    }
                     keys.insert(
                         Address::from_str(&wallet.address)?,
                         KeyPair::from_bytes(&secret_key)?,

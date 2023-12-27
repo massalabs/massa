@@ -24,4 +24,6 @@ pub enum WalletError {
     MissingKeyError(Address),
     /// `MassaCipher` error: {0}
     MassaCipherError(#[from] massa_cipher::CipherError),
+    /// Version error: {0}
+    VersionError(String),
 }
