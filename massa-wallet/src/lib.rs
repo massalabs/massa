@@ -22,6 +22,8 @@ use std::str::FromStr;
 
 mod error;
 
+const WALLET_VERSION: u64 = 1;
+
 /// Contains the keypairs created in the wallet.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Wallet {
@@ -174,7 +176,7 @@ impl Wallet {
         for (addr, keypair) in &self.keys {
             let encrypted_secret = encrypt(&self.password, &keypair.to_bytes())?;
             let file_formatted = WalletFileFormat {
-                version: keypair.get_version(),
+                version: WALLET_VERSION,
                 nickname: addr.to_string(),
                 address: addr.to_string(),
                 salt: encrypted_secret.salt,
