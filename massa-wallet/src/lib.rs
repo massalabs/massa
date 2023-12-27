@@ -68,7 +68,10 @@ impl Wallet {
                     }
                     // check version
                     if wallet.version != WALLET_VERSION {
-                        return Err(WalletError::VersionError(format!("Unsupported wallet version {}", wallet.version)));
+                        return Err(WalletError::VersionError(format!(
+                            "Unsupported wallet version {}",
+                            wallet.version
+                        )));
                     }
                     let mut secret_key = decrypt(
                         &password,
