@@ -263,6 +263,9 @@
 <a href="#263" id="263">263</a>
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -333,7 +336,10 @@
                     }
                     <span class="comment">// check version
                     </span><span class="kw">if </span>wallet.version != WALLET_VERSION {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(WalletError::VersionError(<span class="macro">format!</span>(<span class="string">&quot;Unsupported wallet version {}&quot;</span>, wallet.version)));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(WalletError::VersionError(<span class="macro">format!</span>(
+                            <span class="string">&quot;Unsupported wallet version {}&quot;</span>,
+                            wallet.version
+                        )));
                     }
                     <span class="kw">let </span><span class="kw-2">mut </span>secret_key = decrypt(
                         <span class="kw-2">&amp;</span>password,
