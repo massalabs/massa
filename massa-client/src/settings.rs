@@ -26,7 +26,7 @@ pub struct DefaultNode {
     pub public_port: u16,
     pub grpc_public_port: u16,
     pub grpc_private_port: u16,
-    pub chain_id: u64,
+    pub chain_id: Option<u64>,
 }
 
 /// Client settings
