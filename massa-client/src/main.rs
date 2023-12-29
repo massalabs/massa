@@ -141,7 +141,10 @@ async fn run(args: Args) -> Result<()> {
     };
     let chain_id = match args.chain_id {
         Some(chain_id) => chain_id,
-        None => settings.default_node.chain_id,
+        None => match settings.default_node.chain_id {
+            Some(chain_id) => chain_id,
+            None => *massa_models::config::constants::CHAINID,
+        },
     };
 
     // Setup panic handlers,

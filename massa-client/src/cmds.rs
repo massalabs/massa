@@ -435,6 +435,12 @@ impl Command {
         parameters: &[String],
         json: bool,
     ) -> Result<Box<dyn Output>> {
+        if let Ok(node_status) = client.public.get_status().await {
+            if node_status.chain_id != client.chain_id {
+                client_warning!("the chain id of the node is different from the one of the client");
+            }
+        }
+
         match self {
             Command::help => {
                 if !json {
