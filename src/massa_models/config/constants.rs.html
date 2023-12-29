@@ -349,13 +349,6 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -378,14 +371,7 @@
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
 
-<span class="doccomment">/// Downtime simulation start timestamp
-</span><span class="kw">pub const </span>DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1686312000000</span>); <span class="comment">// Friday 9 June 2023 12:00:00 UTC
-</span><span class="doccomment">/// Downtime simulation end timestamp
-</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(<span class="number">1686319200000</span>); <span class="comment">// Friday 9 June 2023 14:00:00 UTC
-</span><span class="doccomment">/// Downtime simulation end timestamp for bootstrap servers
-</span><span class="kw">pub const </span>DOWNTIME_END_TIMESTAMP_BOOTSTRAP: MassaTime = MassaTime::from_millis(<span class="number">1686312060000</span>); <span class="comment">// Friday 9 June 2023 12:01:00 UTC
-
-</span><span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
+<span class="doccomment">/// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 </span><span class="kw">pub const </span>SIGNATURE_DESER_SIZE: usize = <span class="number">64 </span>+ <span class="number">1</span>;
 
 <span class="doccomment">/// Limit on the number of peers we advertise to others.

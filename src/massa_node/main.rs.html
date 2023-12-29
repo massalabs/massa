@@ -1426,55 +1426,6 @@
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
-<a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
-<a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
-<a href="#1436" id="1436">1436</a>
-<a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
-<a href="#1451" id="1451">1451</a>
-<a href="#1452" id="1452">1452</a>
-<a href="#1453" id="1453">1453</a>
-<a href="#1454" id="1454">1454</a>
-<a href="#1455" id="1455">1455</a>
-<a href="#1456" id="1456">1456</a>
-<a href="#1457" id="1457">1457</a>
-<a href="#1458" id="1458">1458</a>
-<a href="#1459" id="1459">1459</a>
-<a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
-<a href="#1462" id="1462">1462</a>
-<a href="#1463" id="1463">1463</a>
-<a href="#1464" id="1464">1464</a>
-<a href="#1465" id="1465">1465</a>
-<a href="#1466" id="1466">1466</a>
-<a href="#1467" id="1467">1467</a>
-<a href="#1468" id="1468">1468</a>
-<a href="#1469" id="1469">1469</a>
-<a href="#1470" id="1470">1470</a>
-<a href="#1471" id="1471">1471</a>
-<a href="#1472" id="1472">1472</a>
-<a href="#1473" id="1473">1473</a>
-<a href="#1474" id="1474">1474</a>
-<a href="#1475" id="1475">1475</a>
-<a href="#1476" id="1476">1476</a>
-<a href="#1477" id="1477">1477</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1612,21 +1563,6 @@
     MassaSurveyStopper,
 ) {
     <span class="kw">let </span>now = MassaTime::now();
-    <span class="comment">// Do not start if genesis is in the future. This is meant to prevent nodes
-    // from desync if the bootstrap nodes keep a previous ledger
-    </span><span class="attr">#[cfg(all(not(feature = <span class="string">&quot;sandbox&quot;</span>), not(feature = <span class="string">&quot;bootstrap_server&quot;</span>)))]
-    </span>{
-        <span class="kw">if </span><span class="kw-2">*</span>GENESIS_TIMESTAMP &gt; now {
-            <span class="kw">let </span>(days, hours, mins, secs) = GENESIS_TIMESTAMP
-                .saturating_sub(now)
-                .days_hours_mins_secs()
-                .unwrap();
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;This episode has not started yet, please wait {} days, {} hours, {} minutes, {} seconds for genesis&quot;</span>,
-                days, hours, mins, secs,
-            )
-        }
-    }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
         <span class="kw">if </span>now &gt; end {
@@ -1634,40 +1570,6 @@
         }
     }
 
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;bootstrap_server&quot;</span>))]
-    </span>{
-        <span class="kw">use </span>massa_models::config::constants::DOWNTIME_END_TIMESTAMP;
-        <span class="kw">use </span>massa_models::config::constants::DOWNTIME_START_TIMESTAMP;
-
-        <span class="comment">// Simulate downtime
-        // last_start_period should be set to trigger after the DOWNTIME_END_TIMESTAMP
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;bootstrap_server&quot;</span>))]
-        </span><span class="kw">if </span>now &gt;= DOWNTIME_START_TIMESTAMP &amp;&amp; now &lt;= DOWNTIME_END_TIMESTAMP {
-            <span class="kw">let </span>(days, hours, mins, secs) = DOWNTIME_END_TIMESTAMP
-                .saturating_sub(now)
-                .days_hours_mins_secs()
-                .unwrap();
-
-            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(end_period)) =
-                massa_models::timeslots::get_latest_block_slot_at_timestamp(
-                    THREAD_COUNT,
-                    T0,
-                    <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-                    DOWNTIME_END_TIMESTAMP,
-                )
-            {
-                <span class="macro">panic!</span>(
-                <span class="string">&quot;We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime. Downtime end period: {}&quot;</span>,
-                days, hours, mins, secs, end_period.period
-            );
-            }
-
-            <span class="macro">panic!</span>(
-            <span class="string">&quot;We are in downtime! {} days, {} hours, {} minutes, {} seconds remaining to the end of the downtime&quot;</span>,
-            days, hours, mins, secs,
-        );
-        }
-    }
     <span class="comment">// Storage shared by multiple components.
     </span><span class="kw">let </span>shared_storage: Storage = Storage::create_root();
 
