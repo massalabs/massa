@@ -135,21 +135,6 @@ async fn launch(
     MassaSurveyStopper,
 ) {
     let now = MassaTime::now();
-    // Do not start if genesis is in the future. This is meant to prevent nodes
-    // from desync if the bootstrap nodes keep a previous ledger
-    #[cfg(all(not(feature = "sandbox"), not(feature = "bootstrap_server")))]
-    {
-        if *GENESIS_TIMESTAMP > now {
-            let (days, hours, mins, secs) = GENESIS_TIMESTAMP
-                .saturating_sub(now)
-                .days_hours_mins_secs()
-                .unwrap();
-            panic!(
-                "This episode has not started yet, please wait {} days, {} hours, {} minutes, {} seconds for genesis",
-                days, hours, mins, secs,
-            )
-        }
-    }
 
     if let Some(end) = *END_TIMESTAMP {
         if now > end {
