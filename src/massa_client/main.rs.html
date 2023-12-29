@@ -215,6 +215,9 @@
 <a href="#215" id="215">215</a>
 <a href="#216" id="216">216</a>
 <a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Massa stateless CLI
 </span><span class="attr">#![warn(missing_docs)]
@@ -358,7 +361,10 @@
     };
     <span class="kw">let </span>chain_id = <span class="kw">match </span>args.chain_id {
         <span class="prelude-val">Some</span>(chain_id) =&gt; chain_id,
-        <span class="prelude-val">None </span>=&gt; settings.default_node.chain_id,
+        <span class="prelude-val">None </span>=&gt; <span class="kw">match </span>settings.default_node.chain_id {
+            <span class="prelude-val">Some</span>(chain_id) =&gt; chain_id,
+            <span class="prelude-val">None </span>=&gt; <span class="kw-2">*</span>massa_models::config::constants::CHAINID,
+        },
     };
 
     <span class="comment">// Setup panic handlers,

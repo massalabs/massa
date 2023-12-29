@@ -1438,6 +1438,12 @@
 <a href="#1438" id="1438">1438</a>
 <a href="#1439" id="1439">1439</a>
 <a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1875,6 +1881,12 @@
         parameters: <span class="kw-2">&amp;</span>[String],
         json: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; {
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(node_status) = client.public.get_status().<span class="kw">await </span>{
+            <span class="kw">if </span>node_status.chain_id != client.chain_id {
+                <span class="macro">client_warning!</span>(<span class="string">&quot;the chain id of the node is different from the one of the client&quot;</span>);
+            }
+        }
+
         <span class="kw">match </span><span class="self">self </span>{
             Command::help =&gt; {
                 <span class="kw">if </span>!json {
