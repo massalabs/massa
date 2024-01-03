@@ -72,7 +72,7 @@ lazy_static::lazy_static! {
         if cfg!(feature = "sandbox") {
             "SAND.28.6"
         } else {
-            "DEVN.28.0"
+            "DEVN.28.1"
         }
         .parse()
         .unwrap()
