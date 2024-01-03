@@ -1,6 +1,6 @@
 [package]
 name = "massa_api_exports"
-version = "0.27.6"
+version = "0.28.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
