@@ -1,18 +1,2 @@
 {
-	"AU12NU3ZLfRrwvrErJtU89m6EWnaSJrzcfG5xB6GBFDnxqt6DAJzv": [
-		{
-			"slot": {"period": 30, "thread": 0},
-			"amount": "1000000000"
-        },
-        {
-            "slot": {"period": 400, "thread": 1},
-            "amount": "1000000000"
-        }
-    ],
-    "AU1AzJfZYayiR6Ac8SsUsCC3zQchCyddRYsb5tRE1TJFNiQd1TES": [
-        {
-            "slot": {"period": 30, "thread": 0},
-            "amount": "1000000000"
-        }
-    ]
 }
