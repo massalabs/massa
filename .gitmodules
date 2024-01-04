@@ -1,3 +1,0 @@
-[submodule "massa-node/genesis-ledger"]
-	path = massa-node/genesis-ledger
-	url = https://github.com/Massa-Foundation/genesis-ledger.git
