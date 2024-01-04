@@ -75,8 +75,8 @@ pub(crate) fn update_package_versions() {
         to_string.replace_range(..4, "0");
     } else {
         // Main net version >= 1.0.0
-        to_string.replace_range(..4, "1");
-        //panic!("todo for mainnet");
+        to_string.replace_range(..5, "");
+        to_string.push_str(".0");
     };
 
     let workspace_path = Path::new("./");

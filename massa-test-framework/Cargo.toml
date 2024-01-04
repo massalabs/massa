@@ -1,6 +1,6 @@
 [package]
 name = "massa_test_framework"
-version = "1.1.0"
+version = "1.0.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
