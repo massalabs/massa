@@ -1,10 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use std::{
-    env, fs,
-    path::Path,
-    process::Command,
-};
+use std::{env, fs, path::Path, process::Command};
 
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get Cargo dir");
@@ -13,7 +9,7 @@ fn main() {
     let node_config_path = cargo_dir.join("base_config");
     let cargo_dir_abs = cargo_dir.canonicalize().expect("Failed to get Cargo dir");
     let workspace_dir = cargo_dir_abs.parent().expect("Failed to get workspace dir");
-    
+
     if !target_initial_setup_path.exists() {
         env::set_current_dir(&workspace_dir).expect("cd failed");
         Command::new("git")
@@ -26,11 +22,15 @@ fn main() {
         panic!("git submodule update failed");
     }
 
-    let initial_files = vec!["deferred_credits.json", "initial_ledger.json", "initial_rolls.json"];
+    let initial_files = vec![
+        "deferred_credits.json",
+        "initial_ledger.json",
+        "initial_rolls.json",
+    ];
     for file in initial_files {
         let source = target_initial_setup_path.join(file);
         let destination = node_config_path.join(file);
-        
+
         if !source.exists() {
             panic!("Initial setup file {} does not exist", file);
         }
