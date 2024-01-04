@@ -597,7 +597,7 @@ fn send_and_receive_async_message() {
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
         // Note: generated address (from send_message.ts createSC call)
         //       this can changes when modification to the final state are done (see create_new_sc_address function)
-        destination: Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
+        destination: Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
             .unwrap(),
         function: String::from("receive"),
         // value from SC: send_message.ts
@@ -653,7 +653,7 @@ fn send_and_receive_async_message() {
                 .ledger_changes
                 .0
                 .get(
-                    &Address::from_str("AS1n3zpS6rjnZbYJUb1UEJiXX1YvxUsJk9FfY72mjgQTRCJ9vZ37")
+                    &Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
                         .unwrap(),
                 )
                 .unwrap()
