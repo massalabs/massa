@@ -163,9 +163,9 @@
         </span>to_string.replace_range(..<span class="number">4</span>, <span class="string">&quot;0&quot;</span>);
     } <span class="kw">else </span>{
         <span class="comment">// Main net version &gt;= 1.0.0
-        // to_string.replace_range(..4, &quot;1&quot;);
-        </span><span class="macro">panic!</span>(<span class="string">&quot;todo for mainnet&quot;</span>);
-    };
+        </span>to_string.replace_range(..<span class="number">4</span>, <span class="string">&quot;1&quot;</span>);
+        <span class="comment">//panic!(&quot;todo for mainnet&quot;);
+    </span>};
 
     <span class="kw">let </span>workspace_path = Path::new(<span class="string">&quot;./&quot;</span>);
 
