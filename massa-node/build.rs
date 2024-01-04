@@ -43,6 +43,4 @@ fn main() {
 }
 
 #[cfg(feature = "sandbox")]
-fn main() {
-
-}
+fn main() {}
