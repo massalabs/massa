@@ -2,7 +2,7 @@
 
 use std::{env, fs, path::Path, process::Command};
 
-#[cfg(not(any(feature = "sandbox", feature = "bootstrap_server")))]
+#[cfg(not(feature = "sandbox"))]
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get Cargo dir");
     let cargo_dir = &Path::new(&manifest_dir);
@@ -42,5 +42,5 @@ fn main() {
     }
 }
 
-#[cfg(any(feature = "sandbox", feature = "bootstrap_server"))]
+#[cfg(feature = "sandbox")]
 fn main() {}
