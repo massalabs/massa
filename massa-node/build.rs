@@ -11,7 +11,7 @@ fn main() {
     let workspace_dir = cargo_dir_abs.parent().expect("Failed to get workspace dir");
 
     if !target_initial_setup_path.exists() {
-        env::set_current_dir(&workspace_dir).expect("cd failed");
+        env::set_current_dir(workspace_dir).expect("cd failed");
         Command::new("git")
             .args(["submodule", "update", "--init"])
             .output()
