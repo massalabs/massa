@@ -617,6 +617,13 @@ fn send_and_receive_async_message() {
         can_be_executed: true,
     };
     let message_cloned = message.clone();
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_execution_trail_hash()
+        .returning(|| Hash::compute_from("Genesis".as_bytes()));
+
     foreign_controllers
         .final_state
         .write()
