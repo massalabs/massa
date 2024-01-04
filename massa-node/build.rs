@@ -2,6 +2,7 @@
 
 use std::{env, fs, path::Path, process::Command};
 
+#[cfg(not(feature = "sandbox"))]
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get Cargo dir");
     let cargo_dir = &Path::new(&manifest_dir);
@@ -39,4 +40,9 @@ fn main() {
         }
         fs::hard_link(source, destination).expect("Failed to hard link initial setup files");
     }
+}
+
+#[cfg(feature = "sandbox")]
+fn main() {
+
 }
