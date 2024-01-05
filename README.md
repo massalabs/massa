@@ -63,7 +63,16 @@ server. If you're comfortable enough to get started on you're own, check out our
 
 A list of all the contributors can be found [here](CONTRIBUTORS.md)
 
-### Community Charter
+## Community Charter
 
 The Massa Community Charter is designed to protect decentralization.
 You can find it here: [COMMUNITY_CHARTER.md](COMMUNITY_CHARTER.md)
+
+## Initial distribution files
+
+The following initial distribution files:
+* `massa-node/base_config/initial_ledger.json`
+* `massa-node/base_config/deferred_credits.json`
+* `massa-node/base_config/initial_rolls.json`
+
+Are copied from `https://github.com/Massa-Foundation/genesis-ledger/tree/main/node_initial_setup` at commit hash `1633bce34e2c62ca5422fcd202027403d8ad42a9`.
