@@ -150,6 +150,9 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -226,7 +229,10 @@
                                 }
 
                                 <span class="kw">if </span>new_data_sent == data_sent &amp;&amp; new_data_received == data_received {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;PEERNET | No data sent or received since 5s&quot;</span>);
+                                    <span class="kw">let </span>now = MassaTime::now();
+                                    <span class="kw">if </span>now &gt; config.<span class="number">2 </span>{
+                                        <span class="macro">warn!</span>(<span class="string">&quot;PEERNET | No data sent or received since 5s&quot;</span>);
+                                    }
                                 } <span class="kw">else </span>{
                                     data_sent = new_data_sent;
                                     data_received = new_data_received;
