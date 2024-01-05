@@ -37,7 +37,7 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 ## Become a node runner
 
 With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
-participation in our community testnet, and we [invite you to join in](https://docs.massa.net/docs/node/home) by
+participation in our mainnet, and we [invite you to join in](https://docs.massa.net/docs/node/home) by
 becoming a node runner!
 
 ## Community
