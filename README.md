@@ -34,15 +34,11 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 - [Lots of documentation](https://docs.massa.net), from [web3 development](https://docs.massa.net/docs/build/home)
   to [Massa's architecture](https://docs.massa.net/docs/learn/home).
 
-## Join the Testnet
+## Become a node runner
 
 With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
-participation in our community testnet, and we
-[invite you to join in](https://docs.massa.net/docs/node/install), and register for the
-testnet participation reward program.
-
-Your participation will help improve decentralization, usability, and network reliability leading up to, and following,
-the launch of mainnet.
+participation in our mainnet, and we [invite you to join in](https://docs.massa.net/docs/node/home) by
+becoming a node runner!
 
 ## Community
 
@@ -67,7 +63,16 @@ server. If you're comfortable enough to get started on you're own, check out our
 
 A list of all the contributors can be found [here](CONTRIBUTORS.md)
 
-### Community Charter
+## Community Charter
 
 The Massa Community Charter is designed to protect decentralization.
 You can find it here: [COMMUNITY_CHARTER.md](COMMUNITY_CHARTER.md)
+
+## Initial distribution files
+
+The following initial distribution files:
+* `massa-node/base_config/initial_ledger.json`
+* `massa-node/base_config/deferred_credits.json`
+* `massa-node/base_config/initial_rolls.json`
+
+Are copied from `https://github.com/Massa-Foundation/genesis-ledger/tree/main/node_initial_setup` at commit hash `1633bce34e2c62ca5422fcd202027403d8ad42a9`.

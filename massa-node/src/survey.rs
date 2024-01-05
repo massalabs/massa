@@ -74,7 +74,10 @@ impl MassaSurvey {
                                 }
 
                                 if new_data_sent == data_sent && new_data_received == data_received {
-                                    warn!("PEERNET | No data sent or received since 5s");
+                                    let now = MassaTime::now();
+                                    if now > config.2 {
+                                        warn!("PEERNET | No data sent or received since 5s");
+                                    }
                                 } else {
                                     data_sent = new_data_sent;
                                     data_received = new_data_received;
