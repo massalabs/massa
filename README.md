@@ -34,15 +34,11 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 - [Lots of documentation](https://docs.massa.net), from [web3 development](https://docs.massa.net/docs/build/home)
   to [Massa's architecture](https://docs.massa.net/docs/learn/home).
 
-## Join the Testnet
+## Become a node runner
 
 With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
-participation in our community testnet, and we
-[invite you to join in](https://docs.massa.net/docs/node/install), and register for the
-testnet participation reward program.
-
-Your participation will help improve decentralization, usability, and network reliability leading up to, and following,
-the launch of mainnet.
+participation in our community testnet, and we [invite you to join in](https://docs.massa.net/docs/node/home) by
+becoming a node runner!
 
 ## Community
 
