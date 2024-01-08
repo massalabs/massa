@@ -1277,8 +1277,10 @@ pub fn start_retrieval_thread(
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
+    const THREAD_NAME: &str = "pbh-retrieval";
+    static_assertions::const_assert!(THREAD_NAME.len() <= 15);
     std::thread::Builder::new()
-        .name("protocol-block-handler-retrieval".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 active_connections,
