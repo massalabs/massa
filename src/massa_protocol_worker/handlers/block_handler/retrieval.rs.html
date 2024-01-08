@@ -1305,6 +1305,9 @@
 <a href="#1305" id="1305">1305</a>
 <a href="#1306" id="1306">1306</a>
 <a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -2240,6 +2243,9 @@
             .expect(<span class="string">&quot;could not compute next block retrieval timer tick&quot;</span>);
 
         <span class="kw">if </span><span class="self">self</span>.asked_blocks.is_empty() &amp;&amp; <span class="self">self</span>.block_wishlist.is_empty() {
+            <span class="comment">// Note: in mainnet and before ICO, no blocks are processed but the timer need to be updated
+            //       or the thread will use the CPU at 100%
+            </span><span class="self">self</span>.next_timer_ask_block = next_tick;
             <span class="kw">return</span>;
         }
 
