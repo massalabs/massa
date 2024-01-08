@@ -321,6 +321,10 @@
 <a href="#321" id="321">321</a>
 <a href="#322" id="322">322</a>
 <a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -355,6 +359,10 @@
     commands_retrieval::EndorsementHandlerRetrievalCommand,
     messages::{EndorsementMessageDeserializer, EndorsementMessageDeserializerArgs},
 };
+
+<span class="comment">// protocol-endorsement-handler-retrieval
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;peh-retrieval&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="kw">pub struct </span>RetrievalThread {
     receiver: MassaReceiver&lt;PeerMessageTuple&gt;,
@@ -625,7 +633,7 @@
             chain_id: config.chain_id,
         });
     std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-endorsement-handler-retrieval&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
                 receiver,

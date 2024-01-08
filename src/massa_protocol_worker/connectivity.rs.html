@@ -418,6 +418,10 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>crossbeam::select;
 <span class="kw">use </span>ip_rfc::global;
@@ -454,6 +458,10 @@
     },
     wrap_network::NetworkController,
 };
+
+<span class="comment">// protocol-connectivity
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;p-connectivity&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">pub enum </span>ConnectivityCommand {
@@ -502,7 +510,7 @@
     massa_metrics: MassaMetrics,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(MassaSender&lt;ConnectivityCommand&gt;, JoinHandle&lt;()&gt;), ProtocolError&gt; {
     <span class="kw">let </span>handle = std::thread::Builder::new()
-    .name(<span class="string">&quot;protocol-connectivity&quot;</span>.to_string())
+    .name(THREAD_NAME.to_string())
     .spawn({
         <span class="kw">let </span>sender_endorsements_propagation_ext = protocol_channels.endorsement_handler_propagation.<span class="number">0</span>.clone();
         <span class="kw">let </span>sender_blocks_retrieval_ext = protocol_channels.block_handler_retrieval.<span class="number">0</span>.clone();

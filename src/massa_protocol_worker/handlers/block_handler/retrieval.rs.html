@@ -1308,6 +1308,10 @@
 <a href="#1308" id="1308">1308</a>
 <a href="#1309" id="1309">1309</a>
 <a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     thread::JoinHandle,
@@ -1372,6 +1376,10 @@
     },
     BlockMessageSerializer,
 };
+
+<span class="comment">// protocol-block-handler-retrieval
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pbh-retrieval&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="doccomment">/// Info about a block we&#39;ve seen
 </span><span class="attr">#[derive(Debug, Clone)]
@@ -2588,7 +2596,7 @@
     <span class="kw">let </span>block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
     std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-block-handler-retrieval&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
                 active_connections,

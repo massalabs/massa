@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["MassaSurvey","MassaSurveyStopper"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"struct":["MassaSurvey","MassaSurveyStopper"]};

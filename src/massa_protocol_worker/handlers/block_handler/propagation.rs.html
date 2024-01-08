@@ -244,6 +244,10 @@
 <a href="#244" id="244">244</a>
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file deals with the announcement of block headers to other nodes
@@ -277,6 +281,10 @@
 <span class="kw">use </span>std::thread::JoinHandle;
 <span class="kw">use </span>std::time::Instant;
 <span class="kw">use </span>tracing::{debug, info, warn};
+
+<span class="comment">// protocol-block-handler-propagation
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pbh-propagation&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>BlockPropagationData {
@@ -468,7 +476,7 @@
     cache: SharedBlockCache,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-block-handler-propagation&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>block_serializer = MessagesSerializer::new()
                 .with_block_message_serializer(BlockMessageSerializer::new());

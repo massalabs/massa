@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["announcement","messages","models","tester"],"struct":["MassaHandshake","PeerManagementHandler"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"mod":["announcement","messages","models","tester"],"struct":["MassaHandshake","PeerManagementHandler"]};

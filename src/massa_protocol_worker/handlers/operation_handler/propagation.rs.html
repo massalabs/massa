@@ -230,6 +230,10 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::{mem, thread::JoinHandle};
 
@@ -255,6 +259,10 @@
     cache::SharedOperationCache, commands_propagation::OperationHandlerPropagationCommand,
     OperationMessageSerializer,
 };
+
+<span class="comment">// protocol-operation-handler-propagation
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;poh-tester&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="kw">struct </span>PropagationThread {
     internal_receiver: MassaReceiver&lt;OperationHandlerPropagationCommand&gt;,
@@ -438,7 +446,7 @@
     massa_metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-operation-handler-propagation&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span><span class="kw-2">mut </span>propagation_thread = PropagationThread {
                 internal_receiver,
