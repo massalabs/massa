@@ -937,7 +937,7 @@ impl RetrievalThread {
             .expect("could not compute next block retrieval timer tick");
 
         if self.asked_blocks.is_empty() && self.block_wishlist.is_empty() {
-            // Note: in mainnet and before ICO, no blocks are processed but the timer need to be updated
+            // Note: in mainnet and before genesis, no blocks are processed but the timer needs to be updated
             //       or the thread will use the CPU at 100%
             self.next_timer_ask_block = next_tick;
             return;
