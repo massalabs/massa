@@ -12,10 +12,6 @@ use tracing::info;
 // use std::time::Duration;
 use tracing::warn;
 
-// massa-survey
-const THREAD_NAME: &str = "massa-survey";
-static_assertions::const_assert!(THREAD_NAME.len() < 16);
-
 pub struct MassaSurvey {}
 
 pub struct MassaSurveyStopper {
@@ -53,6 +49,9 @@ impl MassaSurvey {
         if massa_metrics.is_enabled() {
             #[cfg(all(not(feature = "sandbox"), not(test)))]
             {
+                // massa-survey
+                const THREAD_NAME: &str = "massa-survey";
+
                 let mut data_sent = 0;
                 let mut data_received = 0;
                 let (tx_stop, rx_stop) =
