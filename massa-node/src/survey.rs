@@ -12,6 +12,10 @@ use tracing::info;
 // use std::time::Duration;
 use tracing::warn;
 
+// massa-survey
+const THREAD_NAME: &str = "massa-survey";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 pub struct MassaSurvey {}
 
 pub struct MassaSurveyStopper {
@@ -55,7 +59,7 @@ impl MassaSurvey {
                     MassaChannel::new("massa_survey_stop".to_string(), Some(1));
                 let update_tick = tick(tick_delay);
                 match std::thread::Builder::new()
-                    .name("massa-survey".to_string())
+                    .name(THREAD_NAME.to_string())
                     .spawn(move || loop {
                         select! {
                             recv(rx_stop) -> _ => {

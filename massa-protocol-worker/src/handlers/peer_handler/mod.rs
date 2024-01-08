@@ -63,6 +63,10 @@ pub struct PeerManagementHandler {
     testers: Vec<Tester>,
 }
 
+// protocol-peer-handler
+const THREAD_NAME: &str = "pph";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 impl PeerManagementHandler {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -97,7 +101,7 @@ impl PeerManagementHandler {
         );
 
         let thread_join = std::thread::Builder::new()
-        .name("protocol-peer-handler".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn({
             let peer_db = peer_db.clone();
             let ticker = tick(Duration::from_secs(10));

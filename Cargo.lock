@@ -2549,6 +2549,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "serde",
+ "static_assertions",
  "tokio",
  "tracing",
  "tracing-subscriber",

@@ -63,6 +63,10 @@ use super::{
     BlockMessageSerializer,
 };
 
+// protocol-block-handler-retrieval
+const THREAD_NAME: &str = "pbh-retrieval";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 /// Info about a block we've seen
 #[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
@@ -1277,8 +1281,6 @@ pub fn start_retrieval_thread(
 ) -> JoinHandle<()> {
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
-    const THREAD_NAME: &str = "pbh-retrieval";
-    static_assertions::const_assert!(THREAD_NAME.len() <= 15);
     std::thread::Builder::new()
         .name(THREAD_NAME.to_string())
         .spawn(move || {

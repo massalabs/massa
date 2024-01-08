@@ -40,6 +40,7 @@ rand = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"ver
 clap = { workspace = true }
 dialoguer = { workspace = true }
 ctrlc = { workspace = true }
+static_assertions = { workspace = true }
 massa_api_exports = { workspace = true }
 massa_api = { workspace = true }
 massa_async_pool = { workspace = true }
