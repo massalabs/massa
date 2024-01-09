@@ -339,15 +339,11 @@ impl SpeculativeRollState {
                 let deferred_credits = final_state
                     .get_pos_state()
                     .get_deferred_credits_range(min_slot..max_slot, Some(*address));
-                println!("def creds len: {}", deferred_credits.credits.len());
-                let mut inserted = 0;
                 for (slot, addr_amount) in deferred_credits.credits {
                     if let Some(amount) = addr_amount.get(address) {
                         res.entry(slot).or_insert(*amount);
-                        inserted += 1;
                     };
                 }
-                println!("inserted: {}", inserted);
             }
         } else {
             // get added values
@@ -386,15 +382,11 @@ impl SpeculativeRollState {
                 let deferred_credits = final_state
                     .get_pos_state()
                     .get_deferred_credits_range(min_slot.., Some(*address));
-                println!("def creds len: {}", deferred_credits.credits.len());
-                let mut inserted = 0;
                 for (slot, addr_amount) in deferred_credits.credits {
                     if let Some(amount) = addr_amount.get(address) {
                         res.entry(slot).or_insert(*amount);
-                        inserted += 1;
                     };
                 }
-                println!("inserted: {}", inserted);
             }
         }
 
