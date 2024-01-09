@@ -1359,11 +1359,7 @@ impl PoSFinalState {
     fn cycle_history_cycle_prefix(&self, cycle: u64) -> Vec<u8> {
         let mut serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
-        self.cycle_info_serializer
-            .cycle_info_serializer
-            .u64_ser
-            .serialize(&cycle, &mut serialized_key)
-            .expect(CYCLE_HISTORY_SER_ERROR);
+        serialized_key.extend_from_slice(&cycle.to_be_bytes());
         serialized_key
     }
 
@@ -1377,15 +1373,14 @@ impl PoSFinalState {
             return false;
         }
 
-        let Ok((rest, _cycle)) = self
-            .cycle_info_deserializer
-            .cycle_info_deserializer
-            .u64_deser
-            .deserialize::<DeserializeError>(&serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-        else {
+        let rest: &[u8] = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        
+        // Size of the cycle.to_be_bytes()
+        if rest.len() < std::mem::size_of::<u64>() {
             return false;
-        };
-
+        }
+        let rest: &[u8] = &rest[std::mem::size_of::<u64>()..];
+        
         if rest.is_empty() {
             return false;
         }
