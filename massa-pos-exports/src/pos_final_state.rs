@@ -719,14 +719,14 @@ impl PoSFinalState {
             Unbounded => {}
         };
 
-        for (serialized_key, serialized_value) in db.iterator_cf(
-            STATE_CF,
-            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
-        ) {
-            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                break;
-            }
+        let iterator_cf = db
+            .iterator_cf(
+                STATE_CF,
+                MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
+            )
+            .take_while(|(k, _)| k.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()));
 
+        for (serialized_key, serialized_value) in iterator_cf {
             // deserialize the slot
             let rest_key = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             let (rest_key, slot) = buf_to_array_ctr(rest_key, Slot::from_bytes_key)
