@@ -294,7 +294,6 @@ impl SpeculativeRollState {
     }
 
     /// Get deferred credits of an address starting from a given slot
-    /// Get deferred credits of an address starting from a given slot
     pub fn get_address_deferred_credits<R>(
         &self,
         address: &Address,
