@@ -834,9 +834,7 @@ impl MassaRpcServer for API<Public> {
 
         // Compute a limit (as a slot) for deferred credits as it can be quite huge
         let bound_ts = MassaTime::now()
-            .checked_add(MassaTime::from_millis(
-                60 * 24 * 60 * 60 * 1000, // 60 Days, 24 hours, 60 minutes, 60 seconds, 1000 milliseconds
-            ))
+            .checked_add(self.0.api_settings.deferred_credits_delta)
             .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
 
         let deferred_credit_max_slot = timeslots::get_closest_slot_to_timestamp(
