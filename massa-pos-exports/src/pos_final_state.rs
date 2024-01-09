@@ -770,7 +770,7 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
-            
+
             // deserialize the slot
             let rest = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             if rest.len() < SLOT_KEY_SIZE {
@@ -1591,7 +1591,7 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
-            
+
             // deserialize the slot
             let rest = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             if rest.len() < SLOT_KEY_SIZE {
