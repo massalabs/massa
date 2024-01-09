@@ -2418,6 +2418,27 @@
 <a href="#2418" id="2418">2418</a>
 <a href="#2419" id="2419">2419</a>
 <a href="#2420" id="2420">2420</a>
+<a href="#2421" id="2421">2421</a>
+<a href="#2422" id="2422">2422</a>
+<a href="#2423" id="2423">2423</a>
+<a href="#2424" id="2424">2424</a>
+<a href="#2425" id="2425">2425</a>
+<a href="#2426" id="2426">2426</a>
+<a href="#2427" id="2427">2427</a>
+<a href="#2428" id="2428">2428</a>
+<a href="#2429" id="2429">2429</a>
+<a href="#2430" id="2430">2430</a>
+<a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
+<a href="#2438" id="2438">2438</a>
+<a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2432,11 +2453,12 @@
 };
 <span class="kw">use </span>massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_models::slot::SLOT_KEY_SIZE;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>nom::AsBytes;
 <span class="kw">use </span>std::collections::VecDeque;
-<span class="kw">use </span>std::ops::Bound::{Excluded, Included};
+<span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
 <span class="kw">use </span>std::ops::RangeBounds;
 <span class="kw">use </span>std::{collections::BTreeMap, path::PathBuf};
 <span class="kw">use </span>tracing::debug;
@@ -2447,6 +2469,7 @@
 <span class="kw">const </span>FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = <span class="number">2u8</span>;
 <span class="kw">const </span>ROLL_COUNT_IDENT: u8 = <span class="number">3u8</span>;
 <span class="kw">const </span>PROD_STATS_IDENT: u8 = <span class="number">4u8</span>;
+<span class="kw">const </span>UPPER_LIMIT: u8 = u8::MAX;
 
 <span class="comment">// Production stats idents
 </span><span class="kw">const </span>PROD_STATS_FAIL_IDENT: u8 = <span class="number">0u8</span>;
@@ -2502,6 +2525,14 @@
 </span><span class="macro">macro_rules! </span>prod_stats_prefix {
     (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
         [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[PROD_STATS_IDENT]].concat()
+    };
+}
+
+<span class="doccomment">/// Upper limit prefix macro for a given cycle
+</span><span class="attr">#[macro_export]
+</span><span class="macro">macro_rules! </span>upper_limit_prefix {
+    (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
+        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[UPPER_LIMIT]].concat()
     };
 }
 
@@ -3117,23 +3148,17 @@
 
         <span class="kw">match </span>range.start_bound() {
             Included(slot) =&gt; {
-                <span class="self">self</span>.deferred_credits_serializer
-                    .slot_ser
-                    .serialize(slot, <span class="kw-2">&amp;mut </span>start_key_buffer)
-                    .expect(DEFERRED_CREDITS_SER_ERROR);
+                start_key_buffer.extend_from_slice(<span class="kw-2">&amp;</span>slot.to_bytes_key());
             }
             Excluded(slot) =&gt; {
-                <span class="self">self</span>.deferred_credits_serializer
-                    .slot_ser
-                    .serialize(
-                        <span class="kw-2">&amp;</span>slot
-                            .get_next_slot(<span class="self">self</span>.config.thread_count)
-                            .expect(DEFERRED_CREDITS_SER_ERROR),
-                        <span class="kw-2">&amp;mut </span>start_key_buffer,
-                    )
-                    .expect(DEFERRED_CREDITS_SER_ERROR);
+                start_key_buffer.extend_from_slice(
+                    <span class="kw-2">&amp;</span>slot
+                        .get_next_slot(<span class="self">self</span>.config.thread_count)
+                        .expect(DEFERRED_CREDITS_SER_ERROR)
+                        .to_bytes_key(),
+                );
             }
-            <span class="kw">_ </span>=&gt; {}
+            Unbounded =&gt; {}
         };
 
         <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.iterator_cf(
@@ -3143,11 +3168,15 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>(rest, slot) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            <span class="comment">// deserialize slot
+            </span><span class="kw">let </span>slot = Slot::from_bytes_key(
+                serialized_key[DEFERRED_CREDITS_PREFIX.len()..]
+                    .try_into()
+                    .expect(DEFERRED_CREDITS_DESER_ERROR),
+            );
+            <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len() + SLOT_KEY_SIZE..];
+
             <span class="kw">if </span>!range.contains(<span class="kw-2">&amp;</span>slot) {
                 <span class="kw">break</span>;
             }
@@ -3156,7 +3185,7 @@
                 </span>.deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(rest)
+                .deserialize::&lt;DeserializeError&gt;(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
@@ -3187,17 +3216,19 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>(rest, slot) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
+            <span class="comment">// deserialize slot
+            </span><span class="kw">let </span>slot = Slot::from_bytes_key(
+                serialized_key[DEFERRED_CREDITS_PREFIX.len()..]
+                    .try_into()
+                    .expect(DEFERRED_CREDITS_DESER_ERROR),
+            );
+            <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len() + SLOT_KEY_SIZE..];
 
             <span class="kw">let </span>(<span class="kw">_</span>, addr): (<span class="kw">_</span>, Address) = <span class="self">self
                 </span>.deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(rest)
+                .deserialize::&lt;DeserializeError&gt;(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             <span class="kw">if </span><span class="kw-2">&amp;</span>addr != address {
@@ -3252,19 +3283,21 @@
                 <span class="kw">break</span>;
             }
 
-            <span class="kw">let </span>(rest, _cycle) = <span class="self">self
-                </span>.cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-                .expect(CYCLE_HISTORY_DESER_ERROR);
+            <span class="comment">// deserialize cycle
+            </span><span class="kw">let </span>_cycle = u64::from_be_bytes(
+                serialized_key[CYCLE_HISTORY_PREFIX.len()..]
+                    .try_into()
+                    .expect(CYCLE_HISTORY_DESER_ERROR),
+            );
+            <span class="kw">let </span>rest_key =
+                <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len() + std::mem::size_of::&lt;u64&gt;()..];
 
             <span class="kw">let </span>(<span class="kw">_</span>, address) = <span class="self">self
                 </span>.cycle_info_deserializer
                 .cycle_info_deserializer
                 .rolls_deser
                 .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest_key[<span class="number">1</span>..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
@@ -3303,19 +3336,21 @@
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>(rest, _cycle) = <span class="self">self
-                </span>.cycle_info_deserializer
-                .cycle_info_deserializer
-                .u64_deser
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-                .expect(CYCLE_HISTORY_DESER_ERROR);
+            <span class="comment">// deserialize cycle
+            </span><span class="kw">let </span>_cycle = u64::from_be_bytes(
+                serialized_key[CYCLE_HISTORY_PREFIX.len()..]
+                    .try_into()
+                    .expect(CYCLE_HISTORY_DESER_ERROR),
+            );
+            <span class="kw">let </span>rest_key =
+                <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len() + std::mem::size_of::&lt;u64&gt;()..];
 
-            <span class="kw">let </span>(rest, address) = <span class="self">self
+            <span class="kw">let </span>(rest_key, address) = <span class="self">self
                 </span>.cycle_info_deserializer
                 .cycle_info_deserializer
                 .production_stats_deser
                 .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest_key[<span class="number">1</span>..])
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
             <span class="kw">if </span>cur_address != <span class="prelude-val">Some</span>(address) {
@@ -3331,9 +3366,9 @@
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_value)
                 .expect(CYCLE_HISTORY_DESER_ERROR);
 
-            <span class="kw">if </span>rest.len() == <span class="number">1 </span>&amp;&amp; rest[<span class="number">0</span>] == PROD_STATS_FAIL_IDENT {
+            <span class="kw">if </span>rest_key.len() == <span class="number">1 </span>&amp;&amp; rest_key[<span class="number">0</span>] == PROD_STATS_FAIL_IDENT {
                 cur_production_stat.block_failure_count = value;
-            } <span class="kw">else if </span>rest.len() == <span class="number">1 </span>&amp;&amp; rest[<span class="number">0</span>] == PROD_STATS_SUCCESS_IDENT {
+            } <span class="kw">else if </span>rest_key.len() == <span class="number">1 </span>&amp;&amp; rest_key[<span class="number">0</span>] == PROD_STATS_SUCCESS_IDENT {
                 cur_production_stat.block_success_count = value;
             } <span class="kw">else </span>{
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, CYCLE_HISTORY_DESER_ERROR);
@@ -3410,15 +3445,18 @@
             <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
             <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
-                <span class="prelude-val">Some</span>(prev_cycle) =&gt; db
-                    .iterator_cf(
+                <span class="prelude-val">Some</span>(prev_cycle) =&gt; {
+                    <span class="kw">let </span>cycle_prefix = <span class="self">self</span>.cycle_history_cycle_prefix(<span class="kw-2">*</span>prev_cycle);
+
+                    db.iterator_cf(
                         STATE_CF,
                         MassaIteratorMode::From(
-                            <span class="kw-2">&amp;</span><span class="self">self</span>.cycle_history_cycle_prefix(prev_cycle.saturating_add(<span class="number">1</span>)),
+                            <span class="kw-2">&amp;</span><span class="macro">upper_limit_prefix!</span>(cycle_prefix),
                             MassaDirection::Forward,
                         ),
                     )
-                    .next(),
+                    .next()
+                }
                 <span class="prelude-val">None </span>=&gt; db
                     .iterator_cf(
                         STATE_CF,
@@ -3432,12 +3470,13 @@
                 <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                     <span class="kw">break</span>;
                 }
-                <span class="kw">let </span>(<span class="kw">_</span>, cycle) = <span class="self">self
-                    </span>.cycle_info_deserializer
-                    .cycle_info_deserializer
-                    .u64_deser
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-                    .expect(CYCLE_HISTORY_DESER_ERROR);
+
+                <span class="comment">// deserialize cycle
+                </span><span class="kw">let </span>cycle = u64::from_be_bytes(
+                    serialized_key[CYCLE_HISTORY_PREFIX.len()..]
+                        .try_into()
+                        .expect(CYCLE_HISTORY_DESER_ERROR),
+                );
 
                 found_cycles.push(cycle);
             }
@@ -3478,10 +3517,9 @@
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
-        <span class="self">self</span>.deferred_credits_serializer
-            .slot_ser
-            .serialize(slot, <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(DEFERRED_CREDITS_SER_ERROR);
+
+        serialized_key.extend_from_slice(<span class="kw-2">&amp;</span>slot.to_bytes_key());
+
         <span class="self">self</span>.deferred_credits_serializer
             .credits_ser
             .address_ser
@@ -3729,10 +3767,7 @@
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
-        <span class="self">self</span>.deferred_credits_serializer
-            .slot_ser
-            .serialize(slot, <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(DEFERRED_CREDITS_SER_ERROR);
+        serialized_key.extend_from_slice(<span class="kw-2">&amp;</span>slot.to_bytes_key());
         <span class="self">self</span>.deferred_credits_serializer
             .credits_ser
             .address_ser
@@ -3778,21 +3813,22 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        <span class="comment">// deserialize cycle
+        </span><span class="kw">let </span><span class="prelude-val">Ok</span>(_cycle) = serialized_key[CYCLE_HISTORY_PREFIX.len()..]
+            .try_into()
+            .map(|v| u64::from_be_bytes(v))
+        <span class="kw">else </span>{
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        };
+        <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len() + std::mem::size_of::&lt;u64&gt;()..];
 
-        <span class="comment">// Size of the cycle.to_be_bytes()
-        </span><span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
+        <span class="kw">if </span>rest_key.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>rest[std::mem::size_of::&lt;u64&gt;()..];
 
-        <span class="kw">if </span>rest.is_empty() {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-
-        <span class="kw">match </span>rest[<span class="number">0</span>] {
+        <span class="kw">match </span>rest_key[<span class="number">0</span>] {
             COMPLETE_IDENT =&gt; {
-                <span class="kw">if </span>rest.len() != <span class="number">1 </span>{
+                <span class="kw">if </span>rest_key.len() != <span class="number">1 </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
                 <span class="kw">if </span>serialized_value.len() != <span class="number">1 </span>{
@@ -3803,7 +3839,7 @@
                 }
             }
             RNG_SEED_IDENT =&gt; {
-                <span class="kw">if </span>rest.len() != <span class="number">1 </span>{
+                <span class="kw">if </span>rest_key.len() != <span class="number">1 </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
                 <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _rng_seed)) = <span class="self">self
@@ -3819,7 +3855,7 @@
                 }
             }
             FINAL_STATE_HASH_SNAPSHOT_IDENT =&gt; {
-                <span class="kw">if </span>rest.len() != <span class="number">1 </span>{
+                <span class="kw">if </span>rest_key.len() != <span class="number">1 </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
                 <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _final_state_hash)) = <span class="self">self
@@ -3843,7 +3879,7 @@
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest_key[<span class="number">1</span>..])
                 <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
@@ -3872,7 +3908,7 @@
                     .cycle_info_deserializer
                     .rolls_deser
                     .address_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest[<span class="number">1</span>..])
+                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>rest_key[<span class="number">1</span>..])
                 <span class="kw">else </span>{
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 };
@@ -3932,13 +3968,15 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _slot)) =
-            <span class="self">self</span>.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
+        <span class="comment">// deserialize slot
+        </span><span class="kw">let </span><span class="prelude-val">Ok</span>(_slot) = serialized_key[DEFERRED_CREDITS_PREFIX.len()..]
+            .try_into()
+            .map(|v| Slot::from_bytes_key(v))
         <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
+        <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len() + SLOT_KEY_SIZE..];
+
         <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _addr)): std::result::Result&lt;
             (<span class="kw-2">&amp;</span>[u8], Address),
             nom::Err&lt;massa_serialization::DeserializeError&lt;<span class="lifetime">&#39;_</span>&gt;&gt;,
@@ -3946,7 +3984,7 @@
             </span>.deferred_credits_deserializer
             .credit_deserializer
             .address_deserializer
-            .deserialize::&lt;DeserializeError&gt;(rest)
+            .deserialize::&lt;DeserializeError&gt;(rest_key)
         <span class="kw">else </span>{
             <span class="kw">return </span><span class="bool-val">false</span>;
         };
@@ -3985,16 +4023,20 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>(rest, slot) = <span class="self">self
-                </span>.deferred_credits_deserializer
-                .slot_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..])
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            <span class="comment">// deserialize slot
+            </span><span class="kw">let </span>slot = Slot::from_bytes_key(
+                serialized_key[DEFERRED_CREDITS_PREFIX.len()..]
+                    .try_into()
+                    .expect(DEFERRED_CREDITS_DESER_ERROR),
+            );
+            <span class="kw">let </span>rest_key = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len() + SLOT_KEY_SIZE..];
+
             <span class="kw">let </span>(<span class="kw">_</span>, address) = <span class="self">self
                 </span>.deferred_credits_deserializer
                 .credit_deserializer
                 .address_deserializer
-                .deserialize::&lt;DeserializeError&gt;(rest)
+                .deserialize::&lt;DeserializeError&gt;(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             <span class="kw">let </span>(<span class="kw">_</span>, amount) = <span class="self">self
