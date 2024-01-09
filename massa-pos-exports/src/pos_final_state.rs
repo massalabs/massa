@@ -718,6 +718,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
+
+            // deserialize the slot
             let rest: &[u8] = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             if rest.len() < SLOT_KEY_SIZE {
                 panic!("{}", DEFERRED_CREDITS_DESER_ERROR);
@@ -768,6 +770,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
+            
+            // deserialize the slot
             let rest = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             if rest.len() < SLOT_KEY_SIZE {
                 panic!("{}", DEFERRED_CREDITS_DESER_ERROR);
@@ -837,6 +841,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
+
+            // deserialize the cycle
             let rest = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
             if rest.len() < std::mem::size_of::<u64>() {
                 panic!("{}", CYCLE_HISTORY_DESER_ERROR);
@@ -892,6 +898,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(prefix.as_bytes()) {
                 break;
             }
+
+            // deserialize the cycle
             let rest = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
             if rest.len() < std::mem::size_of::<u64>() {
                 panic!("{}", CYCLE_HISTORY_DESER_ERROR);
@@ -1025,6 +1033,8 @@ impl PoSFinalState {
                 if !serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                     break;
                 }
+
+                // deserialize the cycle
                 let rest = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
                 if rest.len() < std::mem::size_of::<u64>() {
                     panic!("{}", CYCLE_HISTORY_DESER_ERROR);
@@ -1368,13 +1378,14 @@ impl PoSFinalState {
             return false;
         }
 
-        let rest: &[u8] = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        // deserialize the cycle
+        let rest = &serialized_key[CYCLE_HISTORY_PREFIX.len()..];
 
         // Size of the cycle.to_be_bytes()
         if rest.len() < std::mem::size_of::<u64>() {
             return false;
         }
-        let rest: &[u8] = &rest[std::mem::size_of::<u64>()..];
+        let rest = &rest[std::mem::size_of::<u64>()..];
 
         if rest.is_empty() {
             return false;
@@ -1522,6 +1533,7 @@ impl PoSFinalState {
             return false;
         }
 
+        // deserialize the slot
         let rest = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
         if rest.len() < SLOT_KEY_SIZE {
             return false;
@@ -1579,6 +1591,8 @@ impl PoSFinalState {
             if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 break;
             }
+            
+            // deserialize the slot
             let rest = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             if rest.len() < SLOT_KEY_SIZE {
                 panic!("{}", DEFERRED_CREDITS_DESER_ERROR);
