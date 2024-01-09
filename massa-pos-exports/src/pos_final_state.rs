@@ -1611,7 +1611,6 @@ mod tests {
     fn test_initial_deferred_credits_loading() {
         let initial_deferred_credits_file = tempfile::NamedTempFile::new()
             .expect("could not create temporary initial deferred credits file");
-
         // write down some deferred credits
         let deferred_credits_file_contents = "{
             \"AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa\": [
@@ -1621,6 +1620,14 @@ mod tests {
                 },
                 {
                     \"slot\": {\"period\": 4, \"thread\": 1},
+                    \"amount\": \"6.0\"
+                },
+                {
+                    \"slot\": {\"period\": 255, \"thread\": 0},
+                    \"amount\": \"5.01\"
+                },
+                {
+                    \"slot\": {\"period\": 256, \"thread\": 0},
                     \"amount\": \"6.0\"
                 }
             ],
@@ -1636,7 +1643,6 @@ mod tests {
             deferred_credits_file_contents.as_bytes(),
         )
         .expect("failed writing initial deferred credits file");
-
         let pos_config = PoSConfig {
             periods_per_cycle: 2,
             thread_count: 2,
@@ -1646,7 +1652,6 @@ mod tests {
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             initial_deferred_credits_path: Some(initial_deferred_credits_file.path().to_path_buf()),
         };
-
         // initialize the database and pos_state
         let tempdir = tempfile::TempDir::new().expect("cannot create temp directory");
         let db_config = MassaDBConfig {
@@ -1662,7 +1667,6 @@ mod tests {
         let selector_controller = Box::new(MockSelectorController::new());
         let init_seed = Hash::compute_from(b"");
         let initial_seeds = vec![Hash::compute_from(init_seed.to_bytes()), init_seed];
-
         let deferred_credits_deserializer =
             DeferredCreditsDeserializer::new(pos_config.thread_count, pos_config.max_credit_length);
         let cycle_info_deserializer = CycleHistoryDeserializer::new(
@@ -1670,7 +1674,6 @@ mod tests {
             pos_config.max_rolls_length,
             pos_config.max_production_stats_length,
         );
-
         let mut pos_state = PoSFinalState {
             config: pos_config,
             db: db.clone(),
@@ -1684,19 +1687,13 @@ mod tests {
             cycle_info_serializer: CycleHistorySerializer::new(),
             cycle_info_deserializer,
         };
-
         let mut batch = DBBatch::new();
         // load initial deferred credits
         pos_state
             .load_initial_deferred_credits(&mut batch)
             .expect("error while loading initial deferred credits");
         db.write().write_batch(batch, DBBatch::new(), None);
-
-        let deferred_credits_range = pos_state
-            .get_deferred_credits_range(Slot::new(3, 0)..Slot::new(4, 2))
-            .credits;
         let deferred_credits = pos_state.get_deferred_credits().credits;
-
         let addr1 =
             Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
         let a_a1_s3 = Amount::from_str("5.01").unwrap();
@@ -1716,19 +1713,25 @@ mod tests {
                     .into_iter()
                     .collect(),
             ),
+            (
+                Slot::new(255, 0),
+                vec![(addr1, Amount::from_str("5.01").unwrap())]
+                    .into_iter()
+                    .collect(),
+            ),
+            (
+                Slot::new(256, 0),
+                vec![(addr1, Amount::from_str("6.0").unwrap())]
+                    .into_iter()
+                    .collect(),
+            ),
         ]
         .into_iter()
         .collect();
-
         assert_eq!(
             deferred_credits, expected_credits,
             "deferred credits not loaded correctly"
         );
-        assert_eq!(
-            deferred_credits_range, expected_credits,
-            "deferred credits not loaded correctly"
-        );
-
         let credits_range_1 =
             pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1));
         assert!(credits_range_1.is_empty());
@@ -1746,6 +1749,17 @@ mod tests {
         let credits_range_3 =
             pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5));
         assert!(credits_range_3.is_empty());
+        let credits_range_4 =
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(255, 1));
+
+        let a_a1_s255 = Amount::from_str("5.01").unwrap();
+        let expected_credits_range_4 = vec![(
+            Slot::new(255, 0),
+            vec![(addr1, a_a1_s255)].into_iter().collect(),
+        )]
+        .into_iter()
+        .collect();
+        assert_eq!(credits_range_4.credits, expected_credits_range_4);
     }
 
     // This test checks that the initial rolls are loaded correctly
