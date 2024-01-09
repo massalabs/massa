@@ -128,6 +128,10 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
@@ -232,7 +236,11 @@
     ) -&gt; (bool, bool);
 
     <span class="doccomment">/// Gets information about a batch of addresses
-    </span><span class="kw">fn </span>get_addresses_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>[Address]) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
+    </span><span class="kw">fn </span>get_addresses_infos(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addresses: <span class="kw-2">&amp;</span>[Address],
+        deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+    ) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
 
     <span class="doccomment">/// Get execution statistics
     </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats;

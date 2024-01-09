@@ -591,6 +591,9 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -790,7 +793,7 @@
         addr: <span class="kw-2">&amp;</span>Address,
         amount: <span class="kw-2">&amp;</span>Amount,
     ) -&gt; Amount {
-        <span class="kw">let </span>credits = <span class="self">self</span>.get_address_deferred_credits(addr, <span class="kw-2">*</span>slot);
+        <span class="kw">let </span>credits = <span class="self">self</span>.get_address_deferred_credits(addr, slot..);
 
         <span class="kw">let </span><span class="kw-2">mut </span>remaining_to_slash = <span class="kw-2">*</span>amount;
         <span class="kw">for </span>(credit_slot, credit_amount) <span class="kw">in </span>credits.iter() {
@@ -887,11 +890,14 @@
     }
 
     <span class="doccomment">/// Get deferred credits of an address starting from a given slot
-    </span><span class="kw">pub fn </span>get_address_deferred_credits(
+    </span><span class="kw">pub fn </span>get_address_deferred_credits&lt;R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
-        min_slot: Slot,
-    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
+        slot_range: R,
+    ) -&gt; BTreeMap&lt;Slot, Amount&gt;
+    <span class="kw">where
+        </span>R: std::ops::RangeBounds&lt;Slot&gt; + Clone,
+    {
         <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;Slot, Amount&gt; = HashMap::default();
 
         <span class="comment">// get added values
@@ -899,7 +905,7 @@
             </span>.added_changes
             .deferred_credits
             .credits
-            .range(min_slot..)
+            .range(slot_range.clone())
         {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
                 res.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
@@ -915,7 +921,7 @@
                     .pos_changes
                     .deferred_credits
                     .credits
-                    .range(min_slot..)
+                    .range(slot_range.clone())
                 {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
                         res.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
@@ -929,7 +935,7 @@
             <span class="kw">let </span>final_state = <span class="self">self</span>.final_state.read();
             <span class="kw">for </span>(slot, addr_amount) <span class="kw">in </span>final_state
                 .get_pos_state()
-                .get_deferred_credits_range(min_slot..)
+                .get_deferred_credits_range(slot_range, <span class="prelude-val">Some</span>(address))
                 .credits
             {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = addr_amount.get(address) {
@@ -1158,7 +1164,7 @@
             </span>.final_state
             .read()
             .get_pos_state()
-            .get_deferred_credits_range(..=slot);
+            .get_deferred_credits_range(..=slot, <span class="prelude-val">None</span>);
 
         <span class="comment">// fetch active history deferred credits
         </span>credits.extend(

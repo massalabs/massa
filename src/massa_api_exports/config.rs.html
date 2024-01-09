@@ -80,6 +80,8 @@
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
 <a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_signature::KeyPair;
@@ -161,5 +163,7 @@
     </span><span class="kw">pub </span>last_start_period: u64,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
+    <span class="doccomment">/// Delta to compute upper bounds when fetching deferred credits
+    </span><span class="kw">pub </span>deferred_credits_delta: MassaTime,
 }
 </code></pre></div></section></main></body></html>
