@@ -197,7 +197,7 @@ impl SpeculativeRollState {
         addr: &Address,
         amount: &Amount,
     ) -> Amount {
-        let credits = self.get_address_deferred_credits(addr, *slot);
+        let credits = self.get_address_deferred_credits(addr, *slot, None);
 
         let mut remaining_to_slash = *amount;
         for (credit_slot, credit_amount) in credits.iter() {
@@ -298,50 +298,103 @@ impl SpeculativeRollState {
         &self,
         address: &Address,
         min_slot: Slot,
+        max_slot_: Option<Slot>,
     ) -> BTreeMap<Slot, Amount> {
         let mut res: HashMap<Slot, Amount> = HashMap::default();
 
-        // get added values
-        for (slot, addr_amount) in self
-            .added_changes
-            .deferred_credits
-            .credits
-            .range(min_slot..)
-        {
-            if let Some(amount) = addr_amount.get(address) {
-                res.entry(*slot).or_insert(*amount);
-            };
-        }
-
-        // get values from active history, backwards
-        {
-            let hist = self.active_history.read();
-            for hist_item in hist.0.iter().rev() {
-                for (slot, addr_amount) in hist_item
-                    .state_changes
-                    .pos_changes
-                    .deferred_credits
-                    .credits
-                    .range(min_slot..)
-                {
-                    if let Some(amount) = addr_amount.get(address) {
-                        res.entry(*slot).or_insert(*amount);
-                    };
-                }
-            }
-        }
-
-        // get values from final state
-        {
-            let final_state = self.final_state.read();
-            for (slot, addr_amount) in final_state
-                .get_pos_state()
-                .get_deferred_credits_range(min_slot..)
+        if let Some(max_slot) = max_slot_ {
+            // get added values
+            for (slot, addr_amount) in self
+                .added_changes
+                .deferred_credits
                 .credits
+                .range(min_slot..max_slot)
             {
                 if let Some(amount) = addr_amount.get(address) {
-                    res.entry(slot).or_insert(*amount);
+                    res.entry(*slot).or_insert(*amount);
                 };
+            }
+
+            // get values from active history, backwards
+            {
+                let hist = self.active_history.read();
+                for hist_item in hist.0.iter().rev() {
+                    for (slot, addr_amount) in hist_item
+                        .state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .credits
+                        .range(min_slot..max_slot)
+                    {
+                        if let Some(amount) = addr_amount.get(address) {
+                            res.entry(*slot).or_insert(*amount);
+                        };
+                    }
+                }
+            }
+
+            // get values from final state
+            {
+                let final_state = self.final_state.read();
+                let deferred_credits = final_state
+                    .get_pos_state()
+                    .get_deferred_credits_range(min_slot..max_slot, Some(*address));
+                println!("def creds len: {}", deferred_credits.credits.len());
+                let mut inserted = 0;
+                for (slot, addr_amount) in deferred_credits.credits {
+                    if let Some(amount) = addr_amount.get(address) {
+                        res.entry(slot).or_insert(*amount);
+                        inserted += 1;
+                    };
+                }
+                println!("inserted: {}", inserted);
+            }
+        } else {
+            // get added values
+            for (slot, addr_amount) in self
+                .added_changes
+                .deferred_credits
+                .credits
+                .range(min_slot..)
+            {
+                if let Some(amount) = addr_amount.get(address) {
+                    res.entry(*slot).or_insert(*amount);
+                };
+            }
+
+            // get values from active history, backwards
+            {
+                let hist = self.active_history.read();
+                for hist_item in hist.0.iter().rev() {
+                    for (slot, addr_amount) in hist_item
+                        .state_changes
+                        .pos_changes
+                        .deferred_credits
+                        .credits
+                        .range(min_slot..)
+                    {
+                        if let Some(amount) = addr_amount.get(address) {
+                            res.entry(*slot).or_insert(*amount);
+                        };
+                    }
+                }
+            }
+
+            // get values from final state
+            {
+                let final_state = self.final_state.read();
+                let deferred_credits = final_state
+                    .get_pos_state()
+                    .get_deferred_credits_range(min_slot.., Some(*address));
+                println!("def creds len: {}", deferred_credits.credits.len());
+                let mut inserted = 0;
+                for (slot, addr_amount) in deferred_credits.credits {
+                    if let Some(amount) = addr_amount.get(address) {
+                        res.entry(slot).or_insert(*amount);
+                        inserted += 1;
+                    };
+                }
+                println!("inserted: {}", inserted);
             }
         }
 
@@ -565,7 +618,7 @@ impl SpeculativeRollState {
             .final_state
             .read()
             .get_pos_state()
-            .get_deferred_credits_range(..=slot);
+            .get_deferred_credits_range(..=slot, None);
 
         // fetch active history deferred credits
         credits.extend(

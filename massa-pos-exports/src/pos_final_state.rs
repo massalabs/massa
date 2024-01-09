@@ -693,7 +693,11 @@ impl PoSFinalState {
     }
 
     /// Retrieves every deferred credit in a slot range
-    pub fn get_deferred_credits_range<R>(&self, range: R) -> DeferredCredits
+    pub fn get_deferred_credits_range<R>(
+        &self,
+        range: R,
+        filter_by: Option<Address>,
+    ) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
     {
@@ -742,6 +746,12 @@ impl PoSFinalState {
                 .address_deserializer
                 .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
+
+            if let Some(addr) = filter_by {
+                if addr != address {
+                    continue;
+                }
+            }
 
             let (_, amount) = self
                 .deferred_credits_deserializer
@@ -1733,10 +1743,10 @@ mod tests {
             "deferred credits not loaded correctly"
         );
         let credits_range_1 =
-            pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1));
+            pos_state.get_deferred_credits_range(Slot::new(4, 0)..Slot::new(4, 1), None);
         assert!(credits_range_1.is_empty());
         let credits_range_2 =
-            pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1));
+            pos_state.get_deferred_credits_range(Slot::new(2, 0)..Slot::new(3, 1), None);
         let expected_credits_range_2 = vec![(
             Slot::new(3, 0),
             vec![(addr1, a_a1_s3), (addr2, a_a2_s3)]
@@ -1747,10 +1757,10 @@ mod tests {
         .collect();
         assert_eq!(credits_range_2.credits, expected_credits_range_2);
         let credits_range_3 =
-            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5));
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(9, 5), None);
         assert!(credits_range_3.is_empty());
         let credits_range_4 =
-            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(255, 1));
+            pos_state.get_deferred_credits_range(Slot::new(7, 0)..Slot::new(255, 1), None);
 
         let a_a1_s255 = Amount::from_str("5.01").unwrap();
         let expected_credits_range_4 = vec![(

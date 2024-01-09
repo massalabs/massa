@@ -1032,13 +1032,14 @@ impl ExecutionContext {
         &self,
         address: &Address,
         thread_count: u8,
+        max_slot: Option<Slot>,
     ) -> BTreeMap<Slot, Amount> {
         let min_slot = self
             .slot
             .get_next_slot(thread_count)
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
+            .get_address_deferred_credits(address, min_slot, max_slot)
     }
 
     /// in case of

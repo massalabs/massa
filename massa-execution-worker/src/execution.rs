@@ -1817,8 +1817,16 @@ impl ExecutionState {
     }
 
     /// Get future deferred credits of an address
-    pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
-        context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
+    pub fn get_address_future_deferred_credits(
+        &self,
+        address: &Address,
+        max_slot: Option<Slot>,
+    ) -> BTreeMap<Slot, Amount> {
+        context_guard!(self).get_address_future_deferred_credits(
+            address,
+            self.config.thread_count,
+            max_slot,
+        )
     }
 
     /// Get future deferred credits of an address
