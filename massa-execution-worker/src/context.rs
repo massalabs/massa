@@ -1028,17 +1028,19 @@ impl ExecutionContext {
     }
 
     /// Get future deferred credits of an address
+    /// With optionally a limit slot (excluded)
     pub fn get_address_future_deferred_credits(
         &self,
         address: &Address,
         thread_count: u8,
+        max_slot: std::ops::Bound<Slot>,
     ) -> BTreeMap<Slot, Amount> {
         let min_slot = self
             .slot
             .get_next_slot(thread_count)
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
+            .get_address_deferred_credits(address, (std::ops::Bound::Included(min_slot), max_slot))
     }
 
     /// in case of

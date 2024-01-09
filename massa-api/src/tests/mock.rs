@@ -67,6 +67,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
         chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -141,6 +142,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
         chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
