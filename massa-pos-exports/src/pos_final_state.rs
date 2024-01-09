@@ -1982,7 +1982,8 @@ mod tests {
     }
 
     // This test checks that the recompute_pos_cache function recovers every cycle and does return correctly.
-    // The test example is chosen so that the keys for the cycles are not in the same order than the cycles.
+    // The test example is chosen to have the cycles overlap a power of 2, to check that the order of cycles in the DB
+    // (lexicographical over bytes) is the same as the order of cycles in the cache (numerical).
     // If this is not handled properly, the node hangs as explained here: https://github.com/massalabs/massa/issues/4101
     #[test]
     fn test_pos_cache_recomputation() {
