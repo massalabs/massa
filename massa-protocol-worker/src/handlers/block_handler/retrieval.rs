@@ -63,6 +63,10 @@ use super::{
     BlockMessageSerializer,
 };
 
+// protocol-block-handler-retrieval
+const THREAD_NAME: &str = "pbh-retrieval";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 /// Info about a block we've seen
 #[derive(Debug, Clone)]
 pub(crate) struct BlockInfo {
@@ -933,6 +937,9 @@ impl RetrievalThread {
             .expect("could not compute next block retrieval timer tick");
 
         if self.asked_blocks.is_empty() && self.block_wishlist.is_empty() {
+            // Note: in mainnet and before genesis, no blocks are processed but the timer needs to be updated
+            //       or the thread will use the CPU at 100%
+            self.next_timer_ask_block = next_tick;
             return;
         }
 
@@ -1275,7 +1282,7 @@ pub fn start_retrieval_thread(
     let block_message_serializer =
         MessagesSerializer::new().with_block_message_serializer(BlockMessageSerializer::new());
     std::thread::Builder::new()
-        .name("protocol-block-handler-retrieval".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 active_connections,

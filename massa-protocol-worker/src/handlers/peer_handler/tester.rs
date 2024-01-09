@@ -26,6 +26,10 @@ use super::{
     SharedPeerDB,
 };
 use crate::wrap_network::ActiveConnectionsTrait;
+
+const THREAD_NAME: &str = "pph-tester";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 pub struct Tester {
     pub handler: Option<JoinHandle<()>>,
 }
@@ -275,7 +279,7 @@ impl Tester {
         massa_metrics: MassaMetrics,
     ) -> Self {
         let handle = std::thread::Builder::new()
-        .name("protocol-peer-handler-tester".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let db = peer_db;
             let active_connections = active_connections.clone();

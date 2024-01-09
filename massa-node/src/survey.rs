@@ -49,13 +49,16 @@ impl MassaSurvey {
         if massa_metrics.is_enabled() {
             #[cfg(all(not(feature = "sandbox"), not(test)))]
             {
+                // massa-survey
+                const THREAD_NAME: &str = "massa-survey";
+
                 let mut data_sent = 0;
                 let mut data_received = 0;
                 let (tx_stop, rx_stop) =
                     MassaChannel::new("massa_survey_stop".to_string(), Some(1));
                 let update_tick = tick(tick_delay);
                 match std::thread::Builder::new()
-                    .name("massa-survey".to_string())
+                    .name(THREAD_NAME.to_string())
                     .spawn(move || loop {
                         select! {
                             recv(rx_stop) -> _ => {

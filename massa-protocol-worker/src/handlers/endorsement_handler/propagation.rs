@@ -9,6 +9,10 @@ use massa_storage::Storage;
 use std::thread::JoinHandle;
 use tracing::{info, log::warn};
 
+// protocol-endorsement-handler-propagation
+const THREAD_NAME: &str = "peh-propagation";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 /// Endorsements need to propagate fast, so no buffering
 struct PropagationThread {
     receiver: MassaReceiver<EndorsementHandlerPropagationCommand>,
@@ -142,7 +146,7 @@ pub fn start_propagation_thread(
     active_connections: Box<dyn ActiveConnectionsTrait>,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
-        .name("protocol-endorsement-handler-propagation".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let endorsement_serializer = MessagesSerializer::new()
                 .with_endorsement_message_serializer(EndorsementMessageSerializer::new());

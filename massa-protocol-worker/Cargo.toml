@@ -34,6 +34,7 @@ massa_serialization = {workspace = true}
 massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_versioning = {workspace = true}
+static_assertions = {workspace = true}
 
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
