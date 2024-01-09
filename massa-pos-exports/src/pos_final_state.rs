@@ -696,7 +696,7 @@ impl PoSFinalState {
     pub fn get_deferred_credits_range<R>(
         &self,
         range: R,
-        filter_by: Option<Address>,
+        addr_filter: Option<&Address>,
     ) -> DeferredCredits
     where
         R: RangeBounds<Slot>,
@@ -747,8 +747,8 @@ impl PoSFinalState {
                 .deserialize::<DeserializeError>(rest_key)
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
-            if let Some(addr) = filter_by {
-                if addr != address {
+            if let Some(addr_filter_value) = &addr_filter {
+                if &&address != addr_filter_value {
                     continue;
                 }
             }
@@ -761,52 +761,6 @@ impl PoSFinalState {
                 .expect(DEFERRED_CREDITS_DESER_ERROR);
 
             deferred_credits.insert(slot, address, amount);
-        }
-
-        deferred_credits
-    }
-
-    /// Gets the deferred credits for an address
-    pub fn get_address_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
-        let db = self.db.read();
-
-        let mut deferred_credits = BTreeMap::new();
-
-        let start_key_buffer = DEFERRED_CREDITS_PREFIX.as_bytes().to_vec();
-
-        for (serialized_key, serialized_value) in db.iterator_cf(
-            STATE_CF,
-            MassaIteratorMode::From(&start_key_buffer, MassaDirection::Forward),
-        ) {
-            if !serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
-                break;
-            }
-
-            // deserialize the slot
-            let rest_key = &serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
-            let (rest_key, slot) = buf_to_array_ctr(rest_key, Slot::from_bytes_key)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            let (_, addr): (_, Address) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
-                .address_deserializer
-                .deserialize::<DeserializeError>(rest_key)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            if &addr != address {
-                // TODO improve performance
-                continue;
-            }
-
-            let (_, amount) = self
-                .deferred_credits_deserializer
-                .credit_deserializer
-                .amount_deserializer
-                .deserialize::<DeserializeError>(&serialized_value)
-                .expect(DEFERRED_CREDITS_DESER_ERROR);
-
-            deferred_credits.insert(slot, amount);
         }
 
         deferred_credits

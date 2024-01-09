@@ -105,7 +105,7 @@ pub trait ExecutionController: Send + Sync {
     fn get_addresses_infos(
         &self,
         addresses: &[Address],
-        deferred_credits_max_slot: Option<Slot>,
+        deferred_credits_max_slot: std::ops::Bound<Slot>,
     ) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics

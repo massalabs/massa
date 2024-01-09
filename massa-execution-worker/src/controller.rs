@@ -434,7 +434,7 @@ impl ExecutionController for ExecutionControllerImpl {
     fn get_addresses_infos(
         &self,
         addresses: &[Address],
-        deferred_credits_max_slot: Option<Slot>,
+        deferred_credits_max_slot: std::ops::Bound<Slot>,
     ) -> Vec<ExecutionAddressInfo> {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();

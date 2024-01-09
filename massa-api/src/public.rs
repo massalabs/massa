@@ -845,10 +845,10 @@ impl MassaRpcServer for API<Public> {
         );
 
         // get execution info
-        let execution_infos = self
-            .0
-            .execution_controller
-            .get_addresses_infos(&addresses, Some(deferred_credit_max_slot));
+        let execution_infos = self.0.execution_controller.get_addresses_infos(
+            &addresses,
+            std::ops::Bound::Excluded(deferred_credit_max_slot),
+        );
 
         // get future draws from selector
         let selection_draws = {
