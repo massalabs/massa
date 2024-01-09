@@ -2433,11 +2433,6 @@
 <a href="#2433" id="2433">2433</a>
 <a href="#2434" id="2434">2434</a>
 <a href="#2435" id="2435">2435</a>
-<a href="#2436" id="2436">2436</a>
-<a href="#2437" id="2437">2437</a>
-<a href="#2438" id="2438">2438</a>
-<a href="#2439" id="2439">2439</a>
-<a href="#2440" id="2440">2440</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3799,11 +3794,7 @@
     </span><span class="kw">fn </span>cycle_history_cycle_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
-        <span class="self">self</span>.cycle_info_serializer
-            .cycle_info_serializer
-            .u64_ser
-            .serialize(<span class="kw-2">&amp;</span>cycle, <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(CYCLE_HISTORY_SER_ERROR);
+        serialized_key.extend_from_slice(<span class="kw-2">&amp;</span>cycle.to_be_bytes());
         serialized_key
     }
 
@@ -3817,15 +3808,14 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _cycle)) = <span class="self">self
-            </span>.cycle_info_deserializer
-            .cycle_info_deserializer
-            .u64_deser
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-        <span class="kw">else </span>{
+        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        
+        <span class="comment">// Size of the cycle.to_be_bytes()
+        </span><span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
             <span class="kw">return </span><span class="bool-val">false</span>;
-        };
-
+        }
+        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>rest[std::mem::size_of::&lt;u64&gt;()..];
+        
         <span class="kw">if </span>rest.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
