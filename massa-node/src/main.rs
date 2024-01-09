@@ -74,7 +74,7 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, CHAINID, DEFERRED_CREDITS_DELTA, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -805,7 +805,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
         chain_id: *CHAINID,
-        deferred_credits_delta: DEFERRED_CREDITS_DELTA,
+        deferred_credits_delta: MassaTime::from_millis(SETTINGS.api.deferred_credits_delta),
     };
 
     // spawn Massa API

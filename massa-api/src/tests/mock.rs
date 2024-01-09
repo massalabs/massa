@@ -142,7 +142,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
         chain_id: *CHAINID,
-        deferred_credits_delta: DEFERRED_CREDITS_DELTA,
+        deferred_credits_delta: MassaTime::from_millis(5184000000),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();

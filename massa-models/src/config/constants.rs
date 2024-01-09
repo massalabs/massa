@@ -342,15 +342,6 @@ pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
-//
-// Constants for Api
-//
-
-/// Delta to compute upper bounds when fetching deferred credits
-pub const DEFERRED_CREDITS_DELTA: MassaTime = MassaTime::from_millis(
-    60 * 24 * 60 * 60 * 1000, // 60 Days, 24 hours, 60 minutes, 60 seconds, 1000 milliseconds
-);
-
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {
