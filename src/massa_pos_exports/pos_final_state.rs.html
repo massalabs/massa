@@ -3223,7 +3223,7 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            
+
             <span class="comment">// deserialize the slot
             </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
@@ -4044,7 +4044,7 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            
+
             <span class="comment">// deserialize the slot
             </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
