@@ -1,6 +1,6 @@
 [package]
 name = "massa_models"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
