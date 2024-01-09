@@ -2418,26 +2418,6 @@
 <a href="#2418" id="2418">2418</a>
 <a href="#2419" id="2419">2419</a>
 <a href="#2420" id="2420">2420</a>
-<a href="#2421" id="2421">2421</a>
-<a href="#2422" id="2422">2422</a>
-<a href="#2423" id="2423">2423</a>
-<a href="#2424" id="2424">2424</a>
-<a href="#2425" id="2425">2425</a>
-<a href="#2426" id="2426">2426</a>
-<a href="#2427" id="2427">2427</a>
-<a href="#2428" id="2428">2428</a>
-<a href="#2429" id="2429">2429</a>
-<a href="#2430" id="2430">2430</a>
-<a href="#2431" id="2431">2431</a>
-<a href="#2432" id="2432">2432</a>
-<a href="#2433" id="2433">2433</a>
-<a href="#2434" id="2434">2434</a>
-<a href="#2435" id="2435">2435</a>
-<a href="#2436" id="2436">2436</a>
-<a href="#2437" id="2437">2437</a>
-<a href="#2438" id="2438">2438</a>
-<a href="#2439" id="2439">2439</a>
-<a href="#2440" id="2440">2440</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2467,7 +2447,6 @@
 <span class="kw">const </span>FINAL_STATE_HASH_SNAPSHOT_IDENT: u8 = <span class="number">2u8</span>;
 <span class="kw">const </span>ROLL_COUNT_IDENT: u8 = <span class="number">3u8</span>;
 <span class="kw">const </span>PROD_STATS_IDENT: u8 = <span class="number">4u8</span>;
-<span class="kw">const </span>UPPER_LIMIT: u8 = u8::MAX;
 
 <span class="comment">// Production stats idents
 </span><span class="kw">const </span>PROD_STATS_FAIL_IDENT: u8 = <span class="number">0u8</span>;
@@ -2523,14 +2502,6 @@
 </span><span class="macro">macro_rules! </span>prod_stats_prefix {
     (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
         [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[PROD_STATS_IDENT]].concat()
-    };
-}
-
-<span class="doccomment">/// Upper limit prefix macro for a given cycle
-</span><span class="attr">#[macro_export]
-</span><span class="macro">macro_rules! </span>upper_limit_prefix {
-    (<span class="macro-nonterminal">$cycle_prefix</span>:expr) =&gt; {
-        [<span class="kw-2">&amp;</span><span class="macro-nonterminal">$cycle_prefix</span>[..], <span class="kw-2">&amp;</span>[UPPER_LIMIT]].concat()
     };
 }
 
@@ -3439,18 +3410,15 @@
             <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
             <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_key, <span class="kw">_</span>)) = <span class="kw">match </span>found_cycles.last() {
-                <span class="prelude-val">Some</span>(prev_cycle) =&gt; {
-                    <span class="kw">let </span>cycle_prefix = <span class="self">self</span>.cycle_history_cycle_prefix(<span class="kw-2">*</span>prev_cycle);
-
-                    db.iterator_cf(
+                <span class="prelude-val">Some</span>(prev_cycle) =&gt; db
+                    .iterator_cf(
                         STATE_CF,
                         MassaIteratorMode::From(
-                            <span class="kw-2">&amp;</span><span class="macro">upper_limit_prefix!</span>(cycle_prefix),
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.cycle_history_cycle_prefix(prev_cycle.saturating_add(<span class="number">1</span>)),
                             MassaDirection::Forward,
                         ),
                     )
-                    .next()
-                }
+                    .next(),
                 <span class="prelude-val">None </span>=&gt; db
                     .iterator_cf(
                         STATE_CF,
@@ -3474,9 +3442,6 @@
                 found_cycles.push(cycle);
             }
         }
-
-        <span class="comment">// The cycles may not be in order, because they are sorted in the lexicographical order of their binary representation.
-        </span>found_cycles.sort_unstable();
 
         found_cycles
             .into_iter()
@@ -3799,11 +3764,7 @@
     </span><span class="kw">fn </span>cycle_history_cycle_prefix(<span class="kw-2">&amp;</span><span class="self">self</span>, cycle: u64) -&gt; Vec&lt;u8&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_key = Vec::new();
         serialized_key.extend_from_slice(CYCLE_HISTORY_PREFIX.as_bytes());
-        <span class="self">self</span>.cycle_info_serializer
-            .cycle_info_serializer
-            .u64_ser
-            .serialize(<span class="kw-2">&amp;</span>cycle, <span class="kw-2">&amp;mut </span>serialized_key)
-            .expect(CYCLE_HISTORY_SER_ERROR);
+        serialized_key.extend_from_slice(<span class="kw-2">&amp;</span>cycle.to_be_bytes());
         serialized_key
     }
 
@@ -3817,14 +3778,13 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span><span class="prelude-val">Ok</span>((rest, _cycle)) = <span class="self">self
-            </span>.cycle_info_deserializer
-            .cycle_info_deserializer
-            .u64_deser
-            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..])
-        <span class="kw">else </span>{
+        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+
+        <span class="comment">// Size of the cycle.to_be_bytes()
+        </span><span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
             <span class="kw">return </span><span class="bool-val">false</span>;
-        };
+        }
+        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>rest[std::mem::size_of::&lt;u64&gt;()..];
 
         <span class="kw">if </span>rest.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
