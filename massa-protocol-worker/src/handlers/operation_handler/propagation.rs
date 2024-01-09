@@ -24,6 +24,10 @@ use super::{
     OperationMessageSerializer,
 };
 
+// protocol-operation-handler-propagation
+const THREAD_NAME: &str = "poh-tester";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 struct PropagationThread {
     internal_receiver: MassaReceiver<OperationHandlerPropagationCommand>,
     active_connections: Box<dyn ActiveConnectionsTrait>,
@@ -206,7 +210,7 @@ pub fn start_propagation_thread(
     massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
-        .name("protocol-operation-handler-propagation".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let mut propagation_thread = PropagationThread {
                 internal_receiver,
