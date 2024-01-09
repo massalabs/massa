@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["start_retrieval_thread"],"struct":["BlockInfo","RetrievalThread"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"fn":["start_retrieval_thread"],"struct":["BlockInfo","RetrievalThread"]};

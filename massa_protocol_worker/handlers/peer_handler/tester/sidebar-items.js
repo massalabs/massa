@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Tester"]};
+window.SIDEBAR_ITEMS = {"constant":["THREAD_NAME"],"struct":["Tester"]};

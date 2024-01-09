@@ -477,6 +477,10 @@
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::HashMap,
     io::Read,
@@ -505,6 +509,10 @@
     SharedPeerDB,
 };
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
+
+<span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pph-tester&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
+
 <span class="kw">pub struct </span>Tester {
     <span class="kw">pub </span>handler: <span class="prelude-ty">Option</span>&lt;JoinHandle&lt;()&gt;&gt;,
 }
@@ -754,7 +762,7 @@
         massa_metrics: MassaMetrics,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>handle = std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-peer-handler-tester&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span>db = peer_db;
             <span class="kw">let </span>active_connections = active_connections.clone();

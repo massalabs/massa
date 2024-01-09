@@ -505,6 +505,10 @@
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
 <a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::VecDeque, thread::JoinHandle, time::Instant};
 
 <span class="kw">use </span>crossbeam::{channel::tick, select};
@@ -541,6 +545,10 @@
     messages::{OperationMessage, OperationMessageDeserializer, OperationMessageDeserializerArgs},
     OperationMessageSerializer,
 };
+
+<span class="comment">// protocol-operation-handler-retrieval
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;poh-retrieval&quot;</span>;
+<span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="doccomment">/// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `peer_id` now or later. Mainly used in protocol and translated into
@@ -985,7 +993,7 @@
     massa_metrics: MassaMetrics,
 ) -&gt; JoinHandle&lt;()&gt; {
     std::thread::Builder::new()
-        .name(<span class="string">&quot;protocol-operation-handler-retrieval&quot;</span>.to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(<span class="kw">move </span>|| {
             <span class="kw">let </span><span class="kw-2">mut </span>retrieval_thread = RetrievalThread {
                 receiver,

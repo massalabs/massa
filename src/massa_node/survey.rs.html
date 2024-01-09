@@ -153,6 +153,9 @@
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -204,13 +207,16 @@
         <span class="kw">if </span>massa_metrics.is_enabled() {
             <span class="attr">#[cfg(all(not(feature = <span class="string">&quot;sandbox&quot;</span>), not(test)))]
             </span>{
+                <span class="comment">// massa-survey
+                </span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;massa-survey&quot;</span>;
+
                 <span class="kw">let </span><span class="kw-2">mut </span>data_sent = <span class="number">0</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>data_received = <span class="number">0</span>;
                 <span class="kw">let </span>(tx_stop, rx_stop) =
                     MassaChannel::new(<span class="string">&quot;massa_survey_stop&quot;</span>.to_string(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
                 <span class="kw">let </span>update_tick = tick(tick_delay);
                 <span class="kw">match </span>std::thread::Builder::new()
-                    .name(<span class="string">&quot;massa-survey&quot;</span>.to_string())
+                    .name(THREAD_NAME.to_string())
                     .spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
                         <span class="macro">select! </span>{
                             recv(rx_stop) -&gt; <span class="kw">_ </span>=&gt; {
