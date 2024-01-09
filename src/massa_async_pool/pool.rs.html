@@ -1413,6 +1413,7 @@
 <a href="#1413" id="1413">1413</a>
 <a href="#1414" id="1414">1414</a>
 <a href="#1415" id="1415">1415</a>
+<a href="#1416" id="1416">1416</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1672,7 +1673,8 @@
                 <span class="self">self</span>.message_info_cache.insert(message_id, message.into());
             }
 
-            last_id = <span class="prelude-val">Some</span>(
+            <span class="comment">// The -1 is to remove the IDENT byte at the end of the key
+            </span>last_id = <span class="prelude-val">Some</span>(
                 serialized_message_id[ASYNC_POOL_PREFIX.len()..serialized_message_id.len() - <span class="number">1</span>]
                     .to_vec(),
             );
