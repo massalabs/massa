@@ -2437,6 +2437,20 @@
 <a href="#2437" id="2437">2437</a>
 <a href="#2438" id="2438">2438</a>
 <a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
+<a href="#2447" id="2447">2447</a>
+<a href="#2448" id="2448">2448</a>
+<a href="#2449" id="2449">2449</a>
+<a href="#2450" id="2450">2450</a>
+<a href="#2451" id="2451">2451</a>
+<a href="#2452" id="2452">2452</a>
+<a href="#2453" id="2453">2453</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3157,7 +3171,9 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+
+            <span class="comment">// deserialize the slot
+            </span><span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, DEFERRED_CREDITS_DESER_ERROR);
             }
@@ -3207,7 +3223,9 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+            
+            <span class="comment">// deserialize the slot
+            </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, DEFERRED_CREDITS_DESER_ERROR);
             }
@@ -3276,7 +3294,9 @@
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+
+            <span class="comment">// deserialize the cycle
+            </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, CYCLE_HISTORY_DESER_ERROR);
             }
@@ -3331,7 +3351,9 @@
             <span class="kw">if </span>!serialized_key.starts_with(prefix.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+
+            <span class="comment">// deserialize the cycle
+            </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, CYCLE_HISTORY_DESER_ERROR);
             }
@@ -3464,7 +3486,9 @@
                 <span class="kw">if </span>!serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
                     <span class="kw">break</span>;
                 }
-                <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+
+                <span class="comment">// deserialize the cycle
+                </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
                 <span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
                     <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, CYCLE_HISTORY_DESER_ERROR);
                 }
@@ -3807,13 +3831,14 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
+        <span class="comment">// deserialize the cycle
+        </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[CYCLE_HISTORY_PREFIX.len()..];
 
         <span class="comment">// Size of the cycle.to_be_bytes()
         </span><span class="kw">if </span>rest.len() &lt; std::mem::size_of::&lt;u64&gt;() {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
-        <span class="kw">let </span>rest: <span class="kw-2">&amp;</span>[u8] = <span class="kw-2">&amp;</span>rest[std::mem::size_of::&lt;u64&gt;()..];
+        <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>rest[std::mem::size_of::&lt;u64&gt;()..];
 
         <span class="kw">if </span>rest.is_empty() {
             <span class="kw">return </span><span class="bool-val">false</span>;
@@ -3961,7 +3986,8 @@
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
 
-        <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+        <span class="comment">// deserialize the slot
+        </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
         <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
@@ -4018,7 +4044,9 @@
             <span class="kw">if </span>!serialized_key.starts_with(DEFERRED_CREDITS_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
-            <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
+            
+            <span class="comment">// deserialize the slot
+            </span><span class="kw">let </span>rest = <span class="kw-2">&amp;</span>serialized_key[DEFERRED_CREDITS_PREFIX.len()..];
             <span class="kw">if </span>rest.len() &lt; SLOT_KEY_SIZE {
                 <span class="macro">panic!</span>(<span class="string">&quot;{}&quot;</span>, DEFERRED_CREDITS_DESER_ERROR);
             }
