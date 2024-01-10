@@ -1836,16 +1836,15 @@ impl ExecutionState {
         address: &Address,
     ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
         // get values from final state
-        let res_final = self
+        let res_final: BTreeMap<Slot, Amount> = self
             .final_state
             .read()
             .get_pos_state()
             .get_deferred_credits_range(.., Some(address))
-            .credits;
-        let res_final: BTreeMap<Slot, Amount> = res_final
-            .into_iter()
+            .credits
+            .iter()
             .filter_map(|(slot, addr_amount)| {
-                addr_amount.get(address).map(|amount| (slot, *amount))
+                addr_amount.get(address).map(|amount| (*slot, *amount))
             })
             .collect();
 
