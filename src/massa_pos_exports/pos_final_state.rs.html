@@ -2397,6 +2397,8 @@
 <a href="#2397" id="2397">2397</a>
 <a href="#2398" id="2398">2398</a>
 <a href="#2399" id="2399">2399</a>
+<a href="#2400" id="2400">2400</a>
+<a href="#2401" id="2401">2401</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -3092,6 +3094,8 @@
     }
 
     <span class="doccomment">/// Retrieves every deferred credit in a slot range
+    /// Warning: this can be quite slow if there is tons of Deferred credits (e.g. just after genesis) to fetch
+    ///          so there is an option to filter by an address to improve the speed (cf json rpc api get_addresses)
     </span><span class="kw">pub fn </span>get_deferred_credits_range&lt;R&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         range: R,
