@@ -75,4 +75,4 @@ The following initial distribution files:
 * `massa-node/base_config/deferred_credits.json`
 * `massa-node/base_config/initial_rolls.json`
 
-Are copied from `https://github.com/Massa-Foundation/genesis-ledger/tree/main/node_initial_setup` at commit hash `f97cb035529907745fd15601d148311c1b07e1a6`.
+Are copied from `https://github.com/Massa-Foundation/genesis-ledger/tree/main/node_initial_setup` at commit hash `9bb16c286d2bdc830490bd0af70571207d34921c`.
