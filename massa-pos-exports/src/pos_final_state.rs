@@ -693,6 +693,8 @@ impl PoSFinalState {
     }
 
     /// Retrieves every deferred credit in a slot range
+    /// Warning: this can be quite slow if there is tons of Deferred credits (e.g. just after genesis) to fetch
+    ///          so there is an option to filter by an address to improve the speed (cf json rpc api get_addresses)
     pub fn get_deferred_credits_range<R>(
         &self,
         range: R,
