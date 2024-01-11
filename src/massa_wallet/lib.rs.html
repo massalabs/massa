@@ -266,6 +266,9 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Standalone massa wallet
 //! Keypair management
@@ -287,17 +290,20 @@
 <span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::str::FromStr;
+<span class="kw">use </span>zeroize::{Zeroize, ZeroizeOnDrop};
 
 <span class="kw">mod </span>error;
 
 <span class="kw">const </span>WALLET_VERSION: u64 = <span class="number">1</span>;
 
 <span class="doccomment">/// Contains the keypairs created in the wallet.
-</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize, Zeroize, ZeroizeOnDrop)]
 </span><span class="kw">pub struct </span>Wallet {
     <span class="doccomment">/// Keypairs and addresses
+    </span><span class="attr">#[zeroize(skip)]
     </span><span class="kw">pub </span>keys: PreHashMap&lt;Address, KeyPair&gt;,
     <span class="doccomment">/// Path to the file containing the keypairs (encrypted)
+    </span><span class="attr">#[zeroize(skip)]
     </span>wallet_path: PathBuf,
     <span class="doccomment">/// Password
     </span>password: String,
