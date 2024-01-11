@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::ops::Bound::{Excluded, Included};
 
 use nom::{
+    bytes::complete::take,
     error::context,
     error::{ContextError, ParseError},
     multi::length_count,
@@ -145,14 +146,14 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                     let (input_, len_) = self.name_len_deserializer.deserialize(input)?;
                     // Safe to unwrap as it returns Result<usize, Infallible>
                     let len = usize::try_from(len_).unwrap();
-                    let slice = &input_[..len];
+                    let (rem, slice) = take(len)(input_)?;
                     let name = String::from_utf8(slice.to_vec()).map_err(|_| {
                         nom::Err::Error(ParseError::from_error_kind(
                             input_,
                             nom::error::ErrorKind::Fail,
                         ))
                     })?;
-                    IResult::Ok((&input_[len..], name))
+                    IResult::Ok((rem, name))
                 }),
                 context("Failed version deserialization", |input| {
                     self.u32_deserializer.deserialize(input)
@@ -907,54 +908,87 @@ mod test {
 
     #[test]
     fn test_mip_info_ser_der_err() {
-        // A MIP info with too many MIP Component
-        let mi_1 = MipInfo {
-            name: "MIP-0002".to_string(),
-            version: 2,
-            components: BTreeMap::from([
-                (MipComponent::Address, 1),
-                (MipComponent::KeyPair, 2),
-                (MipComponent::Block, 3),
-                (MipComponent::VM, 4),
-                (MipComponent::FinalStateHashKind, 5),
-                (MipComponent::__Nonexhaustive, 6),
-            ]),
-            start: MassaTime::from_millis(2),
-            timeout: MassaTime::from_millis(5),
-            activation_delay: MassaTime::from_millis(2),
-        };
+        {
+            // A MIP info with too many MIP Component
+            let mi_1 = MipInfo {
+                name: "MIP-0002".to_string(),
+                version: 2,
+                components: BTreeMap::from([
+                    (MipComponent::Address, 1),
+                    (MipComponent::KeyPair, 2),
+                    (MipComponent::Block, 3),
+                    (MipComponent::VM, 4),
+                    (MipComponent::FinalStateHashKind, 5),
+                    (MipComponent::__Nonexhaustive, 6),
+                ]),
+                start: MassaTime::from_millis(2),
+                timeout: MassaTime::from_millis(5),
+                activation_delay: MassaTime::from_millis(2),
+            };
+
+            {
+                let mut buf = Vec::new();
+                let mip_info_ser = MipInfoSerializer::new();
+                mip_info_ser.serialize(&mi_1, &mut buf).unwrap();
+
+                let mut mip_info_der = MipInfoDeserializer::new();
+                // Allow only a max of 2 components per MIP info
+                mip_info_der.components_len_deserializer =
+                    U32VarIntDeserializer::new(Included(0), Included(2));
+
+                let res = mip_info_der.deserialize::<DeserializeError>(&buf);
+                assert!(res.is_err());
+            }
+        }
 
         {
+            // A MIP info with a very long name
+            let mi_2 = MipInfo {
+                name: "a".repeat(MIP_INFO_NAME_MAX_LEN as usize + 1),
+                version: 2,
+                components: BTreeMap::from([(MipComponent::Address, 1)]),
+                start: MassaTime::from_millis(2),
+                timeout: MassaTime::from_millis(5),
+                activation_delay: MassaTime::from_millis(2),
+            };
+
+            {
+                let mut buf = Vec::new();
+                let mip_info_ser = MipInfoSerializer::new();
+                mip_info_ser.serialize(&mi_2, &mut buf).unwrap();
+
+                let mip_info_der = MipInfoDeserializer::new();
+
+                let res = mip_info_der.deserialize::<DeserializeError>(&buf);
+                assert!(res.is_err());
+            }
+        }
+
+        {
+            // A MIP info, tweak to have an incorrect length (for name)
+
+            let mip_info_name = "MIP-0002".to_string();
+            let mi_1 = MipInfo {
+                name: mip_info_name.clone(),
+                version: 2,
+                components: BTreeMap::from([
+                    (MipComponent::Address, 1),
+                    (MipComponent::KeyPair, 2),
+                    (MipComponent::Block, 3),
+                ]),
+                start: MassaTime::from_millis(2),
+                timeout: MassaTime::from_millis(5),
+                activation_delay: MassaTime::from_millis(2),
+            };
+
             let mut buf = Vec::new();
             let mip_info_ser = MipInfoSerializer::new();
             mip_info_ser.serialize(&mi_1, &mut buf).unwrap();
 
-            let mut mip_info_der = MipInfoDeserializer::new();
-            // Allow only a max of 2 components per MIP info
-            mip_info_der.components_len_deserializer =
-                U32VarIntDeserializer::new(Included(0), Included(2));
-
-            let res = mip_info_der.deserialize::<DeserializeError>(&buf);
-            assert!(res.is_err());
-        }
-
-        // A MIP info with a very long name
-        let mi_2 = MipInfo {
-            name: "a".repeat(MIP_INFO_NAME_MAX_LEN as usize + 1),
-            version: 2,
-            components: BTreeMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from_millis(2),
-            timeout: MassaTime::from_millis(5),
-            activation_delay: MassaTime::from_millis(2),
-        };
-
-        {
-            let mut buf = Vec::new();
-            let mip_info_ser = MipInfoSerializer::new();
-            mip_info_ser.serialize(&mi_2, &mut buf).unwrap();
-
+            assert_eq!(buf[0], mip_info_name.len() as u8);
+            // Now name len will be way too long
+            buf[0] = buf.len() as u8 + 1;
             let mip_info_der = MipInfoDeserializer::new();
-
             let res = mip_info_der.deserialize::<DeserializeError>(&buf);
             assert!(res.is_err());
         }
