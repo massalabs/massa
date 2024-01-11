@@ -43,7 +43,7 @@ if __name__ == "__main__":
     match_count = 0
     with open(filepath) as fp:
         file_content = fp.read()
-        for m in re.finditer(r"\[([\w:\+\.-]+)\]", file_content, flags = re.IGNORECASE | re.MULTILINE):
+        for m in re.finditer(r"\[([\w\(\)\s:\+\.-]+)\]", file_content, flags = re.IGNORECASE | re.MULTILINE):
 
             if m.group(0) in to_exclude:
                 continue
