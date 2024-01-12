@@ -19,17 +19,20 @@ use std::collections::hash_map::Entry;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod error;
 
 const WALLET_VERSION: u64 = 1;
 
 /// Contains the keypairs created in the wallet.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Zeroize, ZeroizeOnDrop)]
 pub struct Wallet {
     /// Keypairs and addresses
+    #[zeroize(skip)]
     pub keys: PreHashMap<Address, KeyPair>,
     /// Path to the file containing the keypairs (encrypted)
+    #[zeroize(skip)]
     wallet_path: PathBuf,
     /// Password
     password: String,
