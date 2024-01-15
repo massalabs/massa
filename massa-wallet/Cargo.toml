@@ -19,4 +19,4 @@ massa_hash = {workspace = true}
 massa_models = {workspace = true}
 massa_signature = {workspace = true}
 serde_yaml = {workspace = true}
-zeroize = { worksapce = true }
+zeroize = { workspace = true }
