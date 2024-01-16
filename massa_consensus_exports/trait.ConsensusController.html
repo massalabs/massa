@@ -20,7 +20,7 @@
         &amp;self,
         block_id: <a class="enum" href="../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>,
         slot: <a class="struct" href="../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
-        block_storage: <a class="struct" href="../massa_storage/struct.Storage.html" title="struct massa_storage::Storage">Storage</a>,
+        block_storage: Storage,
         created: <a class="primitive" href="https://doc.rust-lang.org/1.74.1/std/primitive.bool.html">bool</a>
     );
 <span class="item-spacer"></span>    fn <a href="#tymethod.register_block_header" class="fn">register_block_header</a>(
@@ -98,7 +98,7 @@ Used for bootstrap.</p>
     &amp;self,
     block_id: <a class="enum" href="../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>,
     slot: <a class="struct" href="../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
-    block_storage: <a class="struct" href="../massa_storage/struct.Storage.html" title="struct massa_storage::Storage">Storage</a>,
+    block_storage: Storage,
     created: <a class="primitive" href="https://doc.rust-lang.org/1.74.1/std/primitive.bool.html">bool</a>
 )</h4></section></summary><div class="docblock"><p>Register a block in the graph</p>
 <h5 id="arguments-5"><a href="#arguments-5">Arguments</a></h5>
