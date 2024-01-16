@@ -251,7 +251,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address RollCount Fee"),
+        props(args = "Address Fee"),
         message = "sell rolls with wallet address"
     )]
     sell_rolls,
@@ -902,37 +902,35 @@ impl Command {
             Command::sell_rolls => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
-                if parameters.len() != 3 {
+                if parameters.len() != 2 {
                     bail!("wrong number of parameters");
                 }
                 let addr = parameters[0].parse::<Address>()?;
-                let roll_count = parameters[1].parse::<u64>()?;
-                let fee = parameters[2].parse::<Amount>()?;
+                let fee = parameters[1].parse::<Amount>()?;
 
-                if !json {
-                    if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
+                match client.public.get_addresses(vec![addr]).await {
+                    Ok(addresses_info) => {
                         match addresses_info.get(0) {
                             Some(info) => {
-                                if info.candidate_balance < fee
-                                    || roll_count > info.candidate_roll_count
-                                {
-                                    client_warning!("this operation may be rejected due to insufficient balance or roll count");
+                                if info.candidate_balance < fee && !json {
+                                    client_warning!("this operation may be rejected due to insufficient balance");
                                 }
+                                let roll_count = info.candidate_roll_count;
+                                send_operation(
+                                    client,
+                                    wallet,
+                                    OperationType::RollSell { roll_count },
+                                    fee,
+                                    addr,
+                                    json,
+                                )
+                                .await
                             }
-                            None => client_warning!(format!("address {} not found", addr)),
+                            None => bail!(format!("address {} not found", addr)),
                         }
                     }
+                    Err(e) => rpc_error!(e),
                 }
-
-                send_operation(
-                    client,
-                    wallet,
-                    OperationType::RollSell { roll_count },
-                    fee,
-                    addr,
-                    json,
-                )
-                .await
             }
 
             Command::send_transaction => {
