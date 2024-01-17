@@ -594,6 +594,10 @@
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -876,7 +880,11 @@
                 <span class="kw">let </span>owned_count = <span class="self">self</span>.get_rolls(<span class="kw-2">&amp;</span>addr);
                 <span class="kw">if </span>owned_count != <span class="number">0 </span>{
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = roll_price.checked_mul_u64(owned_count) {
-                        target_credits.insert(addr, amount);
+                        <span class="kw">let </span>new_deferred_credits = <span class="self">self
+                            </span>.get_address_deferred_credit_for_slot(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>target_slot)
+                            .unwrap_or_default()
+                            .saturating_add(amount);
+                        target_credits.insert(addr, new_deferred_credits);
                         <span class="self">self</span>.added_changes.roll_changes.insert(addr, <span class="number">0</span>);
                     }
                 }
