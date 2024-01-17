@@ -280,7 +280,11 @@ impl SpeculativeRollState {
                 let owned_count = self.get_rolls(&addr);
                 if owned_count != 0 {
                     if let Some(amount) = roll_price.checked_mul_u64(owned_count) {
-                        target_credits.insert(addr, amount);
+                        let new_deferred_credits = self
+                            .get_address_deferred_credit_for_slot(&addr, &target_slot)
+                            .unwrap_or_default()
+                            .saturating_add(amount);
+                        target_credits.insert(addr, new_deferred_credits);
                         self.added_changes.roll_changes.insert(addr, 0);
                     }
                 }
