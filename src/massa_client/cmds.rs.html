@@ -1442,6 +1442,8 @@
 <a href="#1442" id="1442">1442</a>
 <a href="#1443" id="1443">1443</a>
 <a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -1695,7 +1697,7 @@
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address Fee&quot;</span>),
+        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>),
         message = <span class="string">&quot;sell rolls with wallet address&quot;
     </span>)]
     </span>sell_rolls,
@@ -2346,36 +2348,38 @@
             Command::sell_rolls =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
-                <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
+                <span class="kw">if </span>parameters.len() != <span class="number">3 </span>{
                     <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span>fee = parameters[<span class="number">1</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>roll_count = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
+                <span class="kw">let </span>fee = parameters[<span class="number">2</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
 
-                <span class="kw">match </span>client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                    <span class="prelude-val">Ok</span>(addresses_info) =&gt; {
+                <span class="kw">if </span>!json {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
                         <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
                             <span class="prelude-val">Some</span>(info) =&gt; {
-                                <span class="kw">if </span>info.candidate_balance &lt; fee &amp;&amp; !json {
-                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                <span class="kw">if </span>info.candidate_balance &lt; fee
+                                    || roll_count &gt; info.candidate_roll_count
+                                {
+                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance or roll count&quot;</span>);
                                 }
-                                <span class="kw">let </span>roll_count = info.candidate_roll_count;
-                                send_operation(
-                                    client,
-                                    wallet,
-                                    OperationType::RollSell { roll_count },
-                                    fee,
-                                    addr,
-                                    json,
-                                )
-                                .<span class="kw">await
-                            </span>}
-                            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr)),
+                            }
+                            <span class="prelude-val">None </span>=&gt; <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr)),
                         }
                     }
-                    <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                 }
-            }
+
+                send_operation(
+                    client,
+                    wallet,
+                    OperationType::RollSell { roll_count },
+                    fee,
+                    addr,
+                    json,
+                )
+                .<span class="kw">await
+            </span>}
 
             Command::send_transaction =&gt; {
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
