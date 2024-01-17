@@ -17,6 +17,7 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
+use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -25,7 +26,9 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
-use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
+use massa_pos_exports::{
+    CycleInfo, MockSelectorControllerWrapper, PoSConfig, PoSFinalState, ProductionStats, Selection,
+};
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use mockall::predicate;
@@ -1468,6 +1471,125 @@ fn roll_sell() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
+}
+
+#[test]
+fn auto_sell_on_missed_blocks() {
+    // setup
+    let exec_cfg = ExecutionConfig {
+        thread_count: 2,
+        periods_per_cycle: 2,
+        max_miss_ratio: Ratio::new(0, 1),
+        ..Default::default()
+    };
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    let (rolls_path, _) = get_initials();
+    let mut batch = DBBatch::new();
+    let initial_deferred_credits = Amount::from_str("100").unwrap();
+    let mut pos_final_state = PoSFinalState::new(
+        PoSConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            ..PoSConfig::default()
+        },
+        "",
+        &rolls_path.into_temp_path().to_path_buf(),
+        foreign_controllers.selector_controller.clone(),
+        foreign_controllers.db.clone(),
+    )
+    .unwrap();
+    pos_final_state.create_initial_cycle(&mut batch);
+    pos_final_state.put_deferred_credits_entry(
+        &Slot::new(1, 0),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
+
+    pos_final_state.put_deferred_credits_entry(
+        &Slot::new(7, 1),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
+
+    let mut prod_stats = PreHashMap::default();
+    prod_stats.insert(
+        address,
+        ProductionStats {
+            block_success_count: 0,
+            block_failure_count: 1,
+        },
+    );
+
+    let rolls_cycle_0 = pos_final_state.get_all_roll_counts(0);
+    let cycle_info_0 = CycleInfo::new(
+        0,
+        false,
+        rolls_cycle_0.clone(),
+        Default::default(),
+        prod_stats.clone(),
+    );
+    pos_final_state.put_new_cycle_info(&cycle_info_0, &mut batch);
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
+    pos_final_state.recompute_pos_state_caches();
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        Some(pos_final_state.clone()),
+    );
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, _changes| {});
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            println!("changes: {:?}", changes);
+            let deferred_credits = changes
+                .pos_changes
+                .deferred_credits
+                .get_address_credits_for_slot(&address, &Slot::new(7, 1))
+                .unwrap();
+            assert_eq!(
+                deferred_credits,
+                Amount::from_mantissa_scale(10100, 0).unwrap()
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+    // set our block as a final block so the purchase is processed
+    universe.send_and_finalize(&keypair, block);
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
 }
