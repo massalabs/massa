@@ -1108,7 +1108,7 @@ impl PoSFinalState {
 // RocksDB setters
 impl PoSFinalState {
     /// Helper function to put a new CycleInfo to RocksDB, and update the cycle_history cache
-    fn put_new_cycle_info(&mut self, cycle_info: &CycleInfo, batch: &mut DBBatch) {
+    pub fn put_new_cycle_info(&mut self, cycle_info: &CycleInfo, batch: &mut DBBatch) {
         self.put_cycle_history_complete(cycle_info.cycle, cycle_info.complete, batch);
         self.put_cycle_history_rng_seed(cycle_info.cycle, cycle_info.rng_seed.clone(), batch);
         self.put_cycle_history_final_state_hash_snapshot(

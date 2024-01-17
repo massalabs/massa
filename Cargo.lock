@@ -2007,6 +2007,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "intrusive-collections"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b694dc9f70c3bda874626d2aed13b780f137aab435f4e9814121955cf706122e"
+dependencies = [
+ "memoffset",
+]
+
+[[package]]
 name = "io-lifetimes"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3891,7 +3900,7 @@ checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
 [[package]]
 name = "peernet"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/PeerNet?branch=main#1d10f55ea883e685691ff527c2466f733ba3e1b2"
+source = "git+https://github.com/massalabs/PeerNet?rev=04b05ddd320fbe76cc858115af7b5fc28bdb8310#04b05ddd320fbe76cc858115af7b5fc28bdb8310"
 dependencies = [
  "crossbeam",
  "enum_delegate",
@@ -4295,18 +4304,21 @@ dependencies = [
 
 [[package]]
 name = "quiche"
-version = "0.16.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "991d80b9e559fcbfee21c1a943b46586eca4b830d74e5f3e99a7ab7ea3819b16"
+checksum = "cefb16e101e73e6e4982e78746a21745b73a41168b6272b30e861ba2ed3df79f"
 dependencies = [
  "cmake",
- "lazy_static",
+ "either",
+ "intrusive-collections",
  "libc",
  "libm",
  "log",
  "octets",
- "ring 0.16.20",
+ "once_cell",
+ "ring 0.17.7",
  "slab",
+ "smallvec",
  "winapi",
 ]
 
@@ -5109,6 +5121,9 @@ name = "smallvec"
 version = "1.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4dccd0940a2dcdf68d092b8cbab7dc0ad8fa938bf95787e1b916b0e3d0e8e970"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "socket2"
