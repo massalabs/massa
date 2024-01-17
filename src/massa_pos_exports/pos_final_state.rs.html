@@ -3509,7 +3509,7 @@
 <span class="comment">// RocksDB setters
 </span><span class="kw">impl </span>PoSFinalState {
     <span class="doccomment">/// Helper function to put a new CycleInfo to RocksDB, and update the cycle_history cache
-    </span><span class="kw">fn </span>put_new_cycle_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle_info: <span class="kw-2">&amp;</span>CycleInfo, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    </span><span class="kw">pub fn </span>put_new_cycle_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, cycle_info: <span class="kw-2">&amp;</span>CycleInfo, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
         <span class="self">self</span>.put_cycle_history_complete(cycle_info.cycle, cycle_info.complete, batch);
         <span class="self">self</span>.put_cycle_history_rng_seed(cycle_info.cycle, cycle_info.rng_seed.clone(), batch);
         <span class="self">self</span>.put_cycle_history_final_state_hash_snapshot(
