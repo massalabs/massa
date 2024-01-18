@@ -53,7 +53,8 @@ opt-level = 3 # Speed-up the CI
 # This profile is used for prebuilt binaries.
 [profile.release_prebuilt]
 inherits = "release"
-codegen-units = 1
+codegen-units = 1  # Do not split into multiple codegen units, improve performance, may compile slower
+lto = true         # Enables Link Time Optimization, enabling more aggressive optimizations across the entire codebase
 
 # # Features
 #
