@@ -1711,9 +1711,9 @@ dependencies = [
 
 [[package]]
 name = "h2"
-version = "0.3.22"
+version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d6250322ef6e60f93f9a2162799302cd6f68f79f6e5d85c8c16f14d1d958178"
+checksum = "bb2c4422095b67ee78da96fbb51a4cc413b3b25883c7717ff7ca1ab31022c9c9"
 dependencies = [
  "bytes",
  "fnv",
@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=bbab9f329eee08d1f54c595214634a03824e9343#bbab9f329eee08d1f54c595214634a03824e9343"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=845dc733a2f66b1b219a75d71f30c8e2a7e8a310#845dc733a2f66b1b219a75d71f30c8e2a7e8a310"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
