@@ -1,9 +1,9 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::slot::Slot;
+use crate::{node::NodeId, slot::Slot};
 use massa_time::MassaTime;
 use serde::{Deserialize, Serialize};
-use std::fmt::Formatter;
+use std::{collections::HashMap, fmt::Formatter, net::SocketAddr};
 
 /// execution statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,6 +64,8 @@ pub struct NetworkStats {
     pub banned_peer_count: u64,
     /// active node count
     pub active_node_count: u64,
+    /// list of all known peers
+    pub known_peers: HashMap<NodeId, SocketAddr>,
 }
 
 impl std::fmt::Display for NetworkStats {

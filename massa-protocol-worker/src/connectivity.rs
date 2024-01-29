@@ -4,7 +4,7 @@ use ip_rfc::global;
 use massa_channel::{receiver::MassaReceiver, sender::MassaSender};
 use massa_consensus_exports::ConsensusController;
 use massa_metrics::MassaMetrics;
-use massa_models::stats::NetworkStats;
+use massa_models::{stats::NetworkStats, node::NodeId};
 use massa_pool_exports::PoolController;
 use massa_pos_exports::SelectorController;
 use massa_protocol_exports::{PeerCategoryInfo, PeerId, ProtocolConfig, ProtocolError};
@@ -217,9 +217,9 @@ pub(crate) fn start_connectivity_thread(
                                 let active_node_count = network_controller.get_active_connections().get_peer_ids_connected().len() as u64;
                                 let in_connection_count = network_controller.get_active_connections().get_nb_in_connections() as u64;
                                 let out_connection_count = network_controller.get_active_connections().get_nb_out_connections() as u64;
-                                let (banned_peer_count, known_peer_count) = {
+                                let (banned_peer_count, known_peer_count, all_peers) = {
                                     let peer_db_read = peer_db.read();
-                                    (peer_db_read.get_banned_peer_count(), peer_db_read.get_known_peer_count())
+                                    (peer_db_read.get_banned_peer_count(), peer_db_read.get_known_peer_count(), peer_db_read.get_peers().clone())
                                 };
                                 let stats = NetworkStats {
                                     active_node_count,
@@ -227,6 +227,17 @@ pub(crate) fn start_connectivity_thread(
                                     out_connection_count,
                                     banned_peer_count,
                                     known_peer_count,
+                                    known_peers: all_peers.into_iter().filter_map(|(peer_id, peer_info)| {
+                                        if let Some(announcement) = peer_info.last_announce {
+                                            if let Some(listener) = announcement.listeners.iter().next() {
+                                                Some((NodeId::new(peer_id.get_public_key()), listener.0.clone()))
+                                            } else {
+                                                None
+                                            }
+                                        } else  {
+                                            None
+                                        }
+                                    }).collect()
                                 };
                                 let peers: HashMap<PeerId, (SocketAddr, PeerConnectionType)> = network_controller.get_active_connections().get_peers_connected().into_iter().map(|(peer_id, peer)| {
                                     (peer_id, (peer.0, peer.1))
