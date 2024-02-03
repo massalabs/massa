@@ -14,7 +14,7 @@ use jsonrpsee::ws_client::{HeaderMap, HeaderValue, WsClient, WsClientBuilder};
 use jsonrpsee::{core::RpcResult, http_client::HttpClientBuilder};
 use jsonrpsee_http_client as _;
 use jsonrpsee_ws_client as _;
-use massa_api_exports::page::PagedVecV2;
+use massa_api_exports::page::{PageRequest, PagedVecV2};
 use massa_api_exports::ApiRequest;
 use massa_api_exports::{
     address::AddressInfo,
@@ -331,9 +331,9 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub async fn get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
+    pub async fn get_stakers(&self, pager: Option<PageRequest>) -> RpcResult<PreHashMap<Address, u64>> {
         self.http_client
-            .request("get_stakers", rpc_params![])
+            .request("get_stakers", rpc_params![pager])
             .await
             .map_err(|e| to_error_obj(e.to_string()))
     }
