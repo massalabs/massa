@@ -91,6 +91,7 @@ async fn get_status() {
     protocol_ctrl.expect_get_stats().returning(|| {
         Ok((
             NetworkStats {
+                known_peers: HashMap::new(),
                 in_connection_count: 10,
                 out_connection_count: 5,
                 known_peer_count: 6,

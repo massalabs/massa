@@ -320,7 +320,8 @@ impl RpcClient {
             .map_err(|e| to_error_obj(e.to_string()))
     }
 
-    pub(crate) async fn _get_cliques(&self) -> RpcResult<Vec<Clique>> {
+    /// Returns the current cliques.
+    pub async fn get_cliques(&self) -> RpcResult<Vec<Clique>> {
         self.http_client
             .request("get_cliques", rpc_params![])
             .await
@@ -330,7 +331,7 @@ impl RpcClient {
     // Debug (specific information)
 
     /// Returns the active stakers and their roll counts for the current cycle.
-    pub(crate) async fn _get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
+    pub async fn get_stakers(&self) -> RpcResult<PreHashMap<Address, u64>> {
         self.http_client
             .request("get_stakers", rpc_params![])
             .await
@@ -380,7 +381,7 @@ impl RpcClient {
 
     /// Get the block graph within the specified time interval.
     /// Optional parameters: from `<time_start>` (included) and to `<time_end>` (excluded) millisecond timestamp
-    pub(crate) async fn _get_graph_interval(
+    pub async fn get_graph_interval(
         &self,
         time_interval: TimeInterval,
     ) -> RpcResult<Vec<BlockSummary>> {
