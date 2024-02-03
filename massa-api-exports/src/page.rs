@@ -43,6 +43,16 @@ impl<T: Serialize> Serialize for PagedVec<T> {
     }
 }
 
+impl<'a, T: Deserialize<'a>> Deserialize<'a> for PagedVec<T> {
+    fn deserialize<D: serde::Deserializer<'a>>(d: D) -> Result<Self, D::Error> {
+        let res = Vec::<T>::deserialize(d)?;
+        Ok(PagedVec {
+            _total_count: res.len(),
+            res,
+        })
+    }
+}
+
 /// Represents the request inputs for a PagedVec
 #[derive(Deserialize, Serialize)]
 pub struct PageRequest {
