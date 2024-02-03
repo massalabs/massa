@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize, Serializer};
 /// Cf. <https://docs.rs/paginate/latest/paginate/>
 #[derive(Clone)]
 pub struct PagedVec<T> {
-    res: Vec<T>,
+    /// The elements of the page
+    pub res: Vec<T>,
     _total_count: usize,
 }
 
