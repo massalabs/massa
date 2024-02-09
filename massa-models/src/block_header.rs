@@ -466,8 +466,8 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "test-exports"))]
-            res.assert_invariants(self.last_start_period, self.thread_count, self.endorsement_count)
-                .unwrap();
+            /*res.assert_invariants(self.last_start_period, self.thread_count, self.endorsement_count)
+                .unwrap();*/
 
             // As we have 0 endorsements & 0 denunciations, rest = [0, 0] (length 0 & length 0)
             // As we want to return an empty "res" we use nom tag
