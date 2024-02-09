@@ -573,7 +573,7 @@ mod test {
         res_block
             .content
             .header
-            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .assert_invariants(None, THREAD_COUNT, ENDORSEMENT_COUNT)
             .unwrap();
     }
 
@@ -636,7 +636,7 @@ mod test {
         res_block
             .content
             .header
-            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .assert_invariants(None, THREAD_COUNT, ENDORSEMENT_COUNT)
             .unwrap();
 
         // check equality
@@ -982,7 +982,7 @@ mod test {
 
         res.content
             .header
-            .assert_invariants(THREAD_COUNT, ENDORSEMENT_COUNT)
+            .assert_invariants(None, THREAD_COUNT, ENDORSEMENT_COUNT)
             .unwrap();
     }
     #[test]

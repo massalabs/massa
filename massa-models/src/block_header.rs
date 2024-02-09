@@ -121,11 +121,12 @@ impl SecuredHeader {
     #[cfg(any(test, feature = "test-exports"))]
     pub(crate) fn assert_invariants(
         &self,
+        last_start_period: Option<u64>,
         thread_count: u8,
         endorsement_count: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.content
-            .assert_invariants(thread_count, endorsement_count)?;
+            .assert_invariants(last_start_period, thread_count, endorsement_count)?;
         self.verify_signature()
             .map_err(|er| format!("{}", er).into())
     }
@@ -547,7 +548,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
         // TODO: gh-issue #3398
         #[cfg(any(test, feature = "test-exports"))]
         header
-            .assert_invariants(self.thread_count, self.endorsement_count)
+            .assert_invariants(self.last_start_period, self.thread_count, self.endorsement_count)
             .unwrap();
 
         Ok((rest, header))
