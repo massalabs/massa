@@ -39,7 +39,7 @@ static_assertions = {workspace = true}
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
 serial_test = {workspace = true}   # BOM UPGRADE     Revert to "2.0.0" if problem
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}
 mockall = {workspace = true}
 mockall_wrap = {workspace = true}
 num = {workspace = true}
