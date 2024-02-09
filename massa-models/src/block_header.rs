@@ -52,10 +52,11 @@ impl BlockHeader {
     /// allows all the checks to be in one place.
     fn assert_invariants(
         &self,
+        last_start_period: Option<u64>,
         thread_count: u8,
         endorsement_count: u32,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if self.slot.period == 0 {
+        if self.slot.period == last_start_period.unwrap_or(0) {
             if !self.parents.is_empty() {
                 return Err("Invariant broken: genesis block with parent(s)".into());
             }
@@ -464,7 +465,7 @@ impl Deserializer<BlockHeader> for BlockHeaderDeserializer {
 
             // TODO: gh-issue #3398
             #[cfg(any(test, feature = "test-exports"))]
-            res.assert_invariants(self.thread_count, self.endorsement_count)
+            res.assert_invariants(self.last_start_period, self.thread_count, self.endorsement_count)
                 .unwrap();
 
             // As we have 0 endorsements & 0 denunciations, rest = [0, 0] (length 0 & length 0)
