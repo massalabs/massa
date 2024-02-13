@@ -310,21 +310,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: 1.74.1
-          components: rustfmt
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-script      
-      - uses: actions-rs/cargo@v1
-        with:
-          command: script
-          args: tools/setup_test.rs
       - name: setup_tests
         shell: bash
         run: |
-          git diff --no-ext-diff --quiet
+          cargo install rust-script && rust-script tools/setup_test.rs && git diff --no-ext-diff --quiet
