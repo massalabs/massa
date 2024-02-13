@@ -8,6 +8,8 @@ pub mod new_endorsements;
 pub mod new_filled_blocks;
 /// subscribe new operations
 pub mod new_operations;
+/// subscribe new slot abi call stacks
+pub mod new_slot_abi_call_stacks;
 /// subscribe new slot execution outputs
 pub mod new_slot_execution_outputs;
 /// send_blocks streaming

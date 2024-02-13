@@ -22,7 +22,12 @@ use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
-use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
+use massa_proto_rs::massa::api::v1::{
+    self as grpc_api, AbiCallStack, AbiCallStackElement, AbiCallStackElementCall,
+    AbiCallStackElementParent, AscabiCallStack, GetOperationAbiCallStacksResponse,
+    GetSlotAbiCallStacksResponse, OperationAbiCallStack, SlotAbiCallStacks,
+};
 use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
@@ -456,6 +461,277 @@ pub(crate) fn get_stakers(
         .collect();
 
     Ok(grpc_api::GetStakersResponse { stakers })
+}
+
+/// Get operation ABI call stacks
+pub(crate) fn get_operation_abi_call_stacks(
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
+) -> Result<grpc_api::GetOperationAbiCallStacksResponse, GrpcError> {
+    Ok(
+        GetOperationAbiCallStacksResponse {
+            call_stacks: vec![
+                AbiCallStack {
+                    call_stack: vec![
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                name: String::from("transfer_coins"),
+                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                return_value: String::new()
+                            }))
+                        },
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                name: String::from("transfer_coins_for"),
+                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                return_value: String::new()
+                            }))
+                        },
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                name: String::from("transfer_coins_for"),
+                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                return_value: String::new()
+                            }))
+                        },
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                name: String::from("get_balance"),
+                                parameters: vec![],
+                                return_value: String::from("10")
+                            }))
+                        },
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                name: String::from("set_data"),
+                                parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                return_value: String::new()
+                            }))
+                        },
+                        AbiCallStackElementParent {
+                            call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                                name: String::from("call"),
+                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
+                                return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                sub_calls: vec![
+                                    AbiCallStackElementParent {
+                                        call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                            name: String::from("transfer_coins"),
+                                            parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            return_value: String::new()
+                                        }))
+                                    },
+                                    AbiCallStackElementParent {
+                                        call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                            name: String::from("transfer_coins_for"),
+                                            parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            return_value: String::new()
+                                        }))
+                                    },
+                                    AbiCallStackElementParent {
+                                        call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                            name: String::from("transfer_coins_for"),
+                                            parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            return_value: String::new()
+                                        }))
+                                    },
+                                    AbiCallStackElementParent {
+                                        call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                            name: String::from("get_balance"),
+                                            parameters: vec![],
+                                            return_value: String::from("10")
+                                        }))
+                                    },
+                                ]
+                            }))
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+}
+
+pub(crate) fn get_slot_abi_call_stacks(
+    _grpc: &MassaPublicGrpc,
+    _request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
+) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
+    Ok(GetSlotAbiCallStacksResponse {
+        slot_call_stacks: vec![
+            SlotAbiCallStacks {
+                asc_call_stacks: vec![
+                    AscabiCallStack {
+                        index: 0,
+                        call_stack: vec![
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins"),
+                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins_for"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins_for"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("get_balance"),
+                                    parameters: vec![],
+                                    return_value: String::from("10")
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("set_data"),
+                                    parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                                    name: String::from("call"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
+                                    return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                    sub_calls: vec![
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins"),
+                                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins_for"),
+                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins_for"),
+                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("get_balance"),
+                                                parameters: vec![],
+                                                return_value: String::from("10")
+                                            }))
+                                        },
+                                    ]
+                                }))
+                            }
+                        ]
+                    },
+                    AscabiCallStack {
+                        index: 1,
+                        call_stack: vec![
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins"),
+                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                        ]
+                    }
+                ],
+                operation_call_stacks: vec![
+                    OperationAbiCallStack {
+                        operation_id: String::from("O12mh1zn9oDr9aUEp4YzPbiShDtyJW1gFUB1d4riYR5wSCqPGuQ"),
+                        call_stack: vec![
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins"),
+                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins_for"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("transfer_coins_for"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("get_balance"),
+                                    parameters: vec![],
+                                    return_value: String::from("10")
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                    name: String::from("set_data"),
+                                    parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                    return_value: String::new()
+                                }))
+                            },
+                            AbiCallStackElementParent {
+                                call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                                    name: String::from("call"),
+                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
+                                    return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                    sub_calls: vec![
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins"),
+                                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins_for"),
+                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("transfer_coins_for"),
+                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                return_value: String::new()
+                                            }))
+                                        },
+                                        AbiCallStackElementParent {
+                                            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                name: String::from("get_balance"),
+                                                parameters: vec![],
+                                                return_value: String::from("10")
+                                            }))
+                                        },
+                                    ]
+                                }))
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    })
 }
 
 /// Get next block best parents

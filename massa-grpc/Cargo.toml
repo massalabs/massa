@@ -8,6 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
+execution-trace = []
 test-exports = []
 
 [dependencies]
