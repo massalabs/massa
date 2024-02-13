@@ -293,17 +293,6 @@ jobs:
           branch: gh-pages
           folder: target/doc
 
-  unit_tests_old:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: "recursive"
-      - name: setup_tests
-        shell: bash
-        run: |
-          cargo install cargo-script && cargo script tools/setup_test.rs && git diff --no-ext-diff --quiet
-
   unit_tests:
     runs-on: ubuntu-latest
     steps:
