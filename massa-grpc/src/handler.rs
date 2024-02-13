@@ -18,7 +18,6 @@ use crate::public::{
     search_operations,
 };
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
-use crate::stream::new_slot_abi_call_stacks::NewSlotABICallStacksStreamType;
 use crate::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
@@ -29,6 +28,7 @@ use crate::stream::{
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
     tx_throughput::{transactions_throughput, TransactionsThroughputStreamType},
+    new_slot_abi_call_stacks::{new_slot_abi_call_stacks, NewSlotABICallStacksStreamType}
 };
 
 #[tonic::async_trait]
@@ -255,9 +255,15 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     /// handler for subscribe new slot abi call stacks stream
     async fn new_slot_abi_call_stacks(
         &self,
-        _request: tonic::Request<tonic::Streaming<grpc_api::NewSlotAbiCallStacksRequest>>,
+        request: tonic::Request<tonic::Streaming<grpc_api::NewSlotAbiCallStacksRequest>>,
     ) -> Result<tonic::Response<Self::NewSlotABICallStacksStream>, tonic::Status> {
-        Err(tonic::Status::unavailable("not available"))
+        if cfg!(feature = "execution-trace") {
+            Ok(tonic::Response::new(
+                new_slot_abi_call_stacks(self, request).await?,
+            ))
+        } else {
+            Err(tonic::Status::unimplemented("feature not enabled"))
+        }
     }
 
     type SendBlocksStream = SendBlocksStreamType;
