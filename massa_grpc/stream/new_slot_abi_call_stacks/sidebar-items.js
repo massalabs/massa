@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["NewSlotABICallStacksStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_slot_abi_call_stacks"],"type":["NewSlotABICallStacksStreamType"]};

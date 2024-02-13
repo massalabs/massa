@@ -476,6 +476,12 @@
 <a href="#476" id="476">476</a>
 <a href="#477" id="477">477</a>
 <a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
@@ -496,7 +502,6 @@
     search_operations,
 };
 <span class="kw">use </span><span class="kw">crate</span>::server::{MassaPrivateGrpc, MassaPublicGrpc};
-<span class="kw">use </span><span class="kw">crate</span>::stream::new_slot_abi_call_stacks::NewSlotABICallStacksStreamType;
 <span class="kw">use </span><span class="kw">crate</span>::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
@@ -507,6 +512,7 @@
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
     tx_throughput::{transactions_throughput, TransactionsThroughputStreamType},
+    new_slot_abi_call_stacks::{new_slot_abi_call_stacks, NewSlotABICallStacksStreamType}
 };
 
 <span class="attr">#[tonic::async_trait]
@@ -733,9 +739,15 @@
     <span class="doccomment">/// handler for subscribe new slot abi call stacks stream
     </span><span class="kw">async fn </span>new_slot_abi_call_stacks(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        _request: tonic::Request&lt;tonic::Streaming&lt;grpc_api::NewSlotAbiCallStacksRequest&gt;&gt;,
+        request: tonic::Request&lt;tonic::Streaming&lt;grpc_api::NewSlotAbiCallStacksRequest&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;tonic::Response&lt;<span class="self">Self</span>::NewSlotABICallStacksStream&gt;, tonic::Status&gt; {
-        <span class="prelude-val">Err</span>(tonic::Status::unavailable(<span class="string">&quot;not available&quot;</span>))
+        <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;execution-trace&quot;</span>) {
+            <span class="prelude-val">Ok</span>(tonic::Response::new(
+                new_slot_abi_call_stacks(<span class="self">self</span>, request).<span class="kw">await</span><span class="question-mark">?</span>,
+            ))
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(tonic::Status::unimplemented(<span class="string">&quot;feature not enabled&quot;</span>))
+        }
     }
 
     <span class="kw">type </span>SendBlocksStream = SendBlocksStreamType;
