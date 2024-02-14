@@ -12,12 +12,14 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
+use crate::trace_history::{TraceHistory, TraceHistoryStatus};
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
-    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutionError, ExecutionOperationTrace, ExecutionOutput, ExecutionQueryCycleInfos,
+    ExecutionQueryStakerInfo, ExecutionStackElement, ReadOnlyExecutionOutput,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOperationTraces,
+    SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -92,6 +94,8 @@ pub(crate) struct ExecutionState {
     channels: ExecutionChannels,
     /// prometheus metrics
     massa_metrics: MassaMetrics,
+
+    trace_history: Arc<RwLock<TraceHistory>>,
 }
 
 impl ExecutionState {
@@ -151,6 +155,9 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
+        // Create default trace history
+        let trace_history: Arc<RwLock<TraceHistory>> = Default::default();
+
         // build the execution state
         ExecutionState {
             final_state,
@@ -171,6 +178,7 @@ impl ExecutionState {
             channels,
             wallet,
             massa_metrics,
+            trace_history,
         }
     }
 
@@ -190,7 +198,11 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_out`: execution output to apply
-    pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
+    pub fn apply_final_execution_output(
+        &mut self,
+        mut exec_out: ExecutionOutput,
+        exec_traces: Vec<ExecutionOperationTrace>,
+    ) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
@@ -269,6 +281,21 @@ impl ExecutionState {
                 trace!(
                     "error, failed to broadcast final execution output for slot {} due to: {}",
                     exec_out.slot,
+                    err
+                );
+            }
+        }
+
+        if self.config.broadcast_traces_enabled {
+            let slot_exec_tr = SlotExecutionOperationTraces::FinalizedSlot(exec_traces);
+            if let Err(err) = self
+                .channels
+                .slot_execution_traces_sender
+                .send(slot_exec_tr)
+            {
+                trace!(
+                    "error, failed to broadcast execution traces for slot {} due to: {}",
+                    exec_out.slot.clone(),
                     err
                 );
             }
@@ -1053,7 +1080,7 @@ impl ExecutionState {
         slot: &Slot,
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
-    ) -> ExecutionOutput {
+    ) -> (ExecutionOutput, Vec<ExecutionOperationTrace>) {
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1240,7 +1267,7 @@ impl ExecutionState {
         }
 
         // Finish slot
-        let exec_out = context_guard!(self).settle_slot(block_info);
+        let (exec_out, execution_traces) = context_guard!(self).settle_slot(block_info);
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -1258,8 +1285,23 @@ impl ExecutionState {
             }
         }
 
+        if self.config.broadcast_traces_enabled {
+            let slot_exec_tr = SlotExecutionOperationTraces::ExecutedSlot(execution_traces.clone());
+            if let Err(err) = self
+                .channels
+                .slot_execution_traces_sender
+                .send(slot_exec_tr)
+            {
+                trace!(
+                    "error, failed to broadcast execution output for slot {} due to: {}",
+                    exec_out.slot.clone(),
+                    err
+                );
+            }
+        }
+
         // Return the execution output
-        exec_out
+        (exec_out, execution_traces)
     }
 
     /// Execute a candidate slot
@@ -1295,10 +1337,20 @@ impl ExecutionState {
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
         }
-        let exec_out = self.execute_slot(slot, exec_target, selector);
+        let (exec_out, exec_traces) = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
+        // update trace history
+        if let Some(block_id) = target_id {
+            let mut guard = self.trace_history.write();
+            guard.0.insert(
+                (*slot, block_id, TraceHistoryStatus::Speculative),
+                exec_traces,
+            );
+            guard.prune(self.config.max_execution_traces_block_id_limit);
+        }
+
         debug!("execute_candidate_slot: execution finished & state applied");
     }
 
@@ -1325,13 +1377,42 @@ impl ExecutionState {
 
         // check if the final slot execution result is already cached at the front of the speculative execution history
         let first_exec_output = self.active_history.write().0.pop_front();
+
         if let Some(exec_out) = first_exec_output {
             if &exec_out.slot == slot
                 && exec_out.block_info.as_ref().map(|i| i.block_id) == target_id
             {
                 // speculative execution front result matches what we want to compute
                 // apply the cached output and return
-                self.apply_final_execution_output(exec_out);
+
+                // fetch execution_traces from trace history and return
+                let exec_traces: Vec<ExecutionOperationTrace> = match target_id {
+                    Some(block_id) => {
+                        let mut traces = vec![];
+                        let mut guard = self.trace_history.write();
+
+                        let spec_traces_ =
+                            guard
+                                .0
+                                .remove(&(*slot, block_id, TraceHistoryStatus::Speculative));
+                        if let Some(spec_traces) = spec_traces_ {
+                            guard.0.insert(
+                                (*slot, block_id, TraceHistoryStatus::Finalized),
+                                traces.clone(),
+                            );
+                            traces = spec_traces;
+                        } else {
+                            warn!("Cannot find speculative execution traces");
+                        }
+
+                        guard.prune(self.config.max_execution_traces_block_id_limit);
+
+                        traces
+                    }
+                    None => vec![], // Empty traces on block miss
+                };
+
+                self.apply_final_execution_output(exec_out, exec_traces);
                 return;
             } else {
                 // speculative cache mismatch
@@ -1353,11 +1434,19 @@ impl ExecutionState {
         self.active_cursor = self.final_cursor;
 
         // execute slot
-        debug!("execute_final_slot: execution started");
-        let exec_out = self.execute_slot(slot, exec_target, selector);
+        let (exec_out, exec_traces) = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out);
+        self.apply_final_execution_output(exec_out, exec_traces.clone());
+        // update trace history
+        if let Some(block_id) = target_id {
+            let mut guard = self.trace_history.write();
+            guard.0.insert(
+                (*slot, block_id, TraceHistoryStatus::Finalized),
+                exec_traces,
+            );
+            guard.prune(self.config.max_execution_traces_block_id_limit);
+        }
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
@@ -1507,10 +1596,10 @@ impl ExecutionState {
         };
 
         // return the execution output
-        let execution_output = context_guard!(self).settle_slot(None);
+        let (execution_output, _execution_traces) = context_guard!(self).settle_slot(None);
         let exact_exec_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
 
-        // compute a gas cost, estimating the gas of the last SC call to be max_instance_cost
+        // compute a gas cost, estimating the gas of the last SC call to be max_instance_cost
         let corrected_cost = match (context_guard!(self)).gas_remaining_before_subexecution {
             Some(gas_remaining) => req
                 .max_gas

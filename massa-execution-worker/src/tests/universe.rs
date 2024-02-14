@@ -8,7 +8,7 @@ use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBControl
 use massa_db_worker::MassaDB;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
-    ExecutionError, ExecutionManager,
+    ExecutionError, ExecutionManager, SlotExecutionOperationTraces, SlotExecutionOutput,
 };
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
@@ -75,6 +75,9 @@ pub struct ExecutionTestUniverse {
     pub storage: Storage,
     pub final_state: Arc<RwLock<dyn FinalStateController>>,
     module_manager: Box<dyn ExecutionManager>,
+    pub broadcast_channel_receiver: Option<tokio::sync::broadcast::Receiver<SlotExecutionOutput>>,
+    pub broadcast_traces_channel_receiver:
+        Option<tokio::sync::broadcast::Receiver<SlotExecutionOperationTraces>>,
 }
 
 impl TestUniverse for ExecutionTestUniverse {
@@ -88,7 +91,8 @@ impl TestUniverse for ExecutionTestUniverse {
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
-        let (tx, _) = broadcast::channel(16);
+        let (tx, rx) = broadcast::channel(16);
+        let (tx_traces, rx_traces) = broadcast::channel(16);
         let (module_manager, module_controller) = start_execution_worker(
             config.clone(),
             controllers.final_state.clone(),
@@ -96,6 +100,7 @@ impl TestUniverse for ExecutionTestUniverse {
             mip_store,
             ExecutionChannels {
                 slot_execution_output_sender: tx,
+                slot_execution_traces_sender: tx_traces,
             },
             Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
@@ -112,6 +117,8 @@ impl TestUniverse for ExecutionTestUniverse {
             final_state: controllers.final_state,
             module_controller,
             module_manager,
+            broadcast_channel_receiver: Some(rx),
+            broadcast_traces_channel_receiver: Some(rx_traces),
         };
         universe.initialize();
         universe

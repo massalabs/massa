@@ -5,7 +5,7 @@ use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOperationTraces,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
@@ -35,7 +35,7 @@ use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
+use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, thread, time::Duration};
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
 
@@ -2607,4 +2607,133 @@ fn chain_id() {
     // match the events
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
+}
+
+#[test]
+fn execution_trace() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/execution_trace.wasm"),
+        //unused
+        include_bytes!("./wasm/execution_trace.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        // Execution Output
+        let exec_traces = receiver.blocking_recv();
+        // Final Execution Output
+        let exec_traces_2 = receiver.blocking_recv();
+        return vec![
+            exec_traces.expect("Execution output"),
+            exec_traces_2.expect("Final execution output"),
+        ];
+    });
+    let broadcast_results = join_handle.join().expect("Nothing received from thread");
+    assert_eq!(broadcast_results.len(), 2);
+
+    let final_traces = match &broadcast_results[1] {
+        SlotExecutionOperationTraces::ExecutedSlot(_) => {
+            panic!("Expect Finalized execution output")
+        }
+        SlotExecutionOperationTraces::FinalizedSlot(exec_traces) => exec_traces,
+    };
+
+    #[cfg(feature = "execution_trace")]
+    {
+        assert_eq!(final_traces[0].abi_name, "transfer_coins");
+    }
+}
+
+#[test]
+fn execution_trace_nested() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    // let rt = tokio::runtime::Runtime::new().unwrap();
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/et_deploy_sc.wasm"),
+        include_bytes!("./wasm/et_init_sc.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        // Execution Output
+        let exec_traces = receiver.blocking_recv();
+        // Final Execution Output
+        let exec_traces_2 = receiver.blocking_recv();
+        return vec![
+            exec_traces.expect("Execution output"),
+            exec_traces_2.expect("Final execution output"),
+        ];
+    });
+    let broadcast_results = join_handle.join().expect("Nothing received from thread");
+    assert_eq!(broadcast_results.len(), 2);
+
+    let final_traces = match &broadcast_results[1] {
+        SlotExecutionOperationTraces::ExecutedSlot(_) => {
+            panic!("Expect Finalized execution output")
+        }
+        SlotExecutionOperationTraces::FinalizedSlot(exec_traces) => exec_traces,
+    };
+
+    #[cfg(feature = "execution_trace")]
+    {
+        assert_eq!(final_traces[0].abi_name, "transfer_coins");
+    }
 }

@@ -39,6 +39,8 @@
     enable_broadcast = false
     # deferred credits delta (in milliseconds)
     deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
+    # whether to broadcast for execution traces (require the node to be compiled with the feature 'execution_trace')
+    enable_broadcast_traces = false
 
 [grpc]
     [grpc.public]
@@ -215,6 +217,10 @@
     snip_amount = 10
     # slot execution outputs channel capacity
     broadcast_slot_execution_output_channel_capacity = 5000
+    # slot execution traces channel capacity
+    broadcast_slot_execution_traces_channel_capacity = 5000
+    # Max execution traces (group by block id) to keep in cache
+    execution_traces_limit = 5000
 
 [ledger]
     # path to the initial ledger

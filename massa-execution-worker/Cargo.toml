@@ -39,6 +39,7 @@ benchmarking = [
     "tempfile"
 ]
 metrics = []
+execution_trace = []
 
 [dependencies]
 anyhow = { workspace = true }
@@ -55,6 +56,7 @@ num = { workspace = true, features = [
 sha2 = { workspace = true }
 sha3 = { workspace = true }
 libsecp256k1 = { workspace = true }
+function_name = "0.3" # to be removed (after traces moves to sc runtime)
 criterion = { workspace = true, "optional" = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
