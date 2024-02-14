@@ -463,11 +463,22 @@ pub(crate) fn get_stakers(
     Ok(grpc_api::GetStakersResponse { stakers })
 }
 
+#[cfg(feature = "execution-trace")]
 /// Get operation ABI call stacks
 pub(crate) fn get_operation_abi_call_stacks(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
 ) -> Result<grpc_api::GetOperationAbiCallStacksResponse, GrpcError> {
+    let op_ids = request.into_inner().operation_ids;
+    let mut res = Vec::new();
+    for op_id in op_ids {
+        let op_id = OperationId::from_str(&op_id)?;
+        let call_stack = grpc
+            .execution_controller
+            .get_operation_abi_call_stack(op_id);
+        res.push(call_stack);
+    }
+    //TODO: use real results above
     Ok(
         GetOperationAbiCallStacksResponse {
             call_stacks: vec![
@@ -552,10 +563,20 @@ pub(crate) fn get_operation_abi_call_stacks(
     )
 }
 
+#[cfg(feature = "execution-trace")]
 pub(crate) fn get_slot_abi_call_stacks(
-    _grpc: &MassaPublicGrpc,
-    _request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
 ) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
+    let slots = request.into_inner().slots;
+    let mut res = Vec::new();
+    for slot in slots {
+        let call_stack = grpc
+            .execution_controller
+            .get_slot_abi_call_stack(slot.into());
+        res.push(call_stack);
+    }
+    //TODO: use real results above
     Ok(GetSlotAbiCallStacksResponse {
         slot_call_stacks: vec![
             SlotAbiCallStacks {

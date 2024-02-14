@@ -22,7 +22,7 @@ sandbox = [
     "massa_models/sandbox",
     "massa_metrics/sandbox",
 ]
-execution-trace = ["massa_grpc/execution-trace"]
+execution-trace = ["massa_grpc/execution-trace", "massa_execution_worker/execution-trace", "massa_execution_exports/execution-trace"]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem

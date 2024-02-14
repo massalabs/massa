@@ -2,9 +2,12 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
+#[cfg(feature = "execution-trace")]
+use crate::types::ExecutionOperationTrace;
 use crate::types::{
     ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
 };
+
 use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
@@ -110,6 +113,17 @@ pub trait ExecutionController: Send + Sync {
 
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the abi call stack for a given operation id
+    fn get_operation_abi_call_stack(
+        &self,
+        operation_id: OperationId,
+    ) -> Vec<ExecutionOperationTrace>;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the abi call stack for a given slot
+    fn get_slot_abi_call_stack(&self, slot: Slot) -> Vec<Vec<ExecutionOperationTrace>>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

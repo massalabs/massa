@@ -39,7 +39,7 @@
     enable_broadcast = false
     # deferred credits delta (in milliseconds)
     deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
-    # whether to broadcast for execution traces (require the node to be compiled with the feature 'execution_trace')
+    # whether to broadcast for execution traces (require the node to be compiled with the feature 'execution-trace')
     enable_broadcast_traces = false
 
 [grpc]

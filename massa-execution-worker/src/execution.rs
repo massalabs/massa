@@ -95,7 +95,7 @@ pub(crate) struct ExecutionState {
     /// prometheus metrics
     massa_metrics: MassaMetrics,
 
-    trace_history: Arc<RwLock<TraceHistory>>,
+    pub(crate) trace_history: Arc<RwLock<TraceHistory>>,
 }
 
 impl ExecutionState {

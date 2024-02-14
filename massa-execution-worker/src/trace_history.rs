@@ -24,7 +24,7 @@ impl TraceHistory {
     }
 
     /// Fetch execution traces for a given slot
-    fn fetch_traces_for_slot<'a>(
+    pub(crate) fn fetch_traces_for_slot<'a>(
         &'a self,
         slot: &'a Slot,
     ) -> impl Iterator<
@@ -43,7 +43,7 @@ impl TraceHistory {
     }
 
     /// Fetch execution traces for a given operation id
-    fn fetch_traces_for_operation_id<'a>(
+    pub(crate) fn fetch_traces_for_operation_id<'a>(
         &'a self,
         operation_id: &'a OperationId,
     ) -> impl Iterator<

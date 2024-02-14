@@ -977,7 +977,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
-        #[cfg(feature = "execution_trace")]
+        #[cfg(feature = "execution-trace")]
         if let Some(operation_id) = context.origin_operation_id {
             let function_name = function_name!();
             let slot = context.slot;
@@ -1018,7 +1018,7 @@ impl Interface for InterfaceImpl {
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
-        #[cfg(feature = "execution_trace")]
+        #[cfg(feature = "execution-trace")]
         if let Some(operation_id) = context.origin_operation_id {
             let function_name = function_name!();
             let slot = context.slot;

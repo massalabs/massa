@@ -39,7 +39,7 @@ benchmarking = [
     "tempfile"
 ]
 metrics = []
-execution_trace = []
+execution-trace = []
 
 [dependencies]
 anyhow = { workspace = true }

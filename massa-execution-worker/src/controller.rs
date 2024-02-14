@@ -25,6 +25,9 @@ use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
 
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::ExecutionOperationTrace;
+
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
@@ -464,6 +467,32 @@ impl ExecutionController for ExecutionControllerImpl {
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats {
         self.execution_state.read().get_stats()
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_operation_abi_call_stack(
+        &self,
+        operation_id: OperationId,
+    ) -> Vec<ExecutionOperationTrace> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_traces_for_operation_id(&operation_id)
+            .map(|(_k, v)| v.clone())
+            .flatten()
+            .collect()
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_slot_abi_call_stack(&self, slot: Slot) -> Vec<Vec<ExecutionOperationTrace>> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_traces_for_slot(&slot)
+            .map(|(_k, v)| v.clone())
+            .collect()
     }
 
     /// Returns a boxed clone of self.
