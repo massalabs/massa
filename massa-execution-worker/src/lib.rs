@@ -92,6 +92,7 @@ mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
+mod trace_history;
 mod worker;
 
 use massa_db_exports as _;

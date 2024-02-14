@@ -7,9 +7,12 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
+use function_name::named;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
-use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_execution_exports::{
+    ExecutionConfig, ExecutionOperationTrace, ExecutionOperationTraceParameter,
+};
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
@@ -967,12 +970,31 @@ impl Interface for InterfaceImpl {
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     ///
     /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
+    #[named]
     fn transfer_coins(&self, to_address: &str, raw_amount: u64) -> Result<()> {
         let to_address = Address::from_str(to_address)?;
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         let from_address = context.get_current_address()?;
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        #[cfg(feature = "execution_trace")]
+        if let Some(operation_id) = context.origin_operation_id {
+            let function_name = function_name!();
+            let slot = context.slot;
+            context.execution_traces.push(ExecutionOperationTrace {
+                slot,
+                operation_id,
+                abi_name: function_name.to_string(),
+                abi_parameters: vec![
+                    ExecutionOperationTraceParameter::Str(from_address.to_string()),
+                    ExecutionOperationTraceParameter::Str(to_address.to_string()),
+                    ExecutionOperationTraceParameter::Amount(amount),
+                    ExecutionOperationTraceParameter::Bool(true),
+                ],
+                exec_result: None,
+            });
+        }
+
         Ok(())
     }
 
@@ -984,6 +1006,7 @@ impl Interface for InterfaceImpl {
     /// * `raw_amount`: raw representation (no decimal factor) of the amount of coins to transfer
     ///
     /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
+    #[named]
     fn transfer_coins_for(
         &self,
         from_address: &str,
@@ -995,6 +1018,23 @@ impl Interface for InterfaceImpl {
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         context.transfer_coins(Some(from_address), Some(to_address), amount, true)?;
+        #[cfg(feature = "execution_trace")]
+        if let Some(operation_id) = context.origin_operation_id {
+            let function_name = function_name!();
+            let slot = context.slot;
+            context.execution_traces.push(ExecutionOperationTrace {
+                slot,
+                operation_id,
+                abi_name: function_name.to_string(),
+                abi_parameters: vec![
+                    ExecutionOperationTraceParameter::Str(from_address.to_string()),
+                    ExecutionOperationTraceParameter::Str(to_address.to_string()),
+                    ExecutionOperationTraceParameter::Amount(amount),
+                    ExecutionOperationTraceParameter::Bool(true),
+                ],
+                exec_result: None,
+            });
+        }
         Ok(())
     }
 

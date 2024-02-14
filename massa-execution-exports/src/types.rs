@@ -203,6 +203,35 @@ pub struct ExecutionAddressInfo {
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
+/// A repr of an abi call parameter
+#[allow(missing_docs)]
+#[derive(Debug, Clone)]
+pub enum ExecutionOperationTraceParameter {
+    Str(String),
+    Amount(Amount),
+    Bool(bool),
+}
+
+/// A trace of an abi call + its parameters + the result
+#[allow(missing_docs)]
+#[derive(Debug, Clone)]
+pub struct ExecutionOperationTrace {
+    pub slot: Slot,
+    pub operation_id: OperationId,
+    pub abi_name: String,
+    pub abi_parameters: Vec<ExecutionOperationTraceParameter>,
+    pub exec_result: Option<()>,
+}
+
+/// structure describing the execution traces of a slot
+#[derive(Debug, Clone)]
+pub enum SlotExecutionOperationTraces {
+    /// Executed slot traces
+    ExecutedSlot(Vec<ExecutionOperationTrace>),
+    /// Finalized slot traces
+    FinalizedSlot(Vec<ExecutionOperationTrace>),
+}
+
 /// structure describing the output of the execution of a slot
 #[derive(Debug, Clone)]
 pub enum SlotExecutionOutput {

@@ -17,8 +17,8 @@ use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
-    ExecutionStackElement,
+    EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOperationTrace,
+    ExecutionOutput, ExecutionStackElement,
 };
 use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
@@ -179,6 +179,8 @@ pub struct ExecutionContext {
     /// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
+
+    pub execution_traces: Vec<ExecutionOperationTrace>,
 }
 
 impl ExecutionContext {
@@ -243,6 +245,7 @@ impl ExecutionContext {
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
+            execution_traces: Default::default(),
         }
     }
 
@@ -855,7 +858,10 @@ impl ExecutionContext {
     ///
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
+    pub fn settle_slot(
+        &mut self,
+        block_info: Option<ExecutedBlockInfo>,
+    ) -> (ExecutionOutput, Vec<ExecutionOperationTrace>) {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -906,12 +912,15 @@ impl ExecutionContext {
         };
 
         std::mem::take(&mut self.opt_block_id);
-        ExecutionOutput {
-            slot,
-            block_info,
-            state_changes,
-            events: std::mem::take(&mut self.events),
-        }
+        (
+            ExecutionOutput {
+                slot,
+                block_info,
+                state_changes,
+                events: std::mem::take(&mut self.events),
+            },
+            std::mem::take(&mut self.execution_traces),
+        )
     }
 
     /// Sets a bytecode for an address in the speculative ledger.
@@ -948,7 +957,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new event but does not emit it.
-    /// Note that this does not increments the context event counter.
+    /// Note that this does not increment the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
