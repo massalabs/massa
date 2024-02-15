@@ -98,6 +98,6 @@ pub struct ExecutionConfig {
     pub broadcast_traces_enabled: bool,
     /// slot execution traces channel capacity
     pub broadcast_slot_execution_traces_channel_capacity: usize,
-    /// Max execution traces (group by block id) to keep in trace history cache
-    pub max_execution_traces_block_id_limit: usize,
+    /// Max execution traces slot to keep in trace history cache
+    pub max_execution_traces_slot_limit: usize,
 }

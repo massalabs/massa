@@ -13,13 +13,16 @@ use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
 use massa_pos_exports::ProductionStats;
 use massa_storage::Storage;
 use std::collections::{BTreeMap, BTreeSet};
+
+#[cfg(feature = "execution-trace")]
+use massa_sc_runtime::AbiTrace as SCRuntimeAbiTrace;
 
 /// Metadata needed to execute the block
 #[derive(Clone, Debug)]
@@ -203,33 +206,45 @@ pub struct ExecutionAddressInfo {
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
-/// A repr of an abi call parameter
-#[allow(missing_docs)]
-#[derive(Debug, Clone)]
-pub enum ExecutionOperationTraceParameter {
-    Str(String),
-    Amount(Amount),
-    Bool(bool),
-}
-
 /// A trace of an abi call + its parameters + the result
-#[allow(missing_docs)]
 #[derive(Debug, Clone)]
-pub struct ExecutionOperationTrace {
-    pub slot: Slot,
-    pub operation_id: OperationId,
-    pub abi_name: String,
-    pub abi_parameters: Vec<ExecutionOperationTraceParameter>,
-    pub exec_result: Option<()>,
+pub struct AbiTrace {
+    /// Abi name
+    pub name: String,
+    /// Abi parameters
+    pub parameters: Vec<String>,
+    /// Abi return value
+    pub return_value: String,
+    /// Abi sub calls
+    pub sub_calls: Option<Vec<AbiTrace>>,
 }
 
-/// structure describing the execution traces of a slot
+#[cfg(feature = "execution-trace")]
+impl From<SCRuntimeAbiTrace> for AbiTrace {
+    fn from(trace: SCRuntimeAbiTrace) -> Self {
+        Self {
+            name: trace.name,
+            parameters: trace.params,
+            return_value: trace.return_value,
+            sub_calls: trace.sub_calls.map(|sub_calls| {
+                sub_calls
+                    .into_iter()
+                    .map(|sub_call| sub_call.into())
+                    .collect()
+            }),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub enum SlotExecutionOperationTraces {
-    /// Executed slot traces
-    ExecutedSlot(Vec<ExecutionOperationTrace>),
-    /// Finalized slot traces
-    FinalizedSlot(Vec<ExecutionOperationTrace>),
+/// Structure for all abi calls in a slot
+pub struct SlotAbiCallStack {
+    /// Slot
+    pub slot: Slot,
+    /// asc call stacks
+    pub asc_call_stacks: Vec<Vec<AbiTrace>>,
+    /// operation call stacks
+    pub operation_call_stacks: PreHashMap<OperationId, Vec<AbiTrace>>,
 }
 
 /// structure describing the output of the execution of a slot

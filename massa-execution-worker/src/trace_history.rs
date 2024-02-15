@@ -1,65 +1,46 @@
-use std::collections::BTreeMap;
-
-use massa_execution_exports::ExecutionOperationTrace;
-use massa_models::{block_id::BlockId, operation::OperationId, slot::Slot};
-
-#[derive(Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub enum TraceHistoryStatus {
-    Speculative,
-    Finalized,
-}
+use massa_execution_exports::{AbiTrace, SlotAbiCallStack};
+use massa_models::{operation::OperationId, slot::Slot};
+use schnellru::{ByLength, LruMap};
 
 /// Execution traces history
-#[derive(Default)]
-pub struct TraceHistory(
-    pub BTreeMap<(Slot, BlockId, TraceHistoryStatus), Vec<ExecutionOperationTrace>>,
-);
+pub struct TraceHistory {
+    /// Execution traces history by slot
+    trace_per_slot: LruMap<Slot, SlotAbiCallStack>,
+    /// Execution op linked to slot
+    op_per_slot: LruMap<OperationId, Slot>,
+}
 
 impl TraceHistory {
-    /// Remove the oldest entries, only keep 'limit' entries in history
-    pub(crate) fn prune(&mut self, limit: usize) {
-        while self.0.len() > limit {
-            self.0.pop_first();
+    pub fn new(max_slot_size_cache: u32, op_per_slot: u32) -> Self {
+        Self {
+            trace_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
+            op_per_slot: LruMap::new(ByLength::new(max_slot_size_cache * op_per_slot)),
         }
     }
 
     /// Fetch execution traces for a given slot
-    pub(crate) fn fetch_traces_for_slot<'a>(
-        &'a self,
-        slot: &'a Slot,
-    ) -> impl Iterator<
-        Item = (
-            (Slot, BlockId, TraceHistoryStatus),
-            Vec<ExecutionOperationTrace>,
-        ),
-    > + 'a {
-        self.0.iter().rev().filter_map(|(k, v)| {
-            if k.0 == *slot {
-                Some((k.clone(), v.clone()))
-            } else {
-                None
-            }
-        })
+    pub(crate) fn fetch_traces_for_slot(&self, slot: &Slot) -> Option<SlotAbiCallStack> {
+        self.trace_per_slot.peek(slot).cloned()
     }
 
-    /// Fetch execution traces for a given operation id
-    pub(crate) fn fetch_traces_for_operation_id<'a>(
-        &'a self,
-        operation_id: &'a OperationId,
-    ) -> impl Iterator<
-        Item = (
-            (Slot, BlockId, TraceHistoryStatus),
-            Vec<ExecutionOperationTrace>,
-        ),
-    > + 'a {
-        self.0.iter().rev().map(move |(k, v)| {
-            (
-                k.clone(),
-                v.iter()
-                    .filter(|t| t.operation_id == *operation_id)
-                    .cloned()
-                    .collect(),
-            )
-        })
+    /// Fetch slot for a given operation
+    pub(crate) fn fetch_slot_for_op(&self, op_id: &OperationId) -> Option<Vec<AbiTrace>> {
+        self.op_per_slot
+            .peek(op_id)
+            .map(|slot| {
+                self.trace_per_slot
+                    .peek(slot)
+                    .map(|trace| trace.operation_call_stacks.get(op_id).cloned())
+            })
+            .flatten()
+            .flatten()
+    }
+
+    /// Save execution traces for a given slot
+    pub(crate) fn save_traces_for_slot(&mut self, slot: Slot, traces: SlotAbiCallStack) {
+        for (op_id, _) in traces.operation_call_stacks.iter() {
+            self.op_per_slot.insert(*op_id, slot);
+        }
+        self.trace_per_slot.insert(slot, traces);
     }
 }

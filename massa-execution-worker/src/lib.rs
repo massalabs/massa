@@ -92,8 +92,10 @@ mod speculative_executed_ops;
 mod speculative_ledger;
 mod speculative_roll_state;
 mod stats;
-mod trace_history;
 mod worker;
+
+#[cfg(feature = "execution-trace")]
+mod trace_history;
 
 use massa_db_exports as _;
 pub use worker::start_execution_worker;

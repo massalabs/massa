@@ -12,25 +12,26 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
-use crate::trace_history::{TraceHistory, TraceHistoryStatus};
+#[cfg(feature = "execution-trace")]
+use crate::trace_history::TraceHistory;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
-    ExecutionError, ExecutionOperationTrace, ExecutionOutput, ExecutionQueryCycleInfos,
+    AbiTrace, EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels,
+    ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos,
     ExecutionQueryStakerInfo, ExecutionStackElement, ReadOnlyExecutionOutput,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOperationTraces,
-    SlotExecutionOutput,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotAbiCallStack, SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::config::MAX_OPERATIONS_PER_BLOCK;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::PreHashSet;
+use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -56,6 +57,11 @@ macro_rules! context_guard {
         $self.execution_context.lock()
     };
 }
+
+#[cfg(feature = "execution-trace")]
+pub type ExecutionResult = Vec<AbiTrace>;
+#[cfg(not(feature = "execution-trace"))]
+pub type ExecutionResult = ();
 
 /// Structure holding consistent speculative and final execution states,
 /// and allowing access to them.
@@ -94,7 +100,7 @@ pub(crate) struct ExecutionState {
     channels: ExecutionChannels,
     /// prometheus metrics
     massa_metrics: MassaMetrics,
-
+    #[cfg(feature = "execution-trace")]
     pub(crate) trace_history: Arc<RwLock<TraceHistory>>,
 }
 
@@ -155,9 +161,6 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
-        // Create default trace history
-        let trace_history: Arc<RwLock<TraceHistory>> = Default::default();
-
         // build the execution state
         ExecutionState {
             final_state,
@@ -172,13 +175,17 @@ impl ExecutionState {
             final_cursor: last_final_slot,
             stats_counter: ExecutionStatsCounter::new(config.stats_time_window_duration),
             module_cache,
-            config,
             mip_store,
             selector,
             channels,
             wallet,
             massa_metrics,
-            trace_history,
+            #[cfg(feature = "execution-trace")]
+            trace_history: Arc::new(RwLock::new(TraceHistory::new(
+                config.max_execution_traces_slot_limit as u32,
+                MAX_OPERATIONS_PER_BLOCK,
+            ))),
+            config,
         }
     }
 
@@ -198,11 +205,7 @@ impl ExecutionState {
     ///
     /// # Arguments
     /// * `exec_out`: execution output to apply
-    pub fn apply_final_execution_output(
-        &mut self,
-        mut exec_out: ExecutionOutput,
-        exec_traces: Vec<ExecutionOperationTrace>,
-    ) {
+    pub fn apply_final_execution_output(&mut self, mut exec_out: ExecutionOutput) {
         if self.final_cursor >= exec_out.slot {
             panic!("attempting to apply a final execution output at or before the current final_cursor");
         }
@@ -281,21 +284,6 @@ impl ExecutionState {
                 trace!(
                     "error, failed to broadcast final execution output for slot {} due to: {}",
                     exec_out.slot,
-                    err
-                );
-            }
-        }
-
-        if self.config.broadcast_traces_enabled {
-            let slot_exec_tr = SlotExecutionOperationTraces::FinalizedSlot(exec_traces);
-            if let Err(err) = self
-                .channels
-                .slot_execution_traces_sender
-                .send(slot_exec_tr)
-            {
-                trace!(
-                    "error, failed to broadcast execution traces for slot {} due to: {}",
-                    exec_out.slot.clone(),
                     err
                 );
             }
@@ -399,7 +387,7 @@ impl ExecutionState {
         block_slot: Slot,
         remaining_block_gas: &mut u64,
         block_credits: &mut Amount,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<ExecutionResult, ExecutionError> {
         // check validity period
         if !(operation
             .get_validity_range(self.config.operation_validity_period)
@@ -446,6 +434,10 @@ impl ExecutionState {
         // update block credits
         *block_credits = new_block_credits;
 
+        #[cfg(feature = "execution-trace")]
+        let res = vec![];
+        #[cfg(not(feature = "execution-trace"))]
+        let res = ();
         // Call the execution process specific to the operation type.
         let mut execution_result = match &operation.content.op {
             OperationType::ExecuteSC { .. } => {
@@ -454,15 +446,15 @@ impl ExecutionState {
             OperationType::CallSC { .. } => {
                 self.execute_callsc_op(&operation.content.op, sender_addr)
             }
-            OperationType::RollBuy { .. } => {
-                self.execute_roll_buy_op(&operation.content.op, sender_addr)
-            }
-            OperationType::RollSell { .. } => {
-                self.execute_roll_sell_op(&operation.content.op, sender_addr)
-            }
-            OperationType::Transaction { .. } => {
-                self.execute_transaction_op(&operation.content.op, sender_addr)
-            }
+            OperationType::RollBuy { .. } => self
+                .execute_roll_buy_op(&operation.content.op, sender_addr)
+                .map(|_| res),
+            OperationType::RollSell { .. } => self
+                .execute_roll_sell_op(&operation.content.op, sender_addr)
+                .map(|_| res),
+            OperationType::Transaction { .. } => self
+                .execute_transaction_op(&operation.content.op, sender_addr)
+                .map(|_| res),
         };
 
         {
@@ -486,12 +478,20 @@ impl ExecutionState {
 
             // check execution results
             match execution_result {
-                Ok(_) => {
+                Ok(value) => {
                     context.insert_executed_op(
                         operation_id,
                         true,
                         Slot::new(operation.content.expire_period, op_thread),
                     );
+                    #[cfg(feature = "execution-trace")]
+                    {
+                        Ok(value)
+                    }
+                    #[cfg(not(feature = "execution-trace"))]
+                    {
+                        Ok(())
+                    }
                 }
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
@@ -507,12 +507,18 @@ impl ExecutionState {
                         operation_id,
                         false,
                         Slot::new(operation.content.expire_period, op_thread),
-                    )
+                    );
+                    #[cfg(feature = "execution-trace")]
+                    {
+                        Ok(vec![])
+                    }
+                    #[cfg(not(feature = "execution-trace"))]
+                    {
+                        Ok(())
+                    }
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Execute a denunciation in the context of a block.
@@ -809,7 +815,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<ExecutionResult, ExecutionError> {
         // process ExecuteSC operations only
         let (bytecode, max_gas, datastore) = match &operation {
             OperationType::ExecuteSC {
@@ -844,7 +850,7 @@ impl ExecutionState {
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
         // run the VM
-        massa_sc_runtime::run_main(
+        let res = massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             *max_gas,
@@ -855,7 +861,14 @@ impl ExecutionState {
             error,
         })?;
 
-        Ok(())
+        #[cfg(feature = "execution-trace")]
+        {
+            Ok(res.trace.into_iter().map(|t| t.into()).collect())
+        }
+        #[cfg(not(feature = "execution-trace"))]
+        {
+            Ok(())
+        }
     }
 
     /// Execute an operation of type `CallSC`
@@ -870,7 +883,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<ExecutionResult, ExecutionError> {
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
             OperationType::CallSC {
@@ -923,7 +936,9 @@ impl ExecutionState {
 
             // quit if there is no function to be called
             if target_func.is_empty() {
-                return Ok(());
+                return Err(ExecutionError::RuntimeError(
+                    "no function to call in the CallSC operation".to_string(),
+                ));
             }
 
             // Load bytecode. Assume empty bytecode if not found.
@@ -950,11 +965,18 @@ impl ExecutionState {
             }
             _ => (),
         }
-        response.map_err(|error| ExecutionError::VMError {
+        let response = response.map_err(|error| ExecutionError::VMError {
             context: "CallSC".to_string(),
             error,
         })?;
-        Ok(())
+        #[cfg(feature = "execution-trace")]
+        {
+            Ok(response.trace.into_iter().map(|t| t.into()).collect())
+        }
+        #[cfg(not(feature = "execution-trace"))]
+        {
+            Ok(())
+        }
     }
 
     /// Tries to execute an asynchronous message
@@ -967,7 +989,7 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<ExecutionResult, ExecutionError> {
         // prepare execution context
         let context_snapshot;
         let bytecode = {
@@ -1040,11 +1062,18 @@ impl ExecutionState {
             self.config.gas_costs.clone(),
         );
         match response {
-            Ok(Response { init_gas_cost, .. }) => {
+            Ok(res) => {
                 self.module_cache
                     .write()
-                    .set_init_cost(&bytecode, init_gas_cost);
-                Ok(())
+                    .set_init_cost(&bytecode, res.init_gas_cost);
+                #[cfg(feature = "execution-trace")]
+                {
+                    Ok(res.trace.into_iter().map(|t| t.into()).collect())
+                }
+                #[cfg(not(feature = "execution-trace"))]
+                {
+                    Ok(())
+                }
             }
             Err(error) => {
                 if let VMError::ExecutionError { init_gas_cost, .. } = error {
@@ -1080,7 +1109,13 @@ impl ExecutionState {
         slot: &Slot,
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
-    ) -> (ExecutionOutput, Vec<ExecutionOperationTrace>) {
+    ) -> ExecutionOutput {
+        #[cfg(feature = "execution-trace")]
+        let mut slot_trace = SlotAbiCallStack {
+            slot: *slot,
+            operation_call_stacks: PreHashMap::default(),
+            asc_call_stacks: vec![],
+        };
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1104,8 +1139,16 @@ impl ExecutionState {
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
         for (opt_bytecode, message) in messages {
-            if let Err(err) = self.execute_async_message(message, opt_bytecode) {
-                debug!("failed executing async message: {}", err);
+            match self.execute_async_message(message, opt_bytecode) {
+                Ok(message_return) => {
+                    #[cfg(feature = "execution-trace")]
+                    {
+                        slot_trace.asc_call_stacks.push(message_return);
+                    }
+                }
+                Err(err) => {
+                    debug!("failed executing async message: {}", err);
+                }
             }
         }
 
@@ -1170,16 +1213,26 @@ impl ExecutionState {
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
             for operation in operations.into_iter() {
-                if let Err(err) = self.execute_operation(
+                match self.execute_operation(
                     &operation,
                     stored_block.content.header.content.slot,
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
-                    debug!(
-                        "failed executing operation {} in block {}: {}",
-                        operation.id, block_id, err
-                    );
+                    Ok(op_return) => {
+                        #[cfg(feature = "execution-trace")]
+                        {
+                            slot_trace
+                                .operation_call_stacks
+                                .insert(operation.id, op_return);
+                        }
+                    }
+                    Err(err) => {
+                        debug!(
+                            "failed executing operation {} in block {}: {}",
+                            operation.id, block_id, err
+                        );
+                    }
                 }
             }
 
@@ -1266,8 +1319,12 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
+        #[cfg(feature = "execution-trace")]
+        self.trace_history
+            .write()
+            .save_traces_for_slot(*slot, slot_trace.clone());
         // Finish slot
-        let (exec_out, execution_traces) = context_guard!(self).settle_slot(block_info);
+        let exec_out = context_guard!(self).settle_slot(block_info);
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -1285,23 +1342,21 @@ impl ExecutionState {
             }
         }
 
-        if self.config.broadcast_traces_enabled {
-            let slot_exec_tr = SlotExecutionOperationTraces::ExecutedSlot(execution_traces.clone());
-            if let Err(err) = self
-                .channels
-                .slot_execution_traces_sender
-                .send(slot_exec_tr)
-            {
-                trace!(
-                    "error, failed to broadcast execution output for slot {} due to: {}",
-                    exec_out.slot.clone(),
-                    err
-                );
+        #[cfg(feature = "execution-trace")]
+        {
+            if self.config.broadcast_traces_enabled {
+                if let Err(err) = self.channels.slot_execution_traces_sender.send(slot_trace) {
+                    trace!(
+                        "error, failed to broadcast abi trace for slot {} due to: {}",
+                        exec_out.slot.clone(),
+                        err
+                    );
+                }
             }
         }
 
         // Return the execution output
-        (exec_out, execution_traces)
+        exec_out
     }
 
     /// Execute a candidate slot
@@ -1337,19 +1392,10 @@ impl ExecutionState {
                 .get_prev_slot(self.config.thread_count)
                 .expect("overflow when iterating on slots");
         }
-        let (exec_out, exec_traces) = self.execute_slot(slot, exec_target, selector);
+        let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
-        // update trace history
-        if let Some(block_id) = target_id {
-            let mut guard = self.trace_history.write();
-            guard.0.insert(
-                (*slot, block_id, TraceHistoryStatus::Speculative),
-                exec_traces,
-            );
-            guard.prune(self.config.max_execution_traces_block_id_limit);
-        }
 
         debug!("execute_candidate_slot: execution finished & state applied");
     }
@@ -1384,35 +1430,7 @@ impl ExecutionState {
             {
                 // speculative execution front result matches what we want to compute
                 // apply the cached output and return
-
-                // fetch execution_traces from trace history and return
-                let exec_traces: Vec<ExecutionOperationTrace> = match target_id {
-                    Some(block_id) => {
-                        let mut traces = vec![];
-                        let mut guard = self.trace_history.write();
-
-                        let spec_traces_ =
-                            guard
-                                .0
-                                .remove(&(*slot, block_id, TraceHistoryStatus::Speculative));
-                        if let Some(spec_traces) = spec_traces_ {
-                            guard.0.insert(
-                                (*slot, block_id, TraceHistoryStatus::Finalized),
-                                traces.clone(),
-                            );
-                            traces = spec_traces;
-                        } else {
-                            warn!("Cannot find speculative execution traces");
-                        }
-
-                        guard.prune(self.config.max_execution_traces_block_id_limit);
-
-                        traces
-                    }
-                    None => vec![], // Empty traces on block miss
-                };
-
-                self.apply_final_execution_output(exec_out, exec_traces);
+                self.apply_final_execution_output(exec_out);
                 return;
             } else {
                 // speculative cache mismatch
@@ -1434,19 +1452,10 @@ impl ExecutionState {
         self.active_cursor = self.final_cursor;
 
         // execute slot
-        let (exec_out, exec_traces) = self.execute_slot(slot, exec_target, selector);
+        let exec_out = self.execute_slot(slot, exec_target, selector);
 
         // apply execution output to final state
-        self.apply_final_execution_output(exec_out, exec_traces.clone());
-        // update trace history
-        if let Some(block_id) = target_id {
-            let mut guard = self.trace_history.write();
-            guard.0.insert(
-                (*slot, block_id, TraceHistoryStatus::Finalized),
-                exec_traces,
-            );
-            guard.prune(self.config.max_execution_traces_block_id_limit);
-        }
+        self.apply_final_execution_output(exec_out);
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
@@ -1596,7 +1605,7 @@ impl ExecutionState {
         };
 
         // return the execution output
-        let (execution_output, _execution_traces) = context_guard!(self).settle_slot(None);
+        let execution_output = context_guard!(self).settle_slot(None);
         let exact_exec_cost = req.max_gas.saturating_sub(exec_response.remaining_gas);
 
         // compute a gas cost, estimating the gas of the last SC call to be max_instance_cost

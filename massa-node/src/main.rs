@@ -474,7 +474,7 @@ async fn launch(
         broadcast_slot_execution_traces_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_traces_channel_capacity,
-        max_execution_traces_block_id_limit: SETTINGS.execution.execution_traces_limit,
+        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
     };
 
     let execution_channels = ExecutionChannels {

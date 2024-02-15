@@ -26,7 +26,7 @@ use std::sync::Arc;
 use tracing::info;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::ExecutionOperationTrace;
+use massa_execution_exports::{AbiTrace, SlotAbiCallStack};
 
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
@@ -470,29 +470,21 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     #[cfg(feature = "execution-trace")]
-    fn get_operation_abi_call_stack(
-        &self,
-        operation_id: OperationId,
-    ) -> Vec<ExecutionOperationTrace> {
+    fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>> {
         self.execution_state
             .read()
             .trace_history
             .read()
-            .fetch_traces_for_operation_id(&operation_id)
-            .map(|(_k, v)| v.clone())
-            .flatten()
-            .collect()
+            .fetch_slot_for_op(&operation_id)
     }
 
     #[cfg(feature = "execution-trace")]
-    fn get_slot_abi_call_stack(&self, slot: Slot) -> Vec<Vec<ExecutionOperationTrace>> {
+    fn get_slot_abi_call_stack(&self, slot: Slot) -> Option<SlotAbiCallStack> {
         self.execution_state
             .read()
             .trace_history
             .read()
             .fetch_traces_for_slot(&slot)
-            .map(|(_k, v)| v.clone())
-            .collect()
     }
 
     /// Returns a boxed clone of self.

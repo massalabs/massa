@@ -5,7 +5,7 @@ use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotExecutionOperationTraces,
+    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;

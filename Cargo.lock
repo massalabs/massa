@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=2f678450e786193ce01f7a18b06c8e15764ca78e#2f678450e786193ce01f7a18b06c8e15764ca78e"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=535395125e9d2505711b50f2c229e5d1ce079fff#535395125e9d2505711b50f2c229e5d1ce079fff"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2884,7 +2884,6 @@ dependencies = [
  "blake3",
  "bs58",
  "criterion",
- "function_name",
  "hex-literal",
  "libsecp256k1",
  "massa-proto-rs",
@@ -2915,6 +2914,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "rand_xoshiro",
+ "schnellru",
  "serde_json",
  "sha2 0.10.8",
  "sha3",
