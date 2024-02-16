@@ -39,7 +39,10 @@ benchmarking = [
     "tempfile"
 ]
 metrics = []
-execution-trace = ["schnellru", "massa-sc-runtime/execution-trace"]
+execution-trace = [
+    "schnellru",
+    "massa_execution_exports/execution-trace",
+]
 
 [dependencies]
 anyhow = { workspace = true }

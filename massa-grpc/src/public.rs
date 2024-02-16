@@ -22,18 +22,22 @@ use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
-use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
-use massa_proto_rs::massa::api::v1::{
-    self as grpc_api, AbiCallStack, AbiCallStackElement, AbiCallStackElementCall,
-    AbiCallStackElementParent, AscabiCallStack, GetOperationAbiCallStacksResponse,
-    GetSlotAbiCallStacksResponse, OperationAbiCallStack, SlotAbiCallStacks,
-};
+use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use std::collections::HashSet;
 use std::str::FromStr;
+
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::{
+    AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
+    AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
+    OperationAbiCallStack, SlotAbiCallStacks,
+};
 
 /// Execute read only call (function or bytecode)
 pub(crate) fn execute_read_only_call(

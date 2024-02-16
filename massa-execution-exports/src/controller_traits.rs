@@ -2,9 +2,6 @@
 
 //! This module exports generic traits representing interfaces for interacting with the Execution worker
 
-#[cfg(feature = "execution-trace")]
-use crate::types::{AbiTrace, SlotAbiCallStack};
-
 use crate::types::{
     ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
 };
@@ -23,6 +20,9 @@ use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+
+#[cfg(feature = "execution-trace")]
+use crate::types::{AbiTrace, SlotAbiCallStack};
 
 #[cfg_attr(feature = "test-exports", mockall::automock)]
 /// interface that communicates with the execution worker thread

@@ -24,7 +24,7 @@ impl TraceHistory {
     }
 
     /// Fetch slot for a given operation
-    pub(crate) fn fetch_slot_for_op(&self, op_id: &OperationId) -> Option<Vec<AbiTrace>> {
+    pub(crate) fn fetch_traces_for_op(&self, op_id: &OperationId) -> Option<Vec<AbiTrace>> {
         self.op_per_slot
             .peek(op_id)
             .map(|slot| {

@@ -482,6 +482,7 @@ async fn launch(
             execution_config.broadcast_slot_execution_output_channel_capacity,
         )
         .0,
+        #[cfg(feature = "execution-trace")]
         slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
         )

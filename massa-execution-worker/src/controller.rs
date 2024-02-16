@@ -475,7 +475,7 @@ impl ExecutionController for ExecutionControllerImpl {
             .read()
             .trace_history
             .read()
-            .fetch_slot_for_op(&operation_id)
+            .fetch_traces_for_op(&operation_id)
     }
 
     #[cfg(feature = "execution-trace")]

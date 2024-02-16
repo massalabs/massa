@@ -12,26 +12,23 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
-#[cfg(feature = "execution-trace")]
-use crate::trace_history::TraceHistory;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    AbiTrace, EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels,
-    ExecutionConfig, ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos,
-    ExecutionQueryStakerInfo, ExecutionStackElement, ReadOnlyExecutionOutput,
-    ReadOnlyExecutionRequest, ReadOnlyExecutionTarget, SlotAbiCallStack, SlotExecutionOutput,
+    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
+    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
+    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::MAX_OPERATIONS_PER_BLOCK;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -50,6 +47,15 @@ use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
+
+#[cfg(feature = "execution-trace")]
+use crate::trace_history::TraceHistory;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{AbiTrace, SlotAbiCallStack};
+#[cfg(feature = "execution-trace")]
+use massa_models::config::MAX_OPERATIONS_PER_BLOCK;
+#[cfg(feature = "execution-trace")]
+use massa_models::prehash::PreHashMap;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -478,7 +484,7 @@ impl ExecutionState {
 
             // check execution results
             match execution_result {
-                Ok(value) => {
+                Ok(_value) => {
                     context.insert_executed_op(
                         operation_id,
                         true,
@@ -486,7 +492,7 @@ impl ExecutionState {
                     );
                     #[cfg(feature = "execution-trace")]
                     {
-                        Ok(value)
+                        Ok(_value)
                     }
                     #[cfg(not(feature = "execution-trace"))]
                     {
@@ -850,7 +856,7 @@ impl ExecutionState {
             .read()
             .load_tmp_module(bytecode, *max_gas)?;
         // run the VM
-        let res = massa_sc_runtime::run_main(
+        let _res = massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             *max_gas,
@@ -863,7 +869,7 @@ impl ExecutionState {
 
         #[cfg(feature = "execution-trace")]
         {
-            Ok(res.trace.into_iter().map(|t| t.into()).collect())
+            Ok(_res.trace.into_iter().map(|t| t.into()).collect())
         }
         #[cfg(not(feature = "execution-trace"))]
         {
@@ -965,13 +971,13 @@ impl ExecutionState {
             }
             _ => (),
         }
-        let response = response.map_err(|error| ExecutionError::VMError {
+        let _response = response.map_err(|error| ExecutionError::VMError {
             context: "CallSC".to_string(),
             error,
         })?;
         #[cfg(feature = "execution-trace")]
         {
-            Ok(response.trace.into_iter().map(|t| t.into()).collect())
+            Ok(_response.trace.into_iter().map(|t| t.into()).collect())
         }
         #[cfg(not(feature = "execution-trace"))]
         {
@@ -1140,10 +1146,10 @@ impl ExecutionState {
         // Effects are cancelled on failure and the sender is reimbursed.
         for (opt_bytecode, message) in messages {
             match self.execute_async_message(message, opt_bytecode) {
-                Ok(message_return) => {
+                Ok(_message_return) => {
                     #[cfg(feature = "execution-trace")]
                     {
-                        slot_trace.asc_call_stacks.push(message_return);
+                        slot_trace.asc_call_stacks.push(_message_return);
                     }
                 }
                 Err(err) => {
@@ -1219,12 +1225,12 @@ impl ExecutionState {
                     &mut remaining_block_gas,
                     &mut block_credits,
                 ) {
-                    Ok(op_return) => {
+                    Ok(_op_return) => {
                         #[cfg(feature = "execution-trace")]
                         {
                             slot_trace
                                 .operation_call_stacks
-                                .insert(operation.id, op_return);
+                                .insert(operation.id, _op_return);
                         }
                     }
                     Err(err) => {

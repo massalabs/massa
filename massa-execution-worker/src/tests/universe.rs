@@ -8,7 +8,7 @@ use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBControl
 use massa_db_worker::MassaDB;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
-    ExecutionError, ExecutionManager, SlotExecutionOperationTraces, SlotExecutionOutput,
+    ExecutionError, ExecutionManager, SlotExecutionOutput,
 };
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
@@ -39,6 +39,9 @@ use tempfile::TempDir;
 use tokio::sync::broadcast;
 
 use crate::start_execution_worker;
+
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::SlotAbiCallStack;
 
 pub struct ExecutionForeignControllers {
     pub selector_controller: Box<MockSelectorControllerWrapper>,
@@ -76,8 +79,9 @@ pub struct ExecutionTestUniverse {
     pub final_state: Arc<RwLock<dyn FinalStateController>>,
     module_manager: Box<dyn ExecutionManager>,
     pub broadcast_channel_receiver: Option<tokio::sync::broadcast::Receiver<SlotExecutionOutput>>,
+    #[cfg(feature = "execution-trace")]
     pub broadcast_traces_channel_receiver:
-        Option<tokio::sync::broadcast::Receiver<SlotExecutionOperationTraces>>,
+        Option<tokio::sync::broadcast::Receiver<SlotAbiCallStack>>,
 }
 
 impl TestUniverse for ExecutionTestUniverse {
@@ -92,16 +96,19 @@ impl TestUniverse for ExecutionTestUniverse {
         };
         let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         let (tx, rx) = broadcast::channel(16);
+        #[cfg(feature = "execution-trace")]
         let (tx_traces, rx_traces) = broadcast::channel(16);
+        let exec_channels = ExecutionChannels {
+            slot_execution_output_sender: tx,
+            #[cfg(feature = "execution-trace")]
+            slot_execution_traces_sender: tx_traces,
+        };
         let (module_manager, module_controller) = start_execution_worker(
             config.clone(),
             controllers.final_state.clone(),
             controllers.selector_controller,
             mip_store,
-            ExecutionChannels {
-                slot_execution_output_sender: tx,
-                slot_execution_traces_sender: tx_traces,
-            },
+            exec_channels,
             Arc::new(RwLock::new(create_test_wallet(Some(PreHashMap::default())))),
             MassaMetrics::new(
                 false,
@@ -118,6 +125,7 @@ impl TestUniverse for ExecutionTestUniverse {
             module_controller,
             module_manager,
             broadcast_channel_receiver: Some(rx),
+            #[cfg(feature = "execution-trace")]
             broadcast_traces_channel_receiver: Some(rx_traces),
         };
         universe.initialize();

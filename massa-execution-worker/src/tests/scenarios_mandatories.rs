@@ -35,9 +35,16 @@ use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
 use std::sync::Arc;
-use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, thread, time::Duration};
+use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
+
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType};
+#[cfg(feature = "execution-trace")]
+use massa_models::operation::OperationId;
+#[cfg(feature = "execution-trace")]
+use std::thread;
 
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
@@ -2609,6 +2616,7 @@ fn chain_id() {
     assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
 }
 
+#[cfg(feature = "execution-trace")]
 #[test]
 fn execution_trace() {
     // setup the period duration
@@ -2648,31 +2656,68 @@ fn execution_trace() {
 
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || {
-        // Execution Output
         let exec_traces = receiver.blocking_recv();
-        // Final Execution Output
+        /*
         let exec_traces_2 = receiver.blocking_recv();
         return vec![
             exec_traces.expect("Execution output"),
             exec_traces_2.expect("Final execution output"),
         ];
+        */
+        return exec_traces;
     });
-    let broadcast_results = join_handle.join().expect("Nothing received from thread");
-    assert_eq!(broadcast_results.len(), 2);
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
+    let broadcast_result = broadcast_result_.unwrap();
 
-    let final_traces = match &broadcast_results[1] {
-        SlotExecutionOperationTraces::ExecutedSlot(_) => {
-            panic!("Expect Finalized execution output")
-        }
-        SlotExecutionOperationTraces::FinalizedSlot(exec_traces) => exec_traces,
-    };
+    let abi_name_1 = "assembly_script_generate_event";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
 
-    #[cfg(feature = "execution_trace")]
-    {
-        assert_eq!(final_traces[0].abi_name, "transfer_coins");
-    }
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let traces_2: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_2)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_2.len(), 1); // Only one op
+    assert_eq!(traces_2.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_2.first().unwrap().1.get(0).unwrap().name, abi_name_2);
+    assert_eq!(
+        traces_2.first().unwrap().1.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceType::String(
+                "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+            ),
+            SCRuntimeAbiTraceType::I64(2000)
+        ]
+    );
 }
 
+#[cfg(feature = "execution-trace")]
 #[test]
 fn execution_trace_nested() {
     // setup the period duration
@@ -2715,25 +2760,55 @@ fn execution_trace_nested() {
     let join_handle = thread::spawn(move || {
         // Execution Output
         let exec_traces = receiver.blocking_recv();
-        // Final Execution Output
-        let exec_traces_2 = receiver.blocking_recv();
-        return vec![
-            exec_traces.expect("Execution output"),
-            exec_traces_2.expect("Final execution output"),
-        ];
+        return exec_traces;
     });
-    let broadcast_results = join_handle.join().expect("Nothing received from thread");
-    assert_eq!(broadcast_results.len(), 2);
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
-    let final_traces = match &broadcast_results[1] {
-        SlotExecutionOperationTraces::ExecutedSlot(_) => {
-            panic!("Expect Finalized execution output")
-        }
-        SlotExecutionOperationTraces::FinalizedSlot(exec_traces) => exec_traces,
-    };
+    println!("b r: {:?}", broadcast_result_);
+    let broadcast_result = broadcast_result_.unwrap();
 
-    #[cfg(feature = "execution_trace")]
-    {
-        assert_eq!(final_traces[0].abi_name, "transfer_coins");
-    }
+    let abi_name_1 = "assembly_script_call";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    // filter sub calls
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let sub_call: Vec<AbiTrace> = traces_1
+        .first()
+        .unwrap()
+        .1
+        .get(0)
+        .unwrap()
+        .sub_calls
+        .as_ref()
+        .unwrap()
+        .iter()
+        .filter(|a| a.name == abi_name_2)
+        .cloned()
+        .collect();
+
+    assert_eq!(
+        sub_call.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceType::String(
+                "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+            ),
+            SCRuntimeAbiTraceType::I64(1425)
+        ]
+    );
 }

@@ -13,7 +13,7 @@ use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
 use massa_models::output_event::SCOutputEvent;
-use massa_models::prehash::{PreHashMap, PreHashSet};
+use massa_models::prehash::PreHashSet;
 use massa_models::{
     address::Address, address::ExecutionAddressCycleInfo, amount::Amount, slot::Slot,
 };
@@ -22,7 +22,11 @@ use massa_storage::Storage;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(feature = "execution-trace")]
-use massa_sc_runtime::AbiTrace as SCRuntimeAbiTrace;
+use massa_models::prehash::PreHashMap;
+#[cfg(feature = "execution-trace")]
+pub use massa_sc_runtime::AbiTrace as SCRuntimeAbiTrace;
+#[cfg(feature = "execution-trace")]
+pub use massa_sc_runtime::AbiTraceType as SCRuntimeAbiTraceType;
 
 /// Metadata needed to execute the block
 #[derive(Clone, Debug)]
@@ -206,15 +210,16 @@ pub struct ExecutionAddressInfo {
     pub cycle_infos: Vec<ExecutionAddressCycleInfo>,
 }
 
+#[cfg(feature = "execution-trace")]
 /// A trace of an abi call + its parameters + the result
 #[derive(Debug, Clone)]
 pub struct AbiTrace {
     /// Abi name
     pub name: String,
     /// Abi parameters
-    pub parameters: Vec<String>,
+    pub parameters: Vec<SCRuntimeAbiTraceType>,
     /// Abi return value
-    pub return_value: String,
+    pub return_value: SCRuntimeAbiTraceType,
     /// Abi sub calls
     pub sub_calls: Option<Vec<AbiTrace>>,
 }
@@ -236,6 +241,7 @@ impl From<SCRuntimeAbiTrace> for AbiTrace {
     }
 }
 
+#[cfg(feature = "execution-trace")]
 #[derive(Debug, Clone)]
 /// Structure for all abi calls in a slot
 pub struct SlotAbiCallStack {
