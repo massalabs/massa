@@ -9,7 +9,8 @@ use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
 use massa_execution_exports::{
-    ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    AbiTrace, ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest,
+    ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -468,21 +469,82 @@ pub(crate) fn get_stakers(
 }
 
 #[cfg(feature = "execution-trace")]
+/// recursive function to convert a AbiTrace struct
+pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
+    if abi_trace.sub_calls.is_none() {
+        AbiCallStackElementParent {
+            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                name: abi_trace.name.clone(),
+                parameters: abi_trace
+                    .parameters
+                    .iter()
+                    .map(|p| format!("{:?}", *p))
+                    .collect::<Vec<String>>(),
+                return_value: format!("{:?}", abi_trace.return_value),
+            })),
+        }
+    } else {
+        AbiCallStackElementParent {
+            call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                name: abi_trace.name.clone(),
+                parameters: abi_trace
+                    .parameters
+                    .iter()
+                    .map(|p| format!("{:?}", *p))
+                    .collect(),
+                return_value: format!("{:?}", abi_trace.return_value),
+                sub_calls: abi_trace
+                    .sub_calls
+                    .clone()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|c| into_element(c))
+                    .collect(),
+            })),
+        }
+    }
+}
+
+#[cfg(feature = "execution-trace")]
 /// Get operation ABI call stacks
 pub(crate) fn get_operation_abi_call_stacks(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
 ) -> Result<grpc_api::GetOperationAbiCallStacksResponse, GrpcError> {
-    let op_ids = request.into_inner().operation_ids;
-    let mut res = Vec::new();
+    let op_ids_ = request.into_inner().operation_ids;
+
+    let op_ids: Vec<OperationId> = op_ids_
+        .iter()
+        .map(|o| OperationId::from_str(o))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut elements = vec![];
     for op_id in op_ids {
-        let op_id = OperationId::from_str(&op_id)?;
-        let call_stack = grpc
+        let abi_traces_ = grpc
             .execution_controller
             .get_operation_abi_call_stack(op_id);
-        res.push(call_stack);
+        if let Some(abi_traces) = abi_traces_ {
+            for abi_trace in abi_traces.iter() {
+                elements.push(into_element(abi_trace));
+            }
+        } else {
+            elements.push(AbiCallStackElementParent {
+                call_stack_element: None,
+            })
+        }
     }
+
+    let resp = GetOperationAbiCallStacksResponse {
+        call_stacks: vec![AbiCallStack {
+            call_stack: elements,
+        }],
+    };
+
+    Ok(resp)
+
     //TODO: use real results above
+
+    /*
     Ok(
         GetOperationAbiCallStacksResponse {
             call_stacks: vec![
@@ -565,6 +627,7 @@ pub(crate) fn get_operation_abi_call_stacks(
             ]
         }
     )
+    */
 }
 
 #[cfg(feature = "execution-trace")]
@@ -573,13 +636,43 @@ pub(crate) fn get_slot_abi_call_stacks(
     request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
 ) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
     let slots = request.into_inner().slots;
-    let mut res = Vec::new();
+
+    let slot_elements = vec![];
     for slot in slots {
-        let call_stack = grpc
+        let call_stack_ = grpc
             .execution_controller
             .get_slot_abi_call_stack(slot.into());
-        res.push(call_stack);
+
+        let mut slot_abi_call_stacks = SlotAbiCallStacks {
+            asc_call_stacks: vec![],
+            operation_call_stacks: vec![],
+        };
+
+        if let Some(call_stack) = call_stack_ {
+            for (i, asc_call_stack) in call_stack.asc_call_stacks.into_iter().enumerate() {
+                slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
+                    index: i as u64,
+                    call_stack: asc_call_stack.iter().map(|e| into_element(e)).collect(),
+                })
+            }
+            for (op_id, op_call_stack) in call_stack.operation_call_stacks {
+                slot_abi_call_stacks
+                    .operation_call_stacks
+                    .push(OperationAbiCallStack {
+                        operation_id: op_id.to_string(),
+                        call_stack: op_call_stack.iter().map(|e| into_element(e)).collect(),
+                    })
+            }
+        }
     }
+
+    let resp = GetSlotAbiCallStacksResponse {
+        slot_call_stacks: slot_elements,
+    };
+
+    Ok(resp)
+
+    /*
     //TODO: use real results above
     Ok(GetSlotAbiCallStacksResponse {
         slot_call_stacks: vec![
@@ -757,6 +850,7 @@ pub(crate) fn get_slot_abi_call_stacks(
             }
         ]
     })
+    */
 }
 
 /// Get next block best parents
