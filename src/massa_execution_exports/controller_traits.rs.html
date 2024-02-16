@@ -132,6 +132,18 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
@@ -139,6 +151,7 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::types::{
     ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
 };
+
 <span class="kw">use </span><span class="kw">crate</span>::ExecutionError;
 <span class="kw">use crate</span>::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 <span class="kw">use </span>massa_models::address::Address;
@@ -153,6 +166,9 @@
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::collections::HashMap;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::types::{AbiTrace, SlotAbiCallStack};
 
 <span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
 </span><span class="doccomment">/// interface that communicates with the execution worker thread
@@ -244,6 +260,14 @@
 
     <span class="doccomment">/// Get execution statistics
     </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats;
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+    </span><span class="doccomment">/// Get the abi call stack for a given operation id
+    </span><span class="kw">fn </span>get_operation_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, operation_id: OperationId) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;AbiTrace&gt;&gt;;
+
+    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+    </span><span class="doccomment">/// Get the abi call stack for a given slot
+    </span><span class="kw">fn </span>get_slot_abi_call_stack(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; <span class="prelude-ty">Option</span>&lt;SlotAbiCallStack&gt;;
 
     <span class="doccomment">/// Returns a boxed clone of self.
     /// Useful to allow cloning `Box&lt;dyn ExecutionController&gt;`.

@@ -95,6 +95,12 @@
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
 <a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -191,5 +197,11 @@
     </span><span class="kw">pub </span>max_event_size: usize,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
+    <span class="doccomment">/// whether slot execution traces broadcast is enabled
+    </span><span class="kw">pub </span>broadcast_traces_enabled: bool,
+    <span class="doccomment">/// slot execution traces channel capacity
+    </span><span class="kw">pub </span>broadcast_slot_execution_traces_channel_capacity: usize,
+    <span class="doccomment">/// Max execution traces slot to keep in trace history cache
+    </span><span class="kw">pub </span>max_execution_traces_slot_limit: usize,
 }
 </code></pre></div></section></main></body></html>

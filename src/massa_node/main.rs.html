@@ -1427,6 +1427,16 @@
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
 <a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1899,11 +1909,21 @@
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: <span class="kw-2">*</span>CHAINID,
+        broadcast_traces_enabled: SETTINGS.api.enable_broadcast_traces,
+        broadcast_slot_execution_traces_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_traces_channel_capacity,
+        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
         slot_execution_output_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_output_channel_capacity,
+        )
+        .<span class="number">0</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+        </span>slot_execution_traces_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_traces_channel_capacity,
         )
         .<span class="number">0</span>,
     };
