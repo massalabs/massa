@@ -442,6 +442,7 @@ impl ExecutionState {
 
         #[cfg(feature = "execution-trace")]
         let res = vec![];
+        #[allow(clippy::let_unit_value)]
         #[cfg(not(feature = "execution-trace"))]
         let res = ();
         // Call the execution process specific to the operation type.
