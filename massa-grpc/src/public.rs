@@ -9,8 +9,7 @@ use massa_execution_exports::mapping_grpc::{
     to_event_filter, to_execution_query_response, to_querystate_filter,
 };
 use massa_execution_exports::{
-    AbiTrace, ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget,
+    ExecutionQueryRequest, ExecutionStackElement, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
 };
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -31,6 +30,8 @@ use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use std::collections::HashSet;
 use std::str::FromStr;
 
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::AbiTrace;
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
 #[cfg(feature = "execution-trace")]
@@ -498,7 +499,7 @@ pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
                     .clone()
                     .unwrap_or_default()
                     .iter()
-                    .map(|c| into_element(c))
+                    .map(into_element)
                     .collect(),
             })),
         }
@@ -652,7 +653,7 @@ pub(crate) fn get_slot_abi_call_stacks(
             for (i, asc_call_stack) in call_stack.asc_call_stacks.into_iter().enumerate() {
                 slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
                     index: i as u64,
-                    call_stack: asc_call_stack.iter().map(|e| into_element(e)).collect(),
+                    call_stack: asc_call_stack.iter().map(into_element).collect(),
                 })
             }
             for (op_id, op_call_stack) in call_stack.operation_call_stacks {
@@ -660,7 +661,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                     .operation_call_stacks
                     .push(OperationAbiCallStack {
                         operation_id: op_id.to_string(),
-                        call_stack: op_call_stack.iter().map(|e| into_element(e)).collect(),
+                        call_stack: op_call_stack.iter().map(into_element).collect(),
                     })
             }
         }

@@ -1,12 +1,29 @@
 use futures_util::StreamExt;
-use massa_proto_rs::massa::api::v1::{self as grpc_api, AscabiCallStack, OperationAbiCallStack};
+use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::pin::Pin;
 use tokio::select;
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
 use crate::error::match_for_io_error;
-use crate::{error::GrpcError, public::into_element, server::MassaPublicGrpc};
+use crate::{error::GrpcError, server::MassaPublicGrpc};
+
+#[cfg(feature = "execution-trace")]
+use crate::public::into_element;
+#[cfg(not(feature = "execution-trace"))]
+use massa_models::slot::Slot;
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack};
+#[cfg(not(feature = "execution-trace"))]
+#[derive(Clone)]
+struct SlotAbiCallStack {
+    /// Slot
+    pub slot: Slot,
+    /// asc call stacks
+    pub asc_call_stacks: Vec<u8>,
+    /// operation call stacks
+    pub operation_call_stacks: Vec<u8>,
+}
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotABICallStacksStreamType = Pin<
@@ -28,13 +45,16 @@ pub(crate) async fn new_slot_abi_call_stacks(
     let mut in_stream = request.into_inner();
 
     // Subscribe to the new slot execution events channel
+    #[cfg(feature = "execution-trace")]
     let mut subscriber = grpc
         .execution_channels
         .slot_execution_traces_sender
         .subscribe();
-    // let grpc_config = grpc.grpc_config.clone();
-
-    println!("new_slot_abi_call_stacks...");
+    #[cfg(not(feature = "execution-trace"))]
+    let (mut subscriber, _receiver) = {
+        let (subscriber_, receiver) = tokio::sync::broadcast::channel::<SlotAbiCallStack>(0);
+        (subscriber_.subscribe(), receiver)
+    };
 
     tokio::spawn(async move {
         loop {
@@ -49,27 +69,31 @@ pub(crate) async fn new_slot_abi_call_stacks(
                                 continue;
                             }
 
+                            #[allow(unused_mut)]
                             let mut ret = grpc_api::NewSlotAbiCallStacksResponse {
                                 slot: Some(massa_slot_execution_trace.slot.into()),
                                 asc_call_stacks: vec![],
                                 operation_call_stacks: vec![]
                             };
 
-                            for (i, asc_call_stack) in massa_slot_execution_trace.asc_call_stacks.iter().enumerate() {
-                                ret.asc_call_stacks.push(
-                                    AscabiCallStack {
-                                        index: i as u64,
-                                        call_stack: asc_call_stack.iter().map(|t| into_element(t)).collect()
-                                    }
-                                )
-                            }
-                            for (op_id, op_call_stack) in massa_slot_execution_trace.operation_call_stacks.iter() {
-                                ret.operation_call_stacks.push(
-                                    OperationAbiCallStack {
-                                        operation_id: op_id.to_string(),
-                                        call_stack: op_call_stack.iter().map(|t| into_element(t)).collect()
-                                    }
-                                )
+                            #[cfg(feature = "execution-trace")]
+                            {
+                                for (i, asc_call_stack) in massa_slot_execution_trace.asc_call_stacks.iter().enumerate() {
+                                    ret.asc_call_stacks.push(
+                                        AscabiCallStack {
+                                            index: i as u64,
+                                            call_stack: asc_call_stack.iter().map(into_element).collect()
+                                        }
+                                    )
+                                }
+                                for (op_id, op_call_stack) in massa_slot_execution_trace.operation_call_stacks.iter() {
+                                    ret.operation_call_stacks.push(
+                                        OperationAbiCallStack {
+                                            operation_id: op_id.to_string(),
+                                            call_stack: op_call_stack.iter().map(into_element).collect()
+                                        }
+                                    )
+                                }
                             }
 
                             if let Err(e) = tx.send(Ok(ret)).await {

@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=3f3f00e1df0b970c42aa5c7fd21ad0a881fa6ea4#3f3f00e1df0b970c42aa5c7fd21ad0a881fa6ea4"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=eeb4c476a537a391b7de0559d3e84d35ddeb21a9#eeb4c476a537a391b7de0559d3e84d35ddeb21a9"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2596,6 +2596,7 @@ dependencies = [
  "prost-types",
  "rand",
  "regex",
+ "rust_decimal",
  "serde",
  "serde_json",
  "serial_test",
@@ -3026,6 +3027,7 @@ dependencies = [
  "num",
  "parking_lot",
  "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "tokio-stream",
