@@ -27,6 +27,8 @@ use massa_models::prehash::PreHashMap;
 pub use massa_sc_runtime::AbiTrace as SCRuntimeAbiTrace;
 #[cfg(feature = "execution-trace")]
 pub use massa_sc_runtime::AbiTraceType as SCRuntimeAbiTraceType;
+#[cfg(feature = "execution-trace")]
+pub use massa_sc_runtime::AbiTraceValue as SCRuntimeAbiTraceValue;
 
 /// Metadata needed to execute the block
 #[derive(Clone, Debug)]
@@ -217,7 +219,7 @@ pub struct AbiTrace {
     /// Abi name
     pub name: String,
     /// Abi parameters
-    pub parameters: Vec<SCRuntimeAbiTraceType>,
+    pub parameters: Vec<SCRuntimeAbiTraceValue>,
     /// Abi return value
     pub return_value: SCRuntimeAbiTraceType,
     /// Abi sub calls

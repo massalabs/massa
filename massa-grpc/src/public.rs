@@ -478,9 +478,9 @@ pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
                 parameters: abi_trace
                     .parameters
                     .iter()
-                    .map(|p| format!("{:?}", *p))
+                    .map(|p| serde_json::to_string(p).unwrap_or_default())
                     .collect::<Vec<String>>(),
-                return_value: format!("{:?}", abi_trace.return_value),
+                return_value: serde_json::to_string(&abi_trace.return_value).unwrap_or_default(),
             })),
         }
     } else {
@@ -490,9 +490,9 @@ pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
                 parameters: abi_trace
                     .parameters
                     .iter()
-                    .map(|p| format!("{:?}", *p))
+                    .map(|p| serde_json::to_string(p).unwrap_or_default())
                     .collect(),
-                return_value: format!("{:?}", abi_trace.return_value),
+                return_value: serde_json::to_string(&abi_trace.return_value).unwrap_or_default(),
                 sub_calls: abi_trace
                     .sub_calls
                     .clone()
