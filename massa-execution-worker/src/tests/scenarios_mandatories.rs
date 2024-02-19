@@ -40,7 +40,7 @@ use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType};
+use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
 #[cfg(feature = "execution-trace")]
 use massa_models::operation::OperationId;
 #[cfg(feature = "execution-trace")]
@@ -2706,13 +2706,23 @@ fn execution_trace() {
     assert_eq!(traces_2.len(), 1); // Only one op
     assert_eq!(traces_2.first().unwrap().1.len(), 1); // Only one transfer_coins
     assert_eq!(traces_2.first().unwrap().1.get(0).unwrap().name, abi_name_2);
+    // println!(
+    //     "params: {:?}",
+    //     traces_2.first().unwrap().1.get(0).unwrap().parameters
+    // );
     assert_eq!(
         traces_2.first().unwrap().1.get(0).unwrap().parameters,
         vec![
-            SCRuntimeAbiTraceType::String(
-                "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
-            ),
-            SCRuntimeAbiTraceType::I64(2000)
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::I64(2000)
+            }
         ]
     );
 }
@@ -2764,7 +2774,7 @@ fn execution_trace_nested() {
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
-    println!("b r: {:?}", broadcast_result_);
+    // println!("b r: {:?}", broadcast_result_);
     let broadcast_result = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_call";
@@ -2802,13 +2812,20 @@ fn execution_trace_nested() {
         .cloned()
         .collect();
 
+    // println!("params: {:?}", sub_call.get(0).unwrap().parameters);
     assert_eq!(
         sub_call.get(0).unwrap().parameters,
         vec![
-            SCRuntimeAbiTraceType::String(
-                "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
-            ),
-            SCRuntimeAbiTraceType::I64(1425)
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::I64(1425)
+            }
         ]
     );
 }

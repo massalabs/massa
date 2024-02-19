@@ -27,12 +27,12 @@ impl TraceHistory {
     pub(crate) fn fetch_traces_for_op(&self, op_id: &OperationId) -> Option<Vec<AbiTrace>> {
         self.op_per_slot
             .peek(op_id)
-            .map(|slot| {
+            .and_then(|slot| {
                 self.trace_per_slot
                     .peek(slot)
                     .map(|trace| trace.operation_call_stacks.get(op_id).cloned())
             })
-            .flatten()
+            // .flatten()
             .flatten()
     }
 
