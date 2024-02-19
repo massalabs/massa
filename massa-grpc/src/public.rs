@@ -487,21 +487,21 @@ pub(crate) fn get_operation_abi_call_stacks(
                         AbiCallStackElementParent {
                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                 name: String::from("transfer_coins"),
-                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                 return_value: String::new()
                             }))
                         },
                         AbiCallStackElementParent {
                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                 name: String::from("transfer_coins_for"),
-                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                 return_value: String::new()
                             }))
                         },
                         AbiCallStackElementParent {
                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                 name: String::from("transfer_coins_for"),
-                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                 return_value: String::new()
                             }))
                         },
@@ -509,40 +509,40 @@ pub(crate) fn get_operation_abi_call_stacks(
                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                 name: String::from("get_balance"),
                                 parameters: vec![],
-                                return_value: String::from("10")
+                                return_value: String::from("{type: 'u64', value: 10}")
                             }))
                         },
                         AbiCallStackElementParent {
                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                 name: String::from("set_data"),
-                                parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                parameters: vec![String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'byteArray', value: [4, 5, 6]}")],
                                 return_value: String::new()
                             }))
                         },
                         AbiCallStackElementParent {
                             call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
                                 name: String::from("call"),
-                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
-                                return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'best_function'}"), String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'u64', value: 10}")],
+                                return_value: String::from("{type: 'byteArray', value: [1, 2, 3]}"),
                                 sub_calls: vec![
                                     AbiCallStackElementParent {
                                         call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                             name: String::from("transfer_coins"),
-                                            parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                             return_value: String::new()
                                         }))
                                     },
                                     AbiCallStackElementParent {
                                         call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                             name: String::from("transfer_coins_for"),
-                                            parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                             return_value: String::new()
                                         }))
                                     },
                                     AbiCallStackElementParent {
                                         call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                             name: String::from("transfer_coins_for"),
-                                            parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                            parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                             return_value: String::new()
                                         }))
                                     },
@@ -550,7 +550,7 @@ pub(crate) fn get_operation_abi_call_stacks(
                                         call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                             name: String::from("get_balance"),
                                             parameters: vec![],
-                                            return_value: String::from("10")
+                                            return_value: String::from("{type: 'u64', value: 10}")
                                         }))
                                     },
                                 ]
@@ -587,21 +587,21 @@ pub(crate) fn get_slot_abi_call_stacks(
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins"),
-                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins_for"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins_for"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
@@ -609,40 +609,40 @@ pub(crate) fn get_slot_abi_call_stacks(
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("get_balance"),
                                     parameters: vec![],
-                                    return_value: String::from("10")
+                                    return_value: String::from("{type: 'u64', value: 10}")
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("set_data"),
-                                    parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                    parameters: vec![String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'byteArray', value: [4, 5, 6]}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
                                     name: String::from("call"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
-                                    return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'best_function'}"), String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'u64', value: 10}")],
+                                    return_value: String::from("{type: 'byteArray', value: [1, 2, 3]}"),
                                     sub_calls: vec![
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins"),
-                                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins_for"),
-                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins_for"),
-                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
@@ -650,7 +650,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("get_balance"),
                                                 parameters: vec![],
-                                                return_value: String::from("10")
+                                                return_value: String::from("{type: 'u64', value: 10}")
                                             }))
                                         },
                                     ]
@@ -664,7 +664,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins"),
-                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
@@ -678,21 +678,21 @@ pub(crate) fn get_slot_abi_call_stacks(
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins"),
-                                    parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins_for"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("transfer_coins_for"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                     return_value: String::new()
                                 }))
                             },
@@ -700,40 +700,40 @@ pub(crate) fn get_slot_abi_call_stacks(
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("get_balance"),
                                     parameters: vec![],
-                                    return_value: String::from("10")
+                                    return_value: String::from("{type: 'u64', value: 10}")
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                     name: String::from("set_data"),
-                                    parameters: vec![String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("73616c75746a656d617070656c6c65617572656c69656e")],
+                                    parameters: vec![String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'byteArray', value: [4, 5, 6]}")],
                                     return_value: String::new()
                                 }))
                             },
                             AbiCallStackElementParent {
                                 call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
                                     name: String::from("call"),
-                                    parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("best_function"), String::from("73616c75746a656d617070656c6c65617572656c69656e"), String::from("10")],
-                                    return_value: String::from("73616c75746a656d617070656c6c65617572656c69656e"),
+                                    parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'best_function'}"), String::from("{type: 'byteArray', value: [1, 2, 3]}"), String::from("{type: 'u64', value: 10}")],
+                                    return_value: String::from("{type: 'byteArray', value: [1, 2, 3]}"),
                                     sub_calls: vec![
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins"),
-                                                parameters: vec![String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'number', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins_for"),
-                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
                                         AbiCallStackElementParent {
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("transfer_coins_for"),
-                                                parameters: vec![String::from("AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp"), String::from("AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW"), String::from("10")],
+                                                parameters: vec![String::from("{type: 'string', value: 'AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp'}"), String::from("{type: 'string', value: 'AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW'}"), String::from("{type: 'u64', value: 10}")],
                                                 return_value: String::new()
                                             }))
                                         },
@@ -741,7 +741,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                                             call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
                                                 name: String::from("get_balance"),
                                                 parameters: vec![],
-                                                return_value: String::from("10")
+                                                return_value: String::from("{type: 'u64', value: 10}")
                                             }))
                                         },
                                     ]
