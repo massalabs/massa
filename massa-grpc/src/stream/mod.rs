@@ -12,6 +12,8 @@ pub mod new_operations;
 pub mod new_slot_abi_call_stacks;
 /// subscribe new slot execution outputs
 pub mod new_slot_execution_outputs;
+/// subscribe new slot transfers
+pub mod new_slot_transfers;
 /// send_blocks streaming
 pub mod send_blocks;
 /// send endorsements

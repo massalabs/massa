@@ -287,6 +287,9 @@ pub struct ExecutionOutput {
     pub state_changes: StateChanges,
     /// events emitted by the execution step
     pub events: EventStore,
+    /// slot trace
+    #[cfg(feature = "execution-trace")]
+    pub slot_trace: Option<SlotAbiCallStack>,
 }
 
 /// structure describing the output of a read only execution

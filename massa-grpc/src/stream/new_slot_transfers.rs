@@ -1,4 +1,5 @@
 use futures_util::StreamExt;
+use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, FinalityLevel};
 use std::pin::Pin;
 use tokio::select;
@@ -8,38 +9,24 @@ use tracing::{error, warn};
 use crate::error::match_for_io_error;
 use crate::{error::GrpcError, server::MassaPublicGrpc};
 
-#[cfg(feature = "execution-trace")]
-use crate::public::into_element;
 #[cfg(not(feature = "execution-trace"))]
 use massa_models::slot::Slot;
-#[cfg(feature = "execution-trace")]
-use massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack};
-#[cfg(not(feature = "execution-trace"))]
-#[derive(Clone)]
-struct SlotAbiCallStack {
-    /// Slot
-    pub slot: Slot,
-    /// asc call stacks
-    pub asc_call_stacks: Vec<u8>,
-    /// operation call stacks
-    pub operation_call_stacks: Vec<u8>,
-}
 
-/// Type declaration for NewSlotExecutionOutputs
-pub type NewSlotABICallStacksStreamType = Pin<
+/// Type declaration for NewSlotTransfers
+pub type NewSlotTransfersStreamType = Pin<
     Box<
         dyn futures_util::Stream<
-                Item = Result<grpc_api::NewSlotAbiCallStacksResponse, tonic::Status>,
+                Item = Result<grpc_api::NewSlotTransfersResponse, tonic::Status>,
             > + Send
             + 'static,
     >,
 >;
 
-/// Creates a new stream of new slots abi call stacks
-pub(crate) async fn new_slot_abi_call_stacks(
+/// Creates a new stream of new slots transfers
+pub(crate) async fn new_slot_transfers(
     grpc: &MassaPublicGrpc,
-    request: Request<Streaming<grpc_api::NewSlotAbiCallStacksRequest>>,
-) -> Result<NewSlotABICallStacksStreamType, GrpcError> {
+    request: Request<Streaming<grpc_api::NewSlotTransfersRequest>>,
+) -> Result<NewSlotTransfersStreamType, GrpcError> {
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Extract the incoming stream of abi call stacks messages
     let mut in_stream = request.into_inner();
@@ -63,38 +50,16 @@ pub(crate) async fn new_slot_abi_call_stacks(
                 // Receive a new slot execution traces from the subscriber
                 event = subscriber.recv() => {
                     match event {
-                        Ok((massa_slot_execution_trace, received_finality)) => {
+                        Ok((_massa_slot_execution_trace, received_finality)) => {
                             if (finality == FinalityLevel::Final && received_finality != true) ||
                                 (finality == FinalityLevel::Candidate && received_finality != false) {
                                 continue;
                             }
 
-                            #[allow(unused_mut)]
-                            let mut ret = grpc_api::NewSlotAbiCallStacksResponse {
-                                slot: Some(massa_slot_execution_trace.slot.into()),
-                                asc_call_stacks: vec![],
-                                operation_call_stacks: vec![]
+                            let ret = grpc_api::NewSlotTransfersResponse {
+                                slot: Some(Slot::new(0, 0).into()),
+                                transfers: vec![]
                             };
-
-                            #[cfg(feature = "execution-trace")]
-                            {
-                                for (i, asc_call_stack) in massa_slot_execution_trace.asc_call_stacks.iter().enumerate() {
-                                    ret.asc_call_stacks.push(
-                                        AscabiCallStack {
-                                            index: i as u64,
-                                            call_stack: asc_call_stack.iter().map(into_element).collect()
-                                        }
-                                    )
-                                }
-                                for (op_id, op_call_stack) in massa_slot_execution_trace.operation_call_stacks.iter() {
-                                    ret.operation_call_stacks.push(
-                                        OperationAbiCallStack {
-                                            operation_id: op_id.to_string(),
-                                            call_stack: op_call_stack.iter().map(into_element).collect()
-                                        }
-                                    )
-                                }
-                            }
 
                             if let Err(e) = tx.send(Ok(ret)).await {
                                 error!("failed to send new slot execution trace: {}", e);
@@ -138,5 +103,5 @@ pub(crate) async fn new_slot_abi_call_stacks(
         }
     });
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewSlotABICallStacksStreamType)
+    Ok(Box::pin(out_stream) as NewSlotTransfersStreamType)
 }

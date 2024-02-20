@@ -293,6 +293,21 @@ impl ExecutionState {
                     err
                 );
             }
+
+            #[cfg(feature = "execution-trace")]
+            {
+                if self.config.broadcast_traces_enabled {
+                    if let Some(slot_trace) = exec_out.slot_trace.clone() {
+                        if let Err(err) = self.channels.slot_execution_traces_sender.send((slot_trace, true)) {
+                            trace!(
+                                "error, failed to broadcast abi trace for slot {} due to: {}",
+                                exec_out.slot.clone(),
+                                err
+                            );
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1331,7 +1346,15 @@ impl ExecutionState {
             .write()
             .save_traces_for_slot(*slot, slot_trace.clone());
         // Finish slot
+        #[cfg(not(feature = "execution-trace"))]
         let exec_out = context_guard!(self).settle_slot(block_info);
+
+        #[cfg(feature = "execution-trace")]
+        let exec_out = {
+            let mut out = context_guard!(self).settle_slot(block_info);
+            out.slot_trace = Some(slot_trace);
+            out
+        };
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {
@@ -1346,19 +1369,6 @@ impl ExecutionState {
                     exec_out.slot.clone(),
                     err
                 );
-            }
-        }
-
-        #[cfg(feature = "execution-trace")]
-        {
-            if self.config.broadcast_traces_enabled {
-                if let Err(err) = self.channels.slot_execution_traces_sender.send(slot_trace) {
-                    trace!(
-                        "error, failed to broadcast abi trace for slot {} due to: {}",
-                        exec_out.slot.clone(),
-                        err
-                    );
-                }
             }
         }
 
@@ -1400,6 +1410,21 @@ impl ExecutionState {
                 .expect("overflow when iterating on slots");
         }
         let exec_out = self.execute_slot(slot, exec_target, selector);
+
+        #[cfg(feature = "execution-trace")]
+        {
+            if self.config.broadcast_traces_enabled {
+                if let Some(slot_trace) = exec_out.slot_trace.clone() {
+                    if let Err(err) = self.channels.slot_execution_traces_sender.send((slot_trace, false)) {
+                        trace!(
+                            "error, failed to broadcast abi trace for slot {} due to: {}",
+                            exec_out.slot.clone(),
+                            err
+                        );
+                    }
+                }
+            }
+        }
 
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);

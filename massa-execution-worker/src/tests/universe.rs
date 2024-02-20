@@ -81,7 +81,7 @@ pub struct ExecutionTestUniverse {
     pub broadcast_channel_receiver: Option<tokio::sync::broadcast::Receiver<SlotExecutionOutput>>,
     #[cfg(feature = "execution-trace")]
     pub broadcast_traces_channel_receiver:
-        Option<tokio::sync::broadcast::Receiver<SlotAbiCallStack>>,
+        Option<tokio::sync::broadcast::Receiver<(SlotAbiCallStack, bool)>>,
 }
 
 impl TestUniverse for ExecutionTestUniverse {
