@@ -8,7 +8,7 @@ homepage = "https://massa.net"
 documentation = "https://docs.massa.net/"
 
 [features]
-execution-trace = []
+execution-trace = ["serde_json"]
 test-exports = []
 
 [dependencies]
@@ -29,7 +29,7 @@ tracing = { workspace = true }
 parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
 h2 = { workspace = true }
 itertools = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, optional = true }
 # test
 
 massa_consensus_exports = { workspace = true }
