@@ -238,18 +238,139 @@
 <a href="#238" id="238">238</a>
 <a href="#239" id="239">239</a>
 <a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::slot::Slot;
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::{
-    <span class="self">self </span><span class="kw">as </span>grpc_api, abi_call_stack_element_parent::CallStackElement, AbiCallStackElement,
-    AbiCallStackElementCall, AbiCallStackElementParent, AscabiCallStack, OperationAbiCallStack,
-};
-<span class="kw">use </span>std::{pin::Pin, time::Duration};
-<span class="kw">use </span>tokio::{select, time};
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api};
+<span class="kw">use </span>std::pin::Pin;
+<span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::{Request, Streaming};
-<span class="kw">use </span>tracing::error;
+<span class="kw">use </span>tracing::{error, warn};
 
+<span class="kw">use </span><span class="kw">crate</span>::error::match_for_io_error;
 <span class="kw">use crate</span>::{error::GrpcError, server::MassaPublicGrpc};
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::public::into_element;
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+</span><span class="kw">use </span>massa_models::slot::Slot;
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span>massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack};
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+#[derive(Clone)]
+</span><span class="kw">struct </span>SlotAbiCallStack {
+    <span class="doccomment">/// Slot
+    </span><span class="kw">pub </span>slot: Slot,
+    <span class="doccomment">/// asc call stacks
+    </span><span class="kw">pub </span>asc_call_stacks: Vec&lt;u8&gt;,
+    <span class="doccomment">/// operation call stacks
+    </span><span class="kw">pub </span>operation_call_stacks: Vec&lt;u8&gt;,
+}
 
 <span class="doccomment">/// Type declaration for NewSlotExecutionOutputs
 </span><span class="kw">pub type </span>NewSlotABICallStacksStreamType = Pin&lt;
@@ -270,212 +391,305 @@
     <span class="comment">// Extract the incoming stream of abi call stacks messages
     </span><span class="kw">let </span><span class="kw-2">mut </span>in_stream = request.into_inner();
 
-    <span class="comment">// Spawn a new Tokio task to handle the stream processing
-    </span>tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">let </span><span class="kw-2">mut </span>interval = time::interval(Duration::from_millis(<span class="number">500</span>));
+    <span class="comment">// Subscribe to the new slot execution events channel
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc
+        .execution_channels
+        .slot_execution_traces_sender
+        .subscribe();
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+    </span><span class="kw">let </span>(<span class="kw-2">mut </span>subscriber, _receiver) = {
+        <span class="kw">let </span>(subscriber_, receiver) = tokio::sync::broadcast::channel::&lt;SlotAbiCallStack&gt;(<span class="number">0</span>);
+        (subscriber_.subscribe(), receiver)
+    };
 
-        <span class="comment">// Continuously loop until the stream ends or an error occurs
-        </span><span class="kw">loop </span>{
+    tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">loop </span>{
             <span class="macro">select! </span>{
+                <span class="comment">// Receive a new slot execution traces from the subscriber
+                </span>event = subscriber.recv() =&gt; {
+                    <span class="kw">match </span>event {
+                        <span class="prelude-val">Ok</span>(massa_slot_execution_trace) =&gt; {
+
+                            <span class="kw">if </span>massa_slot_execution_trace.asc_call_stacks.is_empty() &amp;&amp;
+                                massa_slot_execution_trace.operation_call_stacks.is_empty() {
+                                <span class="kw">continue</span>;
+                            }
+
+                            <span class="attr">#[allow(unused_mut)]
+                            </span><span class="kw">let </span><span class="kw-2">mut </span>ret = grpc_api::NewSlotAbiCallStacksResponse {
+                                slot: <span class="prelude-val">Some</span>(massa_slot_execution_trace.slot.into()),
+                                asc_call_stacks: <span class="macro">vec!</span>[],
+                                operation_call_stacks: <span class="macro">vec!</span>[]
+                            };
+
+                            <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+                            </span>{
+                                <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>massa_slot_execution_trace.asc_call_stacks.iter().enumerate() {
+                                    ret.asc_call_stacks.push(
+                                        AscabiCallStack {
+                                            index: i <span class="kw">as </span>u64,
+                                            call_stack: asc_call_stack.iter().map(into_element).collect()
+                                        }
+                                    )
+                                }
+                                <span class="kw">for </span>(op_id, op_call_stack) <span class="kw">in </span>massa_slot_execution_trace.operation_call_stacks.iter() {
+                                    ret.operation_call_stacks.push(
+                                        OperationAbiCallStack {
+                                            operation_id: op_id.to_string(),
+                                            call_stack: op_call_stack.iter().map(into_element).collect()
+                                        }
+                                    )
+                                }
+                            }
+
+                            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(ret)).<span class="kw">await </span>{
+                                <span class="macro">error!</span>(<span class="string">&quot;failed to send new slot execution trace: {}&quot;</span>, e);
+                                <span class="kw">break</span>;
+                            }
+                        }
+                        <span class="prelude-val">Err</span>(e) =&gt; {
+                            <span class="macro">error!</span>(<span class="string">&quot;error on receive new slot execution trace : {}&quot;</span>, e)
+                        }
+                    }
+                }
                 <span class="comment">// Receive a new message from the in_stream
                 </span>res = in_stream.next() =&gt; {
                     <span class="kw">match </span>res {
-                        <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(_req)) =&gt; {
-                            <span class="comment">// TODO
-                        </span>},
-                        <span class="kw">_ </span>=&gt; {
-                            <span class="comment">// Client disconnected
+                        <span class="prelude-val">Some</span>(res) =&gt; {
+
+                            <span class="kw">match </span>res {
+                                <span class="prelude-val">Ok</span>(message) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;Received {:?}&quot;</span>, message),
+                                <span class="prelude-val">Err</span>(e) =&gt; {
+                                    <span class="comment">// Any io error -&gt; break
+                                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(io_err) = match_for_io_error(<span class="kw-2">&amp;</span>e) {
+                                        <span class="macro">warn!</span>(<span class="string">&quot;client disconnected, broken pipe: {}&quot;</span>, io_err);
+                                        <span class="kw">break</span>;
+                                    }
+                                    <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e2) = tx.send(<span class="prelude-val">Err</span>(e)).<span class="kw">await </span>{
+                                        <span class="macro">error!</span>(<span class="string">&quot;failed to send back error response: {}&quot;</span>, e2);
+                                        <span class="kw">break</span>;
+                                    }
+                                }
+                            }
+                        }
+                        <span class="prelude-val">None </span>=&gt; {
+                            <span class="comment">// the client has disconnected
                             </span><span class="kw">break</span>;
                         }
-                    }
-                },
-                <span class="kw">_ </span>= interval.tick() =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                        .send(<span class="prelude-val">Ok</span>(grpc_api::NewSlotAbiCallStacksResponse {
-                            slot: <span class="prelude-val">Some</span>(Slot::new(<span class="number">0</span>, <span class="number">0</span>).into()),
-                            asc_call_stacks: <span class="macro">vec!</span>[
-                    AscabiCallStack {
-                        index: <span class="number">0</span>,
-                        call_stack: <span class="macro">vec!</span>[
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;get_balance&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[],
-                                    return_value: String::from(<span class="string">&quot;10&quot;</span>)
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;set_data&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>), String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::ElementCall(AbiCallStackElementCall {
-                                    name: String::from(<span class="string">&quot;call&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;best_function&quot;</span>), String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>),
-                                    sub_calls: <span class="macro">vec!</span>[
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;get_balance&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[],
-                                                return_value: String::from(<span class="string">&quot;10&quot;</span>)
-                                            }))
-                                        },
-                                    ]
-                                }))
-                            }
-                        ]
-                    },
-                    AscabiCallStack {
-                        index: <span class="number">1</span>,
-                        call_stack: <span class="macro">vec!</span>[
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                        ]
-                    }
-                ],
-                operation_call_stacks: <span class="macro">vec!</span>[
-                    OperationAbiCallStack {
-                        operation_id: String::from(<span class="string">&quot;O12mh1zn9oDr9aUEp4YzPbiShDtyJW1gFUB1d4riYR5wSCqPGuQ&quot;</span>),
-                        call_stack: <span class="macro">vec!</span>[
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;get_balance&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[],
-                                    return_value: String::from(<span class="string">&quot;10&quot;</span>)
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                    name: String::from(<span class="string">&quot;set_data&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>), String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>)],
-                                    return_value: String::new()
-                                }))
-                            },
-                            AbiCallStackElementParent {
-                                call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::ElementCall(AbiCallStackElementCall {
-                                    name: String::from(<span class="string">&quot;call&quot;</span>),
-                                    parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;best_function&quot;</span>), String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                    return_value: String::from(<span class="string">&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;</span>),
-                                    sub_calls: <span class="macro">vec!</span>[
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;transfer_coins_for&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[String::from(<span class="string">&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;</span>), String::from(<span class="string">&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;</span>), String::from(<span class="string">&quot;10&quot;</span>)],
-                                                return_value: String::new()
-                                            }))
-                                        },
-                                        AbiCallStackElementParent {
-                                            call_stack_element: <span class="prelude-val">Some</span>(CallStackElement::Element(AbiCallStackElement {
-                                                name: String::from(<span class="string">&quot;get_balance&quot;</span>),
-                                                parameters: <span class="macro">vec!</span>[],
-                                                return_value: String::from(<span class="string">&quot;10&quot;</span>)
-                                            }))
-                                        },
-                                    ]
-                                }))
-                            }
-                        ]
-                    }
-                ]
-                        }))
-                        .<span class="kw">await
-                    </span>{
-                        <span class="comment">// Log an error if sending the response fails
-                        </span><span class="macro">error!</span>(<span class="string">&quot;failed to send back transactions_throughput response: {}&quot;</span>, e);
-                        <span class="kw">break</span>;
                     }
                 }
             }
         }
     });
 
-    <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+    <span class="comment">// Spawn a new Tokio task to handle the stream processing
+    /*    tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_millis(500));
+
+            // Continuously loop until the stream ends or an error occurs
+            loop {
+                select! {
+                    // Receive a new message from the in_stream
+                    res = in_stream.next() =&gt; {
+                        match res {
+                            Some(Ok(_req)) =&gt; {
+                                // TODO
+                            },
+                            _ =&gt; {
+                                // Client disconnected
+                                break;
+                            }
+                        }
+                    },
+                    _ = interval.tick() =&gt; {
+                        if let Err(e) = tx
+                            .send(Ok(grpc_api::NewSlotAbiCallStacksResponse {
+                                slot: Some(Slot::new(0, 0).into()),
+                                asc_call_stacks: vec![
+                        AscabiCallStack {
+                            index: 0,
+                            call_stack: vec![
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins&quot;),
+                                        parameters: vec![String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins_for&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins_for&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;get_balance&quot;),
+                                        parameters: vec![],
+                                        return_value: String::from(&quot;10&quot;)
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;set_data&quot;),
+                                        parameters: vec![String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;), String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                                        name: String::from(&quot;call&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;best_function&quot;), String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;),
+                                        sub_calls: vec![
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins&quot;),
+                                                    parameters: vec![String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins_for&quot;),
+                                                    parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins_for&quot;),
+                                                    parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;get_balance&quot;),
+                                                    parameters: vec![],
+                                                    return_value: String::from(&quot;10&quot;)
+                                                }))
+                                            },
+                                        ]
+                                    }))
+                                }
+                            ]
+                        },
+                        AscabiCallStack {
+                            index: 1,
+                            call_stack: vec![
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins&quot;),
+                                        parameters: vec![String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                            ]
+                        }
+                    ],
+                    operation_call_stacks: vec![
+                        OperationAbiCallStack {
+                            operation_id: String::from(&quot;O12mh1zn9oDr9aUEp4YzPbiShDtyJW1gFUB1d4riYR5wSCqPGuQ&quot;),
+                            call_stack: vec![
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins&quot;),
+                                        parameters: vec![String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins_for&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;transfer_coins_for&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;get_balance&quot;),
+                                        parameters: vec![],
+                                        return_value: String::from(&quot;10&quot;)
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                        name: String::from(&quot;set_data&quot;),
+                                        parameters: vec![String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;), String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;)],
+                                        return_value: String::new()
+                                    }))
+                                },
+                                AbiCallStackElementParent {
+                                    call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                                        name: String::from(&quot;call&quot;),
+                                        parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;best_function&quot;), String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;), String::from(&quot;10&quot;)],
+                                        return_value: String::from(&quot;73616c75746a656d617070656c6c65617572656c69656e&quot;),
+                                        sub_calls: vec![
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins&quot;),
+                                                    parameters: vec![String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins_for&quot;),
+                                                    parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;transfer_coins_for&quot;),
+                                                    parameters: vec![String::from(&quot;AU12L4gaQ8j8j5yBt2jSmcsmu51yZW2gLjnZr5rAWnjKJDNacR3jp&quot;), String::from(&quot;AU12NT6c6oiYQhcXNAPRRqDudZGurJkFKcYNLPYSwYkMoEniHv8FW&quot;), String::from(&quot;10&quot;)],
+                                                    return_value: String::new()
+                                                }))
+                                            },
+                                            AbiCallStackElementParent {
+                                                call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                                                    name: String::from(&quot;get_balance&quot;),
+                                                    parameters: vec![],
+                                                    return_value: String::from(&quot;10&quot;)
+                                                }))
+                                            },
+                                        ]
+                                    }))
+                                }
+                            ]
+                        }
+                    ]
+                            }))
+                            .await
+                        {
+                            // Log an error if sending the response fails
+                            error!(&quot;failed to send back transactions_throughput response: {}&quot;, e);
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+    */
+    </span><span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewSlotABICallStacksStreamType)
 }
 </code></pre></div></section></main></body></html>
