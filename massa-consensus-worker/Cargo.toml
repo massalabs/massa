@@ -37,7 +37,7 @@ massa_pos_exports = {workspace = true, features = ["test-exports"]}
 massa_protocol_exports = {workspace = true, features = ["test-exports"]}
 massa_execution_exports = {workspace = true, features = ["test-exports"]}
 massa_consensus_exports = {workspace = true, features = ["test-exports"]}
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}
 mockall = {workspace = true}
 rand = {workspace = true}
 itertools = {workspace = true}

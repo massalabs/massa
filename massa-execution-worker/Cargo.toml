@@ -96,7 +96,7 @@ massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_db_worker = { workspace = true }
 tempfile = { workspace = true }
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }

@@ -302,4 +302,4 @@ jobs:
       - name: setup_tests
         shell: bash
         run: |
-          cargo install cargo-script && cargo script tools/setup_test.rs && git diff --no-ext-diff --quiet
+          cargo install rust-script && rust-script tools/setup_test.rs && git diff --no-ext-diff --quiet
