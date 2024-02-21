@@ -487,6 +487,10 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
+<a href="#490" id="490">490</a>
+<a href="#491" id="491">491</a>
+<a href="#492" id="492">492</a>
+<a href="#493" id="493">493</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -500,7 +504,7 @@
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -682,6 +686,10 @@
         </span><span class="kw">return </span><span class="prelude-val">Err</span>(
             ApiError::BadRequest(<span class="string">&quot;This request is currently not available&quot;</span>.to_string()).into(),
         );
+    }
+
+    <span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt;()
     }
 
     <span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
