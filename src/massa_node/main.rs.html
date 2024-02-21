@@ -1437,14 +1437,6 @@
 <a href="#1437" id="1437">1437</a>
 <a href="#1438" id="1438">1438</a>
 <a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1527,7 +1519,6 @@
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 <span class="kw">use </span>massa_models::slot::Slot;
-<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
 <span class="kw">use </span>massa_pool_worker::start_pool_controller;
 <span class="kw">use </span>massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -1859,24 +1850,7 @@
                 T0,
                 <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             )
-            .expect(<span class="string">&quot;Mip store is not consistent with shutdown period&quot;</span>);
-
-        <span class="comment">// If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
-        </span><span class="kw">let </span>now = MassaTime::now();
-        <span class="kw">let </span>last_start_slot = Slot::new(
-            final_state.read().get_last_start_period(),
-            THREAD_COUNT.saturating_sub(<span class="number">1</span>),
-        );
-        <span class="kw">let </span>last_start_slot_timestamp =
-            get_block_slot_timestamp(THREAD_COUNT, T0, <span class="kw-2">*</span>GENESIS_TIMESTAMP, last_start_slot)
-                .expect(<span class="string">&quot;Can&#39;t get timestamp for last_start_slot&quot;</span>);
-        <span class="kw">if </span>now &lt; last_start_slot_timestamp {
-            <span class="kw">let </span>final_state_hash = final_state.read().get_fingerprint();
-            <span class="macro">info!</span>(
-                <span class="string">&quot;final_state hash before network restarts at slot {}: {}&quot;</span>,
-                last_start_slot, final_state_hash
-            );
-        }
+            .expect(<span class="string">&quot;Mip store is not consistent with shutdown period&quot;</span>)
     }
 
     <span class="comment">// Storage costs constants
@@ -1935,11 +1909,21 @@
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: <span class="kw-2">*</span>CHAINID,
+        broadcast_traces_enabled: SETTINGS.api.enable_broadcast_traces,
+        broadcast_slot_execution_traces_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_traces_channel_capacity,
+        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
         slot_execution_output_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_output_channel_capacity,
+        )
+        .<span class="number">0</span>,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+        </span>slot_execution_traces_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_traces_channel_capacity,
         )
         .<span class="number">0</span>,
     };
