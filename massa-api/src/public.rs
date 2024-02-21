@@ -12,7 +12,9 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    execution::{
+        ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -119,6 +121,16 @@ impl MassaRpcServer for API<Public> {
 
     async fn add_staking_secret_keys(&self, _: Vec<String>) -> RpcResult<()> {
         crate::wrong_api::<()>()
+    }
+
+    #[cfg(feature = "execution-trace")]
+    async fn get_slots_transfers(&self, _: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        todo!()
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    async fn get_slots_transfers(&self, _: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        RpcResult::Err(ApiError::BadRequest("feature execution-trace is not enabled".into()).into())
     }
 
     async fn execute_read_only_bytecode(
