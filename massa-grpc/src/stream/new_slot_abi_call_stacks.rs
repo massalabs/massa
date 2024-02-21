@@ -19,10 +19,6 @@ use massa_proto_rs::massa::api::v1::{AscabiCallStack, OperationAbiCallStack};
 struct SlotAbiCallStack {
     /// Slot
     pub slot: Slot,
-    /// asc call stacks
-    pub asc_call_stacks: Vec<u8>,
-    /// operation call stacks
-    pub operation_call_stacks: Vec<u8>,
 }
 
 /// Type declaration for NewSlotExecutionOutputs
@@ -65,8 +61,8 @@ pub(crate) async fn new_slot_abi_call_stacks(
                 event = subscriber.recv() => {
                     match event {
                         Ok((massa_slot_execution_trace, received_finality)) => {
-                            if (finality == FinalityLevel::Final && received_finality != true) ||
-                                (finality == FinalityLevel::Candidate && received_finality != false) {
+                            if (finality == FinalityLevel::Final && !received_finality) ||
+                                (finality == FinalityLevel::Candidate && received_finality) {
                                 continue;
                             }
 
