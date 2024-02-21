@@ -9,15 +9,11 @@ use tracing::{error, warn};
 use crate::error::match_for_io_error;
 use crate::{error::GrpcError, server::MassaPublicGrpc};
 
-#[cfg(not(feature = "execution-trace"))]
-use massa_models::slot::Slot;
-
 /// Type declaration for NewSlotTransfers
 pub type NewSlotTransfersStreamType = Pin<
     Box<
-        dyn futures_util::Stream<
-                Item = Result<grpc_api::NewSlotTransfersResponse, tonic::Status>,
-            > + Send
+        dyn futures_util::Stream<Item = Result<grpc_api::NewSlotTransfersResponse, tonic::Status>>
+            + Send
             + 'static,
     >,
 >;

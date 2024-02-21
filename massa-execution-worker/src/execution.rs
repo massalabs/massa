@@ -17,7 +17,7 @@ use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
     ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ReadOnlyExecutionTarget, SlotExecutionOutput, Transfer,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -297,8 +297,12 @@ impl ExecutionState {
             #[cfg(feature = "execution-trace")]
             {
                 if self.config.broadcast_traces_enabled {
-                    if let Some(slot_trace) = exec_out.slot_trace.clone() {
-                        if let Err(err) = self.channels.slot_execution_traces_sender.send((slot_trace, true)) {
+                    if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                        if let Err(err) = self
+                            .channels
+                            .slot_execution_traces_sender
+                            .send((slot_trace, true))
+                        {
                             trace!(
                                 "error, failed to broadcast abi trace for slot {} due to: {}",
                                 exec_out.slot.clone(),
@@ -1138,6 +1142,8 @@ impl ExecutionState {
             operation_call_stacks: PreHashMap::default(),
             asc_call_stacks: vec![],
         };
+        #[cfg(feature = "execution-trace")]
+        let mut transfers = vec![];
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1247,6 +1253,18 @@ impl ExecutionState {
                             slot_trace
                                 .operation_call_stacks
                                 .insert(operation.id, _op_return);
+                            if let OperationType::Transaction {
+                                recipient_address,
+                                amount,
+                            } = &operation.content.op
+                            {
+                                transfers.push(Transfer {
+                                    from: operation.content_creator_address,
+                                    to: *recipient_address,
+                                    amount: *amount,
+                                    op_id: operation.id,
+                                });
+                            }
                         }
                     }
                     Err(err) => {
@@ -1345,6 +1363,10 @@ impl ExecutionState {
         self.trace_history
             .write()
             .save_traces_for_slot(*slot, slot_trace.clone());
+        #[cfg(feature = "execution-trace")]
+        self.trace_history
+            .write()
+            .save_transfers_for_slot(*slot, transfers.clone());
         // Finish slot
         #[cfg(not(feature = "execution-trace"))]
         let exec_out = context_guard!(self).settle_slot(block_info);
@@ -1352,7 +1374,7 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         let exec_out = {
             let mut out = context_guard!(self).settle_slot(block_info);
-            out.slot_trace = Some(slot_trace);
+            out.slot_trace = Some((slot_trace, transfers));
             out
         };
 
@@ -1414,8 +1436,12 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         {
             if self.config.broadcast_traces_enabled {
-                if let Some(slot_trace) = exec_out.slot_trace.clone() {
-                    if let Err(err) = self.channels.slot_execution_traces_sender.send((slot_trace, false)) {
+                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                    if let Err(err) = self
+                        .channels
+                        .slot_execution_traces_sender
+                        .send((slot_trace, false))
+                    {
                         trace!(
                             "error, failed to broadcast abi trace for slot {} due to: {}",
                             exec_out.slot.clone(),

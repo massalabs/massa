@@ -22,7 +22,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 #[cfg(feature = "execution-trace")]
-use crate::types::{AbiTrace, SlotAbiCallStack};
+use crate::types::{AbiTrace, SlotAbiCallStack, Transfer};
 
 #[cfg_attr(feature = "test-exports", mockall::automock)]
 /// interface that communicates with the execution worker thread
@@ -122,6 +122,10 @@ pub trait ExecutionController: Send + Sync {
     #[cfg(feature = "execution-trace")]
     /// Get the abi call stack for a given slot
     fn get_slot_abi_call_stack(&self, slot: Slot) -> Option<SlotAbiCallStack>;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the all transfers of MAS for a given slot
+    fn get_transfers_for_slot(&self, slot: Slot) -> Option<Vec<Transfer>>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

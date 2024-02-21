@@ -912,7 +912,7 @@ impl ExecutionContext {
             state_changes,
             events: std::mem::take(&mut self.events),
             #[cfg(feature = "execution-trace")]
-            slot_trace: None
+            slot_trace: None,
         }
     }
 

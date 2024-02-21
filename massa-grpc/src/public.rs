@@ -38,7 +38,7 @@ use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElem
 use massa_proto_rs::massa::api::v1::{
     AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
     AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
-    OperationAbiCallStack, SlotAbiCallStacks,
+    OperationAbiCallStack, SlotAbiCallStacks, TransferInfo, TransferInfos,
 };
 
 /// Execute read only call (function or bytecode)
@@ -516,8 +516,48 @@ pub(crate) fn get_slot_transfers(
 
     let slots = request.into_inner().slot;
 
+    let mut transfer_each_slot: Vec<TransferInfos> = vec![];
+    for slot in slots {
+        let mut slot_transfers = TransferInfos {
+            slot: slot.clone().into(),
+            transfers: vec![],
+        };
+        let transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.clone().into());
+        let abi_calls = grpc
+            .execution_controller
+            .get_slot_abi_call_stack(slot.into());
+        if let Some(abi_calls) = abi_calls {
+            for (i, asc_call_stack) in abi_calls.asc_call_stacks.into_iter().enumerate() {
+                asc_call_stack.iter().map(|trace| {
+                    if trace.name == String::from("assembly_script_transfer_coins")
+                        || trace.name == String::from("assembly_script_transfer_coins_for")
+                        || trace.name == String::from("abi_transfer_coins")
+                        || trace.name == String::from("abi_transfer_coins_for")
+                    {
+                    }
+                })
+            }
+        }
+        if let Some(transfers) = transfers {
+            for transfer in transfers {
+                slot_transfers.transfers.push(TransferInfo {
+                    from: transfer.from.to_string(),
+                    to: transfer.to.to_string(),
+                    amount: transfer.amount.to_raw(),
+                    operation_id_or_asc_index: Some(
+                        grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
+                            transfer.op_id.to_string(),
+                        ),
+                    ),
+                });
+            }
+        }
+    }
+
     Ok(GetSlotTransfersResponse {
-        transfer_each_slot: vec![]
+        transfer_each_slot: vec![],
     })
 }
 

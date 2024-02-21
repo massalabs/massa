@@ -13,8 +13,8 @@ use crate::private::{
 use crate::public::{
     execute_read_only_call, get_blocks, get_datastore_entries, get_endorsements,
     get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_stakers, get_status, get_transactions_throughput, query_state, search_blocks,
-    search_endorsements, search_operations, get_slot_transfers
+    get_slot_transfers, get_stakers, get_status, get_transactions_throughput, query_state,
+    search_blocks, search_endorsements, search_operations,
 };
 
 #[cfg(feature = "execution-trace")]
@@ -28,11 +28,11 @@ use crate::stream::{
     new_operations::{new_operations, NewOperationsStreamType},
     new_slot_abi_call_stacks::{new_slot_abi_call_stacks, NewSlotABICallStacksStreamType},
     new_slot_execution_outputs::{new_slot_execution_outputs, NewSlotExecutionOutputsStreamType},
+    new_slot_transfers::{new_slot_transfers, NewSlotTransfersStreamType},
     send_blocks::SendBlocksStreamType,
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
     tx_throughput::{transactions_throughput, TransactionsThroughputStreamType},
-    new_slot_transfers::{new_slot_transfers, NewSlotTransfersStreamType}
 };
 
 #[tonic::async_trait]
@@ -94,7 +94,8 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     async fn get_slot_transfers(
         &self,
         request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
-    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status> {
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status>
+    {
         Ok(tonic::Response::new(get_slot_transfers(self, request)?))
     }
 
@@ -102,7 +103,8 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     async fn get_slot_transfers(
         &self,
         _request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
-    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status> {
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status>
+    {
         Err(tonic::Status::unimplemented("feature not enabled"))
     }
 

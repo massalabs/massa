@@ -25,7 +25,7 @@ use massa_api_exports::{
     TimeInterval,
 };
 use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
-use massa_execution_exports::ExecutionController;
+use massa_execution_exports::{ExecutionController, Transfer};
 use massa_models::clique::Clique;
 use massa_models::composite::PubkeySig;
 use massa_models::node::NodeId;

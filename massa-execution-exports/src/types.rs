@@ -289,7 +289,21 @@ pub struct ExecutionOutput {
     pub events: EventStore,
     /// slot trace
     #[cfg(feature = "execution-trace")]
-    pub slot_trace: Option<SlotAbiCallStack>,
+    pub slot_trace: Option<(SlotAbiCallStack, Vec<Transfer>)>,
+}
+
+#[cfg(feature = "execution-trace")]
+#[derive(Debug, Clone)]
+/// structure describing a transfer
+pub struct Transfer {
+    /// From
+    pub from: Address,
+    /// To
+    pub to: Address,
+    /// Amount
+    pub amount: Amount,
+    /// operation id
+    pub op_id: OperationId,
 }
 
 /// structure describing the output of a read only execution
