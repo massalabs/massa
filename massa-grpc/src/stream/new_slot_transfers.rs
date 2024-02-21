@@ -1,5 +1,4 @@
 use futures_util::StreamExt;
-use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, FinalityLevel};
 use std::pin::Pin;
 use tokio::select;
@@ -8,6 +7,9 @@ use tracing::{error, warn};
 
 use crate::error::match_for_io_error;
 use crate::{error::GrpcError, server::MassaPublicGrpc};
+
+#[cfg(not(feature = "execution-trace"))]
+use massa_models::slot::Slot;
 
 /// Type declaration for NewSlotTransfers
 pub type NewSlotTransfersStreamType = Pin<

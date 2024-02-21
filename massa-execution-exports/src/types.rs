@@ -29,6 +29,8 @@ pub use massa_sc_runtime::AbiTrace as SCRuntimeAbiTrace;
 pub use massa_sc_runtime::AbiTraceType as SCRuntimeAbiTraceType;
 #[cfg(feature = "execution-trace")]
 pub use massa_sc_runtime::AbiTraceValue as SCRuntimeAbiTraceValue;
+#[cfg(feature = "execution-trace")]
+use std::collections::VecDeque;
 
 /// Metadata needed to execute the block
 #[derive(Clone, Debug)]
@@ -240,6 +242,33 @@ impl From<SCRuntimeAbiTrace> for AbiTrace {
                     .collect()
             }),
         }
+    }
+}
+
+#[cfg(feature = "execution-trace")]
+impl AbiTrace {
+    /// Flatten and filter for abi names in an AbiTrace
+    pub fn flatten_filter(&self, abi_names: &Vec<String>) -> Vec<&Self> {
+        let mut filtered: Vec<&Self> = Default::default();
+        let mut to_process: VecDeque<&Self> = vec![self].into();
+
+        while !to_process.is_empty() {
+            let t = to_process.pop_front();
+            if let Some(trace) = t {
+                if abi_names.iter().find(|t| *(*t) == trace.name).is_some() {
+                    // filtered.extend(&trace)
+                    filtered.push(trace);
+                }
+
+                if let Some(sub_call) = &trace.sub_calls {
+                    for sc in sub_call.iter().rev() {
+                        to_process.push_front(sc);
+                    }
+                }
+            }
+        }
+
+        filtered
     }
 }
 

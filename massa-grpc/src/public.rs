@@ -31,7 +31,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::AbiTrace;
+use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType};
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
 #[cfg(feature = "execution-trace")]
@@ -522,24 +522,78 @@ pub(crate) fn get_slot_transfers(
             slot: slot.clone().into(),
             transfers: vec![],
         };
-        let transfers = grpc
-            .execution_controller
-            .get_transfers_for_slot(slot.clone().into());
         let abi_calls = grpc
             .execution_controller
-            .get_slot_abi_call_stack(slot.into());
+            .get_slot_abi_call_stack(slot.clone().into());
+
         if let Some(abi_calls) = abi_calls {
-            for (i, asc_call_stack) in abi_calls.asc_call_stacks.into_iter().enumerate() {
-                asc_call_stack.iter().map(|trace| {
-                    if trace.name == String::from("assembly_script_transfer_coins")
-                        || trace.name == String::from("assembly_script_transfer_coins_for")
-                        || trace.name == String::from("abi_transfer_coins")
-                        || trace.name == String::from("abi_transfer_coins_for")
-                    {
+            // flatten & filter transfer trace in asc_call_stacks
+
+            let abi_param_names = ["from_address", "to_address", "raw_amount"];
+            let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
+            let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
+            let abi_transfer_3 = "abi_transfer_coins".to_string();
+            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
+                for abi_trace in asc_call_stack {
+                    let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+
+                    for transfer in only_transfer {
+                        let empty_string = String::new();
+                        let t_from = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                if p.name == abi_param_names[0] {
+                                    if let SCRuntimeAbiTraceType::String(v) = &p.value {
+                                        return Some(v);
+                                    }
+                                }
+                                None
+                            })
+                            .unwrap_or(&empty_string);
+                        let t_to = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                if p.name == abi_param_names[1] {
+                                    if let SCRuntimeAbiTraceType::String(v) = &p.value {
+                                        return Some(v);
+                                    }
+                                }
+                                None
+                            })
+                            .unwrap_or(&empty_string);
+                        let t_amount = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                if p.name == abi_param_names[2] {
+                                    if let SCRuntimeAbiTraceType::I64(v) = &p.value {
+                                        return Some(v);
+                                    }
+                                }
+                                None
+                            })
+                            .unwrap_or(&0i64);
+
+                        slot_transfers.transfers.push(TransferInfo {
+                            from: t_from.clone(),
+                            to: t_to.clone(),
+                            amount: *t_amount as u64, // TODO: TransferInfo should use i64
+                            operation_id_or_asc_index: Some(
+                                grpc_api::transfer_info::OperationIdOrAscIndex::AscIndex(i as u64),
+                            ),
+                        });
                     }
-                })
+                }
             }
         }
+
+        let transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.into());
+
         if let Some(transfers) = transfers {
             for transfer in transfers {
                 slot_transfers.transfers.push(TransferInfo {
@@ -554,11 +608,11 @@ pub(crate) fn get_slot_transfers(
                 });
             }
         }
+
+        transfer_each_slot.push(slot_transfers);
     }
 
-    Ok(GetSlotTransfersResponse {
-        transfer_each_slot: vec![],
-    })
+    Ok(GetSlotTransfersResponse { transfer_each_slot })
 }
 
 #[cfg(feature = "execution-trace")]
