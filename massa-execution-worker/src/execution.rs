@@ -17,7 +17,7 @@ use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
     ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput, Transfer,
+    ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -51,7 +51,7 @@ use tracing::{debug, info, trace, warn};
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::{AbiTrace, SlotAbiCallStack};
+use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
 #[cfg(feature = "execution-trace")]
 use massa_models::config::MAX_OPERATIONS_PER_BLOCK;
 #[cfg(feature = "execution-trace")]

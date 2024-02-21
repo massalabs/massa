@@ -13,12 +13,12 @@ use crate::private::{
 use crate::public::{
     execute_read_only_call, get_blocks, get_datastore_entries, get_endorsements,
     get_next_block_best_parents, get_operations, get_sc_execution_events, get_selector_draws,
-    get_slot_transfers, get_stakers, get_status, get_transactions_throughput, query_state,
-    search_blocks, search_endorsements, search_operations,
+    get_stakers, get_status, get_transactions_throughput, query_state, search_blocks,
+    search_endorsements, search_operations,
 };
 
 #[cfg(feature = "execution-trace")]
-use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks};
+use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
 
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{

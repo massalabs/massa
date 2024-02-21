@@ -52,7 +52,8 @@ pub(crate) async fn new_slot_abi_call_stacks(
         .subscribe();
     #[cfg(not(feature = "execution-trace"))]
     let (mut subscriber, _receiver) = {
-        let (subscriber_, receiver) = tokio::sync::broadcast::channel::<SlotAbiCallStack>(0);
+        let (subscriber_, receiver) =
+            tokio::sync::broadcast::channel::<(SlotAbiCallStack, bool)>(0);
         (subscriber_.subscribe(), receiver)
     };
 

@@ -18,6 +18,17 @@ pub type NewSlotTransfersStreamType = Pin<
     >,
 >;
 
+#[cfg(not(feature = "execution-trace"))]
+#[derive(Clone)]
+struct SlotAbiCallStack {
+    /// Slot
+    pub slot: Slot,
+    /// asc call stacks
+    pub asc_call_stacks: Vec<u8>,
+    /// operation call stacks
+    pub operation_call_stacks: Vec<u8>,
+}
+
 /// Creates a new stream of new slots transfers
 pub(crate) async fn new_slot_transfers(
     grpc: &MassaPublicGrpc,
@@ -35,7 +46,8 @@ pub(crate) async fn new_slot_transfers(
         .subscribe();
     #[cfg(not(feature = "execution-trace"))]
     let (mut subscriber, _receiver) = {
-        let (subscriber_, receiver) = tokio::sync::broadcast::channel::<SlotAbiCallStack>(0);
+        let (subscriber_, receiver) =
+            tokio::sync::broadcast::channel::<(SlotAbiCallStack, bool)>(0);
         (subscriber_.subscribe(), receiver)
     };
 
