@@ -109,8 +109,9 @@
 <a href="#109" id="109">109</a>
 <a href="#110" id="110">110</a>
 <a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, FinalityLevel};
 <span class="kw">use </span>std::pin::Pin;
 <span class="kw">use </span>tokio::select;
@@ -119,6 +120,9 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::error::match_for_io_error;
 <span class="kw">use crate</span>::{error::GrpcError, server::MassaPublicGrpc};
+
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+</span><span class="kw">use </span>massa_models::slot::Slot;
 
 <span class="doccomment">/// Type declaration for NewSlotTransfers
 </span><span class="kw">pub type </span>NewSlotTransfersStreamType = Pin&lt;

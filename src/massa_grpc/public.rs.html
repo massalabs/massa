@@ -1475,6 +1475,60 @@
 <a href="#1475" id="1475">1475</a>
 <a href="#1476" id="1476">1476</a>
 <a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1508,7 +1562,7 @@
 <span class="kw">use </span>std::str::FromStr;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span>massa_execution_exports::AbiTrace;
+</span><span class="kw">use </span>massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType};
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span>massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
@@ -1999,24 +2053,78 @@
             slot: slot.clone().into(),
             transfers: <span class="macro">vec!</span>[],
         };
-        <span class="kw">let </span>transfers = grpc
-            .execution_controller
-            .get_transfers_for_slot(slot.clone().into());
         <span class="kw">let </span>abi_calls = grpc
             .execution_controller
-            .get_slot_abi_call_stack(slot.into());
+            .get_slot_abi_call_stack(slot.clone().into());
+
         <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
-            <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.into_iter().enumerate() {
-                asc_call_stack.iter().map(|trace| {
-                    <span class="kw">if </span>trace.name == String::from(<span class="string">&quot;assembly_script_transfer_coins&quot;</span>)
-                        || trace.name == String::from(<span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>)
-                        || trace.name == String::from(<span class="string">&quot;abi_transfer_coins&quot;</span>)
-                        || trace.name == String::from(<span class="string">&quot;abi_transfer_coins_for&quot;</span>)
-                    {
+            <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
+
+            </span><span class="kw">let </span>abi_param_names = [<span class="string">&quot;from_address&quot;</span>, <span class="string">&quot;to_address&quot;</span>, <span class="string">&quot;raw_amount&quot;</span>];
+            <span class="kw">let </span>abi_transfer_1 = <span class="string">&quot;assembly_script_transfer_coins&quot;</span>.to_string();
+            <span class="kw">let </span>abi_transfer_2 = <span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>.to_string();
+            <span class="kw">let </span>abi_transfer_3 = <span class="string">&quot;abi_transfer_coins&quot;</span>.to_string();
+            <span class="kw">let </span>transfer_abi_names = <span class="macro">vec!</span>[abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.iter().enumerate() {
+                <span class="kw">for </span>abi_trace <span class="kw">in </span>asc_call_stack {
+                    <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
+
+                    <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
+                        <span class="kw">let </span>empty_string = String::new();
+                        <span class="kw">let </span>t_from = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                <span class="kw">if </span>p.name == abi_param_names[<span class="number">0</span>] {
+                                    <span class="kw">if let </span>SCRuntimeAbiTraceType::String(v) = <span class="kw-2">&amp;</span>p.value {
+                                        <span class="kw">return </span><span class="prelude-val">Some</span>(v);
+                                    }
+                                }
+                                <span class="prelude-val">None
+                            </span>})
+                            .unwrap_or(<span class="kw-2">&amp;</span>empty_string);
+                        <span class="kw">let </span>t_to = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                <span class="kw">if </span>p.name == abi_param_names[<span class="number">1</span>] {
+                                    <span class="kw">if let </span>SCRuntimeAbiTraceType::String(v) = <span class="kw-2">&amp;</span>p.value {
+                                        <span class="kw">return </span><span class="prelude-val">Some</span>(v);
+                                    }
+                                }
+                                <span class="prelude-val">None
+                            </span>})
+                            .unwrap_or(<span class="kw-2">&amp;</span>empty_string);
+                        <span class="kw">let </span>t_amount = transfer
+                            .parameters
+                            .iter()
+                            .find_map(|p| {
+                                <span class="kw">if </span>p.name == abi_param_names[<span class="number">2</span>] {
+                                    <span class="kw">if let </span>SCRuntimeAbiTraceType::I64(v) = <span class="kw-2">&amp;</span>p.value {
+                                        <span class="kw">return </span><span class="prelude-val">Some</span>(v);
+                                    }
+                                }
+                                <span class="prelude-val">None
+                            </span>})
+                            .unwrap_or(<span class="kw-2">&amp;</span><span class="number">0i64</span>);
+
+                        slot_transfers.transfers.push(TransferInfo {
+                            from: t_from.clone(),
+                            to: t_to.clone(),
+                            amount: <span class="kw-2">*</span>t_amount <span class="kw">as </span>u64, <span class="comment">// TODO: TransferInfo should use i64
+                            </span>operation_id_or_asc_index: <span class="prelude-val">Some</span>(
+                                grpc_api::transfer_info::OperationIdOrAscIndex::AscIndex(i <span class="kw">as </span>u64),
+                            ),
+                        });
                     }
-                })
+                }
             }
         }
+
+        <span class="kw">let </span>transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.into());
+
         <span class="kw">if let </span><span class="prelude-val">Some</span>(transfers) = transfers {
             <span class="kw">for </span>transfer <span class="kw">in </span>transfers {
                 slot_transfers.transfers.push(TransferInfo {
@@ -2031,11 +2139,11 @@
                 });
             }
         }
+
+        transfer_each_slot.push(slot_transfers);
     }
 
-    <span class="prelude-val">Ok</span>(GetSlotTransfersResponse {
-        transfer_each_slot: <span class="macro">vec!</span>[],
-    })
+    <span class="prelude-val">Ok</span>(GetSlotTransfersResponse { transfer_each_slot })
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
