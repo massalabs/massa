@@ -2667,7 +2667,7 @@ fn execution_trace() {
         return exec_traces;
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
-    let broadcast_result = broadcast_result_.unwrap();
+    let (broadcast_result, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_generate_event";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
@@ -2714,6 +2714,12 @@ fn execution_trace() {
         traces_2.first().unwrap().1.get(0).unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
                     "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
@@ -2721,7 +2727,7 @@ fn execution_trace() {
             },
             SCRuntimeAbiTraceValue {
                 name: "raw_amount".to_string(),
-                value: SCRuntimeAbiTraceType::I64(2000)
+                value: SCRuntimeAbiTraceType::U64(2000)
             }
         ]
     );
@@ -2775,7 +2781,7 @@ fn execution_trace_nested() {
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
     // println!("b r: {:?}", broadcast_result_);
-    let broadcast_result = broadcast_result_.unwrap();
+    let (broadcast_result, _) = broadcast_result_.unwrap();
 
     let abi_name_1 = "assembly_script_call";
     let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
@@ -2817,6 +2823,12 @@ fn execution_trace_nested() {
         sub_call.get(0).unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
                     "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
@@ -2824,7 +2836,7 @@ fn execution_trace_nested() {
             },
             SCRuntimeAbiTraceValue {
                 name: "raw_amount".to_string(),
-                value: SCRuntimeAbiTraceType::I64(1425)
+                value: SCRuntimeAbiTraceType::U64(1425)
             }
         ]
     );
