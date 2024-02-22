@@ -85,38 +85,10 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_final_state::StateChanges;
-<span class="kw">use </span>massa_models::{
-    address::Address, amount::Amount, operation::OperationId, output_event::SCOutputEvent,
-    slot::Slot,
-};
+<span class="kw">use </span>massa_models::{address::Address, amount::Amount, output_event::SCOutputEvent, slot::Slot};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::VecDeque, fmt::Display};
 
@@ -199,27 +171,5 @@
     </span><span class="kw">pub </span>coins: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
     <span class="doccomment">/// fee
     </span><span class="kw">pub </span>fee: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
-}
-
-<span class="doccomment">/// Context of the transfer
-</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
-</span><span class="kw">pub enum </span>TransferContext {
-    <span class="doccomment">/// Transfer made in an operation
-    </span>Operation(OperationId),
-    <span class="doccomment">/// Transfer made in an asynchronous call
-    </span>ASC(u64),
-}
-
-<span class="doccomment">/// Structure defining a transfer
-</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
-</span><span class="kw">pub struct </span>Transfer {
-    <span class="doccomment">/// The sender of the transfer
-    </span><span class="kw">pub </span>sender: Address,
-    <span class="doccomment">/// The receiver of the transfer
-    </span><span class="kw">pub </span>receiver: Address,
-    <span class="doccomment">/// The amount of the transfer
-    </span><span class="kw">pub </span>amount: Amount,
-    <span class="doccomment">/// Context
-    </span><span class="kw">pub </span>context: TransferContext,
 }
 </code></pre></div></section></main></body></html>

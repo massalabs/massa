@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["new_slot_transfers"],"struct":["SlotAbiCallStack"],"type":["NewSlotTransfersStreamType"]};
