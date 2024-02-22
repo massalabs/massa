@@ -33,6 +33,8 @@ lru_cache_size = 200
 hd_cache_size = 2000
 snip_amount = 10
 broadcast_slot_execution_output_channel_capacity = 5000
+broadcast_slot_execution_traces_channel_capacity = 5000
+execution_traces_limit = 5000
 
 [ledger]
 initial_ledger_path = "base_config/initial_ledger.json"

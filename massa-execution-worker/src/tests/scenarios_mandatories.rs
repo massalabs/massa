@@ -36,6 +36,13 @@ use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
 
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
+#[cfg(feature = "execution-trace")]
+use massa_models::operation::OperationId;
+#[cfg(feature = "execution-trace")]
+use std::thread;
+
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
@@ -2483,4 +2490,230 @@ fn chain_id() {
     // match the events
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
+}
+
+#[cfg(feature = "execution-trace")]
+#[test]
+fn execution_trace() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/execution_trace.wasm"),
+        //unused
+        include_bytes!("./wasm/execution_trace.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        let exec_traces = receiver.blocking_recv();
+        /*
+        let exec_traces_2 = receiver.blocking_recv();
+        return vec![
+            exec_traces.expect("Execution output"),
+            exec_traces_2.expect("Final execution output"),
+        ];
+        */
+        return exec_traces;
+    });
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
+    let (broadcast_result, _) = broadcast_result_.unwrap();
+
+    let abi_name_1 = "assembly_script_generate_event";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let traces_2: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_2)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_2.len(), 1); // Only one op
+    assert_eq!(traces_2.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_2.first().unwrap().1.get(0).unwrap().name, abi_name_2);
+    // println!(
+    //     "params: {:?}",
+    //     traces_2.first().unwrap().1.get(0).unwrap().parameters
+    // );
+    assert_eq!(
+        traces_2.first().unwrap().1.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::U64(2000)
+            }
+        ]
+    );
+}
+
+#[cfg(feature = "execution-trace")]
+#[test]
+fn execution_trace_nested() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    // let rt = tokio::runtime::Runtime::new().unwrap();
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/et_deploy_sc.wasm"),
+        include_bytes!("./wasm/et_init_sc.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        // Execution Output
+        let exec_traces = receiver.blocking_recv();
+        return exec_traces;
+    });
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
+
+    // println!("b r: {:?}", broadcast_result_);
+    let (broadcast_result, _) = broadcast_result_.unwrap();
+
+    let abi_name_1 = "assembly_script_call";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    // filter sub calls
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let sub_call: Vec<AbiTrace> = traces_1
+        .first()
+        .unwrap()
+        .1
+        .get(0)
+        .unwrap()
+        .sub_calls
+        .as_ref()
+        .unwrap()
+        .iter()
+        .filter(|a| a.name == abi_name_2)
+        .cloned()
+        .collect();
+
+    // println!("params: {:?}", sub_call.get(0).unwrap().parameters);
+    assert_eq!(
+        sub_call.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::U64(1425)
+            }
+        ]
+    );
 }

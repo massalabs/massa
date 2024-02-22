@@ -94,4 +94,10 @@ pub struct ExecutionConfig {
     pub max_event_size: usize,
     /// chain id
     pub chain_id: u64,
+    /// whether slot execution traces broadcast is enabled
+    pub broadcast_traces_enabled: bool,
+    /// slot execution traces channel capacity
+    pub broadcast_slot_execution_traces_channel_capacity: usize,
+    /// Max execution traces slot to keep in trace history cache
+    pub max_execution_traces_slot_limit: usize,
 }

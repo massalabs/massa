@@ -470,11 +470,24 @@ async fn launch(
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: *CHAINID,
+        #[cfg(feature = "execution-trace")]
+        broadcast_traces_enabled: true,
+        #[cfg(not(feature = "execution-trace"))]
+        broadcast_traces_enabled: false,
+        broadcast_slot_execution_traces_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_traces_channel_capacity,
+        max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
     };
 
     let execution_channels = ExecutionChannels {
         slot_execution_output_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_output_channel_capacity,
+        )
+        .0,
+        #[cfg(feature = "execution-trace")]
+        slot_execution_traces_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_traces_channel_capacity,
         )
         .0,
     };
