@@ -1253,17 +1253,29 @@ impl ExecutionState {
                             slot_trace
                                 .operation_call_stacks
                                 .insert(operation.id, _op_return);
-                            if let OperationType::Transaction {
-                                recipient_address,
-                                amount,
-                            } = &operation.content.op
-                            {
-                                transfers.push(Transfer {
-                                    from: operation.content_creator_address,
-                                    to: *recipient_address,
-                                    amount: *amount,
-                                    op_id: operation.id,
-                                });
+                            match &operation.content.op {
+                                OperationType::Transaction {
+                                    recipient_address,
+                                    amount,
+                                } => {
+                                    transfers.push(Transfer {
+                                        from: operation.content_creator_address,
+                                        to: *recipient_address,
+                                        amount: *amount,
+                                        op_id: operation.id,
+                                    });
+                                }
+                                OperationType::CallSC {
+                                    target_addr, coins, ..
+                                } => {
+                                    transfers.push(Transfer {
+                                        from: operation.content_creator_address,
+                                        to: *target_addr,
+                                        amount: *coins,
+                                        op_id: operation.id,
+                                    });
+                                }
+                                _ => {}
                             }
                         }
                     }
