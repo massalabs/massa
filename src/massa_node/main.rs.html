@@ -1915,7 +1915,7 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
         </span>broadcast_traces_enabled: <span class="bool-val">true</span>,
         <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
-        </span>broadcast_traces_enabled: SETTINGS.api.enable_broadcast_traces,
+        </span>broadcast_traces_enabled: <span class="bool-val">false</span>,
         broadcast_slot_execution_traces_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_traces_channel_capacity,

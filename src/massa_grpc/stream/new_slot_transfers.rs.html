@@ -163,6 +163,7 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::pin::Pin;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
@@ -216,7 +217,8 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>((massa_slot_execution_trace, is_final)) =&gt; {
                                 <span class="kw">if </span>(finality == FinalityLevel::Final &amp;&amp; !is_final) ||
-                                    (finality == FinalityLevel::Candidate &amp;&amp; is_final) {
+                                    (finality == FinalityLevel::Candidate &amp;&amp; is_final) ||
+                                    (finality == FinalityLevel::Unspecified &amp;&amp; !is_final) {
                                     <span class="kw">continue</span>;
                                 }
                                 <span class="kw">let </span><span class="kw-2">mut </span>ret_transfers = Vec::new();
