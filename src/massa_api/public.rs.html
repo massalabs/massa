@@ -1287,6 +1287,7 @@
 <a href="#1287" id="1287">1287</a>
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
+<a href="#1290" id="1290">1290</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1420,48 +1421,49 @@
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;Vec&lt;Transfer&gt;&gt; = Vec::with_capacity(slots.len());
         <span class="kw">for </span>slot <span class="kw">in </span>slots {
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
-            <span class="kw">let </span>abi_calls = <span class="self">self</span>.<span class="number">0
-            </span>.execution_controller
-            .get_slot_abi_call_stack(slot.clone().into());
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
-            <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
+            <span class="kw">let </span>abi_calls = <span class="self">self
+                </span>.<span class="number">0
+                </span>.execution_controller
+                .get_slot_abi_call_stack(slot.clone().into());
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
+                <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
-            </span><span class="kw">let </span>abi_transfer_1 = <span class="string">&quot;assembly_script_transfer_coins&quot;</span>.to_string();
-            <span class="kw">let </span>abi_transfer_2 = <span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>.to_string();
-            <span class="kw">let </span>abi_transfer_3 = <span class="string">&quot;abi_transfer_coins&quot;</span>.to_string();
-            <span class="kw">let </span>transfer_abi_names = <span class="macro">vec!</span>[abi_transfer_1, abi_transfer_2, abi_transfer_3];
-            <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.iter().enumerate() {
-                <span class="kw">for </span>abi_trace <span class="kw">in </span>asc_call_stack {
-                    <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
-                    <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
-                        <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
-                        transfers.push(Transfer {
-                            from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
-                            to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
-                            amount: Amount::from_raw(t_amount),
-                            context: TransferContext::ASC(i <span class="kw">as </span>u64),
-                        });
+                </span><span class="kw">let </span>abi_transfer_1 = <span class="string">&quot;assembly_script_transfer_coins&quot;</span>.to_string();
+                <span class="kw">let </span>abi_transfer_2 = <span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>.to_string();
+                <span class="kw">let </span>abi_transfer_3 = <span class="string">&quot;abi_transfer_coins&quot;</span>.to_string();
+                <span class="kw">let </span>transfer_abi_names = <span class="macro">vec!</span>[abi_transfer_1, abi_transfer_2, abi_transfer_3];
+                <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.iter().enumerate() {
+                    <span class="kw">for </span>abi_trace <span class="kw">in </span>asc_call_stack {
+                        <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
+                        <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
+                            <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
+                            transfers.push(Transfer {
+                                from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
+                                to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
+                                amount: Amount::from_raw(t_amount),
+                                context: TransferContext::ASC(i <span class="kw">as </span>u64),
+                            });
+                        }
+                    }
+                }
+
+                <span class="kw">for </span>op_call_stack <span class="kw">in </span>abi_calls.operation_call_stacks {
+                    <span class="kw">let </span>op_id = op_call_stack.<span class="number">0</span>;
+                    <span class="kw">let </span>op_call_stack = op_call_stack.<span class="number">1</span>;
+                    <span class="kw">for </span>abi_trace <span class="kw">in </span>op_call_stack {
+                        <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
+                        <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
+                            <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
+                            transfers.push(Transfer {
+                                from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
+                                to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
+                                amount: Amount::from_raw(t_amount),
+                                context: TransferContext::Operation(op_id),
+                            });
+                        }
                     }
                 }
             }
-
-            <span class="kw">for </span>op_call_stack <span class="kw">in </span>abi_calls.operation_call_stacks {
-                <span class="kw">let </span>op_id = op_call_stack.<span class="number">0</span>;
-                <span class="kw">let </span>op_call_stack = op_call_stack.<span class="number">1</span>;
-                <span class="kw">for </span>abi_trace <span class="kw">in </span>op_call_stack {
-                    <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
-                    <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
-                        <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
-                        transfers.push(Transfer {
-                            from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
-                            to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
-                            amount: Amount::from_raw(t_amount),
-                            context: TransferContext::Operation(op_id),
-                        });
-                    }
-                }
-            }
-        }
             <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = <span class="self">self
                 </span>.<span class="number">0
                 </span>.execution_controller
