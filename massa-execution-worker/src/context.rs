@@ -911,6 +911,8 @@ impl ExecutionContext {
             block_info,
             state_changes,
             events: std::mem::take(&mut self.events),
+            #[cfg(feature = "execution-trace")]
+            slot_trace: None,
         }
     }
 
@@ -948,7 +950,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new event but does not emit it.
-    /// Note that this does not increments the context event counter.
+    /// Note that this does not increment the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event

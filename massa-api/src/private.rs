@@ -11,7 +11,7 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -193,6 +193,10 @@ impl MassaRpcServer for API<Private> {
         return Err(
             ApiError::BadRequest("This request is currently not available".to_string()).into(),
         );
+    }
+
+    async fn get_slots_transfers(&self, _: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        crate::wrong_api::<Vec<Vec<Transfer>>>()
     }
 
     async fn get_status(&self) -> RpcResult<NodeStatus> {

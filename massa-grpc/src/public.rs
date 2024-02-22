@@ -22,13 +22,24 @@ use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::prehash::{PreHashMap, PreHashSet};
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_latest_block_slot_at_timestamp;
-use massa_proto_rs::massa::api::v1 as grpc_api;
+use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use massa_proto_rs::massa::model::v1::{self as grpc_model, read_only_execution_call};
 use massa_serialization::{DeserializeError, Deserializer};
 use massa_time::MassaTime;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use std::collections::HashSet;
 use std::str::FromStr;
+
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::AbiTrace;
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
+#[cfg(feature = "execution-trace")]
+use massa_proto_rs::massa::api::v1::{
+    AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
+    AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
+    OperationAbiCallStack, SlotAbiCallStacks, TransferInfo, TransferInfos,
+};
 
 /// Execute read only call (function or bytecode)
 pub(crate) fn execute_read_only_call(
@@ -456,6 +467,213 @@ pub(crate) fn get_stakers(
         .collect();
 
     Ok(grpc_api::GetStakersResponse { stakers })
+}
+
+#[cfg(feature = "execution-trace")]
+/// recursive function to convert a AbiTrace struct
+pub fn into_element(abi_trace: &AbiTrace) -> AbiCallStackElementParent {
+    if abi_trace.sub_calls.is_none() {
+        AbiCallStackElementParent {
+            call_stack_element: Some(CallStackElement::Element(AbiCallStackElement {
+                name: abi_trace.name.clone(),
+                parameters: abi_trace
+                    .parameters
+                    .iter()
+                    .map(|p| serde_json::to_string(p).unwrap_or_default())
+                    .collect::<Vec<String>>(),
+                return_value: serde_json::to_string(&abi_trace.return_value).unwrap_or_default(),
+            })),
+        }
+    } else {
+        AbiCallStackElementParent {
+            call_stack_element: Some(CallStackElement::ElementCall(AbiCallStackElementCall {
+                name: abi_trace.name.clone(),
+                parameters: abi_trace
+                    .parameters
+                    .iter()
+                    .map(|p| serde_json::to_string(p).unwrap_or_default())
+                    .collect(),
+                return_value: serde_json::to_string(&abi_trace.return_value).unwrap_or_default(),
+                sub_calls: abi_trace
+                    .sub_calls
+                    .clone()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(into_element)
+                    .collect(),
+            })),
+        }
+    }
+}
+
+#[cfg(feature = "execution-trace")]
+/// Get slot transfers
+pub(crate) fn get_slot_transfers(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
+) -> Result<grpc_api::GetSlotTransfersResponse, GrpcError> {
+    use massa_proto_rs::massa::api::v1::GetSlotTransfersResponse;
+
+    let slots = request.into_inner().slots;
+
+    let mut transfer_each_slot: Vec<TransferInfos> = vec![];
+    for slot in slots {
+        let mut slot_transfers = TransferInfos {
+            slot: slot.clone().into(),
+            transfers: vec![],
+        };
+        let abi_calls = grpc
+            .execution_controller
+            .get_slot_abi_call_stack(slot.clone().into());
+        if let Some(abi_calls) = abi_calls {
+            // flatten & filter transfer trace in asc_call_stacks
+
+            let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
+            let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
+            let abi_transfer_3 = "abi_transfer_coins".to_string();
+            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
+                for abi_trace in asc_call_stack {
+                    let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                    for transfer in only_transfer {
+                        let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                        slot_transfers.transfers.push(TransferInfo {
+                            from: t_from.clone(),
+                            to: t_to.clone(),
+                            amount: t_amount,
+                            operation_id_or_asc_index: Some(
+                                grpc_api::transfer_info::OperationIdOrAscIndex::AscIndex(i as u64),
+                            ),
+                        });
+                    }
+                }
+            }
+
+            for op_call_stack in abi_calls.operation_call_stacks {
+                let op_id = op_call_stack.0;
+                let op_call_stack = op_call_stack.1;
+                for abi_trace in op_call_stack {
+                    let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                    for transfer in only_transfer {
+                        let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                        slot_transfers.transfers.push(TransferInfo {
+                            from: t_from.clone(),
+                            to: t_to.clone(),
+                            amount: t_amount,
+                            operation_id_or_asc_index: Some(
+                                grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
+                                    op_id.to_string(),
+                                ),
+                            ),
+                        });
+                    }
+                }
+            }
+        }
+
+        let transfers = grpc
+            .execution_controller
+            .get_transfers_for_slot(slot.into());
+        if let Some(transfers) = transfers {
+            for transfer in transfers {
+                slot_transfers.transfers.push(TransferInfo {
+                    from: transfer.from.to_string(),
+                    to: transfer.to.to_string(),
+                    amount: transfer.amount.to_raw(),
+                    operation_id_or_asc_index: Some(
+                        grpc_api::transfer_info::OperationIdOrAscIndex::OperationId(
+                            transfer.op_id.to_string(),
+                        ),
+                    ),
+                });
+            }
+        }
+
+        transfer_each_slot.push(slot_transfers);
+    }
+
+    Ok(GetSlotTransfersResponse { transfer_each_slot })
+}
+
+#[cfg(feature = "execution-trace")]
+/// Get operation ABI call stacks
+pub(crate) fn get_operation_abi_call_stacks(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
+) -> Result<grpc_api::GetOperationAbiCallStacksResponse, GrpcError> {
+    let op_ids_ = request.into_inner().operation_ids;
+
+    let op_ids: Vec<OperationId> = op_ids_
+        .iter()
+        .map(|o| OperationId::from_str(o))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut elements = vec![];
+    for op_id in op_ids {
+        let abi_traces_ = grpc
+            .execution_controller
+            .get_operation_abi_call_stack(op_id);
+        if let Some(abi_traces) = abi_traces_ {
+            for abi_trace in abi_traces.iter() {
+                elements.push(into_element(abi_trace));
+            }
+        } else {
+            elements.push(AbiCallStackElementParent {
+                call_stack_element: None,
+            })
+        }
+    }
+
+    let resp = GetOperationAbiCallStacksResponse {
+        call_stacks: vec![AbiCallStack {
+            call_stack: elements,
+        }],
+    };
+
+    Ok(resp)
+}
+
+#[cfg(feature = "execution-trace")]
+pub(crate) fn get_slot_abi_call_stacks(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
+) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
+    let slots = request.into_inner().slots;
+
+    let slot_elements = vec![];
+    for slot in slots {
+        let call_stack_ = grpc
+            .execution_controller
+            .get_slot_abi_call_stack(slot.into());
+
+        let mut slot_abi_call_stacks = SlotAbiCallStacks {
+            asc_call_stacks: vec![],
+            operation_call_stacks: vec![],
+        };
+
+        if let Some(call_stack) = call_stack_ {
+            for (i, asc_call_stack) in call_stack.asc_call_stacks.into_iter().enumerate() {
+                slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
+                    index: i as u64,
+                    call_stack: asc_call_stack.iter().map(into_element).collect(),
+                })
+            }
+            for (op_id, op_call_stack) in call_stack.operation_call_stacks {
+                slot_abi_call_stacks
+                    .operation_call_stacks
+                    .push(OperationAbiCallStack {
+                        operation_id: op_id.to_string(),
+                        call_stack: op_call_stack.iter().map(into_element).collect(),
+                    })
+            }
+        }
+    }
+
+    let resp = GetSlotAbiCallStacksResponse {
+        slot_call_stacks: slot_elements,
+    };
+
+    Ok(resp)
 }
 
 /// Get next block best parents
