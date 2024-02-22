@@ -270,6 +270,48 @@ impl AbiTrace {
 
         filtered
     }
+
+    /// This function assumes that the abi trace is a transfer.
+    /// Calling this function on a non-transfer abi trace will have undefined behavior.
+    pub fn parse_transfer(&self) -> (String, String, u64) {
+        let t_from = self
+            .parameters
+            .iter()
+            .find_map(|p| {
+                if p.name == "from_address" {
+                    if let SCRuntimeAbiTraceType::String(v) = &p.value {
+                        return Some(v.clone());
+                    }
+                }
+                None
+            })
+            .unwrap_or_default();
+        let t_to = self
+            .parameters
+            .iter()
+            .find_map(|p| {
+                if p.name == "to_address" {
+                    if let SCRuntimeAbiTraceType::String(v) = &p.value {
+                        return Some(v.clone());
+                    }
+                }
+                None
+            })
+            .unwrap_or_default();
+        let t_amount = self
+            .parameters
+            .iter()
+            .find_map(|p| {
+                if p.name == "raw_amount" {
+                    if let SCRuntimeAbiTraceType::U64(v) = &p.value {
+                        return Some(v.clone());
+                    }
+                }
+                None
+            })
+            .unwrap_or_default();
+        (t_from, t_to, t_amount)
+    }
 }
 
 #[cfg(feature = "execution-trace")]

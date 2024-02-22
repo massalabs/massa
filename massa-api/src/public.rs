@@ -124,8 +124,72 @@ impl MassaRpcServer for API<Public> {
     }
 
     #[cfg(feature = "execution-trace")]
-    async fn get_slots_transfers(&self, _: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
-        todo!()
+    async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        use massa_api_exports::execution::TransferContext;
+        use std::str::FromStr;
+
+        let mut res: Vec<Vec<Transfer>> = Vec::with_capacity(slots.len());
+        for slot in slots {
+            let mut transfers = Vec::new();
+            let abi_calls = self.0
+            .execution_controller
+            .get_slot_abi_call_stack(slot.clone().into());
+        if let Some(abi_calls) = abi_calls {
+            // flatten & filter transfer trace in asc_call_stacks
+
+            let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
+            let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
+            let abi_transfer_3 = "abi_transfer_coins".to_string();
+            let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
+                for abi_trace in asc_call_stack {
+                    let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                    for transfer in only_transfer {
+                        let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                        transfers.push(Transfer {
+                            from: Address::from_str(&t_from).unwrap(),
+                            to: Address::from_str(&t_to).unwrap(),
+                            amount: Amount::from_raw(t_amount),
+                            context: TransferContext::ASC(i as u64),
+                        });
+                    }
+                }
+            }
+
+            for op_call_stack in abi_calls.operation_call_stacks {
+                let op_id = op_call_stack.0;
+                let op_call_stack = op_call_stack.1;
+                for abi_trace in op_call_stack {
+                    let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                    for transfer in only_transfer {
+                        let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                        transfers.push(Transfer {
+                            from: Address::from_str(&t_from).unwrap(),
+                            to: Address::from_str(&t_to).unwrap(),
+                            amount: Amount::from_raw(t_amount),
+                            context: TransferContext::Operation(op_id),
+                        });
+                    }
+                }
+            }
+        }
+            let transfers_op: Vec<Transfer> = self
+                .0
+                .execution_controller
+                .get_transfers_for_slot(slot)
+                .unwrap_or_default()
+                .iter()
+                .map(|t| Transfer {
+                    from: t.from,
+                    to: t.to,
+                    amount: t.amount,
+                    context: TransferContext::Operation(t.op_id),
+                })
+                .collect();
+            transfers.extend(transfers_op);
+            res.push(transfers);
+        }
+        Ok(res)
     }
 
     #[cfg(not(feature = "execution-trace"))]

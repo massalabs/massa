@@ -470,6 +470,9 @@ async fn launch(
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: *CHAINID,
+        #[cfg(feature = "execution-trace")]
+        broadcast_traces_enabled: true,
+        #[cfg(not(feature = "execution-trace"))]
         broadcast_traces_enabled: SETTINGS.api.enable_broadcast_traces,
         broadcast_slot_execution_traces_channel_capacity: SETTINGS
             .execution

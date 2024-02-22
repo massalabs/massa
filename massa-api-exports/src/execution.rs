@@ -91,9 +91,12 @@ pub struct ReadOnlyCall {
 
 /// Context of the transfer
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum TransferContext {
+    #[serde(rename = "operation_id")]
     /// Transfer made in an operation
     Operation(OperationId),
+    #[serde(rename = "asc_index")]
     /// Transfer made in an asynchronous call
     ASC(u64),
 }
@@ -102,9 +105,9 @@ pub enum TransferContext {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Transfer {
     /// The sender of the transfer
-    pub sender: Address,
+    pub from: Address,
     /// The receiver of the transfer
-    pub receiver: Address,
+    pub to: Address,
     /// The amount of the transfer
     pub amount: Amount,
     /// Context

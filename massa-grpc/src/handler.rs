@@ -19,6 +19,8 @@ use crate::public::{
 
 #[cfg(feature = "execution-trace")]
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
+#[cfg(feature = "execution-trace")]
+use crate::stream::new_slot_transfers::new_slot_transfers;
 
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
@@ -28,7 +30,7 @@ use crate::stream::{
     new_operations::{new_operations, NewOperationsStreamType},
     new_slot_abi_call_stacks::{new_slot_abi_call_stacks, NewSlotABICallStacksStreamType},
     new_slot_execution_outputs::{new_slot_execution_outputs, NewSlotExecutionOutputsStreamType},
-    new_slot_transfers::{new_slot_transfers, NewSlotTransfersStreamType},
+    new_slot_transfers::NewSlotTransfersStreamType,
     send_blocks::SendBlocksStreamType,
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
@@ -288,18 +290,24 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
 
     type NewSlotTransfersStream = NewSlotTransfersStreamType;
 
+    #[cfg(feature = "execution-trace")]
     /// handler for subscribe new slot transfers stream
     async fn new_slot_transfers(
         &self,
         request: tonic::Request<tonic::Streaming<grpc_api::NewSlotTransfersRequest>>,
     ) -> Result<tonic::Response<Self::NewSlotTransfersStream>, tonic::Status> {
-        if cfg!(feature = "execution-trace") {
-            Ok(tonic::Response::new(
-                new_slot_transfers(self, request).await?,
-            ))
-        } else {
-            Err(tonic::Status::unimplemented("feature not enabled"))
-        }
+        Ok(tonic::Response::new(
+            new_slot_transfers(self, request).await?,
+        ))
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    /// handler for subscribe new slot transfers stream
+    async fn new_slot_transfers(
+        &self,
+        _request: tonic::Request<tonic::Streaming<grpc_api::NewSlotTransfersRequest>>,
+    ) -> Result<tonic::Response<Self::NewSlotTransfersStream>, tonic::Status> {
+        Err(tonic::Status::unimplemented("feature not enabled"))
     }
 
     type NewSlotABICallStacksStream = NewSlotABICallStacksStreamType;
