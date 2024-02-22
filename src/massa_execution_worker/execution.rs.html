@@ -2066,6 +2066,18 @@
 <a href="#2066" id="2066">2066</a>
 <a href="#2067" id="2067">2067</a>
 <a href="#2068" id="2068">2068</a>
+<a href="#2069" id="2069">2069</a>
+<a href="#2070" id="2070">2070</a>
+<a href="#2071" id="2071">2071</a>
+<a href="#2072" id="2072">2072</a>
+<a href="#2073" id="2073">2073</a>
+<a href="#2074" id="2074">2074</a>
+<a href="#2075" id="2075">2075</a>
+<a href="#2076" id="2076">2076</a>
+<a href="#2077" id="2077">2077</a>
+<a href="#2078" id="2078">2078</a>
+<a href="#2079" id="2079">2079</a>
+<a href="#2080" id="2080">2080</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3321,17 +3333,29 @@
                             slot_trace
                                 .operation_call_stacks
                                 .insert(operation.id, _op_return);
-                            <span class="kw">if let </span>OperationType::Transaction {
-                                recipient_address,
-                                amount,
-                            } = <span class="kw-2">&amp;</span>operation.content.op
-                            {
-                                transfers.push(Transfer {
-                                    from: operation.content_creator_address,
-                                    to: <span class="kw-2">*</span>recipient_address,
-                                    amount: <span class="kw-2">*</span>amount,
-                                    op_id: operation.id,
-                                });
+                            <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+                                OperationType::Transaction {
+                                    recipient_address,
+                                    amount,
+                                } =&gt; {
+                                    transfers.push(Transfer {
+                                        from: operation.content_creator_address,
+                                        to: <span class="kw-2">*</span>recipient_address,
+                                        amount: <span class="kw-2">*</span>amount,
+                                        op_id: operation.id,
+                                    });
+                                }
+                                OperationType::CallSC {
+                                    target_addr, coins, ..
+                                } =&gt; {
+                                    transfers.push(Transfer {
+                                        from: operation.content_creator_address,
+                                        to: <span class="kw-2">*</span>target_addr,
+                                        amount: <span class="kw-2">*</span>coins,
+                                        op_id: operation.id,
+                                    });
+                                }
+                                <span class="kw">_ </span>=&gt; {}
                             }
                         }
                     }
