@@ -473,7 +473,7 @@ async fn launch(
         #[cfg(feature = "execution-trace")]
         broadcast_traces_enabled: true,
         #[cfg(not(feature = "execution-trace"))]
-        broadcast_traces_enabled: SETTINGS.api.enable_broadcast_traces,
+        broadcast_traces_enabled: false,
         broadcast_slot_execution_traces_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_traces_channel_capacity,

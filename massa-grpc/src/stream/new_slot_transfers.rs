@@ -51,7 +51,8 @@ pub(crate) async fn new_slot_transfers(
                         match event {
                             Ok((massa_slot_execution_trace, is_final)) => {
                                 if (finality == FinalityLevel::Final && !is_final) ||
-                                    (finality == FinalityLevel::Candidate && is_final) {
+                                    (finality == FinalityLevel::Candidate && is_final) ||
+                                    (finality == FinalityLevel::Unspecified && !is_final) {
                                     continue;
                                 }
                                 let mut ret_transfers = Vec::new();

@@ -293,22 +293,22 @@ impl ExecutionState {
                     err
                 );
             }
+        }
 
-            #[cfg(feature = "execution-trace")]
-            {
-                if self.config.broadcast_traces_enabled {
-                    if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
-                        if let Err(err) = self
-                            .channels
-                            .slot_execution_traces_sender
-                            .send((slot_trace, true))
-                        {
-                            trace!(
-                                "error, failed to broadcast abi trace for slot {} due to: {}",
-                                exec_out.slot.clone(),
-                                err
-                            );
-                        }
+        #[cfg(feature = "execution-trace")]
+        {
+            if self.config.broadcast_traces_enabled {
+                if let Some((slot_trace, _)) = exec_out.slot_trace.clone() {
+                    if let Err(err) = self
+                        .channels
+                        .slot_execution_traces_sender
+                        .send((slot_trace, true))
+                    {
+                        trace!(
+                            "error, failed to broadcast abi trace for slot {} due to: {}",
+                            exec_out.slot.clone(),
+                            err
+                        );
                     }
                 }
             }
