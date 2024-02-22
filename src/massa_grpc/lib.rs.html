@@ -123,6 +123,9 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 //
 </span><span class="doccomment">//! ## **Overview**
@@ -147,6 +150,9 @@
 <span class="kw">use </span>tonic_health <span class="kw">as _</span>;
 <span class="kw">use </span>tonic_reflection <span class="kw">as _</span>;
 <span class="kw">use </span>tonic_web <span class="kw">as _</span>;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span>serde_json <span class="kw">as _</span>;
 
 <span class="doccomment">/// gRPC configuration
 </span><span class="kw">pub mod </span>config;

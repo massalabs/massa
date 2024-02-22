@@ -1222,6 +1222,71 @@
 <a href="#1222" id="1222">1222</a>
 <a href="#1223" id="1223">1223</a>
 <a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+<a href="#1240" id="1240">1240</a>
+<a href="#1241" id="1241">1241</a>
+<a href="#1242" id="1242">1242</a>
+<a href="#1243" id="1243">1243</a>
+<a href="#1244" id="1244">1244</a>
+<a href="#1245" id="1245">1245</a>
+<a href="#1246" id="1246">1246</a>
+<a href="#1247" id="1247">1247</a>
+<a href="#1248" id="1248">1248</a>
+<a href="#1249" id="1249">1249</a>
+<a href="#1250" id="1250">1250</a>
+<a href="#1251" id="1251">1251</a>
+<a href="#1252" id="1252">1252</a>
+<a href="#1253" id="1253">1253</a>
+<a href="#1254" id="1254">1254</a>
+<a href="#1255" id="1255">1255</a>
+<a href="#1256" id="1256">1256</a>
+<a href="#1257" id="1257">1257</a>
+<a href="#1258" id="1258">1258</a>
+<a href="#1259" id="1259">1259</a>
+<a href="#1260" id="1260">1260</a>
+<a href="#1261" id="1261">1261</a>
+<a href="#1262" id="1262">1262</a>
+<a href="#1263" id="1263">1263</a>
+<a href="#1264" id="1264">1264</a>
+<a href="#1265" id="1265">1265</a>
+<a href="#1266" id="1266">1266</a>
+<a href="#1267" id="1267">1267</a>
+<a href="#1268" id="1268">1268</a>
+<a href="#1269" id="1269">1269</a>
+<a href="#1270" id="1270">1270</a>
+<a href="#1271" id="1271">1271</a>
+<a href="#1272" id="1272">1272</a>
+<a href="#1273" id="1273">1273</a>
+<a href="#1274" id="1274">1274</a>
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a>
+<a href="#1277" id="1277">1277</a>
+<a href="#1278" id="1278">1278</a>
+<a href="#1279" id="1279">1279</a>
+<a href="#1280" id="1280">1280</a>
+<a href="#1281" id="1281">1281</a>
+<a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
+<a href="#1284" id="1284">1284</a>
+<a href="#1285" id="1285">1285</a>
+<a href="#1286" id="1286">1286</a>
+<a href="#1287" id="1287">1287</a>
+<a href="#1288" id="1288">1288</a>
+<a href="#1289" id="1289">1289</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1236,7 +1301,9 @@
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    execution::{
+        ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -1345,6 +1412,80 @@
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
+    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+    </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, slots: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
+        <span class="kw">use </span>massa_api_exports::execution::TransferContext;
+        <span class="kw">use </span>std::str::FromStr;
+
+        <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;Vec&lt;Transfer&gt;&gt; = Vec::with_capacity(slots.len());
+        <span class="kw">for </span>slot <span class="kw">in </span>slots {
+            <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
+            <span class="kw">let </span>abi_calls = <span class="self">self</span>.<span class="number">0
+            </span>.execution_controller
+            .get_slot_abi_call_stack(slot.clone().into());
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
+            <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
+
+            </span><span class="kw">let </span>abi_transfer_1 = <span class="string">&quot;assembly_script_transfer_coins&quot;</span>.to_string();
+            <span class="kw">let </span>abi_transfer_2 = <span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>.to_string();
+            <span class="kw">let </span>abi_transfer_3 = <span class="string">&quot;abi_transfer_coins&quot;</span>.to_string();
+            <span class="kw">let </span>transfer_abi_names = <span class="macro">vec!</span>[abi_transfer_1, abi_transfer_2, abi_transfer_3];
+            <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.iter().enumerate() {
+                <span class="kw">for </span>abi_trace <span class="kw">in </span>asc_call_stack {
+                    <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
+                    <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
+                        <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
+                        transfers.push(Transfer {
+                            from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
+                            to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
+                            amount: Amount::from_raw(t_amount),
+                            context: TransferContext::ASC(i <span class="kw">as </span>u64),
+                        });
+                    }
+                }
+            }
+
+            <span class="kw">for </span>op_call_stack <span class="kw">in </span>abi_calls.operation_call_stacks {
+                <span class="kw">let </span>op_id = op_call_stack.<span class="number">0</span>;
+                <span class="kw">let </span>op_call_stack = op_call_stack.<span class="number">1</span>;
+                <span class="kw">for </span>abi_trace <span class="kw">in </span>op_call_stack {
+                    <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
+                    <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
+                        <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
+                        transfers.push(Transfer {
+                            from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
+                            to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
+                            amount: Amount::from_raw(t_amount),
+                            context: TransferContext::Operation(op_id),
+                        });
+                    }
+                }
+            }
+        }
+            <span class="kw">let </span>transfers_op: Vec&lt;Transfer&gt; = <span class="self">self
+                </span>.<span class="number">0
+                </span>.execution_controller
+                .get_transfers_for_slot(slot)
+                .unwrap_or_default()
+                .iter()
+                .map(|t| Transfer {
+                    from: t.from,
+                    to: t.to,
+                    amount: t.amount,
+                    context: TransferContext::Operation(t.op_id),
+                })
+                .collect();
+            transfers.extend(transfers_op);
+            res.push(transfers);
+        }
+        <span class="prelude-val">Ok</span>(res)
+    }
+
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+    </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
+        RpcResult::Err(ApiError::BadRequest(<span class="string">&quot;feature execution-trace is not enabled&quot;</span>.into()).into())
+    }
+
     <span class="kw">async fn </span>execute_read_only_bytecode(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         reqs: Vec&lt;ReadOnlyBytecodeExecution&gt;,
@@ -1362,11 +1503,6 @@
             fee,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">if </span>address.is_none() &amp;&amp; fee.is_some() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(
-                    ApiError::BadRequest(<span class="string">&quot;fee argument is set without address&quot;</span>.into()).into(),
-                );
-            }
             <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
                 addr
             } <span class="kw">else </span>{
@@ -1460,12 +1596,6 @@
             fee,
         } <span class="kw">in </span>reqs
         {
-            <span class="kw">if </span>caller_address.is_none() &amp;&amp; (fee.is_some() || coins.is_some()) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(
-                    <span class="string">&quot;fee or coins argument is set without caller_address&quot;</span>.into(),
-                )
-                .into());
-            }
             <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
                 addr
             } <span class="kw">else </span>{

@@ -395,6 +395,11 @@
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -408,6 +413,7 @@
 <span class="kw">use </span>jsonrpsee::server::middleware::HostFilterLayer;
 <span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
+<span class="kw">use </span>massa_api_exports::execution::Transfer;
 <span class="kw">use </span>massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
@@ -769,6 +775,10 @@
     <span class="doccomment">/// Get addresses bytecode.
     </span><span class="attr">#[method(name = <span class="string">&quot;get_addresses_bytecode&quot;</span>)]
     </span><span class="kw">async fn </span>get_addresses_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, args: Vec&lt;AddressFilter&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt;;
+
+    <span class="doccomment">/// Get all the transfers for a slot
+    </span><span class="attr">#[method(name = <span class="string">&quot;get_slots_transfers&quot;</span>)]
+    </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt;;
 
     <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.
     </span><span class="attr">#[method(name = <span class="string">&quot;send_operations&quot;</span>)]
