@@ -21,12 +21,13 @@ use massa_api_exports::{
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, Transfer, ReadOnlyBytecodeExecution, ReadOnlyCall},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
 use massa_models::secure_share::SecureShare;
+use massa_models::slot::Slot;
 use massa_models::{
     address::Address,
     block::FilledBlock,
@@ -316,6 +317,14 @@ impl RpcClient {
     pub async fn get_status(&self) -> RpcResult<NodeStatus> {
         self.http_client
             .request("get_status", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
+    }
+
+    /// Returns the transfers for slots
+    pub async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        self.http_client
+            .request("get_slots_transfers", rpc_params![slots])
             .await
             .map_err(|e| to_error_obj(e.to_string()))
     }
