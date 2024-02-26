@@ -21,7 +21,7 @@ use massa_api_exports::{
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
-    execution::{ExecuteReadOnlyResponse, Transfer, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     TimeInterval,
@@ -323,9 +323,9 @@ impl RpcClient {
 
     /// Returns the transfers for slots
     pub async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
-        dbg!(self.http_client
+        self.http_client
             .request("get_slots_transfers", rpc_params![slots])
-            .await)
+            .await
             .map_err(|e| to_error_obj(e.to_string()))
     }
 
