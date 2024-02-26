@@ -323,8 +323,8 @@ impl RpcClient {
 
     /// Returns the transfers for slots
     pub async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
-        self.http_client
-            .request("get_slots_transfers", rpc_params![slots])
+        dbg!(self.http_client
+            .request("get_slots_transfers", rpc_params![slots]))
             .await
             .map_err(|e| to_error_obj(e.to_string()))
     }

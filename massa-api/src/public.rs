@@ -128,6 +128,7 @@ impl MassaRpcServer for API<Public> {
         use massa_api_exports::execution::TransferContext;
         use std::str::FromStr;
 
+        dbg!(&slots);
         let mut res: Vec<Vec<Transfer>> = Vec::with_capacity(slots.len());
         for slot in slots {
             let mut transfers = Vec::new();
@@ -190,6 +191,7 @@ impl MassaRpcServer for API<Public> {
             transfers.extend(transfers_op);
             res.push(transfers);
         }
+        dbg!(&res);
         Ok(res)
     }
 
