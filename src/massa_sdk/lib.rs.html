@@ -705,6 +705,15 @@
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -728,12 +737,13 @@
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
 <span class="kw">use </span>massa_models::secure_share::SecureShare;
+<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::{
     address::Address,
     block::FilledBlock,
@@ -1023,6 +1033,14 @@
     </span><span class="kw">pub async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt; {
         <span class="self">self</span>.http_client
             .request(<span class="string">&quot;get_status&quot;</span>, <span class="macro">rpc_params!</span>[])
+            .<span class="kw">await
+            </span>.map_err(|e| to_error_obj(e.to_string()))
+    }
+
+    <span class="doccomment">/// Returns the transfers for slots
+    </span><span class="kw">pub async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, slots: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
+        <span class="self">self</span>.http_client
+            .request(<span class="string">&quot;get_slots_transfers&quot;</span>, <span class="macro">rpc_params!</span>[slots])
             .<span class="kw">await
             </span>.map_err(|e| to_error_obj(e.to_string()))
     }
