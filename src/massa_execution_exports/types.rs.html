@@ -463,6 +463,10 @@
 <a href="#463" id="463">463</a>
 <a href="#464" id="464">464</a>
 <a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -840,6 +844,10 @@
     </span><span class="kw">pub </span>amount: Amount,
     <span class="doccomment">/// operation id
     </span><span class="kw">pub </span>op_id: OperationId,
+    <span class="doccomment">/// success or not
+    </span><span class="kw">pub </span>succeed: bool,
+    <span class="doccomment">/// Fee
+    </span><span class="kw">pub </span>fee: Amount,
 }
 
 <span class="doccomment">/// structure describing the output of a read only execution

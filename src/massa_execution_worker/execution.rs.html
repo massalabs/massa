@@ -2078,6 +2078,18 @@
 <a href="#2078" id="2078">2078</a>
 <a href="#2079" id="2079">2079</a>
 <a href="#2080" id="2080">2080</a>
+<a href="#2081" id="2081">2081</a>
+<a href="#2082" id="2082">2082</a>
+<a href="#2083" id="2083">2083</a>
+<a href="#2084" id="2084">2084</a>
+<a href="#2085" id="2085">2085</a>
+<a href="#2086" id="2086">2086</a>
+<a href="#2087" id="2087">2087</a>
+<a href="#2088" id="2088">2088</a>
+<a href="#2089" id="2089">2089</a>
+<a href="#2090" id="2090">2090</a>
+<a href="#2091" id="2091">2091</a>
+<a href="#2092" id="2092">2092</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2145,9 +2157,17 @@
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">pub type </span>ExecutionResult = Vec&lt;AbiTrace&gt;;
+</span><span class="doccomment">/// ABI and execution succeed or not
+</span><span class="kw">pub type </span>ExecutionResult = (Vec&lt;AbiTrace&gt;, bool);
 <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
 </span><span class="kw">pub type </span>ExecutionResult = ();
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="doccomment">/// ABIs
+</span><span class="kw">pub type </span>ExecutionResultInner = Vec&lt;AbiTrace&gt;;
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+</span><span class="doccomment">/// ABIs
+</span><span class="kw">pub type </span>ExecutionResultInner = ();
 
 <span class="doccomment">/// Structure holding consistent speculative and final execution states,
 /// and allowing access to them.
@@ -2592,7 +2612,7 @@
                     );
                     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
                     </span>{
-                        <span class="prelude-val">Ok</span>(_value)
+                        <span class="prelude-val">Ok</span>((_value, <span class="bool-val">true</span>))
                     }
                     <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
                     </span>{
@@ -2616,7 +2636,7 @@
                     );
                     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
                     </span>{
-                        <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[])
+                        <span class="prelude-val">Ok</span>((<span class="macro">vec!</span>[], <span class="bool-val">false</span>))
                     }
                     <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
                     </span>{
@@ -2921,7 +2941,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>OperationType,
         sender_addr: Address,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResultInner, ExecutionError&gt; {
         <span class="comment">// process ExecuteSC operations only
         </span><span class="kw">let </span>(bytecode, max_gas, datastore) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
             OperationType::ExecuteSC {
@@ -2989,7 +3009,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         operation: <span class="kw-2">&amp;</span>OperationType,
         sender_addr: Address,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResultInner, ExecutionError&gt; {
         <span class="comment">// process CallSC operations only
         </span><span class="kw">let </span>(max_gas, target_addr, target_func, param, coins) = <span class="kw">match </span><span class="kw-2">&amp;</span>operation {
             OperationType::CallSC {
@@ -3174,7 +3194,7 @@
                     .set_init_cost(<span class="kw-2">&amp;</span>bytecode, res.init_gas_cost);
                 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
                 </span>{
-                    <span class="prelude-val">Ok</span>(res.trace.into_iter().map(|t| t.into()).collect())
+                    <span class="prelude-val">Ok</span>((res.trace.into_iter().map(|t| t.into()).collect(), <span class="bool-val">true</span>))
                 }
                 <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
                 </span>{
@@ -3251,7 +3271,7 @@
                 <span class="prelude-val">Ok</span>(_message_return) =&gt; {
                     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
                     </span>{
-                        slot_trace.asc_call_stacks.push(_message_return);
+                        slot_trace.asc_call_stacks.push(_message_return.<span class="number">0</span>);
                     }
                 }
                 <span class="prelude-val">Err</span>(err) =&gt; {
@@ -3332,7 +3352,7 @@
                         </span>{
                             slot_trace
                                 .operation_call_stacks
-                                .insert(operation.id, _op_return);
+                                .insert(operation.id, _op_return.<span class="number">0</span>);
                             <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
                                 OperationType::Transaction {
                                     recipient_address,
@@ -3343,6 +3363,8 @@
                                         to: <span class="kw-2">*</span>recipient_address,
                                         amount: <span class="kw-2">*</span>amount,
                                         op_id: operation.id,
+                                        succeed: _op_return.<span class="number">1</span>,
+                                        fee: operation.content.fee,
                                     });
                                 }
                                 OperationType::CallSC {
@@ -3353,6 +3375,8 @@
                                         to: <span class="kw-2">*</span>target_addr,
                                         amount: <span class="kw-2">*</span>coins,
                                         op_id: operation.id,
+                                        succeed: _op_return.<span class="number">1</span>,
+                                        fee: operation.content.fee,
                                     });
                                 }
                                 <span class="kw">_ </span>=&gt; {}

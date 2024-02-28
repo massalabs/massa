@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["context_guard"],"struct":["ExecutionState"],"type":["ExecutionResult"]};
+window.SIDEBAR_ITEMS = {"macro":["context_guard"],"struct":["ExecutionState"],"type":["ExecutionResult","ExecutionResultInner"]};

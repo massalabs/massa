@@ -1288,6 +1288,22 @@
 <a href="#1288" id="1288">1288</a>
 <a href="#1289" id="1289">1289</a>
 <a href="#1290" id="1290">1290</a>
+<a href="#1291" id="1291">1291</a>
+<a href="#1292" id="1292">1292</a>
+<a href="#1293" id="1293">1293</a>
+<a href="#1294" id="1294">1294</a>
+<a href="#1295" id="1295">1295</a>
+<a href="#1296" id="1296">1296</a>
+<a href="#1297" id="1297">1297</a>
+<a href="#1298" id="1298">1298</a>
+<a href="#1299" id="1299">1299</a>
+<a href="#1300" id="1300">1300</a>
+<a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1420,6 +1436,13 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;Vec&lt;Transfer&gt;&gt; = Vec::with_capacity(slots.len());
         <span class="kw">for </span>slot <span class="kw">in </span>slots {
+            <span class="kw">let </span><span class="prelude-val">Some</span>(block_id) = <span class="self">self
+                </span>.<span class="number">0
+                </span>.consensus_controller
+                .get_blockclique_block_at_slot(slot)
+            <span class="kw">else </span>{
+                <span class="kw">continue</span>;
+            };
             <span class="kw">let </span><span class="kw-2">mut </span>transfers = Vec::new();
             <span class="kw">let </span>abi_calls = <span class="self">self
                 </span>.<span class="number">0
@@ -1442,6 +1465,9 @@
                                 to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
                                 context: TransferContext::ASC(i <span class="kw">as </span>u64),
+                                succeed: <span class="bool-val">true</span>,
+                                fee: Amount::from_raw(<span class="number">0</span>),
+                                block_id,
                             });
                         }
                     }
@@ -1459,6 +1485,9 @@
                                 to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
                                 context: TransferContext::Operation(op_id),
+                                succeed: <span class="bool-val">true</span>,
+                                fee: Amount::from_raw(<span class="number">0</span>),
+                                block_id,
                             });
                         }
                     }
@@ -1475,6 +1504,9 @@
                     to: t.to,
                     amount: t.amount,
                     context: TransferContext::Operation(t.op_id),
+                    succeed: t.succeed,
+                    fee: t.fee,
+                    block_id,
                 })
                 .collect();
             transfers.extend(transfers_op);

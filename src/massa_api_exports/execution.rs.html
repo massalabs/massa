@@ -113,12 +113,18 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_final_state::StateChanges;
 <span class="kw">use </span>massa_models::{
-    address::Address, amount::Amount, operation::OperationId, output_event::SCOutputEvent,
-    slot::Slot,
+    address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
+    output_event::SCOutputEvent, slot::Slot,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::VecDeque, fmt::Display};
@@ -225,6 +231,12 @@
     </span><span class="kw">pub </span>to: Address,
     <span class="doccomment">/// The amount of the transfer
     </span><span class="kw">pub </span>amount: Amount,
+    <span class="doccomment">/// If the transfer succeed or not
+    </span><span class="kw">pub </span>succeed: bool,
+    <span class="doccomment">/// Fee
+    </span><span class="kw">pub </span>fee: Amount,
+    <span class="doccomment">/// Block ID
+    </span><span class="kw">pub </span>block_id: BlockId,
     <span class="doccomment">/// Context
     </span><span class="kw">pub </span>context: TransferContext,
 }
