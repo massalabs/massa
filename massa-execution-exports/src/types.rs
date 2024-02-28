@@ -375,6 +375,10 @@ pub struct Transfer {
     pub amount: Amount,
     /// operation id
     pub op_id: OperationId,
+    /// success or not
+    pub succeed: bool,
+    /// Fee
+    pub fee: Amount,
 }
 
 /// structure describing the output of a read only execution

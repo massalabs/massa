@@ -3151,7 +3151,10 @@
                     "from",
                     "to",
                     "amount",
-                    "context"
+                    "context",
+                    "succeed",
+                    "fee",
+                    "block_id"
                 ],
                 "type": "object",
                 "properties": {
@@ -3170,6 +3173,18 @@
                     "context": {
                         "description": "Context of the transfer : operation or asyncronous execution",
                         "type": "object"
+                    },
+                    "succeed": {
+                        "description": "True if the operation succeed otherwise false",
+                        "type": "boolean"
+                    },
+                    "fee": {
+                        "description": "Fees passed to the operation",
+                        "type": "number"
+                    },
+                    "block_id": {
+                        "description": "ID of the block in which the operation is included",
+                        "type": "string"
                     }
                 }
             },
