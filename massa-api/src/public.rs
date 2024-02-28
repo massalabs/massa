@@ -130,6 +130,13 @@ impl MassaRpcServer for API<Public> {
 
         let mut res: Vec<Vec<Transfer>> = Vec::with_capacity(slots.len());
         for slot in slots {
+            let Some(block_id) = self
+                .0
+                .consensus_controller
+                .get_blockclique_block_at_slot(slot)
+            else {
+                continue;
+            };
             let mut transfers = Vec::new();
             let abi_calls = self
                 .0
@@ -152,6 +159,9 @@ impl MassaRpcServer for API<Public> {
                                 to: Address::from_str(&t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
                                 context: TransferContext::ASC(i as u64),
+                                succeed: true,
+                                fee: Amount::from_raw(0),
+                                block_id,
                             });
                         }
                     }
@@ -169,6 +179,9 @@ impl MassaRpcServer for API<Public> {
                                 to: Address::from_str(&t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
                                 context: TransferContext::Operation(op_id),
+                                succeed: true,
+                                fee: Amount::from_raw(0),
+                                block_id,
                             });
                         }
                     }
@@ -185,6 +198,9 @@ impl MassaRpcServer for API<Public> {
                     to: t.to,
                     amount: t.amount,
                     context: TransferContext::Operation(t.op_id),
+                    succeed: t.succeed,
+                    fee: t.fee,
+                    block_id,
                 })
                 .collect();
             transfers.extend(transfers_op);

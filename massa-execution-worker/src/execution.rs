@@ -65,9 +65,17 @@ macro_rules! context_guard {
 }
 
 #[cfg(feature = "execution-trace")]
-pub type ExecutionResult = Vec<AbiTrace>;
+/// ABI and execution succeed or not
+pub type ExecutionResult = (Vec<AbiTrace>, bool);
 #[cfg(not(feature = "execution-trace"))]
 pub type ExecutionResult = ();
+
+#[cfg(feature = "execution-trace")]
+/// ABIs
+pub type ExecutionResultInner = Vec<AbiTrace>;
+#[cfg(not(feature = "execution-trace"))]
+/// ABIs
+pub type ExecutionResultInner = ();
 
 /// Structure holding consistent speculative and final execution states,
 /// and allowing access to them.
@@ -512,7 +520,7 @@ impl ExecutionState {
                     );
                     #[cfg(feature = "execution-trace")]
                     {
-                        Ok(_value)
+                        Ok((_value, true))
                     }
                     #[cfg(not(feature = "execution-trace"))]
                     {
@@ -536,7 +544,7 @@ impl ExecutionState {
                     );
                     #[cfg(feature = "execution-trace")]
                     {
-                        Ok(vec![])
+                        Ok((vec![], false))
                     }
                     #[cfg(not(feature = "execution-trace"))]
                     {
@@ -841,7 +849,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-    ) -> Result<ExecutionResult, ExecutionError> {
+    ) -> Result<ExecutionResultInner, ExecutionError> {
         // process ExecuteSC operations only
         let (bytecode, max_gas, datastore) = match &operation {
             OperationType::ExecuteSC {
@@ -909,7 +917,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
-    ) -> Result<ExecutionResult, ExecutionError> {
+    ) -> Result<ExecutionResultInner, ExecutionError> {
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
             OperationType::CallSC {
@@ -1094,7 +1102,7 @@ impl ExecutionState {
                     .set_init_cost(&bytecode, res.init_gas_cost);
                 #[cfg(feature = "execution-trace")]
                 {
-                    Ok(res.trace.into_iter().map(|t| t.into()).collect())
+                    Ok((res.trace.into_iter().map(|t| t.into()).collect(), true))
                 }
                 #[cfg(not(feature = "execution-trace"))]
                 {
@@ -1171,7 +1179,7 @@ impl ExecutionState {
                 Ok(_message_return) => {
                     #[cfg(feature = "execution-trace")]
                     {
-                        slot_trace.asc_call_stacks.push(_message_return);
+                        slot_trace.asc_call_stacks.push(_message_return.0);
                     }
                 }
                 Err(err) => {
@@ -1252,7 +1260,7 @@ impl ExecutionState {
                         {
                             slot_trace
                                 .operation_call_stacks
-                                .insert(operation.id, _op_return);
+                                .insert(operation.id, _op_return.0);
                             match &operation.content.op {
                                 OperationType::Transaction {
                                     recipient_address,
@@ -1263,6 +1271,8 @@ impl ExecutionState {
                                         to: *recipient_address,
                                         amount: *amount,
                                         op_id: operation.id,
+                                        succeed: _op_return.1,
+                                        fee: operation.content.fee,
                                     });
                                 }
                                 OperationType::CallSC {
@@ -1273,6 +1283,8 @@ impl ExecutionState {
                                         to: *target_addr,
                                         amount: *coins,
                                         op_id: operation.id,
+                                        succeed: _op_return.1,
+                                        fee: operation.content.fee,
                                     });
                                 }
                                 _ => {}

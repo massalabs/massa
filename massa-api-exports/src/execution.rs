@@ -2,8 +2,8 @@
 
 use massa_final_state::StateChanges;
 use massa_models::{
-    address::Address, amount::Amount, operation::OperationId, output_event::SCOutputEvent,
-    slot::Slot,
+    address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
+    output_event::SCOutputEvent, slot::Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
@@ -110,6 +110,12 @@ pub struct Transfer {
     pub to: Address,
     /// The amount of the transfer
     pub amount: Amount,
+    /// If the transfer succeed or not
+    pub succeed: bool,
+    /// Fee
+    pub fee: Amount,
+    /// Block ID
+    pub block_id: BlockId,
     /// Context
     pub context: TransferContext,
 }
