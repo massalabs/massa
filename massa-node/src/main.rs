@@ -80,6 +80,7 @@ use massa_models::config::{
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_pool_exports::{PoolBroadcasts, PoolChannels, PoolConfig, PoolManager};
 use massa_pool_worker::start_pool_controller;
 use massa_pos_exports::{PoSConfig, SelectorConfig, SelectorManager};
@@ -411,7 +412,24 @@ async fn launch(
                 T0,
                 *GENESIS_TIMESTAMP,
             )
-            .expect("Mip store is not consistent with shutdown period")
+            .expect("Mip store is not consistent with shutdown period");
+
+        // If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
+        let now = MassaTime::now();
+        let last_start_slot = Slot::new(
+            final_state.read().get_last_start_period(),
+            THREAD_COUNT.saturating_sub(1),
+        );
+        let last_start_slot_timestamp =
+            get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, last_start_slot)
+                .expect("Can't get timestamp for last_start_slot");
+        if now < last_start_slot_timestamp {
+            let final_state_hash = final_state.read().get_fingerprint();
+            info!(
+                "final_state hash before network restarts at slot {}: {}",
+                last_start_slot, final_state_hash
+            );
+        }
     }
 
     // Storage costs constants
