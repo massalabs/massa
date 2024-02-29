@@ -2735,6 +2735,7 @@
 <a href="#2735" id="2735">2735</a>
 <a href="#2736" id="2736">2736</a>
 <a href="#2737" id="2737">2737</a>
+<a href="#2738" id="2738">2738</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3833,10 +3834,11 @@
                 <span class="self">self</span>.stats.config.block_count_considered <span class="kw">as </span>u64,
             );
 
-            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})&quot;</span>,
-                vote_ratio,
+            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] Vote counts / blocks considered = {} / {} (for MipInfo with network version {} - {})&quot;</span>,
                 network_version_count,
-                <span class="self">self</span>.stats.config.block_count_considered);
+                <span class="self">self</span>.stats.config.block_count_considered,
+                mi.version,
+                mi.name);
 
             <span class="kw">let </span>advance_msg = Advance {
                 start_timestamp: mi.start,
