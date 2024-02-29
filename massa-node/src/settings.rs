@@ -34,6 +34,9 @@ pub struct ExecutionSettings {
     pub snip_amount: usize,
     /// slot execution outputs channel capacity
     pub broadcast_slot_execution_output_channel_capacity: usize,
+    /// slot execution traces channel capacity
+    pub broadcast_slot_execution_traces_channel_capacity: usize,
+    pub execution_traces_limit: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]

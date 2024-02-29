@@ -94,6 +94,9 @@ mod speculative_roll_state;
 mod stats;
 mod worker;
 
+#[cfg(feature = "execution-trace")]
+mod trace_history;
+
 use massa_db_exports as _;
 pub use worker::start_execution_worker;
 

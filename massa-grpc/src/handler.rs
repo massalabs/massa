@@ -16,13 +16,21 @@ use crate::public::{
     get_stakers, get_status, get_transactions_throughput, query_state, search_blocks,
     search_endorsements, search_operations,
 };
+
+#[cfg(feature = "execution-trace")]
+use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
+#[cfg(feature = "execution-trace")]
+use crate::stream::new_slot_transfers::new_slot_transfers;
+
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
     new_filled_blocks::{new_filled_blocks, NewFilledBlocksStreamType},
     new_operations::{new_operations, NewOperationsStreamType},
+    new_slot_abi_call_stacks::{new_slot_abi_call_stacks, NewSlotABICallStacksStreamType},
     new_slot_execution_outputs::{new_slot_execution_outputs, NewSlotExecutionOutputsStreamType},
+    new_slot_transfers::NewSlotTransfersStreamType,
     send_blocks::SendBlocksStreamType,
     send_endorsements::{send_endorsements, SendEndorsementsStreamType},
     send_operations::{send_operations, SendOperationsStreamType},
@@ -38,6 +46,68 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     ) -> std::result::Result<tonic::Response<grpc_api::ExecuteReadOnlyCallResponse>, tonic::Status>
     {
         Ok(tonic::Response::new(execute_read_only_call(self, request)?))
+    }
+
+    #[cfg(feature = "execution-trace")]
+    async fn get_operation_abi_call_stacks(
+        &self,
+        request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
+    ) -> std::result::Result<
+        tonic::Response<grpc_api::GetOperationAbiCallStacksResponse>,
+        tonic::Status,
+    > {
+        Ok(tonic::Response::new(get_operation_abi_call_stacks(
+            self, request,
+        )?))
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    async fn get_operation_abi_call_stacks(
+        &self,
+        _request: tonic::Request<grpc_api::GetOperationAbiCallStacksRequest>,
+    ) -> std::result::Result<
+        tonic::Response<grpc_api::GetOperationAbiCallStacksResponse>,
+        tonic::Status,
+    > {
+        Err(tonic::Status::unimplemented("feature not enabled"))
+    }
+
+    #[cfg(feature = "execution-trace")]
+    async fn get_slot_abi_call_stacks(
+        &self,
+        request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotAbiCallStacksResponse>, tonic::Status>
+    {
+        Ok(tonic::Response::new(get_slot_abi_call_stacks(
+            self, request,
+        )?))
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    async fn get_slot_abi_call_stacks(
+        &self,
+        _request: tonic::Request<grpc_api::GetSlotAbiCallStacksRequest>,
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotAbiCallStacksResponse>, tonic::Status>
+    {
+        Err(tonic::Status::unimplemented("feature not enabled"))
+    }
+
+    #[cfg(feature = "execution-trace")]
+    async fn get_slot_transfers(
+        &self,
+        request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status>
+    {
+        Ok(tonic::Response::new(get_slot_transfers(self, request)?))
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    async fn get_slot_transfers(
+        &self,
+        _request: tonic::Request<grpc_api::GetSlotTransfersRequest>,
+    ) -> std::result::Result<tonic::Response<grpc_api::GetSlotTransfersResponse>, tonic::Status>
+    {
+        Err(tonic::Status::unimplemented("feature not enabled"))
     }
 
     /// handler for get blocks
@@ -216,6 +286,44 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         Ok(tonic::Response::new(
             new_slot_execution_outputs(self, request).await?,
         ))
+    }
+
+    type NewSlotTransfersStream = NewSlotTransfersStreamType;
+
+    #[cfg(feature = "execution-trace")]
+    /// handler for subscribe new slot transfers stream
+    async fn new_slot_transfers(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc_api::NewSlotTransfersRequest>>,
+    ) -> Result<tonic::Response<Self::NewSlotTransfersStream>, tonic::Status> {
+        Ok(tonic::Response::new(
+            new_slot_transfers(self, request).await?,
+        ))
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    /// handler for subscribe new slot transfers stream
+    async fn new_slot_transfers(
+        &self,
+        _request: tonic::Request<tonic::Streaming<grpc_api::NewSlotTransfersRequest>>,
+    ) -> Result<tonic::Response<Self::NewSlotTransfersStream>, tonic::Status> {
+        Err(tonic::Status::unimplemented("feature not enabled"))
+    }
+
+    type NewSlotABICallStacksStream = NewSlotABICallStacksStreamType;
+
+    /// handler for subscribe new slot abi call stacks stream
+    async fn new_slot_abi_call_stacks(
+        &self,
+        request: tonic::Request<tonic::Streaming<grpc_api::NewSlotAbiCallStacksRequest>>,
+    ) -> Result<tonic::Response<Self::NewSlotABICallStacksStream>, tonic::Status> {
+        if cfg!(feature = "execution-trace") {
+            Ok(tonic::Response::new(
+                new_slot_abi_call_stacks(self, request).await?,
+            ))
+        } else {
+            Err(tonic::Status::unimplemented("feature not enabled"))
+        }
     }
 
     type SendBlocksStream = SendBlocksStreamType;

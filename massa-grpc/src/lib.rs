@@ -23,6 +23,9 @@ use tonic_health as _;
 use tonic_reflection as _;
 use tonic_web as _;
 
+#[cfg(feature = "execution-trace")]
+use serde_json as _;
+
 /// gRPC configuration
 pub mod config;
 /// models error
