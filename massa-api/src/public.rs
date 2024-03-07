@@ -636,17 +636,40 @@ impl MassaRpcServer for API<Public> {
         for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in
             zipped_iterator
         {
-            res.push(OperationInfo {
-                id,
-                in_pool,
-                is_operation_final,
-                thread: operation
-                    .content_creator_address
-                    .get_thread(api_cfg.thread_count),
-                operation,
-                in_blocks: in_blocks.into_iter().collect(),
-                op_exec_status,
-            });
+            #[cfg(feature = "execution-trace")]
+            {
+                let mut transfer = None;
+                if is_operation_final.is_none() || op_exec_status.is_none() {
+                    transfer = self.0.execution_controller.get_transfer_for_op(&id);
+                }
+                let is_operation_final = is_operation_final.or(Some(transfer.is_some()));
+                let op_exec_status = op_exec_status.or(transfer.map(|t| t.succeed));
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
+            #[cfg(not(feature = "execution-trace"))]
+            {
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
         }
 
         // return values in the right order

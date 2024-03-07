@@ -17,7 +17,7 @@ impl TraceHistory {
         Self {
             trace_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
             op_per_slot: LruMap::new(ByLength::new(max_slot_size_cache * op_per_slot)),
-            transfer_per_slot: LruMap::new(ByLength::new(max_slot_size_cache * op_per_slot)),
+            transfer_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
         }
     }
 
@@ -44,6 +44,19 @@ impl TraceHistory {
         self.transfer_per_slot.peek(slot).cloned()
     }
 
+    /// Fetch transfers for a given operation id
+    pub(crate) fn fetch_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer> {
+        self.op_per_slot
+            .peek(op_id)
+            .and_then(|slot| self.transfer_per_slot.peek(slot).cloned())
+            .map(|transfers| {
+                transfers
+                    .into_iter()
+                    .find(|transfer| transfer.op_id == *op_id)
+            })
+            .flatten()
+    }
+
     /// Save execution traces for a given slot
     pub(crate) fn save_traces_for_slot(&mut self, slot: Slot, traces: SlotAbiCallStack) {
         for (op_id, _) in traces.operation_call_stacks.iter() {
@@ -54,6 +67,9 @@ impl TraceHistory {
 
     /// Save transfer for a given slot
     pub(crate) fn save_transfers_for_slot(&mut self, slot: Slot, transfers: Vec<Transfer>) {
+        for transfer in transfers.iter() {
+            self.op_per_slot.insert(transfer.op_id, slot);
+        }
         self.transfer_per_slot.insert(slot, transfers);
     }
 }
