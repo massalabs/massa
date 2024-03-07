@@ -17,7 +17,7 @@ impl TraceHistory {
         Self {
             trace_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
             op_per_slot: LruMap::new(ByLength::new(max_slot_size_cache * op_per_slot)),
-            transfer_per_slot: LruMap::new(ByLength::new(max_slot_size_cache * op_per_slot)),
+            transfer_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
         }
     }
 
