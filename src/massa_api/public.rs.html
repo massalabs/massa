@@ -1304,6 +1304,29 @@
 <a href="#1304" id="1304">1304</a>
 <a href="#1305" id="1305">1305</a>
 <a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
+<a href="#1322" id="1322">1322</a>
+<a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
+<a href="#1326" id="1326">1326</a>
+<a href="#1327" id="1327">1327</a>
+<a href="#1328" id="1328">1328</a>
+<a href="#1329" id="1329">1329</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1942,17 +1965,40 @@
         <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) <span class="kw">in
             </span>zipped_iterator
         {
-            res.push(OperationInfo {
-                id,
-                in_pool,
-                is_operation_final,
-                thread: operation
-                    .content_creator_address
-                    .get_thread(api_cfg.thread_count),
-                operation,
-                in_blocks: in_blocks.into_iter().collect(),
-                op_exec_status,
-            });
+            <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+            </span>{
+                <span class="kw">let </span><span class="kw-2">mut </span>transfer = <span class="prelude-val">None</span>;
+                <span class="kw">if </span>is_operation_final.is_none() || op_exec_status.is_none() {
+                    transfer = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_transfer_for_op(<span class="kw-2">&amp;</span>id);
+                }
+                <span class="kw">let </span>is_operation_final = is_operation_final.or(<span class="prelude-val">Some</span>(transfer.is_some()));
+                <span class="kw">let </span>op_exec_status = op_exec_status.or(transfer.map(|t| t.succeed));
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
+            <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+            </span>{
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
         }
 
         <span class="comment">// return values in the right order

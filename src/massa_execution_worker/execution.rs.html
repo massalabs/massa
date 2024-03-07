@@ -2145,7 +2145,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span>massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span>massa_models::config::MAX_OPERATIONS_PER_BLOCK;
+</span><span class="kw">use </span>massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK};
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span>massa_models::prehash::PreHashMap;
 
@@ -2289,7 +2289,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
             </span>trace_history: Arc::new(RwLock::new(TraceHistory::new(
                 config.max_execution_traces_slot_limit <span class="kw">as </span>u32,
-                MAX_OPERATIONS_PER_BLOCK,
+                (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) <span class="kw">as </span>u32,
             ))),
             config,
         }
