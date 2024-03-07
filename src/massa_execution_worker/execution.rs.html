@@ -2090,6 +2090,10 @@
 <a href="#2090" id="2090">2090</a>
 <a href="#2091" id="2091">2091</a>
 <a href="#2092" id="2092">2092</a>
+<a href="#2093" id="2093">2093</a>
+<a href="#2094" id="2094">2094</a>
+<a href="#2095" id="2095">2095</a>
+<a href="#2096" id="2096">2096</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2116,6 +2120,7 @@
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -2289,7 +2294,10 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
             </span>trace_history: Arc::new(RwLock::new(TraceHistory::new(
                 config.max_execution_traces_slot_limit <span class="kw">as </span>u32,
-                (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) <span class="kw">as </span>u32,
+                std::cmp::min(
+                    MAX_OPERATIONS_PER_BLOCK,
+                    (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) <span class="kw">as </span>u32,
+                ),
             ))),
             config,
         }
