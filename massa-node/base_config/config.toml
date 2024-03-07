@@ -217,8 +217,8 @@
     broadcast_slot_execution_output_channel_capacity = 5000
     # slot execution traces channel capacity
     broadcast_slot_execution_traces_channel_capacity = 5000
-    # Max execution traces (group by block id) to keep in cache
-    execution_traces_limit = 5000
+    # Max slots execution traces to keep in cache
+    execution_traces_limit = 320
 
 [ledger]
     # path to the initial ledger
@@ -238,9 +238,9 @@
     # max number of blocks waiting for dependencies
     max_dependency_blocks = 2048
     # number of final periods that must be kept without operations (increase improve bootstrap process, high values will increase RAM usage.)
-    force_keep_final_periods_without_ops = 32
+    force_keep_final_periods_without_ops = 113
     # number of final periods that must be kept with operations (increase to more resilience to short network disconnections, high values will increase RAM usage.)
-    force_keep_final_periods = 5
+    force_keep_final_periods = 112
     # useless blocks are pruned every block_db_prune_interval ms
     block_db_prune_interval = 5000
     # considered timespan for stats info

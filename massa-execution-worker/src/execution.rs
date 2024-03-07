@@ -53,7 +53,7 @@ use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
 #[cfg(feature = "execution-trace")]
-use massa_models::config::MAX_OPERATIONS_PER_BLOCK;
+use massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK};
 #[cfg(feature = "execution-trace")]
 use massa_models::prehash::PreHashMap;
 
@@ -197,7 +197,7 @@ impl ExecutionState {
             #[cfg(feature = "execution-trace")]
             trace_history: Arc::new(RwLock::new(TraceHistory::new(
                 config.max_execution_traces_slot_limit as u32,
-                MAX_OPERATIONS_PER_BLOCK,
+                (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) as u32,
             ))),
             config,
         }

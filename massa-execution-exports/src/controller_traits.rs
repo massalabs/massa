@@ -127,6 +127,10 @@ pub trait ExecutionController: Send + Sync {
     /// Get the all transfers of MAS for a given slot
     fn get_transfers_for_slot(&self, slot: Slot) -> Option<Vec<Transfer>>;
 
+    #[cfg(feature = "execution-trace")]
+    /// Get the transfer of MAS for a given operation id
+    fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer>;
+
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.
     fn clone_box(&self) -> Box<dyn ExecutionController>;

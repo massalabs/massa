@@ -496,6 +496,15 @@ impl ExecutionController for ExecutionControllerImpl {
             .fetch_transfers_for_slot(&slot)
     }
 
+    #[cfg(feature = "execution-trace")]
+    fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_transfer_for_op(op_id)
+    }
+
     /// Returns a boxed clone of self.
     /// Allows cloning `Box<dyn ExecutionController>`,
     /// see `massa-execution-exports/controller_traits.rs`
