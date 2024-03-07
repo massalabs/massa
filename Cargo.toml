@@ -148,7 +148,7 @@ jsonrpsee-http-client = "0.20"
 jsonrpsee-ws-client = "0.20"
 lazy_static = "1.4"
 libsecp256k1 = "=0.7"
-mio = "0.8"
+mio = "0.8.11"
 mockall = "0.11"
 mockall_wrap = { git = "https://github.com/AurelienFT/mockall-wrap", rev = "18f88253a000df96cf407dfe4b9158c69c0aeb96" }
 more-asserts = "0.3"
