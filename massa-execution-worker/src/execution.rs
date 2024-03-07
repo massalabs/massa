@@ -54,7 +54,7 @@ use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
 #[cfg(feature = "execution-trace")]
-use massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK};
+use massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK};
 #[cfg(feature = "execution-trace")]
 use massa_models::prehash::PreHashMap;
 
