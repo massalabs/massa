@@ -24,6 +24,7 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -197,7 +198,10 @@ impl ExecutionState {
             #[cfg(feature = "execution-trace")]
             trace_history: Arc::new(RwLock::new(TraceHistory::new(
                 config.max_execution_traces_slot_limit as u32,
-                (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) as u32,
+                std::cmp::min(
+                    MAX_OPERATIONS_PER_BLOCK,
+                    (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) as u32,
+                ),
             ))),
             config,
         }
