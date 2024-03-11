@@ -1327,6 +1327,9 @@
 <a href="#1327" id="1327">1327</a>
 <a href="#1328" id="1328">1328</a>
 <a href="#1329" id="1329">1329</a>
+<a href="#1330" id="1330">1330</a>
+<a href="#1331" id="1331">1331</a>
+<a href="#1332" id="1332">1332</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1487,6 +1490,7 @@
                                 from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
                                 to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
+                                effective_amount_received: Amount::from_raw(t_amount),
                                 context: TransferContext::ASC(i <span class="kw">as </span>u64),
                                 succeed: <span class="bool-val">true</span>,
                                 fee: Amount::from_raw(<span class="number">0</span>),
@@ -1507,6 +1511,7 @@
                                 from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
                                 to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
                                 amount: Amount::from_raw(t_amount),
+                                effective_amount_received: Amount::from_raw(t_amount),
                                 context: TransferContext::Operation(op_id),
                                 succeed: <span class="bool-val">true</span>,
                                 fee: Amount::from_raw(<span class="number">0</span>),
@@ -1526,6 +1531,7 @@
                     from: t.from,
                     to: t.to,
                     amount: t.amount,
+                    effective_amount_received: t.effective_received_amount,
                     context: TransferContext::Operation(t.op_id),
                     succeed: t.succeed,
                     fee: t.fee,

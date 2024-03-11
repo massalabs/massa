@@ -119,6 +119,8 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_final_state::StateChanges;
@@ -231,6 +233,8 @@
     </span><span class="kw">pub </span>to: Address,
     <span class="doccomment">/// The amount of the transfer
     </span><span class="kw">pub </span>amount: Amount,
+    <span class="doccomment">/// The effective amount received by the receiver
+    </span><span class="kw">pub </span>effective_amount_received: Amount,
     <span class="doccomment">/// If the transfer succeed or not
     </span><span class="kw">pub </span>succeed: bool,
     <span class="doccomment">/// Fee
