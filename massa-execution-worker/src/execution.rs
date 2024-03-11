@@ -1270,10 +1270,33 @@ impl ExecutionState {
                                     recipient_address,
                                     amount,
                                 } => {
+                                    let receiver_balance = {
+                                        let context = context_guard!(self);
+                                        context.get_balance(recipient_address).unwrap_or_default()
+                                    };
+                                    let mut effective_received_amount = *amount;
+                                    if receiver_balance
+                                        == amount
+                                            .checked_sub(
+                                                self.config
+                                                    .storage_costs_constants
+                                                    .ledger_entry_base_cost,
+                                            )
+                                            .unwrap_or_default()
+                                    {
+                                        effective_received_amount = amount
+                                            .checked_sub(
+                                                self.config
+                                                    .storage_costs_constants
+                                                    .ledger_entry_base_cost,
+                                            )
+                                            .unwrap_or_default();
+                                    }
                                     transfers.push(Transfer {
                                         from: operation.content_creator_address,
                                         to: *recipient_address,
                                         amount: *amount,
+                                        effective_received_amount,
                                         op_id: operation.id,
                                         succeed: _op_return.1,
                                         fee: operation.content.fee,
@@ -1286,6 +1309,7 @@ impl ExecutionState {
                                         from: operation.content_creator_address,
                                         to: *target_addr,
                                         amount: *coins,
+                                        effective_received_amount: *coins,
                                         op_id: operation.id,
                                         succeed: _op_return.1,
                                         fee: operation.content.fee,

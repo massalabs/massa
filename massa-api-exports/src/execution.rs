@@ -110,6 +110,8 @@ pub struct Transfer {
     pub to: Address,
     /// The amount of the transfer
     pub amount: Amount,
+    /// The effective amount received by the receiver
+    pub effective_amount_received: Amount,
     /// If the transfer succeed or not
     pub succeed: bool,
     /// Fee

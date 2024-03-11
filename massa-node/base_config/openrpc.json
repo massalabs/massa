@@ -3151,6 +3151,7 @@
                     "from",
                     "to",
                     "amount",
+                    "effective_amount_received",
                     "context",
                     "succeed",
                     "fee",
@@ -3168,6 +3169,10 @@
                     },
                     "amount": {
                         "description": "Amount transferred",
+                        "type": "integer"
+                    },
+                    "effective_amount_received": {
+                        "description": "Amount received by the receiver",
                         "type": "integer"
                     },
                     "context": {
