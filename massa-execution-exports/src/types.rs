@@ -373,6 +373,8 @@ pub struct Transfer {
     pub to: Address,
     /// Amount
     pub amount: Amount,
+    /// Effective received amount
+    pub effective_received_amount: Amount,
     /// operation id
     pub op_id: OperationId,
     /// success or not
