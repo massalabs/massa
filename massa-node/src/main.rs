@@ -549,6 +549,7 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        minimal_fees: SETTINGS.pool.minimal_fees,
         last_start_period: final_state.read().get_last_start_period(),
     };
 
