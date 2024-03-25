@@ -494,6 +494,13 @@ impl OperationPool {
                 continue;
             }
 
+            // if minimum fees are required, check that the fee is enough
+            if let Some(minimal_fees) = self.config.minimal_fees {
+                if op_info.fee.checked_sub(minimal_fees).is_none() {
+                    continue;
+                }
+            }
+
             // here we consider the operation as accepted
             op_ids.push(op_info.id);
 
