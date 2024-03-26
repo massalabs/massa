@@ -520,6 +520,7 @@ impl MassaRpcServer for API<Public> {
             config,
             current_cycle,
             chain_id: self.0.api_settings.chain_id,
+            minimal_fees: self.0.api_settings.minimal_fees,
         })
     }
 

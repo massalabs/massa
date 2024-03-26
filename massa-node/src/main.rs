@@ -838,6 +838,7 @@ async fn launch(
         last_start_period: final_state.read().get_last_start_period(),
         chain_id: *CHAINID,
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
+        minimal_fees: SETTINGS.pool.minimal_fees,
     };
 
     // spawn Massa API
