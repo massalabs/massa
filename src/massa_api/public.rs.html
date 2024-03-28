@@ -1330,6 +1330,17 @@
 <a href="#1330" id="1330">1330</a>
 <a href="#1331" id="1331">1331</a>
 <a href="#1332" id="1332">1332</a>
+<a href="#1333" id="1333">1333</a>
+<a href="#1334" id="1334">1334</a>
+<a href="#1335" id="1335">1335</a>
+<a href="#1336" id="1336">1336</a>
+<a href="#1337" id="1337">1337</a>
+<a href="#1338" id="1338">1338</a>
+<a href="#1339" id="1339">1339</a>
+<a href="#1340" id="1340">1340</a>
+<a href="#1341" id="1341">1341</a>
+<a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1566,6 +1577,11 @@
             fee,
         } <span class="kw">in </span>reqs
         {
+            <span class="kw">if </span>address.is_none() &amp;&amp; fee.is_some() {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(
+                    ApiError::BadRequest(<span class="string">&quot;fee argument is set without address&quot;</span>.into()).into(),
+                );
+            }
             <span class="kw">let </span>address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = address {
                 addr
             } <span class="kw">else </span>{
@@ -1659,6 +1675,12 @@
             fee,
         } <span class="kw">in </span>reqs
         {
+            <span class="kw">if </span>caller_address.is_none() &amp;&amp; (fee.is_some() || coins.is_some()) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(
+                    <span class="string">&quot;fee or coins argument is set without caller_address&quot;</span>.into(),
+                )
+                .into());
+            }
             <span class="kw">let </span>caller_address = <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = caller_address {
                 addr
             } <span class="kw">else </span>{
