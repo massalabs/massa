@@ -933,6 +933,12 @@ pub(crate) fn get_status(
     let empty_request = ExecutionQueryRequest { requests: vec![] };
     let state = grpc.execution_controller.query_state(empty_request);
 
+    let minimal_fees = if let Some(amount) = grpc.grpc_config.minimal_fees {
+        Some(amount.into())
+    } else {
+        None
+    };
+
     let status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
@@ -945,6 +951,7 @@ pub(crate) fn get_status(
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
+        minimal_fees,
     };
 
     Ok(grpc_api::GetStatusResponse {

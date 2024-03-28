@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use massa_models::amount::Amount;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use serde::Deserialize;
@@ -133,6 +134,8 @@ pub struct GrpcConfig {
     pub client_private_key_path: PathBuf,
     /// chain id
     pub chain_id: u64,
+    /// minimal fees
+    pub minimal_fees: Option<Amount>,
 }
 
 /// gRPC API configuration.
