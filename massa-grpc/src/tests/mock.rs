@@ -109,6 +109,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         client_private_key_path: PathBuf::default(),
         max_query_items_per_request: 50,
         chain_id: *CHAINID,
+        minimal_fees: None,
     };
 
     let mip_stats_config = MipStatsConfig {
