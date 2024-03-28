@@ -1360,16 +1360,26 @@ async fn send_operation(
     addr: Address,
     json: bool,
 ) -> Result<Box<dyn Output>> {
-    let cfg = match client.public.get_status().await {
+    let status = match client.public.get_status().await {
         Ok(node_status) => node_status,
         Err(e) => rpc_error!(e),
-    }
-    .config;
+    };
 
-    let slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)?
-        .unwrap_or_else(|| Slot::new(0, 0));
-    let mut expire_period = slot.period + cfg.operation_validity_periods;
-    if slot.thread >= addr.get_thread(cfg.thread_count) {
+    // check if the fee is higher than the minimal fees of the node
+    if let Some(minimal_fees) = status.minimal_fees {
+        if fee.checked_sub(minimal_fees).is_none() {
+            bail!("fee is lower than the minimal fees, operation will be rejected");
+        }
+    }
+
+    let slot = get_current_latest_block_slot(
+        status.config.thread_count,
+        status.config.t0,
+        status.config.genesis_timestamp,
+    )?
+    .unwrap_or_else(|| Slot::new(0, 0));
+    let mut expire_period = slot.period + status.config.operation_validity_periods;
+    if slot.thread >= addr.get_thread(status.config.thread_count) {
         expire_period += 1;
     };
 

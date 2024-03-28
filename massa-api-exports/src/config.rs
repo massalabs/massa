@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::amount::Amount;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use std::net::SocketAddr;
@@ -81,4 +82,6 @@ pub struct APIConfig {
     pub chain_id: u64,
     /// Delta to compute upper bounds when fetching deferred credits
     pub deferred_credits_delta: MassaTime,
+    /// minimal fees to include an operation in a block
+    pub minimal_fees: Option<Amount>,
 }
