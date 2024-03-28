@@ -450,6 +450,66 @@ async fn get_graph_interval() {
 }
 
 #[tokio::test]
+async fn send_operations_low_fee() {
+    let addr: SocketAddr = "[::]:5034".parse().unwrap();
+    let (mut api_public, mut config) = start_public_api(addr);
+
+    config.minimal_fees = Some(Amount::from_str("0.01").unwrap());
+    api_public.0.api_settings.minimal_fees = Some(Amount::from_str("0.01").unwrap());
+
+    let mut pool_ctrl = MockPoolController::new();
+    pool_ctrl.expect_clone_box().returning(|| {
+        let mut pool_ctrl = MockPoolController::new();
+        pool_ctrl.expect_add_operations().returning(|_a| ());
+        Box::new(pool_ctrl)
+    });
+
+    let mut protocol_ctrl = MockProtocolController::new();
+    protocol_ctrl.expect_clone_box().returning(|| {
+        let mut protocol_ctrl = MockProtocolController::new();
+        protocol_ctrl
+            .expect_propagate_operations()
+            .returning(|_a| Ok(()));
+        Box::new(protocol_ctrl)
+    });
+
+    api_public.0.protocol_controller = Box::new(protocol_ctrl);
+    api_public.0.pool_command_sender = Box::new(pool_ctrl);
+
+    let api_public_handle = api_public
+        .serve(&addr, &config)
+        .await
+        .expect("failed to start PUBLIC API");
+
+    let client = HttpClientBuilder::default()
+        .build(format!(
+            "http://localhost:{}",
+            addr.to_string().split(':').last().unwrap()
+        ))
+        .unwrap();
+    let keypair = KeyPair::generate(0).unwrap();
+
+    // send transaction
+    let operation = create_operation_with_expire_period(&keypair, 500000);
+
+    let input: OperationInput = OperationInput {
+        creator_public_key: keypair.get_public_key(),
+        signature: operation.signature,
+        serialized_content: operation.serialized_data,
+    };
+
+    let response: Vec<OperationId> = client
+        .request("send_operations", rpc_params![vec![input]])
+        .await
+        .unwrap();
+
+    // op has low fee and should not be executed
+    assert_eq!(response.len(), 0);
+
+    api_public_handle.stop().await;
+}
+
+#[tokio::test]
 async fn send_operations() {
     let addr: SocketAddr = "[::]:5014".parse().unwrap();
     let (mut api_public, config) = start_public_api(addr);
