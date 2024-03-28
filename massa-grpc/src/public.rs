@@ -143,6 +143,17 @@ pub(crate) fn execute_read_only_call(
             .transpose()?,
     };
 
+    if let Some(minimal_fee) = grpc.grpc_config.minimal_fees {
+        if read_only_call
+            .fee
+            .map_or(true, |f| f.checked_sub(minimal_fee).is_none())
+        {
+            return Err(GrpcError::InvalidArgument(
+                "Not enough fee for this call".to_string(),
+            ));
+        }
+    }
+
     let output = grpc
         .execution_controller
         .execute_readonly_request(read_only_call)?;
