@@ -102,7 +102,7 @@ fn download_src() -> Result<String, Error> {
     archive.unpack(extract_folder.clone())?;
 
     Ok(format!(
-        "{}/massa_unit_tests/*.wasm",
+        "{}/build/massa/*.wasm",
         extract_folder.clone()
     ))
 }

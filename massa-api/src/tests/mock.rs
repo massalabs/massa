@@ -7,6 +7,7 @@ use std::{collections::HashMap, net::SocketAddr};
 use massa_api_exports::config::APIConfig;
 use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
 use massa_execution_exports::{GasCosts, MockExecutionController};
+use massa_models::config::CHAINID;
 use massa_models::{
     config::{
         BASE_OPERATION_GAS_COST, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP, MAX_DATASTORE_VALUE_LENGTH,
@@ -65,6 +66,8 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
+        chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -138,6 +141,8 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         t0: T0,
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
+        chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -249,6 +254,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
             try_connection_timer_same_peer: MassaTime::from_millis(1000),
             test_oldest_peer_cooldown: MassaTime::from_millis(720000),
             rate_limit: 1024 * 1024 * 2,
+            chain_id: *CHAINID,
         },
         *VERSION,
         NodeId::new(keypair.get_public_key()),

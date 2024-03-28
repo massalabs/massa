@@ -20,13 +20,6 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
-/// Downtime simulation start timestamp
-pub const DOWNTIME_START_TIMESTAMP: MassaTime = MassaTime::from_millis(1686312000000); // Friday 9 June 2023 12:00:00 UTC
-/// Downtime simulation end timestamp
-pub const DOWNTIME_END_TIMESTAMP: MassaTime = MassaTime::from_millis(1686319200000); // Friday 9 June 2023 14:00:00 UTC
-/// Downtime simulation end timestamp for bootstrap servers
-pub const DOWNTIME_END_TIMESTAMP_BOOTSTRAP: MassaTime = MassaTime::from_millis(1686312060000); // Friday 9 June 2023 12:01:00 UTC
-
 /// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
@@ -58,7 +51,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1702639800000) // Friday, December 15, 2023 11:30:00 UTC
+        MassaTime::from_millis(1705312800000) // Monday, January 15, 2024 10:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -77,12 +70,35 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.27.6"
+            "SAND.2.1"
         } else {
-            "SECU.27.6"
+            "MAIN.2.1"
         }
         .parse()
         .unwrap()
+    };
+    /// node chain id (to avoid replay attacks)
+    pub static ref CHAINID: u64 = {
+        // MASM (MainNet):           77658377
+        // MASS (SecureNet):         77658383
+        // MASB (BuildNet):          77658366
+        // MASL (Labnet):            77658376
+        // SANDBOX (Sandbox):        77
+        match VERSION.to_string() {
+            // Sandbox
+            s if s.starts_with("SAND") => 77,
+            // BuildNet
+            s if s.starts_with("DEVN") => 77658366,
+            // SecureNet
+            s if s.starts_with("SECU") => 77658383,
+            // MainNet
+            s if s.starts_with("MAIN") => 77658377,
+            // LabNet
+            s if s.starts_with("LABN") => 77658376,
+            _ => {
+                panic!("Unhandled VERSION ({}), cannot compute chain id", *VERSION);
+            }
+        }
     };
 }
 

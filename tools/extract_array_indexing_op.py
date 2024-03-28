@@ -1,6 +1,7 @@
 import sys
 import re
 
+
 def index_to_coordinates(s, index):
     """Returns (line_number, col) of `index` in `s`."""
     if not len(s):
@@ -13,15 +14,15 @@ to_exclude = [
     "[test]",  # unit test
     "[ignore]",
     "[serial]",
-    "[inline]", # optim :-D
+    "[inline]",  # optim :-D
     "[must_use]",
-    "[dependencies]", # toml found in rust code ...
+    "[dependencies]",  # toml found in rust code ...
     "[dev-dependencies]",
-    "[non_exhaustive]", # Non non_exhaustive enum definition
-    "[from]", # thiserror syntax
-    "[u8]", # u8 array type
-    "[..]", # index all
-    "[serde_as]", # Serde
+    "[non_exhaustive]",  # Non non_exhaustive enum definition
+    "[from]",  # thiserror syntax
+    "[u8]",  # u8 array type
+    "[..]",  # index all
+    "[serde_as]",  # Serde
     "[tokio::test]",  # async unit test
     "[async_trait]",  # async trait crate
     "[async_trait::async_trait]",  # async trait crate
@@ -42,7 +43,7 @@ if __name__ == "__main__":
     match_count = 0
     with open(filepath) as fp:
         file_content = fp.read()
-        for m in re.finditer(r"\[([\w:\+\.-]+)\]", file_content, flags = re.IGNORECASE | re.MULTILINE):
+        for m in re.finditer(r"\[([\w\(\)\s:\+\.-]+)\]", file_content, flags = re.IGNORECASE | re.MULTILINE):
 
             if m.group(0) in to_exclude:
                 continue

@@ -1,10 +1,11 @@
 [package]
 name = "massa_api"
-version = "0.27.6"
+version = "2.1.0"
 edition = "2021"
 
 [features]
 test-exports = ["dep:massa_channel", "dep:massa_grpc", "massa_grpc/test-exports"]
+execution-trace = ["massa_execution_exports/execution-trace"]
 
 [dependencies]
 massa_api_exports = { workspace = true }

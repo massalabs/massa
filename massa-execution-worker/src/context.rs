@@ -87,6 +87,10 @@ pub struct ExecutionContextSnapshot {
 
     /// Unsafe random state
     pub unsafe_rng: Xoshiro256PlusPlus,
+
+    /// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    pub gas_remaining_before_subexecution: Option<u64>,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -171,6 +175,10 @@ pub struct ExecutionContext {
 
     /// Address factory
     pub address_factory: AddressFactory,
+
+    /// The gas remaining before the last subexecution.
+    /// so *excluding* the gas used by the last sc call.
+    pub gas_remaining_before_subexecution: Option<u64>,
 }
 
 impl ExecutionContext {
@@ -180,7 +188,8 @@ impl ExecutionContext {
     /// (see read-only and `active_slot` methods).
     ///
     /// # arguments
-    /// * `final_state`: thread-safe access to the final state. Note that this will be used only for reading, never for writing
+    /// * `final_state`: thread-safe access to the final state.
+    /// Note that this will be used only for reading, never for writing
     ///
     /// # returns
     /// A new (empty) `ExecutionContext` instance
@@ -233,6 +242,7 @@ impl ExecutionContext {
             config,
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
+            gas_remaining_before_subexecution: None,
         }
     }
 
@@ -253,6 +263,7 @@ impl ExecutionContext {
             stack: self.stack.clone(),
             event_count: self.events.0.len(),
             unsafe_rng: self.unsafe_rng.clone(),
+            gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
         }
     }
 
@@ -280,6 +291,7 @@ impl ExecutionContext {
         self.created_message_index = snapshot.created_message_index;
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
+        self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
@@ -899,6 +911,8 @@ impl ExecutionContext {
             block_info,
             state_changes,
             events: std::mem::take(&mut self.events),
+            #[cfg(feature = "execution-trace")]
+            slot_trace: None,
         }
     }
 
@@ -936,7 +950,7 @@ impl ExecutionContext {
     }
 
     /// Creates a new event but does not emit it.
-    /// Note that this does not increments the context event counter.
+    /// Note that this does not increment the context event counter.
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
@@ -1016,17 +1030,19 @@ impl ExecutionContext {
     }
 
     /// Get future deferred credits of an address
+    /// With optionally a limit slot (excluded)
     pub fn get_address_future_deferred_credits(
         &self,
         address: &Address,
         thread_count: u8,
+        max_slot: std::ops::Bound<Slot>,
     ) -> BTreeMap<Slot, Amount> {
         let min_slot = self
             .slot
             .get_next_slot(thread_count)
             .expect("unexpected slot overflow in context.get_addresses_deferred_credits");
         self.speculative_roll_state
-            .get_address_deferred_credits(address, min_slot)
+            .get_address_deferred_credits(address, (std::ops::Bound::Included(min_slot), max_slot))
     }
 
     /// in case of

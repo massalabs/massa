@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "0.27.6"
+version = "2.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -39,6 +39,10 @@ benchmarking = [
     "tempfile"
 ]
 metrics = []
+execution-trace = [
+    "schnellru",
+    "massa_execution_exports/execution-trace",
+]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -78,6 +82,7 @@ massa_db_worker = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
+schnellru = { workspace = true, optional = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }
@@ -91,7 +96,7 @@ massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_db_worker = { workspace = true }
 tempfile = { workspace = true }
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }

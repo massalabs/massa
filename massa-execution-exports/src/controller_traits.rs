@@ -5,6 +5,7 @@
 use crate::types::{
     ExecutionBlockMetadata, ExecutionQueryRequest, ExecutionQueryResponse, ReadOnlyExecutionRequest,
 };
+
 use crate::ExecutionError;
 use crate::{ExecutionAddressInfo, ReadOnlyExecutionOutput};
 use massa_models::address::Address;
@@ -19,6 +20,9 @@ use massa_models::slot::Slot;
 use massa_models::stats::ExecutionStats;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+
+#[cfg(feature = "execution-trace")]
+use crate::types::{AbiTrace, SlotAbiCallStack, Transfer};
 
 #[cfg_attr(feature = "test-exports", mockall::automock)]
 /// interface that communicates with the execution worker thread
@@ -102,10 +106,30 @@ pub trait ExecutionController: Send + Sync {
     ) -> (bool, bool);
 
     /// Gets information about a batch of addresses
-    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo>;
+    fn get_addresses_infos(
+        &self,
+        addresses: &[Address],
+        deferred_credits_max_slot: std::ops::Bound<Slot>,
+    ) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the abi call stack for a given operation id
+    fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>>;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the abi call stack for a given slot
+    fn get_slot_abi_call_stack(&self, slot: Slot) -> Option<SlotAbiCallStack>;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the all transfers of MAS for a given slot
+    fn get_transfers_for_slot(&self, slot: Slot) -> Option<Vec<Transfer>>;
+
+    #[cfg(feature = "execution-trace")]
+    /// Get the transfer of MAS for a given operation id
+    fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer>;
 
     /// Returns a boxed clone of self.
     /// Useful to allow cloning `Box<dyn ExecutionController>`.

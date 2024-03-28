@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
+use massa_models::config::CHAINID;
 use massa_models::operation::{OperationPrefixId, SecureShareOperation};
 use massa_models::{block_id::BlockId, prehash::PreHashSet, slot::Slot};
 use massa_protocol_exports::PeerId;
@@ -187,8 +188,8 @@ fn test_protocol_sends_valid_operations_it_receives_to_pool() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
 
@@ -223,9 +224,9 @@ fn test_protocol_does_not_send_invalid_operations_it_receives_to_pool() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let mut operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let mut operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     operation_1.content_creator_pub_key = KeyPair::generate(0).unwrap().get_public_key();
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
 
@@ -264,8 +265,8 @@ fn test_protocol_propagates_operations_to_active_nodes() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -310,8 +311,8 @@ fn test_protocol_batches_propagation_of_operations_received_over_the_network_and
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -360,7 +361,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let op_thread = operation_1
         .content_creator_address
         .get_thread(protocol_config.thread_count);
@@ -371,7 +372,7 @@ fn test_protocol_propagates_operations_only_to_nodes_that_dont_know_about_it_ind
         vec![],
         vec![],
     );
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -479,8 +480,8 @@ fn test_protocol_ask_operations_on_batch_received() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let op_prefixes = vec![operation_1.id.into_prefix(), operation_2.id.into_prefix()];
@@ -515,8 +516,8 @@ fn test_protocol_re_ask_operations_to_another_node_on_batch_received_after_delay
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -561,8 +562,8 @@ fn test_protocol_does_not_re_ask_operations_to_another_node_if_received() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();
@@ -618,8 +619,8 @@ fn test_protocol_on_ask_operations() {
         ..Default::default()
     };
     let block_creator = KeyPair::generate(0).unwrap();
-    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1);
-    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1);
+    let operation_1 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
+    let operation_2 = ProtocolTestUniverse::create_operation(&block_creator, 1, *CHAINID);
     let node_a_keypair = KeyPair::generate(0).unwrap();
     let node_a_peer_id = PeerId::from_public_key(node_a_keypair.get_public_key());
     let node_b_keypair = KeyPair::generate(0).unwrap();

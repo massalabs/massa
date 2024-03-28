@@ -35,6 +35,10 @@ use super::{
     OperationMessageSerializer,
 };
 
+// protocol-operation-handler-retrieval
+const THREAD_NAME: &str = "poh-retrieval";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 /// Structure containing a Batch of `operation_ids` we would like to ask
 /// to a `peer_id` now or later. Mainly used in protocol and translated into
 /// simple combination of a `peer_id` and `operations_prefix_ids`
@@ -75,6 +79,7 @@ impl RetrievalThread {
                 max_op_datastore_entry_count: self.config.max_op_datastore_entry_count,
                 max_op_datastore_key_length: self.config.max_op_datastore_key_length,
                 max_op_datastore_value_length: self.config.max_op_datastore_value_length,
+                chain_id: self.config.chain_id,
             });
         let tick_ask_operations = tick(self.config.operation_batch_proc_period.to_duration());
 
@@ -477,7 +482,7 @@ pub fn start_retrieval_thread(
     massa_metrics: MassaMetrics,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
-        .name("protocol-operation-handler-retrieval".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 receiver,

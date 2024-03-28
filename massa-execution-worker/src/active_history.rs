@@ -30,7 +30,7 @@ pub enum SlotIndexPosition {
     Past,
     /// out of bounds in the future
     Future,
-    /// found in history at a the given index
+    /// found in history at a given index
     Found(usize),
     /// history is empty
     NoHistory,

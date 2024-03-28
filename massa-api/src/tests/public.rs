@@ -128,6 +128,8 @@ async fn get_status() {
     assert_eq!(response.network_stats.in_connection_count, 10);
     assert_eq!(response.network_stats.out_connection_count, 5);
     assert_eq!(response.config.thread_count, 32);
+    // Chain id == 77 for Node in sandbox mode otherwise it is always greater
+    assert!(response.chain_id > 77);
 
     api_public_handle.stop().await;
 }
@@ -760,7 +762,7 @@ async fn get_addresses() {
     let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionController::new();
-    exec_ctrl.expect_get_addresses_infos().returning(|a| {
+    exec_ctrl.expect_get_addresses_infos().returning(|a, _s| {
         a.iter()
             .map(|_addr| ExecutionAddressInfo {
                 candidate_balance: Amount::from_str("100000").unwrap(),

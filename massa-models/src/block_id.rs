@@ -275,6 +275,25 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_block_id() {
+        let expected_block_id =
+            BlockId::from_str("B12iL52kye2CraMXdkdKDxjZJXF9it6E4hz8KEj656QnhvwocvBX").unwrap();
+        let actual_block_id = BlockId::generate_from_hash(Hash::compute_from("blk".as_bytes()));
+
+        assert_eq!(actual_block_id, expected_block_id);
+    }
+
+    #[test]
+    fn test_block_id_errors() {
+        let actual_error = BlockId::from_str("SomeUnvalidBlockId")
+            .unwrap_err()
+            .to_string();
+        let expected_error = "block id parsing error".to_string();
+
+        assert_eq!(actual_error, expected_error);
+    }
+
+    #[test]
     fn test_block_id_serde() {
         let expected_block_id =
             BlockId::from_str("B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg").unwrap();

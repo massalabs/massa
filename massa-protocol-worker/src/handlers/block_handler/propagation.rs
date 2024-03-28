@@ -32,6 +32,10 @@ use std::thread::JoinHandle;
 use std::time::Instant;
 use tracing::{debug, info, warn};
 
+// protocol-block-handler-propagation
+const THREAD_NAME: &str = "pbh-propagation";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 #[derive(Debug)]
 struct BlockPropagationData {
     /// Time when propagation was initiated
@@ -222,7 +226,7 @@ pub fn start_propagation_thread(
     cache: SharedBlockCache,
 ) -> JoinHandle<()> {
     std::thread::Builder::new()
-        .name("protocol-block-handler-propagation".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let block_serializer = MessagesSerializer::new()
                 .with_block_message_serializer(BlockMessageSerializer::new());

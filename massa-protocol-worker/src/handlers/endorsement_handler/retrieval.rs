@@ -33,6 +33,10 @@ use super::{
     messages::{EndorsementMessageDeserializer, EndorsementMessageDeserializerArgs},
 };
 
+// protocol-endorsement-handler-retrieval
+const THREAD_NAME: &str = "peh-retrieval";
+static_assertions::const_assert!(THREAD_NAME.len() < 16);
+
 pub struct RetrievalThread {
     receiver: MassaReceiver<PeerMessageTuple>,
     receiver_ext: MassaReceiver<EndorsementHandlerRetrievalCommand>,
@@ -299,9 +303,10 @@ pub fn start_retrieval_thread(
             thread_count: config.thread_count,
             max_length_endorsements: config.max_endorsements_per_message,
             endorsement_count: config.endorsement_count,
+            chain_id: config.chain_id,
         });
     std::thread::Builder::new()
-        .name("protocol-endorsement-handler-retrieval".to_string())
+        .name(THREAD_NAME.to_string())
         .spawn(move || {
             let mut retrieval_thread = RetrievalThread {
                 receiver,

@@ -1,6 +1,6 @@
 [package]
 name = "massa_bootstrap"
-version = "0.27.6"
+version = "2.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -55,4 +55,4 @@ massa_executed_ops = {workspace = true}
 massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
 massa_consensus_exports = {workspace = true, "features" = ["test-exports"]}
 massa_db_worker = {workspace = true, "features" = ["test-exports"]}
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}

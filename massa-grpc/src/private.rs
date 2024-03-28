@@ -304,6 +304,7 @@ pub(crate) fn get_node_status(
         network_stats: Some(network_stats.into()),
         execution_stats: Some(execution_stats.into()),
         config: Some(config.into()),
+        chain_id: grpc.grpc_config.chain_id,
     };
 
     Ok(grpc_api::GetNodeStatusResponse {

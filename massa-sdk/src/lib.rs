@@ -21,12 +21,13 @@ use massa_api_exports::{
     block::{BlockInfo, BlockSummary},
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall},
+    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     TimeInterval,
 };
 use massa_models::secure_share::SecureShare;
+use massa_models::slot::Slot;
 use massa_models::{
     address::Address,
     block::FilledBlock,
@@ -75,6 +76,8 @@ pub struct Client {
     pub grpc_public: Option<PublicServiceClient<tonic::transport::Channel>>,
     /// grpc private client
     pub grpc_private: Option<PrivateServiceClient<tonic::transport::Channel>>,
+    /// Chain id
+    pub chain_id: u64,
 }
 
 impl Client {
@@ -85,6 +88,7 @@ impl Client {
         private_port: u16,
         grpc_public_port: u16,
         grpc_private_port: u16,
+        chain_id: u64,
         http_config: &HttpConfig,
     ) -> Result<Client, ClientError> {
         let public_socket_addr = SocketAddr::new(ip, public_port);
@@ -125,6 +129,7 @@ impl Client {
             private: RpcClient::from_url(&private_url, http_config).await,
             grpc_public: grpc_pub_client,
             grpc_private: grpc_priv_client,
+            chain_id,
         })
     }
 }
@@ -312,6 +317,14 @@ impl RpcClient {
     pub async fn get_status(&self) -> RpcResult<NodeStatus> {
         self.http_client
             .request("get_status", rpc_params![])
+            .await
+            .map_err(|e| to_error_obj(e.to_string()))
+    }
+
+    /// Returns the transfers for slots
+    pub async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        self.http_client
+            .request("get_slots_transfers", rpc_params![slots])
             .await
             .map_err(|e| to_error_obj(e.to_string()))
     }

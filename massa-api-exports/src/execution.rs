@@ -1,7 +1,10 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use massa_final_state::StateChanges;
-use massa_models::{address::Address, amount::Amount, output_event::SCOutputEvent, slot::Slot};
+use massa_models::{
+    address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
+    output_event::SCOutputEvent, slot::Slot,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
 
@@ -84,4 +87,37 @@ pub struct ReadOnlyCall {
     pub coins: Option<Amount>,
     /// fee
     pub fee: Option<Amount>,
+}
+
+/// Context of the transfer
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TransferContext {
+    #[serde(rename = "operation_id")]
+    /// Transfer made in an operation
+    Operation(OperationId),
+    #[serde(rename = "asc_index")]
+    /// Transfer made in an asynchronous call
+    ASC(u64),
+}
+
+/// Structure defining a transfer
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Transfer {
+    /// The sender of the transfer
+    pub from: Address,
+    /// The receiver of the transfer
+    pub to: Address,
+    /// The amount of the transfer
+    pub amount: Amount,
+    /// The effective amount received by the receiver
+    pub effective_amount_received: Amount,
+    /// If the transfer succeed or not
+    pub succeed: bool,
+    /// Fee
+    pub fee: Amount,
+    /// Block ID
+    pub block_id: BlockId,
+    /// Context
+    pub context: TransferContext,
 }

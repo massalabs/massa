@@ -19,18 +19,25 @@ use std::collections::hash_map::Entry;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::str::FromStr;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 mod error;
 
+const WALLET_VERSION: u64 = 1;
+
 /// Contains the keypairs created in the wallet.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Zeroize, ZeroizeOnDrop)]
 pub struct Wallet {
     /// Keypairs and addresses
+    #[zeroize(skip)]
     pub keys: PreHashMap<Address, KeyPair>,
     /// Path to the file containing the keypairs (encrypted)
+    #[zeroize(skip)]
     wallet_path: PathBuf,
     /// Password
     password: String,
+    /// chain id
+    chain_id: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -49,7 +56,7 @@ struct WalletFileFormat {
 //TODO: Use exports and mock it
 impl Wallet {
     /// Generates a new wallet initialized with the provided file content
-    pub fn new(path: PathBuf, password: String) -> Result<Wallet, WalletError> {
+    pub fn new(path: PathBuf, password: String, chain_id: u64) -> Result<Wallet, WalletError> {
         if path.is_dir() {
             let mut keys = PreHashMap::default();
             for entry in std::fs::read_dir(&path)? {
@@ -57,8 +64,19 @@ impl Wallet {
                 let path = entry.path();
                 if path.is_file() {
                     let content = &std::fs::read(&path)?[..];
-                    let wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
-                    let secret_key = decrypt(
+                    let mut wallet = serde_yaml::from_slice::<WalletFileFormat>(content)?;
+                    if wallet.version == 0 {
+                        // fix bug in handling version 0
+                        wallet.version = 1;
+                    }
+                    // check version
+                    if wallet.version != WALLET_VERSION {
+                        return Err(WalletError::VersionError(format!(
+                            "Unsupported wallet version {}",
+                            wallet.version
+                        )));
+                    }
+                    let mut secret_key = decrypt(
                         &password,
                         CipherData {
                             salt: wallet.salt,
@@ -66,6 +84,23 @@ impl Wallet {
                             encrypted_bytes: wallet.ciphered_data,
                         },
                     )?;
+                    // check secret key length
+                    match secret_key.len() {
+                        33 => {
+                            // standard compliant: version(1B) + privkey(32B)
+                        },
+                        65 => {
+                            // version(1B) + privkey(32B) + pubkey(32B)
+                            // truncate to standard compliant: version(1B) + privkey(32B)
+                            secret_key.truncate(33);
+                        },
+                        32 | 64 if wallet.version == 0 => {
+                            return Err(WalletError::VersionError("Your wallet is from an old version that does not follow the standard. Please create a new wallet.".to_string()))
+                        }
+                        _ => {
+                            return Err(WalletError::VersionError("Invalid wallet/version matching: your wallet does not follow its version's secret key encoding format.".to_string()))
+                        }
+                    }
                     keys.insert(
                         Address::from_str(&wallet.address)?,
                         KeyPair::from_bytes(&secret_key)?,
@@ -76,12 +111,14 @@ impl Wallet {
                 keys,
                 wallet_path: path,
                 password,
+                chain_id,
             })
         } else {
             let wallet = Wallet {
                 keys: PreHashMap::default(),
                 wallet_path: path,
                 password,
+                chain_id,
             };
             wallet.save()?;
             Ok(wallet)
@@ -170,7 +207,7 @@ impl Wallet {
         for (addr, keypair) in &self.keys {
             let encrypted_secret = encrypt(&self.password, &keypair.to_bytes())?;
             let file_formatted = WalletFileFormat {
-                version: keypair.get_version(),
+                version: WALLET_VERSION,
                 nickname: addr.to_string(),
                 address: addr.to_string(),
                 salt: encrypted_secret.salt,
@@ -207,7 +244,13 @@ impl Wallet {
         let sender_keypair = self
             .find_associated_keypair(&address)
             .ok_or_else(|| WalletError::MissingKeyError(address))?;
-        Ok(Operation::new_verifiable(content, OperationSerializer::new(), sender_keypair).unwrap())
+        Ok(Operation::new_verifiable(
+            content,
+            OperationSerializer::new(),
+            sender_keypair,
+            self.chain_id,
+        )
+        .unwrap())
     }
 }
 

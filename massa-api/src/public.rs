@@ -12,7 +12,9 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult},
+    execution::{
+        ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -119,6 +121,100 @@ impl MassaRpcServer for API<Public> {
 
     async fn add_staking_secret_keys(&self, _: Vec<String>) -> RpcResult<()> {
         crate::wrong_api::<()>()
+    }
+
+    #[cfg(feature = "execution-trace")]
+    async fn get_slots_transfers(&self, slots: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        use massa_api_exports::execution::TransferContext;
+        use std::str::FromStr;
+
+        let mut res: Vec<Vec<Transfer>> = Vec::with_capacity(slots.len());
+        for slot in slots {
+            let Some(block_id) = self
+                .0
+                .consensus_controller
+                .get_blockclique_block_at_slot(slot)
+            else {
+                continue;
+            };
+            let mut transfers = Vec::new();
+            let abi_calls = self
+                .0
+                .execution_controller
+                .get_slot_abi_call_stack(slot.clone().into());
+            if let Some(abi_calls) = abi_calls {
+                // flatten & filter transfer trace in asc_call_stacks
+
+                let abi_transfer_1 = "assembly_script_transfer_coins".to_string();
+                let abi_transfer_2 = "assembly_script_transfer_coins_for".to_string();
+                let abi_transfer_3 = "abi_transfer_coins".to_string();
+                let transfer_abi_names = vec![abi_transfer_1, abi_transfer_2, abi_transfer_3];
+                for (i, asc_call_stack) in abi_calls.asc_call_stacks.iter().enumerate() {
+                    for abi_trace in asc_call_stack {
+                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                        for transfer in only_transfer {
+                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                            transfers.push(Transfer {
+                                from: Address::from_str(&t_from).unwrap(),
+                                to: Address::from_str(&t_to).unwrap(),
+                                amount: Amount::from_raw(t_amount),
+                                effective_amount_received: Amount::from_raw(t_amount),
+                                context: TransferContext::ASC(i as u64),
+                                succeed: true,
+                                fee: Amount::from_raw(0),
+                                block_id,
+                            });
+                        }
+                    }
+                }
+
+                for op_call_stack in abi_calls.operation_call_stacks {
+                    let op_id = op_call_stack.0;
+                    let op_call_stack = op_call_stack.1;
+                    for abi_trace in op_call_stack {
+                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                        for transfer in only_transfer {
+                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                            transfers.push(Transfer {
+                                from: Address::from_str(&t_from).unwrap(),
+                                to: Address::from_str(&t_to).unwrap(),
+                                amount: Amount::from_raw(t_amount),
+                                effective_amount_received: Amount::from_raw(t_amount),
+                                context: TransferContext::Operation(op_id),
+                                succeed: true,
+                                fee: Amount::from_raw(0),
+                                block_id,
+                            });
+                        }
+                    }
+                }
+            }
+            let transfers_op: Vec<Transfer> = self
+                .0
+                .execution_controller
+                .get_transfers_for_slot(slot)
+                .unwrap_or_default()
+                .iter()
+                .map(|t| Transfer {
+                    from: t.from,
+                    to: t.to,
+                    amount: t.amount,
+                    effective_amount_received: t.effective_received_amount,
+                    context: TransferContext::Operation(t.op_id),
+                    succeed: t.succeed,
+                    fee: t.fee,
+                    block_id,
+                })
+                .collect();
+            transfers.extend(transfers_op);
+            res.push(transfers);
+        }
+        Ok(res)
+    }
+
+    #[cfg(not(feature = "execution-trace"))]
+    async fn get_slots_transfers(&self, _: Vec<Slot>) -> RpcResult<Vec<Vec<Transfer>>> {
+        RpcResult::Err(ApiError::BadRequest("feature execution-trace is not enabled".into()).into())
     }
 
     async fn execute_read_only_bytecode(
@@ -423,6 +519,7 @@ impl MassaRpcServer for API<Public> {
             pool_stats,
             config,
             current_cycle,
+            chain_id: self.0.api_settings.chain_id,
         })
     }
 
@@ -542,17 +639,40 @@ impl MassaRpcServer for API<Public> {
         for (id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) in
             zipped_iterator
         {
-            res.push(OperationInfo {
-                id,
-                in_pool,
-                is_operation_final,
-                thread: operation
-                    .content_creator_address
-                    .get_thread(api_cfg.thread_count),
-                operation,
-                in_blocks: in_blocks.into_iter().collect(),
-                op_exec_status,
-            });
+            #[cfg(feature = "execution-trace")]
+            {
+                let mut transfer = None;
+                if is_operation_final.is_none() || op_exec_status.is_none() {
+                    transfer = self.0.execution_controller.get_transfer_for_op(&id);
+                }
+                let is_operation_final = is_operation_final.or(Some(transfer.is_some()));
+                let op_exec_status = op_exec_status.or(transfer.map(|t| t.succeed));
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
+            #[cfg(not(feature = "execution-trace"))]
+            {
+                res.push(OperationInfo {
+                    id,
+                    in_pool,
+                    is_operation_final,
+                    thread: operation
+                        .content_creator_address
+                        .get_thread(api_cfg.thread_count),
+                    operation,
+                    in_blocks: in_blocks.into_iter().collect(),
+                    op_exec_status,
+                });
+            }
         }
 
         // return values in the right order
@@ -831,8 +951,21 @@ impl MassaRpcServer for API<Public> {
                 .collect()
         };
 
+        // Compute a limit (as a slot) for deferred credits as it can be quite huge
+        let bound_ts = MassaTime::now().saturating_add(self.0.api_settings.deferred_credits_delta);
+
+        let deferred_credit_max_slot = timeslots::get_closest_slot_to_timestamp(
+            self.0.api_settings.thread_count,
+            self.0.api_settings.t0,
+            self.0.api_settings.genesis_timestamp,
+            bound_ts,
+        );
+
         // get execution info
-        let execution_infos = self.0.execution_controller.get_addresses_infos(&addresses);
+        let execution_infos = self.0.execution_controller.get_addresses_infos(
+            &addresses,
+            std::ops::Bound::Included(deferred_credit_max_slot),
+        );
 
         // get future draws from selector
         let selection_draws = {
@@ -1139,14 +1272,17 @@ fn check_input_operation(
     api_cfg: &APIConfig,
     last_slot: Option<Slot>,
 ) -> RpcResult<SecureShareOperation> {
-    let operation_deserializer = SecureShareDeserializer::new(OperationDeserializer::new(
-        api_cfg.max_datastore_value_length,
-        api_cfg.max_function_name_length,
-        api_cfg.max_parameter_size,
-        api_cfg.max_op_datastore_entry_count,
-        api_cfg.max_op_datastore_key_length,
-        api_cfg.max_op_datastore_value_length,
-    ));
+    let operation_deserializer = SecureShareDeserializer::new(
+        OperationDeserializer::new(
+            api_cfg.max_datastore_value_length,
+            api_cfg.max_function_name_length,
+            api_cfg.max_parameter_size,
+            api_cfg.max_op_datastore_entry_count,
+            api_cfg.max_op_datastore_key_length,
+            api_cfg.max_op_datastore_value_length,
+        ),
+        api_cfg.chain_id,
+    );
 
     let mut op_serialized = Vec::new();
     op_serialized.extend(op_input.signature.to_bytes());
@@ -1178,7 +1314,11 @@ fn check_input_operation(
     };
     if let Some(slot) = last_slot {
         if op.content.expire_period < slot.period {
-            return Err(ApiError::InconsistencyError("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()).into());
+            return Err(
+                ApiError::InconsistencyError(
+                    "Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()
+                ).into()
+            );
         }
     }
     if rest.is_empty() {

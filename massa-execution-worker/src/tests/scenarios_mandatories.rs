@@ -14,7 +14,10 @@ use massa_ledger_exports::{
     LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
-use massa_models::config::{ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT};
+use massa_models::config::{
+    CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+};
+use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -23,7 +26,9 @@ use massa_models::{
     operation::{Operation, OperationSerializer, OperationType},
     secure_share::SecureShareContent,
 };
-use massa_pos_exports::{MockSelectorControllerWrapper, PoSConfig, PoSFinalState, Selection};
+use massa_pos_exports::{
+    CycleInfo, MockSelectorControllerWrapper, PoSConfig, PoSFinalState, ProductionStats, Selection,
+};
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
 use mockall::predicate;
@@ -33,6 +38,13 @@ use std::sync::Arc;
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
+
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
+#[cfg(feature = "execution-trace")]
+use massa_models::operation::OperationId;
+#[cfg(feature = "execution-trace")]
+use std::thread;
 
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
@@ -553,6 +565,7 @@ fn send_and_receive_async_message() {
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
     selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
     foreign_controllers
         .selector_controller
         .set_expectations(|selector_controller| {
@@ -584,6 +597,7 @@ fn send_and_receive_async_message() {
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
     let message = AsyncMessage {
         emission_slot: Slot {
             period: 1,
@@ -591,9 +605,12 @@ fn send_and_receive_async_message() {
         },
         emission_index: 0,
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
-        destination: Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+        // Note: generated address (from send_message.ts createSC call)
+        //       this can changes when modification to the final state are done (see create_new_sc_address function)
+        destination: Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
             .unwrap(),
         function: String::from("receive"),
+        // value from SC: send_message.ts
         max_gas: 3000000,
         fee: Amount::from_raw(1),
         coins: Amount::from_raw(100),
@@ -622,6 +639,7 @@ fn send_and_receive_async_message() {
                 *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
             }
             assert_eq!(changes.async_pool_changes.0.len(), 1);
+            println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
                 &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
@@ -645,7 +663,7 @@ fn send_and_receive_async_message() {
                 .ledger_changes
                 .0
                 .get(
-                    &Address::from_str("AS12mzL2UWroPV7zzHpwHnnF74op9Gtw7H55fAmXMnCuVZTFSjZCA")
+                    &Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
                         .unwrap(),
                 )
                 .unwrap()
@@ -1248,6 +1266,7 @@ fn send_and_receive_transaction() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the transaction operation
@@ -1317,6 +1336,7 @@ fn roll_buy() {
         },
         OperationSerializer::new(),
         &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1430,6 +1450,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     let operation2 = Operation::new_verifiable(
@@ -1442,6 +1463,7 @@ fn roll_sell() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     // create the block containing the roll buy operation
@@ -1456,6 +1478,125 @@ fn roll_sell() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
+}
+
+#[test]
+fn auto_sell_on_missed_blocks() {
+    // setup
+    let exec_cfg = ExecutionConfig {
+        thread_count: 2,
+        periods_per_cycle: 2,
+        max_miss_ratio: Ratio::new(0, 1),
+        ..Default::default()
+    };
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let address = Address::from_public_key(&keypair.get_public_key());
+    let (rolls_path, _) = get_initials();
+    let mut batch = DBBatch::new();
+    let initial_deferred_credits = Amount::from_str("100").unwrap();
+    let mut pos_final_state = PoSFinalState::new(
+        PoSConfig {
+            thread_count: 2,
+            periods_per_cycle: 2,
+            ..PoSConfig::default()
+        },
+        "",
+        &rolls_path.into_temp_path().to_path_buf(),
+        foreign_controllers.selector_controller.clone(),
+        foreign_controllers.db.clone(),
+    )
+    .unwrap();
+    pos_final_state.create_initial_cycle(&mut batch);
+    pos_final_state.put_deferred_credits_entry(
+        &Slot::new(1, 0),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
+
+    pos_final_state.put_deferred_credits_entry(
+        &Slot::new(7, 1),
+        &address,
+        &initial_deferred_credits,
+        &mut batch,
+    );
+
+    let mut prod_stats = PreHashMap::default();
+    prod_stats.insert(
+        address,
+        ProductionStats {
+            block_success_count: 0,
+            block_failure_count: 1,
+        },
+    );
+
+    let rolls_cycle_0 = pos_final_state.get_all_roll_counts(0);
+    let cycle_info_0 = CycleInfo::new(
+        0,
+        false,
+        rolls_cycle_0.clone(),
+        Default::default(),
+        prod_stats.clone(),
+    );
+    pos_final_state.put_new_cycle_info(&cycle_info_0, &mut batch);
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(batch, Default::default(), None);
+    pos_final_state.recompute_pos_state_caches();
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        Some(pos_final_state.clone()),
+    );
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, _changes| {});
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            println!("changes: {:?}", changes);
+            let deferred_credits = changes
+                .pos_changes
+                .deferred_credits
+                .get_address_credits_for_slot(&address, &Slot::new(7, 1))
+                .unwrap();
+            assert_eq!(
+                deferred_credits,
+                Amount::from_mantissa_scale(10100, 0).unwrap()
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+    // set our block as a final block so the purchase is processed
+    universe.send_and_finalize(&keypair, block);
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
 }
@@ -1549,6 +1690,7 @@ fn roll_slash() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -1666,6 +1808,7 @@ fn roll_slash_2() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
 
@@ -2051,7 +2194,9 @@ fn datastore_manipulations() {
             ],
         });
     // Just checking that is works no asserts for now
-    universe.module_controller.get_addresses_infos(&[addr]);
+    universe
+        .module_controller
+        .get_addresses_infos(&[addr], std::ops::Bound::Unbounded);
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match
@@ -2154,6 +2299,7 @@ fn not_enough_instance_gas() {
         },
         OperationSerializer::new(),
         &keypair,
+        *CHAINID,
     )
     .unwrap();
     universe.storage.store_operations(vec![operation.clone()]);
@@ -2428,4 +2574,270 @@ fn test_rewards() {
     );
     universe.send_and_finalize(&keypair, block);
     finalized_waitpoint.wait();
+}
+
+#[test]
+fn chain_id() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/chain_id.wasm"),
+        //unused
+        include_bytes!("./wasm/chain_id.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+    // match the events
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
+}
+
+#[cfg(feature = "execution-trace")]
+#[test]
+fn execution_trace() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/execution_trace.wasm"),
+        //unused
+        include_bytes!("./wasm/execution_trace.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        let exec_traces = receiver.blocking_recv();
+        /*
+        let exec_traces_2 = receiver.blocking_recv();
+        return vec![
+            exec_traces.expect("Execution output"),
+            exec_traces_2.expect("Final execution output"),
+        ];
+        */
+        return exec_traces;
+    });
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
+    let (broadcast_result, _) = broadcast_result_.unwrap();
+
+    let abi_name_1 = "assembly_script_generate_event";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let traces_2: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_2)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_2.len(), 1); // Only one op
+    assert_eq!(traces_2.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_2.first().unwrap().1.get(0).unwrap().name, abi_name_2);
+    // println!(
+    //     "params: {:?}",
+    //     traces_2.first().unwrap().1.get(0).unwrap().parameters
+    // );
+    assert_eq!(
+        traces_2.first().unwrap().1.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                ),
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::U64(2000)
+            }
+        ]
+    );
+}
+
+#[cfg(feature = "execution-trace")]
+#[test]
+fn execution_trace_nested() {
+    // setup the period duration
+    let mut exec_cfg = ExecutionConfig::default();
+    // Make sure broadcast is enabled as we need it for this test
+    exec_cfg.broadcast_enabled = true;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+
+    // let rt = tokio::runtime::Runtime::new().unwrap();
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/et_deploy_sc.wasm"),
+        include_bytes!("./wasm/et_init_sc.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
+    let join_handle = thread::spawn(move || {
+        // Execution Output
+        let exec_traces = receiver.blocking_recv();
+        return exec_traces;
+    });
+    let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
+
+    // println!("b r: {:?}", broadcast_result_);
+    let (broadcast_result, _) = broadcast_result_.unwrap();
+
+    let abi_name_1 = "assembly_script_call";
+    let traces_1: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
+        .operation_call_stacks
+        .iter()
+        .filter_map(|(k, v)| {
+            Some((
+                k.clone(),
+                v.iter()
+                    .filter(|t| t.name == abi_name_1)
+                    .cloned()
+                    .collect::<Vec<AbiTrace>>(),
+            ))
+        })
+        .collect();
+
+    assert_eq!(traces_1.len(), 1); // Only one op
+    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one transfer_coins
+    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+
+    // filter sub calls
+    let abi_name_2 = "assembly_script_transfer_coins";
+    let sub_call: Vec<AbiTrace> = traces_1
+        .first()
+        .unwrap()
+        .1
+        .get(0)
+        .unwrap()
+        .sub_calls
+        .as_ref()
+        .unwrap()
+        .iter()
+        .filter(|a| a.name == abi_name_2)
+        .cloned()
+        .collect();
+
+    // println!("params: {:?}", sub_call.get(0).unwrap().parameters);
+    assert_eq!(
+        sub_call.get(0).unwrap().parameters,
+        vec![
+            SCRuntimeAbiTraceValue {
+                name: "from_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
+                name: "to_address".to_string(),
+                value: SCRuntimeAbiTraceType::String(
+                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                )
+            },
+            SCRuntimeAbiTraceValue {
+                name: "raw_amount".to_string(),
+                value: SCRuntimeAbiTraceType::U64(1425)
+            }
+        ]
+    );
 }

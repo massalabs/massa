@@ -9,7 +9,6 @@
 # Massa: The Decentralized and Scaled Blockchain
 
 [![CI](https://github.com/massalabs/massa/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/massalabs/massa/actions/workflows/ci.yml?query=branch%3Amain)
-[![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/39543)
 [![Docs](https://img.shields.io/static/v1?label=docs&message=massa&color=&style=flat)](https://massalabs.github.io/massa/massa_node/)
 [![Open in Gitpod](https://shields.io/badge/Gitpod-contribute-brightgreen?logo=gitpod&style=flat)](https://gitpod.io/#https://github.com/massalabs/massa)
 [![codecov](https://codecov.io/gh/massalabs/massa/graph/badge.svg?token=598URC32TV)](https://codecov.io/gh/massalabs/massa)
@@ -35,15 +34,11 @@ Here is a list of tools to easily build applications on the Massa blockchain:
 - [Lots of documentation](https://docs.massa.net), from [web3 development](https://docs.massa.net/docs/build/home)
   to [Massa's architecture](https://docs.massa.net/docs/learn/home).
 
-## Join the Testnet
+## Become a node runner
 
 With decentralization as a core value, we've gone to great lengths to lower the barrier of entry for community
-participation in our community testnet, and we
-[invite you to join in](https://docs.massa.net/docs/node/install), and register for the
-testnet participation reward program.
-
-Your participation will help improve decentralization, usability, and network reliability leading up to, and following,
-the launch of mainnet.
+participation in our mainnet, and we [invite you to join in](https://docs.massa.net/docs/node/home) by
+becoming a node runner!
 
 ## Community
 
@@ -68,7 +63,16 @@ server. If you're comfortable enough to get started on you're own, check out our
 
 A list of all the contributors can be found [here](CONTRIBUTORS.md)
 
-### Community Charter
+## Community Charter
 
 The Massa Community Charter is designed to protect decentralization.
 You can find it here: [COMMUNITY_CHARTER.md](COMMUNITY_CHARTER.md)
+
+## Initial distribution files
+
+The following initial distribution files:
+* `massa-node/base_config/initial_ledger.json`
+* `massa-node/base_config/deferred_credits.json`
+* `massa-node/base_config/initial_rolls.json`
+
+Are copied from `https://github.com/Massa-Foundation/genesis-ledger/tree/main/node_initial_setup` at commit hash `9bb16c286d2bdc830490bd0af70571207d34921c`.

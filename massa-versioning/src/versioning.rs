@@ -1096,10 +1096,11 @@ impl MipStoreRaw {
                 self.stats.config.block_count_considered as u64,
             );
 
-            debug!("[VERSIONING STATS] vote_ratio = {} (from version counter = {} and blocks considered = {})",
-                vote_ratio,
+            debug!("[VERSIONING STATS] Vote counts / blocks considered = {} / {} (for MipInfo with network version {} - {})",
                 network_version_count,
-                self.stats.config.block_count_considered);
+                self.stats.config.block_count_considered,
+                mi.version,
+                mi.name);
 
             let advance_msg = Advance {
                 start_timestamp: mi.start,

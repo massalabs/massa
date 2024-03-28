@@ -1,6 +1,6 @@
 [package]
 name = "massa_protocol_worker"
-version = "0.27.6"
+version = "2.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -34,11 +34,12 @@ massa_serialization = {workspace = true}
 massa_signature = {workspace = true}
 massa_time = {workspace = true}
 massa_versioning = {workspace = true}
+static_assertions = {workspace = true}
 
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
 serial_test = {workspace = true}   # BOM UPGRADE     Revert to "2.0.0" if problem
-massa_test_framework = {workspace = true}
+massa_test_framework = {workspace = true, "features" = ["test-exports"]}
 mockall = {workspace = true}
 mockall_wrap = {workspace = true}
 num = {workspace = true}

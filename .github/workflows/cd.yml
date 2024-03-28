@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - TEST.*
+      - DEVN.*
+      - MAIN.*
+      - SECU.*
 
 env:
   CARGO_TERM_COLOR: always

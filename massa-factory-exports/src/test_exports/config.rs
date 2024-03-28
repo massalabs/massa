@@ -18,6 +18,7 @@ impl Default for FactoryConfig {
             periods_per_cycle: PERIODS_PER_CYCLE,
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             stop_production_when_zero_connections: false,
+            chain_id: *CHAINID,
         }
     }
 }

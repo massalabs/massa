@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, path::PathBuf};
 
+use massa_models::config::CHAINID;
 use massa_models::{
     config::{
         BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CONSENSUS_BOOTSTRAP_PART_SIZE, ENDORSEMENT_COUNT,
@@ -78,6 +79,7 @@ impl Default for BootstrapConfig {
             mip_store_stats_block_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             max_denunciation_changes_length: MAX_DENUNCIATION_CHANGES_LENGTH,
+            chain_id: *CHAINID,
         }
     }
 }

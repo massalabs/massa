@@ -52,4 +52,6 @@ pub struct ConsensusConfig {
     pub broadcast_filled_blocks_channel_capacity: usize,
     /// last start period
     pub last_start_period: u64,
+    /// chain id
+    pub chain_id: u64,
 }
