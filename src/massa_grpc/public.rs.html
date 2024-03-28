@@ -1516,6 +1516,11 @@
 <a href="#1516" id="1516">1516</a>
 <a href="#1517" id="1517">1517</a>
 <a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1660,6 +1665,17 @@
             })
             .transpose()<span class="question-mark">?</span>,
     };
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(minimal_fee) = grpc.grpc_config.minimal_fees {
+        <span class="kw">if </span>read_only_call
+            .fee
+            .map_or(<span class="bool-val">true</span>, |f| f.checked_sub(minimal_fee).is_none())
+        {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
+                <span class="string">&quot;Not enough fee for this call&quot;</span>.to_string(),
+            ));
+        }
+    }
 
     <span class="kw">let </span>output = grpc
         .execution_controller
@@ -2451,12 +2467,6 @@
     </span><span class="kw">let </span>empty_request = ExecutionQueryRequest { requests: <span class="macro">vec!</span>[] };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
-    <span class="kw">let </span>minimal_fees = <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = grpc.grpc_config.minimal_fees {
-        <span class="prelude-val">Some</span>(amount.into())
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-
     <span class="kw">let </span>status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
@@ -2469,7 +2479,7 @@
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: <span class="prelude-val">Some</span>(config.into()),
         chain_id: grpc.grpc_config.chain_id,
-        minimal_fees,
+        minimal_fees: grpc.grpc_config.minimal_fees.map(|amount| amount.into()),
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {
