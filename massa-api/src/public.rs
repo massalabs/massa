@@ -281,6 +281,20 @@ impl MassaRpcServer for API<Public> {
                 fee,
             };
 
+            if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
+                if fee.map_or(true, |fee| fee.checked_sub(minimal_fees).is_none()) {
+                    let result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(0, 0),
+                        result: ReadOnlyResult::Error("fee is too low".to_string()),
+                        gas_cost: 0,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    continue;
+                }
+            }
+
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);
 
@@ -364,6 +378,20 @@ impl MassaRpcServer for API<Public> {
                 coins,
                 fee,
             };
+
+            if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
+                if fee.map_or(true, |fee| fee.checked_sub(minimal_fees).is_none()) {
+                    let result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(0, 0),
+                        result: ReadOnlyResult::Error("fee is too low".to_string()),
+                        gas_cost: 0,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    continue;
+                }
+            }
 
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);
@@ -1154,7 +1182,19 @@ impl MassaRpcServer for API<Public> {
                 }
                 Err(e) => Err(e),
             })
+            .filter(|op| {
+                if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
+                    op.as_ref().map_or(false, |op| {
+                        // Check if the fee is at least the minimal fee
+                        // If the fee is lower than the minimal fee, the operation is filtered out
+                        op.content.fee.checked_sub(minimal_fees).is_some()
+                    })
+                } else {
+                    true // No minimal fees set, so don't filter
+                }
+            })
             .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
+
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());

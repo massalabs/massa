@@ -45,6 +45,7 @@ use massa_ledger_worker::FinalLedger;
 use massa_logging::massa_trace;
 use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
+use massa_models::amount::Amount;
 use massa_models::config::constants::{
     ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
     CONSENSUS_BOOTSTRAP_PART_SIZE, DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT,
@@ -871,6 +872,7 @@ async fn launch(
             &SETTINGS.grpc.public,
             keypair.clone(),
             &final_state,
+            SETTINGS.pool.minimal_fees,
         );
 
         let grpc_public_api = MassaPublicGrpc {
@@ -911,6 +913,7 @@ async fn launch(
             &SETTINGS.grpc.private,
             keypair.clone(),
             &final_state,
+            SETTINGS.pool.minimal_fees,
         );
 
         let bs_white_black_list = bootstrap_manager
@@ -1065,6 +1068,7 @@ fn configure_grpc(
     settings: &GrpcSettings,
     keypair: KeyPair,
     final_state: &Arc<RwLock<dyn FinalStateController>>,
+    minimal_fees: Option<Amount>,
 ) -> GrpcConfig {
     GrpcConfig {
         name,
@@ -1131,6 +1135,7 @@ fn configure_grpc(
         client_certificate_path: settings.client_certificate_path.clone(),
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: *CHAINID,
+        minimal_fees,
     }
 }
 
