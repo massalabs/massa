@@ -215,6 +215,10 @@
     snip_amount = 10
     # slot execution outputs channel capacity
     broadcast_slot_execution_output_channel_capacity = 5000
+    # slot execution traces channel capacity
+    broadcast_slot_execution_traces_channel_capacity = 5000
+    # Max slots execution traces to keep in cache
+    execution_traces_limit = 320
 
 [ledger]
     # path to the initial ledger

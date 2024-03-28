@@ -25,6 +25,9 @@ use std::fmt::Display;
 use std::sync::Arc;
 use tracing::info;
 
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
     /// set stop to true to stop the thread
@@ -464,6 +467,42 @@ impl ExecutionController for ExecutionControllerImpl {
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats {
         self.execution_state.read().get_stats()
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_traces_for_op(&operation_id)
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_slot_abi_call_stack(&self, slot: Slot) -> Option<SlotAbiCallStack> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_traces_for_slot(&slot)
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_transfers_for_slot(&self, slot: Slot) -> Option<Vec<Transfer>> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_transfers_for_slot(&slot)
+    }
+
+    #[cfg(feature = "execution-trace")]
+    fn get_transfer_for_op(&self, op_id: &OperationId) -> Option<Transfer> {
+        self.execution_state
+            .read()
+            .trace_history
+            .read()
+            .fetch_transfer_for_op(op_id)
     }
 
     /// Returns a boxed clone of self.

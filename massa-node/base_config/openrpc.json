@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "MAIN.1.0",
+        "version": "MAIN.2.1",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/docs/build/api/jsonrpc",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -21,6 +21,11 @@
             "name": "Massa public testnet API",
             "url": "https://test.massa.net/api/v2",
             "description": "Massa public testnet url"
+        },
+        {
+            "name": "Massa public mainnet API",
+            "url": "https://mainnet.massa.net/api/v2",
+            "description": "Massa public mainnet url"
         }
     ],
     "methods": [
@@ -297,6 +302,42 @@
             "name": "get_datastore_entry",
             "summary": "Get datastore entry",
             "description": "Get datastore entry."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "slots",
+                    "description": "Precise the slots you want to gather the transfers from",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Slot"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "SlotsTransfers",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Transfer"
+                        }
+                    }
+                }
+            },
+            "name": "get_slots_transfers",
+            "summary": "Get transfers for specified slots",
+            "description": "Get transfers for specified slots"
         },
         {
             "tags": [
@@ -3102,6 +3143,55 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "Transfer": {
+                "title": "Transfer",
+                "description": "Describe a transfer of MAS",
+                "required": [
+                    "from",
+                    "to",
+                    "amount",
+                    "effective_amount_received",
+                    "context",
+                    "succeed",
+                    "fee",
+                    "block_id"
+                ],
+                "type": "object",
+                "properties": {
+                    "from": {
+                        "description": "Address of the sender",
+                        "type": "string"
+                    },
+                    "to": {
+                        "description": "Address of the receiver",
+                        "type": "string"
+                    },
+                    "amount": {
+                        "description": "Amount transferred",
+                        "type": "integer"
+                    },
+                    "effective_amount_received": {
+                        "description": "Amount received by the receiver",
+                        "type": "integer"
+                    },
+                    "context": {
+                        "description": "Context of the transfer : operation or asyncronous execution",
+                        "type": "object"
+                    },
+                    "succeed": {
+                        "description": "True if the operation succeed otherwise false",
+                        "type": "boolean"
+                    },
+                    "fee": {
+                        "description": "Fees passed to the operation",
+                        "type": "number"
+                    },
+                    "block_id": {
+                        "description": "ID of the block in which the operation is included",
+                        "type": "string"
+                    }
+                }
             },
             "Version": {
                 "description": "Application version, checked during handshakes",

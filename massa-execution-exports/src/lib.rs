@@ -71,3 +71,8 @@ pub use types::{
 
 #[cfg(any(feature = "test-exports", feature = "gas_calibration"))]
 pub mod test_exports;
+
+#[cfg(feature = "execution-trace")]
+pub use types::{
+    AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue, SlotAbiCallStack, Transfer,
+};

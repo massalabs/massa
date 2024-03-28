@@ -69,6 +69,9 @@ impl Default for ExecutionConfig {
             max_function_length: 1000,
             max_parameter_length: 1000,
             chain_id: *CHAINID,
+            broadcast_traces_enabled: true,
+            broadcast_slot_execution_traces_channel_capacity: 5000,
+            max_execution_traces_slot_limit: 320,
         }
     }
 }
