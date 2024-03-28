@@ -1509,6 +1509,13 @@
 <a href="#1509" id="1509">1509</a>
 <a href="#1510" id="1510">1510</a>
 <a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2444,6 +2451,12 @@
     </span><span class="kw">let </span>empty_request = ExecutionQueryRequest { requests: <span class="macro">vec!</span>[] };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
+    <span class="kw">let </span>minimal_fees = <span class="kw">if let </span><span class="prelude-val">Some</span>(amount) = grpc.grpc_config.minimal_fees {
+        <span class="prelude-val">Some</span>(amount.into())
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+
     <span class="kw">let </span>status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
@@ -2456,6 +2469,7 @@
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: <span class="prelude-val">Some</span>(config.into()),
         chain_id: grpc.grpc_config.chain_id,
+        minimal_fees,
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {

@@ -518,6 +518,13 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -1012,6 +1019,13 @@
             <span class="comment">// exclude ops that require too much gas
             </span><span class="kw">if </span>op_info.max_gas_usage &gt; remaining_gas {
                 <span class="kw">continue</span>;
+            }
+
+            <span class="comment">// if minimum fees are required, check that the fee is enough
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(minimal_fees) = <span class="self">self</span>.config.minimal_fees {
+                <span class="kw">if </span>op_info.fee.checked_sub(minimal_fees).is_none() {
+                    <span class="kw">continue</span>;
+                }
             }
 
             <span class="comment">// here we consider the operation as accepted
