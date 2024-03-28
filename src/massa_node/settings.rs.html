@@ -385,15 +385,13 @@
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
 </span><span class="kw">use </span>std::{collections::HashMap, path::PathBuf};
 
 <span class="kw">use </span>massa_bootstrap::IpType;
-<span class="kw">use </span>massa_models::{amount::Amount, config::build_massa_settings, node::NodeId};
+<span class="kw">use </span>massa_models::{config::build_massa_settings, node::NodeId};
 <span class="kw">use </span>massa_protocol_exports::PeerCategoryInfo;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
@@ -490,8 +488,6 @@
     </span><span class="kw">pub </span>broadcast_endorsements_channel_capacity: usize,
     <span class="doccomment">/// operations channel capacity
     </span><span class="kw">pub </span>broadcast_operations_channel_capacity: usize,
-    <span class="doccomment">/// operations minimum fees for block creator
-    </span><span class="kw">pub </span>minimal_fees: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
 }
 
 <span class="doccomment">/// API and server configuration, read from a file configuration.
