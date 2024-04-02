@@ -451,7 +451,7 @@ async fn get_graph_interval() {
 
 #[tokio::test]
 async fn send_operations_low_fee() {
-    let addr: SocketAddr = "[::]:5034".parse().unwrap();
+    let addr: SocketAddr = "[::]:5049".parse().unwrap();
     let (mut api_public, mut config) = start_public_api(addr);
 
     config.minimal_fees = Some(Amount::from_str("0.01").unwrap());
