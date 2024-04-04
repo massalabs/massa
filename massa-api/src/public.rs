@@ -281,6 +281,27 @@ impl MassaRpcServer for API<Public> {
                 fee,
             };
 
+            // check if fee is enough
+            if fee
+                .unwrap_or_default()
+                .checked_sub(self.0.api_settings.minimal_fees)
+                .is_none()
+            {
+                let result = ExecuteReadOnlyResponse {
+                    executed_at: Slot::new(0, 0),
+                    result: ReadOnlyResult::Error(format!(
+                        "fee is too low provided: {} , minimal_fees required: {}",
+                        fee.unwrap_or_default(),
+                        self.0.api_settings.minimal_fees
+                    )),
+                    gas_cost: 0,
+                    output_events: Default::default(),
+                    state_changes: Default::default(),
+                };
+                res.push(result);
+                continue;
+            }
+
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);
 
@@ -364,6 +385,26 @@ impl MassaRpcServer for API<Public> {
                 coins,
                 fee,
             };
+
+            if fee
+                .unwrap_or_default()
+                .checked_sub(self.0.api_settings.minimal_fees)
+                .is_none()
+            {
+                let result = ExecuteReadOnlyResponse {
+                    executed_at: Slot::new(0, 0),
+                    result: ReadOnlyResult::Error(format!(
+                        "fee is too low provided: {} , minimal_fees required: {}",
+                        fee.unwrap_or_default(),
+                        self.0.api_settings.minimal_fees
+                    )),
+                    gas_cost: 0,
+                    output_events: Default::default(),
+                    state_changes: Default::default(),
+                };
+                res.push(result);
+                continue;
+            }
 
             // run
             let result = self.0.execution_controller.execute_readonly_request(req);
@@ -520,6 +561,7 @@ impl MassaRpcServer for API<Public> {
             config,
             current_cycle,
             chain_id: self.0.api_settings.chain_id,
+            minimal_fees: self.0.api_settings.minimal_fees,
         })
     }
 
@@ -1145,6 +1187,19 @@ impl MassaRpcServer for API<Public> {
             .map(|op_input| check_input_operation(op_input, api_cfg, last_slot))
             .map(|op| match op {
                 Ok(operation) => {
+                    if operation
+                        .content
+                        .fee
+                        .checked_sub(api_cfg.minimal_fees)
+                        .is_none()
+                    {
+                        return Err(ApiError::BadRequest(format!(
+                            "fee is too low provided: {} , minimal_fees required: {}",
+                            operation.content.fee, self.0.api_settings.minimal_fees
+                        ))
+                        .into());
+                    }
+
                     let _verify_signature = match operation.verify_signature() {
                         Ok(()) => (),
                         Err(e) => return Err(ApiError::ModelsError(e).into()),
@@ -1154,6 +1209,7 @@ impl MassaRpcServer for API<Public> {
                 Err(e) => Err(e),
             })
             .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
+
         to_send.store_operations(verified_ops.clone());
         let ids: Vec<OperationId> = verified_ops.iter().map(|op| op.id).collect();
         cmd_sender.add_operations(to_send.clone());

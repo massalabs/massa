@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_models::amount::Amount;
 use massa_models::node::NodeId;
 use massa_models::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 use massa_models::{config::CompactConfig, slot::Slot, version::Version};
@@ -43,6 +44,8 @@ pub struct NodeStatus {
     pub config: CompactConfig,
     /// chain id
     pub chain_id: u64,
+    /// minimal fees to include an operation in a block
+    pub minimal_fees: Amount,
 }
 
 impl std::fmt::Display for NodeStatus {

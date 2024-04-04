@@ -143,6 +143,19 @@ pub(crate) fn execute_read_only_call(
             .transpose()?,
     };
 
+    if read_only_call
+        .fee
+        .unwrap_or_default()
+        .checked_sub(grpc.grpc_config.minimal_fees)
+        .is_none()
+    {
+        return Err(GrpcError::InvalidArgument(format!(
+            "fee is too low provided: {} , minimal_fees required: {}",
+            read_only_call.fee.unwrap_or_default(),
+            grpc.grpc_config.minimal_fees
+        )));
+    }
+
     let output = grpc
         .execution_controller
         .execute_readonly_request(read_only_call)?;
@@ -945,6 +958,7 @@ pub(crate) fn get_status(
         final_state_fingerprint: state.final_state_fingerprint.to_string(),
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
+        minimal_fees: Some(grpc.grpc_config.minimal_fees.into()),
     };
 
     Ok(grpc_api::GetStatusResponse {

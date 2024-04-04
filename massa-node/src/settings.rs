@@ -4,7 +4,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use massa_bootstrap::IpType;
-use massa_models::{config::build_massa_settings, node::NodeId};
+use massa_models::{amount::Amount, config::build_massa_settings, node::NodeId};
 use massa_protocol_exports::PeerCategoryInfo;
 use massa_time::MassaTime;
 use serde::Deserialize;
@@ -101,6 +101,8 @@ pub struct PoolSettings {
     pub broadcast_endorsements_channel_capacity: usize,
     /// operations channel capacity
     pub broadcast_operations_channel_capacity: usize,
+    /// operations minimum fees for block creator
+    pub minimal_fees: Amount,
 }
 
 /// API and server configuration, read from a file configuration.

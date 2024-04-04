@@ -111,6 +111,12 @@ pub(crate) async fn send_operations(
                                                     return Err(GrpcError::InvalidArgument("Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.".into()));
                                                 }
                                             }
+
+
+                                            if res_operation.content.fee.checked_sub(config.minimal_fees).is_none() {
+                                                return Err(GrpcError::InvalidArgument("Operation fee is lower than the minimal fee. Your operation will never be included in a block.".into()));
+                                            }
+
                                             if rest.is_empty() {
                                                 res_operation.verify_signature()
                                                     .map(|_| (res_operation.id.to_string(), res_operation))

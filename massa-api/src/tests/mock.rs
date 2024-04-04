@@ -7,6 +7,7 @@ use std::{collections::HashMap, net::SocketAddr};
 use massa_api_exports::config::APIConfig;
 use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
 use massa_execution_exports::{GasCosts, MockExecutionController};
+use massa_models::amount::Amount;
 use massa_models::config::CHAINID;
 use massa_models::{
     config::{
@@ -68,6 +69,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         last_start_period: 0,
         chain_id: *CHAINID,
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
+        minimal_fees: Amount::zero(),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -143,6 +145,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         last_start_period: 0,
         chain_id: *CHAINID,
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
+        minimal_fees: Amount::zero(),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();

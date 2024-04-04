@@ -5,6 +5,7 @@ use crate::config::{GrpcConfig, ServiceName};
 use crate::server::MassaPublicGrpc;
 use massa_consensus_exports::{ConsensusBroadcasts, MockConsensusController};
 use massa_execution_exports::{ExecutionChannels, MockExecutionController};
+use massa_models::amount::Amount;
 use massa_models::{
     config::{
         ENDORSEMENT_COUNT, MAX_DATASTORE_VALUE_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
@@ -109,6 +110,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         client_private_key_path: PathBuf::default(),
         max_query_items_per_request: 50,
         chain_id: *CHAINID,
+        minimal_fees: Amount::zero(),
     };
 
     let mip_stats_config = MipStatsConfig {

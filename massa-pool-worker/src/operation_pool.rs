@@ -165,6 +165,11 @@ impl OperationPool {
                 });
             }
 
+            if retain {
+                // filter ops which doesn't have minimal fees
+                retain = op_info.fee.checked_sub(self.config.minimal_fees).is_some();
+            }
+
             // filter out ops that have been executed in final or candidate slots
             // TODO: in the re-execution followup, we should only filter out final-executed ops here (exec_status == Some(true))
             if retain {

@@ -411,6 +411,8 @@
     broadcast_endorsements_channel_capacity = 2000
     # operations channel capacity
     broadcast_operations_channel_capacity = 5000
+    # minimal fee to include operation in the pool 0.01MAS
+    minimal_fees = 0.01
 
 
 [selector]
