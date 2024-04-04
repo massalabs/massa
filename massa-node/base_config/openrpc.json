@@ -962,7 +962,7 @@
                     "description": "Message to be signed in byte array",
                     "schema": {
                         "format": "byte",
-                        "type": "array"
+                        "type": "string"
                     },
                     "required": true
                 }
