@@ -83,5 +83,5 @@ pub struct APIConfig {
     /// Delta to compute upper bounds when fetching deferred credits
     pub deferred_credits_delta: MassaTime,
     /// minimal fees to include an operation in a block
-    pub minimal_fees: Option<Amount>,
+    pub minimal_fees: Amount,
 }

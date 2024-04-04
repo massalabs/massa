@@ -102,7 +102,7 @@ pub struct PoolSettings {
     /// operations channel capacity
     pub broadcast_operations_channel_capacity: usize,
     /// operations minimum fees for block creator
-    pub minimal_fees: Option<Amount>,
+    pub minimal_fees: Amount,
 }
 
 /// API and server configuration, read from a file configuration.

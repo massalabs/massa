@@ -281,18 +281,25 @@ impl MassaRpcServer for API<Public> {
                 fee,
             };
 
-            if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
-                if fee.map_or(true, |fee| fee.checked_sub(minimal_fees).is_none()) {
-                    let result = ExecuteReadOnlyResponse {
-                        executed_at: Slot::new(0, 0),
-                        result: ReadOnlyResult::Error("fee is too low".to_string()),
-                        gas_cost: 0,
-                        output_events: Default::default(),
-                        state_changes: Default::default(),
-                    };
-                    res.push(result);
-                    continue;
-                }
+            // check if fee is enough
+            if fee
+                .unwrap_or_default()
+                .checked_sub(self.0.api_settings.minimal_fees)
+                .is_none()
+            {
+                let result = ExecuteReadOnlyResponse {
+                    executed_at: Slot::new(0, 0),
+                    result: ReadOnlyResult::Error(format!(
+                        "fee is too low provided: {} , minimal_fees required: {}",
+                        fee.unwrap_or_default(),
+                        self.0.api_settings.minimal_fees
+                    )),
+                    gas_cost: 0,
+                    output_events: Default::default(),
+                    state_changes: Default::default(),
+                };
+                res.push(result);
+                continue;
             }
 
             // run
@@ -379,18 +386,24 @@ impl MassaRpcServer for API<Public> {
                 fee,
             };
 
-            if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
-                if fee.map_or(true, |fee| fee.checked_sub(minimal_fees).is_none()) {
-                    let result = ExecuteReadOnlyResponse {
-                        executed_at: Slot::new(0, 0),
-                        result: ReadOnlyResult::Error("fee is too low".to_string()),
-                        gas_cost: 0,
-                        output_events: Default::default(),
-                        state_changes: Default::default(),
-                    };
-                    res.push(result);
-                    continue;
-                }
+            if fee
+                .unwrap_or_default()
+                .checked_sub(self.0.api_settings.minimal_fees)
+                .is_none()
+            {
+                let result = ExecuteReadOnlyResponse {
+                    executed_at: Slot::new(0, 0),
+                    result: ReadOnlyResult::Error(format!(
+                        "fee is too low provided: {} , minimal_fees required: {}",
+                        fee.unwrap_or_default(),
+                        self.0.api_settings.minimal_fees
+                    )),
+                    gas_cost: 0,
+                    output_events: Default::default(),
+                    state_changes: Default::default(),
+                };
+                res.push(result);
+                continue;
             }
 
             // run
@@ -1174,6 +1187,19 @@ impl MassaRpcServer for API<Public> {
             .map(|op_input| check_input_operation(op_input, api_cfg, last_slot))
             .map(|op| match op {
                 Ok(operation) => {
+                    if operation
+                        .content
+                        .fee
+                        .checked_sub(api_cfg.minimal_fees)
+                        .is_none()
+                    {
+                        return Err(ApiError::BadRequest(format!(
+                            "fee is too low provided: {} , minimal_fees required: {}",
+                            operation.content.fee, self.0.api_settings.minimal_fees
+                        ))
+                        .into());
+                    }
+
                     let _verify_signature = match operation.verify_signature() {
                         Ok(()) => (),
                         Err(e) => return Err(ApiError::ModelsError(e).into()),
@@ -1181,17 +1207,6 @@ impl MassaRpcServer for API<Public> {
                     Ok(operation)
                 }
                 Err(e) => Err(e),
-            })
-            .filter(|op| {
-                if let Some(minimal_fees) = self.0.api_settings.minimal_fees {
-                    op.as_ref().map_or(false, |op| {
-                        // Check if the fee is at least the minimal fee
-                        // If the fee is lower than the minimal fee, the operation is filtered out
-                        op.content.fee.checked_sub(minimal_fees).is_some()
-                    })
-                } else {
-                    true // No minimal fees set, so don't filter
-                }
             })
             .collect::<RpcResult<Vec<SecureShareOperation>>>()?;
 

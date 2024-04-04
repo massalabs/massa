@@ -58,7 +58,7 @@ pub struct PoolConfig {
     /// max number of denunciations that can be included in a block header
     pub max_denunciations_per_block_header: u32,
     /// Minimum acceptable fees to include an operation in a block
-    pub minimal_fees: Option<Amount>,
+    pub minimal_fees: Amount,
     /// last_start_period
     /// * If start all new network: set to 0
     /// * If from snapshot: retrieve from args

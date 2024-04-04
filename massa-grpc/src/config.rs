@@ -135,7 +135,7 @@ pub struct GrpcConfig {
     /// chain id
     pub chain_id: u64,
     /// minimal fees
-    pub minimal_fees: Option<Amount>,
+    pub minimal_fees: Amount,
 }
 
 /// gRPC API configuration.

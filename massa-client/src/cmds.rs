@@ -1366,10 +1366,11 @@ async fn send_operation(
     };
 
     // check if the fee is higher than the minimal fees of the node
-    if let Some(minimal_fees) = status.minimal_fees {
-        if fee.checked_sub(minimal_fees).is_none() {
-            bail!("fee is lower than the minimal fees, operation will be rejected");
-        }
+    if fee.checked_sub(status.minimal_fees).is_none() {
+        bail!(format!(
+            "fee is too low provided: {} , minimal_fees required: {}",
+            fee, status.minimal_fees
+        ));
     }
 
     let slot = get_current_latest_block_slot(

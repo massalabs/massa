@@ -1068,7 +1068,7 @@ fn configure_grpc(
     settings: &GrpcSettings,
     keypair: KeyPair,
     final_state: &Arc<RwLock<dyn FinalStateController>>,
-    minimal_fees: Option<Amount>,
+    minimal_fees: Amount,
 ) -> GrpcConfig {
     GrpcConfig {
         name,

@@ -45,7 +45,7 @@ pub struct NodeStatus {
     /// chain id
     pub chain_id: u64,
     /// minimal fees to include an operation in a block
-    pub minimal_fees: Option<Amount>,
+    pub minimal_fees: Amount,
 }
 
 impl std::fmt::Display for NodeStatus {

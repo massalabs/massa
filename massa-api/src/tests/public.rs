@@ -454,8 +454,8 @@ async fn send_operations_low_fee() {
     let addr: SocketAddr = "[::]:5049".parse().unwrap();
     let (mut api_public, mut config) = start_public_api(addr);
 
-    config.minimal_fees = Some(Amount::from_str("0.01").unwrap());
-    api_public.0.api_settings.minimal_fees = Some(Amount::from_str("0.01").unwrap());
+    config.minimal_fees = Amount::from_str("0.01").unwrap();
+    api_public.0.api_settings.minimal_fees = Amount::from_str("0.01").unwrap();
 
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl.expect_clone_box().returning(|| {
@@ -498,13 +498,16 @@ async fn send_operations_low_fee() {
         serialized_content: operation.serialized_data,
     };
 
-    let response: Vec<OperationId> = client
+    let response: Result<Vec<OperationId>, Error> = client
         .request("send_operations", rpc_params![vec![input]])
-        .await
-        .unwrap();
+        .await;
+
+    let err = response.unwrap_err();
 
     // op has low fee and should not be executed
-    assert_eq!(response.len(), 0);
+    assert!(err
+        .to_string()
+        .contains("Bad request: fee is too low provided: 0"));
 
     api_public_handle.stop().await;
 }

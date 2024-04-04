@@ -113,10 +113,8 @@ pub(crate) async fn send_operations(
                                             }
 
 
-                                            if let Some(minimal_fee) = config.minimal_fees {
-                                                if res_operation.content.fee.checked_sub(minimal_fee).is_none() {
-                                                    return Err(GrpcError::InvalidArgument("Operation fee is lower than the minimal fee. Your operation will never be included in a block.".into()));
-                                                }
+                                            if res_operation.content.fee.checked_sub(config.minimal_fees).is_none() {
+                                                return Err(GrpcError::InvalidArgument("Operation fee is lower than the minimal fee. Your operation will never be included in a block.".into()));
                                             }
 
                                             if rest.is_empty() {

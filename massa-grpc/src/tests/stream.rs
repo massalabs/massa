@@ -1228,7 +1228,7 @@ async fn new_slot_execution_outputs() {
 async fn send_operations_low_fee() {
     let addr: SocketAddr = "[::]:4000".parse().unwrap();
     let mut public_server = grpc_public_service(&addr);
-    public_server.grpc_config.minimal_fees = Some(Amount::from_str("0.01").unwrap());
+    public_server.grpc_config.minimal_fees = Amount::from_str("0.01").unwrap();
 
     let mut pool_ctrl = Box::new(MockPoolController::new());
     pool_ctrl.expect_clone_box().returning(|| {

@@ -165,6 +165,11 @@ impl OperationPool {
                 });
             }
 
+            if retain {
+                // filter ops which doesn't have minimal fees
+                retain = op_info.fee.checked_sub(self.config.minimal_fees).is_some();
+            }
+
             // filter out ops that have been executed in final or candidate slots
             // TODO: in the re-execution followup, we should only filter out final-executed ops here (exec_status == Some(true))
             if retain {
@@ -492,13 +497,6 @@ impl OperationPool {
             // exclude ops that require too much gas
             if op_info.max_gas_usage > remaining_gas {
                 continue;
-            }
-
-            // if minimum fees are required, check that the fee is enough
-            if let Some(minimal_fees) = self.config.minimal_fees {
-                if op_info.fee.checked_sub(minimal_fees).is_none() {
-                    continue;
-                }
             }
 
             // here we consider the operation as accepted
