@@ -91,9 +91,13 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_models::node::NodeId;
+</span><span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_models::node::NodeId;
 <span class="kw">use </span>massa_models::stats::{ConsensusStats, ExecutionStats, NetworkStats};
 <span class="kw">use </span>massa_models::{config::CompactConfig, slot::Slot, version::Version};
 <span class="kw">use </span>massa_time::MassaTime;
@@ -136,6 +140,8 @@
     </span><span class="kw">pub </span>config: CompactConfig,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
+    <span class="doccomment">/// minimal fees to include an operation in a block
+    </span><span class="kw">pub </span>minimal_fees: Amount,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>NodeStatus {

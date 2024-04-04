@@ -63,6 +63,8 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::amount::Amount;
@@ -122,6 +124,8 @@
     </span><span class="kw">pub </span>denunciation_expire_periods: u64,
     <span class="doccomment">/// max number of denunciations that can be included in a block header
     </span><span class="kw">pub </span>max_denunciations_per_block_header: u32,
+    <span class="doccomment">/// Minimum acceptable fees to include an operation in a block
+    </span><span class="kw">pub </span>minimal_fees: Amount,
     <span class="doccomment">/// last_start_period
     /// * If start all new network: set to 0
     /// * If from snapshot: retrieve from args

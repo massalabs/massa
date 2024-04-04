@@ -518,6 +518,11 @@
 <a href="#518" id="518">518</a>
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::{
@@ -683,6 +688,11 @@
                     op_info.thread == slot.thread
                         &amp;&amp; op_info.validity_period_range.contains(<span class="kw-2">&amp;</span>slot.period)
                 });
+            }
+
+            <span class="kw">if </span>retain {
+                <span class="comment">// filter ops which doesn&#39;t have minimal fees
+                </span>retain = op_info.fee.checked_sub(<span class="self">self</span>.config.minimal_fees).is_some();
             }
 
             <span class="comment">// filter out ops that have been executed in final or candidate slots

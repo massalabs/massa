@@ -1444,6 +1444,17 @@
 <a href="#1444" id="1444">1444</a>
 <a href="#1445" id="1445">1445</a>
 <a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::display::Output;
@@ -2806,16 +2817,27 @@
     addr: Address,
     json: bool,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; {
-    <span class="kw">let </span>cfg = <span class="kw">match </span>client.public.get_status().<span class="kw">await </span>{
+    <span class="kw">let </span>status = <span class="kw">match </span>client.public.get_status().<span class="kw">await </span>{
         <span class="prelude-val">Ok</span>(node_status) =&gt; node_status,
         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
-    }
-    .config;
+    };
 
-    <span class="kw">let </span>slot = get_current_latest_block_slot(cfg.thread_count, cfg.t0, cfg.genesis_timestamp)<span class="question-mark">?
-        </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
-    <span class="kw">let </span><span class="kw-2">mut </span>expire_period = slot.period + cfg.operation_validity_periods;
-    <span class="kw">if </span>slot.thread &gt;= addr.get_thread(cfg.thread_count) {
+    <span class="comment">// check if the fee is higher than the minimal fees of the node
+    </span><span class="kw">if </span>fee.checked_sub(status.minimal_fees).is_none() {
+        <span class="macro">bail!</span>(<span class="macro">format!</span>(
+            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+            fee, status.minimal_fees
+        ));
+    }
+
+    <span class="kw">let </span>slot = get_current_latest_block_slot(
+        status.config.thread_count,
+        status.config.t0,
+        status.config.genesis_timestamp,
+    )<span class="question-mark">?
+    </span>.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
+    <span class="kw">let </span><span class="kw-2">mut </span>expire_period = slot.period + status.config.operation_validity_periods;
+    <span class="kw">if </span>slot.thread &gt;= addr.get_thread(status.config.thread_count) {
         expire_period += <span class="number">1</span>;
     };
 

@@ -82,9 +82,13 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_signature::KeyPair;
+</span><span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::path::PathBuf;
@@ -165,5 +169,7 @@
     </span><span class="kw">pub </span>chain_id: u64,
     <span class="doccomment">/// Delta to compute upper bounds when fetching deferred credits
     </span><span class="kw">pub </span>deferred_credits_delta: MassaTime,
+    <span class="doccomment">/// minimal fees to include an operation in a block
+    </span><span class="kw">pub </span>minimal_fees: Amount,
 }
 </code></pre></div></section></main></body></html>

@@ -152,9 +152,13 @@
 <a href="#152" id="152">152</a>
 <a href="#153" id="153">153</a>
 <a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_signature::KeyPair;
+</span><span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_signature::KeyPair;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>serde::Deserialize;
 <span class="kw">use </span>std::{net::SocketAddr, path::PathBuf, time::Duration};
@@ -287,6 +291,8 @@
     </span><span class="kw">pub </span>client_private_key_path: PathBuf,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
+    <span class="doccomment">/// minimal fees
+    </span><span class="kw">pub </span>minimal_fees: Amount,
 }
 
 <span class="doccomment">/// gRPC API configuration.
