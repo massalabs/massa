@@ -1380,7 +1380,6 @@
 <a href="#1380" id="1380">1380</a>
 <a href="#1381" id="1381">1381</a>
 <a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1671,8 +1670,7 @@
                         executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
                         result: ReadOnlyResult::Error(<span class="macro">format!</span>(
                             <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
-                            fee,
-                            <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
+                            fee, <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
                         )),
                         gas_cost: <span class="number">0</span>,
                         output_events: Default::default(),
