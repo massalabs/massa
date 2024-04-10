@@ -282,24 +282,21 @@ impl MassaRpcServer for API<Public> {
             };
 
             // check if fee is enough
-            if fee
-                .unwrap_or_default()
-                .checked_sub(self.0.api_settings.minimal_fees)
-                .is_none()
-            {
-                let result = ExecuteReadOnlyResponse {
-                    executed_at: Slot::new(0, 0),
-                    result: ReadOnlyResult::Error(format!(
-                        "fee is too low provided: {} , minimal_fees required: {}",
-                        fee.unwrap_or_default(),
-                        self.0.api_settings.minimal_fees
-                    )),
-                    gas_cost: 0,
-                    output_events: Default::default(),
-                    state_changes: Default::default(),
-                };
-                res.push(result);
-                continue;
+            if let Some(fee) = fee {
+                if fee.checked_sub(self.0.api_settings.minimal_fees).is_none() {
+                    let result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(0, 0),
+                        result: ReadOnlyResult::Error(format!(
+                            "fee is too low provided: {} , minimal_fees required: {}",
+                            fee, self.0.api_settings.minimal_fees
+                        )),
+                        gas_cost: 0,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    continue;
+                }
             }
 
             // run
@@ -386,24 +383,21 @@ impl MassaRpcServer for API<Public> {
                 fee,
             };
 
-            if fee
-                .unwrap_or_default()
-                .checked_sub(self.0.api_settings.minimal_fees)
-                .is_none()
-            {
-                let result = ExecuteReadOnlyResponse {
-                    executed_at: Slot::new(0, 0),
-                    result: ReadOnlyResult::Error(format!(
-                        "fee is too low provided: {} , minimal_fees required: {}",
-                        fee.unwrap_or_default(),
-                        self.0.api_settings.minimal_fees
-                    )),
-                    gas_cost: 0,
-                    output_events: Default::default(),
-                    state_changes: Default::default(),
-                };
-                res.push(result);
-                continue;
+            if let Some(fee) = fee {
+                if fee.checked_sub(self.0.api_settings.minimal_fees).is_none() {
+                    let result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(0, 0),
+                        result: ReadOnlyResult::Error(format!(
+                            "fee is too low provided: {} , minimal_fees required: {}",
+                            fee, self.0.api_settings.minimal_fees
+                        )),
+                        gas_cost: 0,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    continue;
+                }
             }
 
             // run
