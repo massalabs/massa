@@ -1381,11 +1381,6 @@
 <a href="#1381" id="1381">1381</a>
 <a href="#1382" id="1382">1382</a>
 <a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
-<a href="#1386" id="1386">1386</a>
-<a href="#1387" id="1387">1387</a>
-<a href="#1388" id="1388">1388</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1670,24 +1665,22 @@
             };
 
             <span class="comment">// check if fee is enough
-            </span><span class="kw">if </span>fee
-                .unwrap_or_default()
-                .checked_sub(<span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees)
-                .is_none()
-            {
-                <span class="kw">let </span>result = ExecuteReadOnlyResponse {
-                    executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-                    result: ReadOnlyResult::Error(<span class="macro">format!</span>(
-                        <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
-                        fee.unwrap_or_default(),
-                        <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
-                    )),
-                    gas_cost: <span class="number">0</span>,
-                    output_events: Default::default(),
-                    state_changes: Default::default(),
-                };
-                res.push(result);
-                <span class="kw">continue</span>;
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(fee) = fee {
+                <span class="kw">if </span>fee.checked_sub(<span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees).is_none() {
+                    <span class="kw">let </span>result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
+                        result: ReadOnlyResult::Error(<span class="macro">format!</span>(
+                            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+                            fee,
+                            <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
+                        )),
+                        gas_cost: <span class="number">0</span>,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    <span class="kw">continue</span>;
+                }
             }
 
             <span class="comment">// run
@@ -1774,24 +1767,21 @@
                 fee,
             };
 
-            <span class="kw">if </span>fee
-                .unwrap_or_default()
-                .checked_sub(<span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees)
-                .is_none()
-            {
-                <span class="kw">let </span>result = ExecuteReadOnlyResponse {
-                    executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
-                    result: ReadOnlyResult::Error(<span class="macro">format!</span>(
-                        <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
-                        fee.unwrap_or_default(),
-                        <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
-                    )),
-                    gas_cost: <span class="number">0</span>,
-                    output_events: Default::default(),
-                    state_changes: Default::default(),
-                };
-                res.push(result);
-                <span class="kw">continue</span>;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(fee) = fee {
+                <span class="kw">if </span>fee.checked_sub(<span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees).is_none() {
+                    <span class="kw">let </span>result = ExecuteReadOnlyResponse {
+                        executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
+                        result: ReadOnlyResult::Error(<span class="macro">format!</span>(
+                            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+                            fee, <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
+                        )),
+                        gas_cost: <span class="number">0</span>,
+                        output_events: Default::default(),
+                        state_changes: Default::default(),
+                    };
+                    res.push(result);
+                    <span class="kw">continue</span>;
+                }
             }
 
             <span class="comment">// run
