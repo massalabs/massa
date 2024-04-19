@@ -1523,6 +1523,7 @@
 <a href="#1523" id="1523">1523</a>
 <a href="#1524" id="1524">1524</a>
 <a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2178,7 +2179,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetSlotAbiCallStacksResponse, GrpcError&gt; {
     <span class="kw">let </span>slots = request.into_inner().slots;
 
-    <span class="kw">let </span>slot_elements = <span class="macro">vec!</span>[];
+    <span class="kw">let </span><span class="kw-2">mut </span>slot_elements = <span class="macro">vec!</span>[];
     <span class="kw">for </span>slot <span class="kw">in </span>slots {
         <span class="kw">let </span>call_stack_ = grpc
             .execution_controller
@@ -2205,6 +2206,7 @@
                     })
             }
         }
+        slot_elements.push(slot_abi_call_stacks);
     }
 
     <span class="kw">let </span>resp = GetSlotAbiCallStacksResponse {
