@@ -653,7 +653,7 @@ pub(crate) fn get_slot_abi_call_stacks(
 ) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
     let slots = request.into_inner().slots;
 
-    let slot_elements = vec![];
+    let mut slot_elements = vec![];
     for slot in slots {
         let call_stack_ = grpc
             .execution_controller
@@ -680,6 +680,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                     })
             }
         }
+        slot_elements.push(slot_abi_call_stacks);
     }
 
     let resp = GetSlotAbiCallStacksResponse {
