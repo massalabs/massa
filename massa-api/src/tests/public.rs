@@ -490,7 +490,7 @@ async fn send_operations_low_fee() {
     let keypair = KeyPair::generate(0).unwrap();
 
     // send transaction
-    let operation = create_operation_with_expire_period(&keypair, 500000);
+    let operation = create_operation_with_expire_period(&keypair, u64::MAX);
 
     let input: OperationInput = OperationInput {
         creator_public_key: keypair.get_public_key(),
@@ -551,7 +551,7 @@ async fn send_operations() {
 
     ////
     // send transaction
-    let operation = create_operation_with_expire_period(&keypair, 500000);
+    let operation = create_operation_with_expire_period(&keypair, u64::MAX);
 
     let input: OperationInput = OperationInput {
         creator_public_key: keypair.get_public_key(),
