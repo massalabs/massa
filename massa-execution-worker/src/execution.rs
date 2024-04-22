@@ -1415,10 +1415,12 @@ impl ExecutionState {
         // self.trace_history
         //     .write()
         //     .save_traces_for_slot(*slot, slot_trace.clone());
-        #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_transfers_for_slot(*slot, transfers.clone());
+        {
+            #[cfg(feature = "execution-trace")]
+            self.trace_history
+                .write()
+                .save_transfers_for_slot(*slot, transfers.clone());
+        }
         // Finish slot
         #[cfg(not(feature = "execution-trace"))]
         let exec_out = context_guard!(self).settle_slot(block_info);
