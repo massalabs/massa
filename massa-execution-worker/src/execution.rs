@@ -1411,10 +1411,10 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
-        #[cfg(feature = "execution-trace")]
-        self.trace_history
-            .write()
-            .save_traces_for_slot(*slot, slot_trace.clone());
+        // #[cfg(feature = "execution-trace")]
+        // self.trace_history
+        //     .write()
+        //     .save_traces_for_slot(*slot, slot_trace.clone());
         #[cfg(feature = "execution-trace")]
         self.trace_history
             .write()
