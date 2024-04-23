@@ -987,21 +987,8 @@ impl MassaRpcServer for API<Public> {
                 .collect()
         };
 
-        // Compute a limit (as a slot) for deferred credits as it can be quite huge
-        let bound_ts = MassaTime::now().saturating_add(self.0.api_settings.deferred_credits_delta);
-
-        let deferred_credit_max_slot = timeslots::get_closest_slot_to_timestamp(
-            self.0.api_settings.thread_count,
-            self.0.api_settings.t0,
-            self.0.api_settings.genesis_timestamp,
-            bound_ts,
-        );
-
         // get execution info
-        let execution_infos = self.0.execution_controller.get_addresses_infos(
-            &addresses,
-            std::ops::Bound::Included(deferred_credit_max_slot),
-        );
+        let execution_infos = self.0.execution_controller.get_addresses_infos(&addresses);
 
         // get future draws from selector
         let selection_draws = {
