@@ -37,8 +37,6 @@
     enable_ws = false
     # whether to broadcast for blocks, endorsements and operations
     enable_broadcast = false
-    # deferred credits delta (in milliseconds)
-    deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
 
 [grpc]
     [grpc.public]
