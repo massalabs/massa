@@ -2025,16 +2025,8 @@ impl ExecutionState {
     }
 
     /// Get future deferred credits of an address
-    pub fn get_address_future_deferred_credits(
-        &self,
-        address: &Address,
-        max_slot: std::ops::Bound<Slot>,
-    ) -> BTreeMap<Slot, Amount> {
-        context_guard!(self).get_address_future_deferred_credits(
-            address,
-            self.config.thread_count,
-            max_slot,
-        )
+    pub fn get_address_future_deferred_credits(&self, address: &Address) -> BTreeMap<Slot, Amount> {
+        context_guard!(self).get_address_future_deferred_credits(address, self.config.thread_count)
     }
 
     /// Get future deferred credits of an address
@@ -2044,17 +2036,11 @@ impl ExecutionState {
         address: &Address,
     ) -> (BTreeMap<Slot, Amount>, BTreeMap<Slot, Amount>) {
         // get values from final state
-        let res_final: BTreeMap<Slot, Amount> = self
+        let res_final = self
             .final_state
             .read()
             .get_pos_state()
-            .get_deferred_credits_range(.., Some(address))
-            .credits
-            .iter()
-            .filter_map(|(slot, addr_amount)| {
-                addr_amount.get(address).map(|amount| (*slot, *amount))
-            })
-            .collect();
+            .get_address_deferred_credits(address);
 
         // get values from active history, backwards
         let mut res_speculative: BTreeMap<Slot, Amount> = BTreeMap::default();
@@ -2066,12 +2052,10 @@ impl ExecutionState {
                 };
             }
         }
-
         // fill missing speculative entries with final entries
-        for (slot, amount) in &res_final {
-            res_speculative.entry(*slot).or_insert(*amount);
+        for (s, v) in res_final.iter() {
+            res_speculative.entry(*s).or_insert(*v);
         }
-
         // remove zero entries from speculative
         res_speculative.retain(|_s, a| !a.is_zero());
 

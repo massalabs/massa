@@ -838,7 +838,6 @@ async fn launch(
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
         chain_id: *CHAINID,
-        deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
     };
 
