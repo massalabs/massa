@@ -467,11 +467,7 @@ impl ExecutionController for ExecutionControllerImpl {
     }
 
     /// Gets information about a batch of addresses
-    fn get_addresses_infos(
-        &self,
-        addresses: &[Address],
-        deferred_credits_max_slot: std::ops::Bound<Slot>,
-    ) -> Vec<ExecutionAddressInfo> {
+    fn get_addresses_infos(&self, addresses: &[Address]) -> Vec<ExecutionAddressInfo> {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();
         for addr in addresses {
@@ -481,8 +477,6 @@ impl ExecutionController for ExecutionControllerImpl {
                 exec_state.get_final_and_candidate_balance(addr);
             let (final_roll_count, candidate_roll_count) =
                 exec_state.get_final_and_candidate_rolls(addr);
-            let future_deferred_credits =
-                exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
             res.push(ExecutionAddressInfo {
                 final_datastore_keys: final_datastore_keys.unwrap_or_default(),
                 candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
@@ -490,7 +484,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 candidate_balance: candidate_balance.unwrap_or_default(),
                 final_roll_count,
                 candidate_roll_count,
-                future_deferred_credits,
+                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
                 cycle_infos: exec_state.get_address_cycle_infos(addr),
             });
         }
