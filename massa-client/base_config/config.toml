@@ -10,7 +10,7 @@ public_port = 33035
 grpc_public_port = 33037
 grpc_private_port = 33038
 # Chain id for MainNet, please update to match the target node chain id
-chain_id = 77658377
+chain_id = 77658366
 
 [client]
     # maximum size in bytes of a request. Defaults to 50MB
