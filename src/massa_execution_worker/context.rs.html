@@ -1116,8 +1116,6 @@
 <a href="#1116" id="1116">1116</a>
 <a href="#1117" id="1117">1117</a>
 <a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -2150,19 +2148,17 @@
     }
 
     <span class="doccomment">/// Get future deferred credits of an address
-    /// With optionally a limit slot (excluded)
     </span><span class="kw">pub fn </span>get_address_future_deferred_credits(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         address: <span class="kw-2">&amp;</span>Address,
         thread_count: u8,
-        max_slot: std::ops::Bound&lt;Slot&gt;,
     ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
         <span class="kw">let </span>min_slot = <span class="self">self
             </span>.slot
             .get_next_slot(thread_count)
             .expect(<span class="string">&quot;unexpected slot overflow in context.get_addresses_deferred_credits&quot;</span>);
         <span class="self">self</span>.speculative_roll_state
-            .get_address_deferred_credits(address, (std::ops::Bound::Included(min_slot), max_slot))
+            .get_address_deferred_credits(address, min_slot)
     }
 
     <span class="doccomment">/// in case of
