@@ -469,6 +469,9 @@
 <a href="#469" id="469">469</a>
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -832,6 +835,9 @@
     <span class="doccomment">/// slot trace
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
     </span><span class="kw">pub </span>slot_trace: <span class="prelude-ty">Option</span>&lt;(SlotAbiCallStack, Vec&lt;Transfer&gt;)&gt;,
+    <span class="doccomment">/// storage
+    </span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+    </span><span class="kw">pub </span>storage: <span class="prelude-ty">Option</span>&lt;Storage&gt;,
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]

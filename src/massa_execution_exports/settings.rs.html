@@ -101,6 +101,8 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -203,5 +205,7 @@
     </span><span class="kw">pub </span>broadcast_slot_execution_traces_channel_capacity: usize,
     <span class="doccomment">/// Max execution traces slot to keep in trace history cache
     </span><span class="kw">pub </span>max_execution_traces_slot_limit: usize,
+    <span class="doccomment">/// Where to dump blocks
+    </span><span class="kw">pub </span>block_dump_folder_path: PathBuf,
 }
 </code></pre></div></section></main></body></html>
