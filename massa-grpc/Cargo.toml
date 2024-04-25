@@ -9,6 +9,7 @@ documentation = "https://docs.massa.net/"
 
 [features]
 execution-trace = ["serde_json"]
+dump-block = []
 test-exports = []
 
 [dependencies]

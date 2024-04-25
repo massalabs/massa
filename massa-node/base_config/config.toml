@@ -423,3 +423,6 @@
 [versioning]
     # Warn user to update its node if we reach this percentage for announced network versions
     mip_stats_warn_announced_version = 30
+
+[block_dump]
+    block_dump_folder_path = "dump/blocks"
