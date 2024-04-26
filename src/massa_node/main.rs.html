@@ -1472,6 +1472,7 @@
 <a href="#1472" id="1472">1472</a>
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1925,6 +1926,7 @@
 
     <span class="kw">let </span>block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     <span class="kw">if </span>!block_dump_folder_path.exists() {
+        <span class="macro">debug!</span>(<span class="string">&quot;Current folder: {:?}&quot;</span>, std::env::current_dir().unwrap());
         <span class="macro">info!</span>(<span class="string">&quot;Creating dump folder: {:?}&quot;</span>, block_dump_folder_path);
         std::fs::create_dir_all(block_dump_folder_path.clone())
             .expect(<span class="string">&quot;Cannot create dump block folder&quot;</span>);
