@@ -451,7 +451,7 @@ async fn launch(
 
     let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     if !block_dump_folder_path.exists() {
-        debug!("Current folder: {:?}", std::env::current_dir().unwrap());
+        info!("Current folder: {:?}", std::env::current_dir().unwrap());
         info!("Creating dump folder: {:?}", block_dump_folder_path);
         std::fs::create_dir_all(block_dump_folder_path.clone())
             .expect("Cannot create dump block folder");
