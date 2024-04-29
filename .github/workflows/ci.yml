@@ -199,7 +199,9 @@ jobs:
           save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v3
         with:
-          version: '3.x'
+          # version: '3.x'
+          version: "23.x"
+          include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
