@@ -845,29 +845,29 @@
     <span class="kw">fn </span>from(value: Denunciation) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>value {
             Denunciation::Endorsement(de) =&gt; grpc_model::Denunciation {
-                entry: <span class="prelude-val">Some</span>(grpc_model::denunciation::Entry::Endorsement {
-                    <span class="number">0</span>: grpc_model::EndorsementDenunciation {
+                entry: <span class="prelude-val">Some</span>(grpc_model::denunciation::Entry::Endorsement(
+                    grpc_model::EndorsementDenunciation {
                         public_key: de.get_public_key().to_string(),
-                        slot: <span class="prelude-val">Some</span>(de.get_slot().clone().into()),
+                        slot: <span class="prelude-val">Some</span>((<span class="kw-2">*</span>de.get_slot()).into()),
                         index: <span class="kw-2">*</span>de.get_index(),
                         hash_1: de.get_hash_1().to_string(),
                         hash_2: de.get_hash_2().to_string(),
                         signature_1: de.get_signature_1().to_string(),
                         signature_2: de.get_signature_2().to_string(),
                     },
-                }),
+                )),
             },
             Denunciation::BlockHeader(db) =&gt; grpc_model::Denunciation {
-                entry: <span class="prelude-val">Some</span>(grpc_model::denunciation::Entry::BlockHeader {
-                    <span class="number">0</span>: grpc_model::BlockHeaderDenunciation {
+                entry: <span class="prelude-val">Some</span>(grpc_model::denunciation::Entry::BlockHeader(
+                    grpc_model::BlockHeaderDenunciation {
                         public_key: db.get_public_key().to_string(),
-                        slot: <span class="prelude-val">Some</span>(db.get_slot().clone().into()),
+                        slot: <span class="prelude-val">Some</span>((<span class="kw-2">*</span>db.get_slot()).into()),
                         hash_1: db.get_hash_1().to_string(),
                         hash_2: db.get_hash_2().to_string(),
                         signature_1: db.get_signature_1().to_string(),
                         signature_2: db.get_signature_2().to_string(),
                     },
-                }),
+                )),
             },
         }
     }
