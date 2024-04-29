@@ -197,7 +197,7 @@ jobs:
         with:
           shared-key: "massa"
           save-if: ${{ github.ref_name == 'main' }}
-      - uses: arduino/setup-protoc@v1
+      - uses: arduino/setup-protoc@v3
         with:
           version: '3.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
