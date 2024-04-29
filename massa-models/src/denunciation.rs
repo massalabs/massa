@@ -89,6 +89,16 @@ impl EndorsementDenunciation {
         hash_data.extend(content_hash.to_bytes());
         Hash::compute_from(&hash_data)
     }
+
+    // Getters (for GRPC From)
+    pub fn get_public_key(&self) -> &PublicKey { &self.public_key }
+    pub fn get_slot(&self) -> &Slot { &self.slot }
+    pub fn get_index(&self) -> &u32 { &self.index }
+    pub fn get_hash_1(&self) -> &Hash { &self.hash_1 }
+    pub fn get_hash_2(&self) -> &Hash { &self.hash_2 }
+    pub fn get_signature_1(&self) -> &Signature { &self.signature_1 }
+    pub fn get_signature_2(&self) -> &Signature { &self.signature_2 }
+
 }
 
 /// A Variant of Denunciation enum for block header
@@ -120,6 +130,14 @@ impl BlockHeaderDenunciation {
         hash_data.extend(content_hash.to_bytes());
         Hash::compute_from(&hash_data)
     }
+
+    // Getters (for GRPC From)
+    pub fn get_public_key(&self) -> &PublicKey { &self.public_key }
+    pub fn get_slot(&self) -> &Slot { &self.slot }
+    pub fn get_hash_1(&self) -> &Hash { &self.hash_1 }
+    pub fn get_hash_2(&self) -> &Hash { &self.hash_2 }
+    pub fn get_signature_1(&self) -> &Signature { &self.signature_1 }
+    pub fn get_signature_2(&self) -> &Signature { &self.signature_2 }
 }
 
 /// A denunciation enum

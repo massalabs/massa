@@ -2566,7 +2566,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=426fd325a55dfcc4033920bed2de075a7e7ad4b7#426fd325a55dfcc4033920bed2de075a7e7ad4b7"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=4a7efd42005eeb6ed2104d2a9631729435a0a891#4a7efd42005eeb6ed2104d2a9631729435a0a891"
 dependencies = [
  "glob",
  "prost",
@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=e95066a6d3a963ff0125616f404a84e5abb63d63#e95066a6d3a963ff0125616f404a84e5abb63d63"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=a8cf67b0349d057d757aede9d945aa3195fb7e68#a8cf67b0349d057d757aede9d945aa3195fb7e68"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
