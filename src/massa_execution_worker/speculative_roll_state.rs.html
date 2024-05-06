@@ -595,6 +595,13 @@
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
 <a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -851,7 +858,9 @@
         thread_count: u8,
         roll_price: Amount,
         max_miss_ratio: Ratio&lt;u64&gt;,
-    ) {
+    ) -&gt; Vec&lt;(Address, Amount)&gt; {
+        <span class="attr">#[allow(unused_mut)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="macro">vec!</span>[];
         <span class="kw">let </span>cycle = slot.get_cycle(periods_per_cycle);
 
         <span class="kw">let </span>(production_stats, full) =
@@ -883,6 +892,9 @@
                             .saturating_add(amount);
                         target_credits.insert(addr, new_deferred_credits);
                         <span class="self">self</span>.added_changes.roll_changes.insert(addr, <span class="number">0</span>);
+
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>result.push((addr, amount));
                     }
                 }
             }
@@ -892,6 +904,8 @@
             credits.credits.insert(target_slot, target_credits);
             <span class="self">self</span>.added_changes.deferred_credits.extend(credits);
         }
+
+        result
     }
 
     <span class="doccomment">/// Get deferred credits of an address starting from a given slot

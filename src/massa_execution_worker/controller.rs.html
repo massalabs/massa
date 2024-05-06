@@ -539,6 +539,10 @@
 <a href="#539" id="539">539</a>
 <a href="#540" id="540">540</a>
 <a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -567,7 +571,11 @@
 <span class="kw">use </span>tracing::info;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span>massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+</span><span class="kw">use </span>massa_execution_exports::types_trace_info::AbiTrace;
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span>massa_execution_exports::types_trace_info::SlotAbiCallStack;
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+</span><span class="kw">use </span>massa_execution_exports::types_trace_info::Transfer;
 
 <span class="doccomment">/// structure used to communicate with execution thread
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ExecutionInputData {

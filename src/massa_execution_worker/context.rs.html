@@ -1118,6 +1118,45 @@
 <a href="#1118" id="1118">1118</a>
 <a href="#1119" id="1119">1119</a>
 <a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
+<a href="#1151" id="1151">1151</a>
+<a href="#1152" id="1152">1152</a>
+<a href="#1153" id="1153">1153</a>
+<a href="#1154" id="1154">1154</a>
+<a href="#1155" id="1155">1155</a>
+<a href="#1156" id="1156">1156</a>
+<a href="#1157" id="1157">1157</a>
+<a href="#1158" id="1158">1158</a>
+<a href="#1159" id="1159">1159</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1828,13 +1867,28 @@
     ///
     /// # Arguments
     /// * `msg`: the asynchronous message to cancel
-    </span><span class="kw">pub fn </span>cancel_async_message(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>AsyncMessage) {
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(msg.sender), msg.coins, <span class="bool-val">false</span>) {
+    </span><span class="kw">pub fn </span>cancel_async_message(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        msg: <span class="kw-2">&amp;</span>AsyncMessage,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt; {
+        <span class="attr">#[allow(unused_assignments, unused_mut)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="prelude-val">None</span>;
+        <span class="kw">let </span>transfer_result = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(msg.sender), msg.coins, <span class="bool-val">false</span>);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
             <span class="macro">debug!</span>(
                 <span class="string">&quot;async message cancel: reimbursement of {} failed: {}&quot;</span>,
                 msg.sender, e
             );
         }
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
+            result = <span class="prelude-val">Some</span>((msg.sender, <span class="prelude-val">Err</span>(e.to_string())))
+        } <span class="kw">else </span>{
+            result = <span class="prelude-val">Some</span>((msg.sender, <span class="prelude-val">Ok</span>(msg.coins)));
+        }
+
+        result
     }
 
     <span class="doccomment">/// Add `roll_count` rolls to the buyer address.
@@ -1951,21 +2005,38 @@
     ///
     /// # Arguments
     /// * `slot`: associated slot of the deferred credits to be executed
-    </span><span class="kw">pub fn </span>execute_deferred_credits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) {
+    </span><span class="kw">pub fn </span>execute_deferred_credits(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        slot: <span class="kw-2">&amp;</span>Slot,
+    ) -&gt; Vec&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt; {
+        <span class="attr">#[allow(unused_mut)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="macro">vec!</span>[];
+
         <span class="kw">for </span>(_slot, map) <span class="kw">in </span><span class="self">self
             </span>.speculative_roll_state
             .take_unexecuted_deferred_credits(slot)
             .credits
         {
             <span class="kw">for </span>(address, amount) <span class="kw">in </span>map {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(address), amount, <span class="bool-val">false</span>) {
+                <span class="kw">let </span>transfer_result = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(address), amount, <span class="bool-val">false</span>);
+
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
                     <span class="macro">debug!</span>(
                         <span class="string">&quot;could not credit {} deferred coins to {} at slot {}: {}&quot;</span>,
                         amount, address, slot, e
                     );
                 }
+
+                <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
+                    result.push((address, <span class="prelude-val">Err</span>(e.to_string())));
+                } <span class="kw">else </span>{
+                    result.push((address, <span class="prelude-val">Ok</span>(amount)));
+                }
             }
         }
+
+        result
     }
 
     <span class="doccomment">/// Finishes a slot and generates the execution output.
@@ -1979,7 +2050,7 @@
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
         <span class="comment">// execute the deferred credits coming from roll sells
-        </span><span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
+        </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// take the ledger changes first as they are needed for async messages and cache
         </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
@@ -1988,8 +2059,12 @@
         </span><span class="kw">let </span>deleted_messages = <span class="self">self
             </span>.speculative_async_pool
             .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
-            <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg) {
+                cancel_async_message_transfers.push(t)
+            }
         }
 
         <span class="comment">// update module cache
@@ -2002,7 +2077,7 @@
         }
 
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
-        </span><span class="kw">if </span><span class="self">self
+        </span><span class="kw">let </span>auto_sell_rolls = <span class="kw">if </span><span class="self">self
             </span>.slot
             .is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count)
         {
@@ -2012,8 +2087,10 @@
                 <span class="self">self</span>.config.thread_count,
                 <span class="self">self</span>.config.roll_price,
                 <span class="self">self</span>.config.max_miss_ratio,
-            );
-        }
+            )
+        } <span class="kw">else </span>{
+            <span class="macro">vec!</span>[]
+        };
 
         <span class="comment">// generate the execution output
         </span><span class="kw">let </span>state_changes = StateChanges {
@@ -2033,8 +2110,9 @@
             events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
             <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
             </span>slot_trace: <span class="prelude-val">None</span>,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
-            </span>storage: <span class="prelude-val">None</span>,
+            deferred_credits_execution: deferred_credits_transfers,
+            cancel_async_message_execution: cancel_async_message_transfers,
+            auto_sell_execution: auto_sell_rolls,
         }
     }
 
@@ -2169,7 +2247,7 @@
     ///
     /// async_msg, call OP, call SC to SC, read only call
     ///
-    /// check if the given address is a smart contract address and if it exist
+    /// check if the given address is a smart contract address and if it exists
     /// returns an error instead
     </span><span class="kw">pub fn </span>check_target_sc_address(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -2235,7 +2313,7 @@
     <span class="comment">// We use Xoshiro256PlusPlus because it is very fast,
     // has a period long enough to ensure no repetitions will ever happen,
     // of decent quality (given the unsafe constraints)
-    // but not cryptographically secure (and that&#39;s ok because the internal state is exposed anyways)
+    // but not cryptographically secure (and that&#39;s ok because the internal state is exposed anyway)
     </span>Xoshiro256PlusPlus::from_seed(seed)
 }
 </code></pre></div></section></main></body></html>
