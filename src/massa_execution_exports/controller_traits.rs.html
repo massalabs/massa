@@ -148,10 +148,6 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module exports generic traits representing interfaces for interacting with the Execution worker
@@ -176,11 +172,7 @@
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::AbiTrace;
-<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::SlotAbiCallStack;
-<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::Transfer;
+</span><span class="kw">use </span><span class="kw">crate</span>::types::{AbiTrace, SlotAbiCallStack, Transfer};
 
 <span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
 </span><span class="doccomment">/// interface that communicates with the execution worker thread

@@ -386,6 +386,13 @@
 <a href="#386" id="386">386</a>
 <a href="#387" id="387">387</a>
 <a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -532,6 +539,7 @@
     <span class="kw">pub </span>grpc: GrpcApiSettings,
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
+    <span class="kw">pub </span>block_dump: BlockDumpSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
@@ -767,6 +775,12 @@
 </span><span class="kw">pub struct </span>VersioningSettings {
     <span class="comment">// Warn user to update its node if we reach this percentage for announced network versions
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) mip_stats_warn_announced_version: u32,
+}
+
+<span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>BlockDumpSettings {
+    <span class="doccomment">/// Where to dump blocks
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) block_dump_folder_path: PathBuf,
 }
 
 <span class="attr">#[cfg(test)]
