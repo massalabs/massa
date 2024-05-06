@@ -62,9 +62,9 @@ jobs:
         with:
           shared-key: "check"
           save-if: ${{ github.ref_name == 'main' }}
-      - uses: arduino/setup-protoc@v1
+      - uses: arduino/setup-protoc@v3
         with:
-          version: '3.x'
+          version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
@@ -89,9 +89,9 @@ jobs:
         with:
           shared-key: "clippy"
           save-if: ${{ github.ref_name == 'main' }}
-      - uses: arduino/setup-protoc@v1
+      - uses: arduino/setup-protoc@v3
         with:
-          version: '3.x'
+          version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/clippy-check@v1
         with:
@@ -199,7 +199,6 @@ jobs:
           save-if: ${{ github.ref_name == 'main' }}
       - uses: arduino/setup-protoc@v3
         with:
-          # version: '3.x'
           version: "23.x"
           include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -282,9 +281,9 @@ jobs:
         with:
           shared-key: "doc"
           save-if: ${{ github.ref_name == 'main' }}
-      - uses: arduino/setup-protoc@v1
+      - uses: arduino/setup-protoc@v3
         with:
-          version: '3.x'
+          version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions-rs/cargo@v1
         with:
