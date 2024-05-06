@@ -2884,6 +2884,7 @@ dependencies = [
  "anyhow",
  "blake3",
  "bs58",
+ "cfg-if",
  "criterion",
  "hex-literal",
  "libsecp256k1",

@@ -45,7 +45,10 @@ execution-trace = [
 ]
 dump-block = [
     "prost",
-    "massa_execution_exports/dump-block",
+    "massa_execution_exports/dump-block"
+]
+execution-info = [
+    "execution-trace"
 ]
 
 [dependencies]
@@ -88,6 +91,7 @@ massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 schnellru = { workspace = true, optional = true }
 prost = { version = "=0.12", optional = true }
+cfg-if = "1.0.0"
 
 [dev-dependencies]
 massa_storage = { workspace = true }

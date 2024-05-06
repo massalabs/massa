@@ -26,7 +26,11 @@ use std::sync::Arc;
 use tracing::info;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+use massa_execution_exports::types_trace_info::AbiTrace;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::types_trace_info::SlotAbiCallStack;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::types_trace_info::Transfer;
 
 /// structure used to communicate with execution thread
 pub(crate) struct ExecutionInputData {
