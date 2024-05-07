@@ -68,7 +68,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
 #[cfg(feature = "dump-block")]
-use std::io::Write;
+use rocksdb::{DB, Options, DBCompressionType};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -341,13 +341,19 @@ impl ExecutionState {
         #[cfg(feature = "dump-block")]
         {
             let block_folder = &self.config.block_dump_folder_path;
-            let block_file_path = block_folder.join(format!(
-                "block_slot_{}_{}.bin",
-                exec_out.slot.thread, exec_out.slot.period
-            ));
+            // let block_file_path = block_folder.join(format!(
+            //     "block_slot_{}_{}.bin",
+            //     exec_out.slot.thread, exec_out.slot.period
+            // ));
 
-            let mut fs = std::fs::File::create(block_file_path.clone())
-                .unwrap_or_else(|_| panic!("Cannot create file: {:?}", block_file_path));
+            // let mut fs = std::fs::File::create(block_file_path.clone())
+            //     .unwrap_or_else(|_| panic!("Cannot create file: {:?}", block_file_path));
+            let mut opts = Options::default();
+            opts.set_compression_type(DBCompressionType::Lz4);
+
+            // let db = DB::open_default(block_folder).unwrap();
+            let db = DB::open(&opts, block_folder).unwrap();
+            // db.put(b"my key", b"my value").unwrap();
 
             let mut block_ser = vec![];
             if let Some(block_info) = exec_out.block_info {
@@ -381,8 +387,11 @@ impl ExecutionState {
                 let grpc_filled_block = grpc_model::FilledBlock::from(filled_block);
                 grpc_filled_block.encode(&mut block_ser).unwrap();
             }
-            fs.write_all(&block_ser[..])
-                .expect("Unable to write block to disk");
+            // fs.write_all(&block_ser[..])
+            //     .expect("Unable to write block to disk");
+
+            let slot_ser = exec_out.slot.to_bytes_key();
+            db.put(&slot_ser, &block_ser).expect("Unable to write block to db");
         }
     }
 

@@ -2916,6 +2916,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
+ "rocksdb",
  "schnellru",
  "serde_json",
  "sha2 0.10.8",
