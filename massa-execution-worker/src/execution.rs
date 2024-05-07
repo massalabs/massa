@@ -349,6 +349,7 @@ impl ExecutionState {
             // let mut fs = std::fs::File::create(block_file_path.clone())
             //     .unwrap_or_else(|_| panic!("Cannot create file: {:?}", block_file_path));
             let mut opts = Options::default();
+            opts.create_if_missing(true);
             opts.set_compression_type(DBCompressionType::Lz4);
 
             // let db = DB::open_default(block_folder).unwrap();
