@@ -1116,8 +1116,6 @@
 <a href="#1116" id="1116">1116</a>
 <a href="#1117" id="1117">1117</a>
 <a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a>
-<a href="#1120" id="1120">1120</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -2033,8 +2031,6 @@
             events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
             <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
             </span>slot_trace: <span class="prelude-val">None</span>,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
-            </span>storage: <span class="prelude-val">None</span>,
         }
     }
 
