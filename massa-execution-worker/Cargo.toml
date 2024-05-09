@@ -60,6 +60,7 @@ sha2 = { workspace = true }
 sha3 = { workspace = true }
 libsecp256k1 = { workspace = true }
 criterion = { workspace = true, "optional" = true }
+massa_asc = { workspace = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
 massa_channel = { workspace = true }

@@ -1,0 +1,16 @@
+[package]
+name = "massa_asc"
+version = "28.3.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[features]
+test-exports = []
+sandbox = []
+
+[dependencies]
+nom = { workspace = true }
+massa_db_exports = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }

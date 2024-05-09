@@ -1,0 +1,218 @@
+use massa_models::{
+    address::{Address, AddressDeserializer, AddressSerializer},
+    amount::{Amount, AmountDeserializer, AmountSerializer},
+    serialization::{StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
+};
+use massa_serialization::{
+    Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
+    U64VarIntDeserializer, U64VarIntSerializer,
+};
+use nom::{
+    error::{context, ContextError, ParseError},
+    sequence::tuple,
+    IResult, Parser,
+};
+use std::ops::Bound;
+
+/// Definition of a call in the future
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AsyncCall {
+    // The slot in which the call will be executed
+    pub target_slot: Slot,
+    // The address of the contract to call
+    pub target_address: Address,
+    // The function to call
+    pub target_function: String,
+    // The parameters of the call
+    pub parameters: Vec<u8>,
+    // The amount of coins to send to the contract
+    pub coins: Amount,
+    // The maximum amount of gas usable
+    pub max_gas: u64,
+    // The fee to pay for the reservation of the space for the call
+    pub fee: Amount,
+}
+
+impl AsyncCall {
+    pub fn new(
+        target_slot: Slot,
+        target_address: Address,
+        target_function: String,
+        parameters: Vec<u8>,
+        coins: Amount,
+        max_gas: u64,
+        fee: Amount,
+    ) -> Self {
+        Self {
+            target_slot,
+            target_address,
+            target_function,
+            parameters,
+            coins,
+            max_gas,
+            fee,
+        }
+    }
+}
+
+/// Serializer for `AsyncCall`
+#[derive(Clone)]
+pub struct AsyncCallSerializer {
+    slot_serializer: SlotSerializer,
+    address_serializer: AddressSerializer,
+    string_serializer: StringSerializer<U16VarIntSerializer, u16>,
+    vec_u8_serializer: VecU8Serializer,
+    amount_serializer: AmountSerializer,
+    u64_var_int_serializer: U64VarIntSerializer,
+}
+
+impl AsyncCallSerializer {
+    /// Serializes an `AsyncCall` into a `Vec<u8>`
+    pub fn new() -> Self {
+        Self {
+            slot_serializer: SlotSerializer::new(),
+            address_serializer: AddressSerializer::new(),
+            string_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            vec_u8_serializer: VecU8Serializer::new(),
+            amount_serializer: AmountSerializer::new(),
+            u64_var_int_serializer: U64VarIntSerializer::new(),
+        }
+    }
+}
+
+impl Serializer<AsyncCall> for AsyncCallSerializer {
+    fn serialize(&self, value: &AsyncCall, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.slot_serializer.serialize(&value.target_slot, buffer)?;
+        self.address_serializer
+            .serialize(&value.target_address, buffer)?;
+        self.string_serializer
+            .serialize(&value.target_function, buffer)?;
+        self.vec_u8_serializer
+            .serialize(&value.parameters, buffer)?;
+        self.amount_serializer.serialize(&value.coins, buffer)?;
+        self.amount_serializer.serialize(&value.fee, buffer)?;
+        self.u64_var_int_serializer
+            .serialize(&value.max_gas, buffer)?;
+        Ok(())
+    }
+}
+
+/// Deserializer for `AsyncCall`
+#[derive(Clone)]
+pub struct AsyncCallDeserializer {
+    slot_deserializer: SlotDeserializer,
+    address_deserializer: AddressDeserializer,
+    string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    vec_u8_deserializer: VecU8Deserializer,
+    amount_deserializer: AmountDeserializer,
+    u64_var_int_deserializer: U64VarIntDeserializer,
+}
+
+impl AsyncCallDeserializer {
+    /// Deserializes a `Vec<u8>` into an `AsyncCall`
+    pub fn new(thread_count: u8) -> Self {
+        Self {
+            slot_deserializer: SlotDeserializer::new(
+                (Bound::Included(0), Bound::Included(u64::MAX)),
+                (Bound::Included(0), Bound::Excluded(thread_count)),
+            ),
+            address_deserializer: AddressDeserializer::new(),
+            string_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
+                Bound::Included(0),
+                Bound::Included(u16::MAX),
+            )),
+            vec_u8_deserializer: VecU8Deserializer::new(
+                std::ops::Bound::Included(0),
+                std::ops::Bound::Included(u16::MAX as u64),
+            ),
+            amount_deserializer: AmountDeserializer::new(
+                Bound::Included(Amount::MIN),
+                Bound::Included(Amount::MAX),
+            ),
+            u64_var_int_deserializer: U64VarIntDeserializer::new(
+                Bound::Included(0),
+                Bound::Included(u64::MAX),
+            ),
+        }
+    }
+}
+
+impl Deserializer<AsyncCall> for AsyncCallDeserializer {
+    fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
+        &self,
+        buffer: &'a [u8],
+    ) -> IResult<&'a [u8], AsyncCall, E> {
+        context(
+            "Failed AsyncCall deserialization",
+            tuple((
+                context("Failed target_slot deserialization", |input| {
+                    self.slot_deserializer.deserialize(input)
+                }),
+                context("Failed target_address deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
+                context("Failed target_function deserialization", |input| {
+                    self.string_deserializer.deserialize(input)
+                }),
+                context("Failed parameters deserialization", |input| {
+                    self.vec_u8_deserializer.deserialize(input)
+                }),
+                context("Failed coins deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed fee deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
+                }),
+                context("Failed max_gas deserialization", |input| {
+                    self.u64_var_int_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(
+            |(target_slot, target_address, target_function, parameters, coins, fee, max_gas)| {
+                AsyncCall::new(
+                    target_slot,
+                    target_address,
+                    target_function,
+                    parameters,
+                    coins,
+                    max_gas,
+                    fee,
+                )
+            },
+        )
+        .parse(buffer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use massa_serialization::DeserializeError;
+
+    use super::*;
+
+    #[test]
+    fn test_serialization_deserialization() {
+        let call = AsyncCall::new(
+            Slot::new(42, 0),
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            "function".to_string(),
+            vec![0, 1, 2, 3],
+            Amount::from_raw(42),
+            42,
+            Amount::from_raw(42),
+        );
+        let serializer = AsyncCallSerializer::new();
+        let deserializer = AsyncCallDeserializer::new(1);
+        let mut buffer = Vec::new();
+        serializer.serialize(&call, &mut buffer).unwrap();
+        let (rest, deserialized_call) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+        assert_eq!(call, deserialized_call);
+        assert!(rest.is_empty());
+    }
+}
