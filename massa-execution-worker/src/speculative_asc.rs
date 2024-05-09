@@ -1,16 +1,12 @@
 //! Speculative async call registry.
 
-use crate::active_history::{ActiveHistory, HistorySearchResult::Present};
-use crate::ExecutionError;
-use massa_asc::{AsyncCall, AsyncRegistryChanges};
+use crate::active_history::ActiveHistory;
+use massa_execution_exports::ExecutionError;
+use massa_asc::{AsyncCall, AsyncRegistryChanges, CallStatus};
 use massa_final_state::FinalStateController;
-use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
 use massa_models::{asc_call_id::AsyncCallId, slot::Slot};
 use parking_lot::RwLock;
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 pub(crate) struct SpeculativeAsyncCallRegistry {
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -27,7 +23,7 @@ impl SpeculativeAsyncCallRegistry {
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
     ) -> Self {
-        AsyncRegistryChanges {
+        SpeculativeAsyncCallRegistry {
             final_state,
             active_history,
             current_changes: Default::default(),
@@ -86,7 +82,7 @@ impl SpeculativeAsyncCallRegistry {
 
         // remove from current changes
         if let Some((id, _)) = res.as_ref() {
-            self.current_changes.remove_call(id);
+            self.current_changes.remove_call(slot, id);
         }
 
         res
@@ -95,9 +91,9 @@ impl SpeculativeAsyncCallRegistry {
     /// Check that a call exists and is not cancelled
     pub fn call_exists(&mut self, id: AsyncCallId) -> bool {
         // Check if the call was cancelled or deleted in the current changes
-        match self.current_changes.call_status(id) {
+        match self.current_changes.call_status(id.get_slot(), id) {
             CallStatus::Emitted => return true,
-            CallStatus::Cancelled | CallStatus::Deleted => return false,
+            CallStatus::Cancelled | CallStatus::Removed => return false,
             CallStatus::Unknown => {}
         }
 
@@ -111,7 +107,7 @@ impl SpeculativeAsyncCallRegistry {
                     .get_status(id)
                 {
                     CallStatus::Emitted => return true,
-                    CallStatus::Cancelled | CallStatus::Deleted => return false,
+                    CallStatus::Cancelled | CallStatus::Removed => return false,
                     CallStatus::Unknown => {}
                 }
             }
@@ -130,8 +126,8 @@ impl SpeculativeAsyncCallRegistry {
 
     /// Cancel a call
     pub fn cancel_call(&mut self, id: AsyncCallId) -> Result<(), ExecutionError> {
-        if (!self.call_exists(id)) {
-            return Err(ExecutionError::TODO("Call ID does not exist."));
+        if !self.call_exists(id) {
+            return Err(ExecutionError::AscError("Call ID does not exist.".into()));
         }
         // Add a cancellation to the current changes
         self.current_changes.cancel_call(id);

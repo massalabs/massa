@@ -5,8 +5,8 @@ use massa_models::{
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U16VarIntDeserializer, U16VarIntSerializer,
-    U64VarIntDeserializer, U64VarIntSerializer,
+    BoolDeserializer, BoolSerializer, Deserializer, SerializeError, Serializer,
+    U16VarIntDeserializer, U16VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -32,6 +32,8 @@ pub struct AsyncCall {
     pub max_gas: u64,
     // The fee to pay for the reservation of the space for the call
     pub fee: Amount,
+    // Whether the call is cancelled
+    pub cancelled: bool,
 }
 
 impl AsyncCall {
@@ -43,6 +45,7 @@ impl AsyncCall {
         coins: Amount,
         max_gas: u64,
         fee: Amount,
+        cancelled: bool,
     ) -> Self {
         Self {
             target_slot,
@@ -52,6 +55,7 @@ impl AsyncCall {
             coins,
             max_gas,
             fee,
+            cancelled,
         }
     }
 }
@@ -65,6 +69,7 @@ pub struct AsyncCallSerializer {
     vec_u8_serializer: VecU8Serializer,
     amount_serializer: AmountSerializer,
     u64_var_int_serializer: U64VarIntSerializer,
+    bool_serializer: BoolSerializer,
 }
 
 impl AsyncCallSerializer {
@@ -73,10 +78,11 @@ impl AsyncCallSerializer {
         Self {
             slot_serializer: SlotSerializer::new(),
             address_serializer: AddressSerializer::new(),
-            string_serializer: StringSerializer::new(U16VarIntSerializer::new()),
-            vec_u8_serializer: VecU8Serializer::new(),
+            string_serializer: StringSerializer::new(U16VarIntSerializer::new()), // TODO: use max function name length
+            vec_u8_serializer: VecU8Serializer::new(), // TODO: use max parameters length
             amount_serializer: AmountSerializer::new(),
             u64_var_int_serializer: U64VarIntSerializer::new(),
+            bool_serializer: BoolSerializer::new(),
         }
     }
 }
@@ -94,6 +100,7 @@ impl Serializer<AsyncCall> for AsyncCallSerializer {
         self.amount_serializer.serialize(&value.fee, buffer)?;
         self.u64_var_int_serializer
             .serialize(&value.max_gas, buffer)?;
+        self.bool_serializer.serialize(&value.cancelled, buffer)?;
         Ok(())
     }
 }
@@ -107,6 +114,7 @@ pub struct AsyncCallDeserializer {
     vec_u8_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
     u64_var_int_deserializer: U64VarIntDeserializer,
+    bool_deserializer: BoolDeserializer,
 }
 
 impl AsyncCallDeserializer {
@@ -134,6 +142,7 @@ impl AsyncCallDeserializer {
                 Bound::Included(0),
                 Bound::Included(u64::MAX),
             ),
+            bool_deserializer: BoolDeserializer::new(),
         }
     }
 }
@@ -167,10 +176,22 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
                 context("Failed max_gas deserialization", |input| {
                     self.u64_var_int_deserializer.deserialize(input)
                 }),
+                context("Failed cancelled deserialization", |input| {
+                    self.bool_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
-            |(target_slot, target_address, target_function, parameters, coins, fee, max_gas)| {
+            |(
+                target_slot,
+                target_address,
+                target_function,
+                parameters,
+                coins,
+                fee,
+                max_gas,
+                cancelled,
+            )| {
                 AsyncCall::new(
                     target_slot,
                     target_address,
@@ -179,6 +200,7 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
                     coins,
                     max_gas,
                     fee,
+                    cancelled,
                 )
             },
         )
@@ -204,6 +226,7 @@ mod tests {
             Amount::from_raw(42),
             42,
             Amount::from_raw(42),
+            false,
         );
         let serializer = AsyncCallSerializer::new();
         let deserializer = AsyncCallDeserializer::new(1);
