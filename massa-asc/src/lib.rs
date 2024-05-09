@@ -32,30 +32,39 @@ pub enum CallStatus {
     Emitted,
     Cancelled,
     Removed,
-    Unknown
+    Unknown,
 }
 
 #[derive(Debug, Clone)]
 pub enum AsyncRegistryCallChange {
     Emitted(AsyncCall),
-    Cancelled(AsyncCall),
+    Cancelled(Option<AsyncCall>), // content is Some when the call was emitted AND cancelled in the same change, to not lose the call content
     Removed,
 }
 
-
 impl AsyncRegistryCallChange {
     pub fn merge(&mut self, other: AsyncRegistryCallChange) {
-        *self = other;
+        match other {
+            AsyncRegistryCallChange::Emitted(call) => {
+                *self = AsyncRegistryCallChange::Emitted(call);
+            }
+            AsyncRegistryCallChange::Cancelled(mut opt_call) => {
+                if opt_call.is_none() {
+                    if let AsyncRegistryCallChange::Cancelled(v) = self {
+                        // preserve the value if we have it already
+                        opt_call = v.take();
+                    }
+                }
+                *self = AsyncRegistryCallChange::Cancelled(opt_call);
+            }
+            AsyncRegistryCallChange::Removed => {
+                *self = AsyncRegistryCallChange::Removed;
+            }
+        }
     }
 
-    pub fn remove_call(&mut self) -> Option<AsyncCall> {
-        let mut v = AsyncRegistryCallChange::Removed;
-        std::mem::swap(self, &mut v);
-        match v {
-            AsyncRegistryCallChange::Emitted(call) => Some(call),
-            AsyncRegistryCallChange::Cancelled(call) => Some(call),
-            AsyncRegistryCallChange::Removed => None
-        }
+    pub fn remove_call(&mut self) {
+        *self = AsyncRegistryCallChange::Removed;
     }
 }
 
@@ -78,20 +87,39 @@ impl AsyncRegistrySlotChanges {
         }
     }
 
-    pub fn remove_call(&mut self, id: &AsyncCallId) -> Option<AsyncCall> {
+    /// Adds a "remove" change for the target
+    pub fn remove_call(&mut self, id: &AsyncCallId) {
         match self.changes.entry(id.clone()) {
-            std::collections::btree_map::Entry::Occupied(mut v) => {
-                v.get_mut().remove_call()
-            }
+            std::collections::btree_map::Entry::Occupied(mut v) => v.get_mut().remove_call(),
             std::collections::btree_map::Entry::Vacant(v) => {
                 v.insert(AsyncRegistryCallChange::Removed);
-                None
             }
         }
     }
 
     pub fn push_new_call(&mut self, id: AsyncCallId, call: AsyncCall) {
-        self.changes.insert(id, AsyncRegistryCallChange::Emitted(call));
+        self.changes
+            .insert(id, AsyncRegistryCallChange::Emitted(call));
+    }
+
+    pub fn cancel_call(&mut self, id: AsyncCallId) {
+        self.changes
+            .entry(id)
+            .and_modify(|v| {
+                let mut v_n = AsyncRegistryCallChange::Cancelled(None);
+                std::mem::swap(v, &mut v_n);
+                match v_n {
+                    AsyncRegistryCallChange::Emitted(call) => {
+                        *v = AsyncRegistryCallChange::Cancelled(Some(call));
+                    }
+                    AsyncRegistryCallChange::Cancelled(Some(call)) => {
+                        *v = AsyncRegistryCallChange::Cancelled(Some(call));
+                    }
+                    AsyncRegistryCallChange::Cancelled(None) => {}
+                    AsyncRegistryCallChange::Removed => {}
+                }
+            })
+            .or_insert_with(|| AsyncRegistryCallChange::Cancelled(None));
     }
 }
 
@@ -114,15 +142,15 @@ impl AsyncRegistryChanges {
         }
     }
 
-    pub fn get_best_call(&self, slot: Slot) -> Option<(AsyncCallId, AsyncCall)> {
+    pub fn get_best_call(&self, slot: Slot) -> Option<(AsyncCallId, Option<AsyncCall>)> {
         if let Some(slot_changes) = self.by_slot.get(&slot) {
             for (id, change) in &slot_changes.changes {
                 match change {
                     AsyncRegistryCallChange::Emitted(call) => {
-                        return Some((id.clone(), call.clone()));
-                    },
-                    AsyncRegistryCallChange::Cancelled(call) => {
-                        return Some((id.clone(), call.clone()));
+                        return Some((id.clone(), Some(call.clone())));
+                    }
+                    AsyncRegistryCallChange::Cancelled(opt_call) => {
+                        return Some((id.clone(), opt_call.clone()));
                     }
                     AsyncRegistryCallChange::Removed => {}
                 }
@@ -131,7 +159,7 @@ impl AsyncRegistryChanges {
         None
     }
 
-    pub fn remove_call(&mut self, target_slot: Slot, id: &AsyncCallId) -> Option<AsyncCall> {
+    pub fn remove_call(&mut self, target_slot: Slot, id: &AsyncCallId) {
         self.by_slot.entry(target_slot).or_default().remove_call(id)
     }
 
@@ -158,6 +186,7 @@ impl AsyncRegistryChanges {
         }
     }
 
+    pub fn cancel_call(&mut self, slot: Slot, id: AsyncCallId) {
+        self.by_slot.entry(slot).or_default().cancel_call(id);
+    }
 }
-
-

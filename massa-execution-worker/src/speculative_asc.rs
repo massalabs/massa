@@ -1,8 +1,8 @@
 //! Speculative async call registry.
 
 use crate::active_history::ActiveHistory;
-use massa_execution_exports::ExecutionError;
 use massa_asc::{AsyncCall, AsyncRegistryChanges, CallStatus};
+use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{asc_call_id::AsyncCallId, slot::Slot};
 use parking_lot::RwLock;
@@ -91,7 +91,7 @@ impl SpeculativeAsyncCallRegistry {
     /// Check that a call exists and is not cancelled
     pub fn call_exists(&mut self, id: AsyncCallId) -> bool {
         // Check if the call was cancelled or deleted in the current changes
-        match self.current_changes.call_status(id.get_slot(), id) {
+        match self.current_changes.call_status(id.get_slot(), &id) {
             CallStatus::Emitted => return true,
             CallStatus::Cancelled | CallStatus::Removed => return false,
             CallStatus::Unknown => {}
@@ -130,7 +130,7 @@ impl SpeculativeAsyncCallRegistry {
             return Err(ExecutionError::AscError("Call ID does not exist.".into()));
         }
         // Add a cancellation to the current changes
-        self.current_changes.cancel_call(id);
+        self.current_changes.cancel_call(id.get_slot(), id);
         Ok(())
     }
 }
