@@ -38,7 +38,7 @@ pub enum CallStatus {
 #[derive(Debug, Clone)]
 pub enum AsyncRegistryCallChange {
     Emitted(AsyncCall),
-    Cancelled(Option<AsyncCall>), // content is Some when the call was emitted AND cancelled in the same change, to not lose the call content
+    Cancelled(Option<AsyncCall>),
     Removed,
 }
 

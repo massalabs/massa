@@ -47,7 +47,7 @@ impl SpeculativeAsyncCallRegistry {
 
     /// Removes the next call to be executed at the given slot and returns it.
     /// Returns None if there is no call to be executed at the given slot.
-    pub fn take_next_call(&mut self, slot: Slot) -> Option<(AsyncCallId, AsyncCall)> {
+    pub fn take_next_call(&mut self, slot: Slot) -> Option<(AsyncCallId, Option<AsyncCall>)> {
         // Note: calls can only be added. So we want to look from old to new and return the first one.
 
         let mut res = None;
@@ -97,7 +97,7 @@ impl SpeculativeAsyncCallRegistry {
             CallStatus::Unknown => {}
         }
 
-        // List history from most recent to oldest, and check if the call was cancelled or deleted
+        // List history from most recent to oldest, and check if the call was emitted, cancelled or deleted
         {
             let history = self.active_history.read();
             for history_item in history.0.iter().rev() {
@@ -129,8 +129,13 @@ impl SpeculativeAsyncCallRegistry {
         if !self.call_exists(id) {
             return Err(ExecutionError::AscError("Call ID does not exist.".into()));
         }
+        
         // Add a cancellation to the current changes
         self.current_changes.cancel_call(id.get_slot(), id);
+
+        // TODO: reimburse coins
+        todo!();
+
         Ok(())
     }
 }
