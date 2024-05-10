@@ -1,7 +1,7 @@
 //! Speculative async call registry.
 
 use crate::active_history::ActiveHistory;
-use massa_asc::{AsyncCall, AsyncRegistryChanges, AsyncSlotCallsMap, CallStatus};
+use massa_asc::{AsyncCall, AsyncRegistryChanges, AsyncSlotCallsMap};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{address::Address, amount::Amount, asc_call_id::AsyncCallId, slot::Slot};
