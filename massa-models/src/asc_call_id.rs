@@ -173,6 +173,10 @@ impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
 }
 
 impl AsyncCallId {
+    pub fn get_slot(&self) -> Slot {
+        todo!();
+    }
+
     /// Create a new `AsyncCallId`
     pub fn new(
         version: u64,

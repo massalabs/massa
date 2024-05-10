@@ -1391,7 +1391,17 @@ impl Interface for InterfaceImpl {
         let fee = Amount::from_raw(fee_raw);
         let coins = Amount::from_raw(coins);
 
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get caller address
+        let sender_address = match context.stack.last() {
+            Some(addr) => addr.address,
+            _ => bail!("failed to read call stack sender address"),
+        };
+
         let call = AsyncCall::new(
+            sender_address,
             Slot::new(target_slot.0, target_slot.1),
             target_addr,
             target_func.to_string(),
@@ -1401,9 +1411,6 @@ impl Interface for InterfaceImpl {
             fee,
             false,
         );
-
-        // write-lock context
-        let mut context = context_guard!(self);
 
         /*
             TODO:

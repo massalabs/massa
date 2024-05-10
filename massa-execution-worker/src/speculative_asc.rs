@@ -1,10 +1,10 @@
 //! Speculative async call registry.
 
 use crate::active_history::ActiveHistory;
-use massa_asc::{AsyncCall, AsyncRegistryChanges, CallStatus};
+use massa_asc::{AsyncCall, AsyncRegistryChanges, AsyncSlotCallsMap, CallStatus};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
-use massa_models::{asc_call_id::AsyncCallId, slot::Slot};
+use massa_models::{address::Address, amount::Amount, asc_call_id::AsyncCallId, slot::Slot};
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -42,100 +42,93 @@ impl SpeculativeAsyncCallRegistry {
 
     /// Add a new call to the list of changes of this `SpeculativeAsyncCallRegistry`
     pub fn push_new_call(&mut self, id: AsyncCallId, call: AsyncCall) {
-        self.current_changes.push_new_call(id, call);
+        self.current_changes.set_call(id, call);
     }
 
-    /// Removes the next call to be executed at the given slot and returns it.
-    /// Returns None if there is no call to be executed at the given slot.
-    pub fn take_next_call(&mut self, slot: Slot) -> Option<(AsyncCallId, Option<AsyncCall>)> {
-        // Note: calls can only be added. So we want to look from old to new and return the first one.
+    /// Consumes all calls targeting a given slot, deletes them
+    pub fn take_calls_targeting_slot(&mut self, slot: Slot) -> AsyncSlotCallsMap {
+        // add calls coming from the final state
+        let mut slot_calls_map: AsyncSlotCallsMap = self
+            .final_state
+            .read()
+            .get_asc_registry()
+            .get_slot_calls(slot);
 
-        let mut res = None;
-
-        // check final state
-        if res.is_none() {
-            res = self
-                .final_state
-                .read()
-                .get_asc_registry()
-                .get_best_call(slot); // note: includes cancelled calls
+        // traverse history to add extra calls and apply changes to others
+        for hist_item in self.active_history.read().0.iter() {
+            slot_calls_map.apply_changes(&hist_item.state_changes.async_call_registry_changes);
         }
 
-        // check active history from oldest to newest
-        if res.is_none() {
-            let history = self.active_history.read();
-            for history_item in &history.0 {
-                res = history_item
-                    .state_changes
-                    .async_call_registry_changes
-                    .get_best_call(slot);
-                if res.is_some() {
-                    break;
-                }
-            }
+        // apply current changes
+        slot_calls_map.apply_changes(&self.current_changes);
+
+        // add call deletion to current changes
+        for id in slot_calls_map.calls.keys() {
+            self.current_changes.delete_call(slot, id);
         }
 
-        // check current changes
-        if res.is_none() {
-            res = self.current_changes.get_best_call(slot);
-        }
-
-        // remove from current changes
-        if let Some((id, _)) = res.as_ref() {
-            self.current_changes.remove_call(slot, id);
-        }
-
-        res
+        slot_calls_map
     }
 
-    /// Check that a call exists and is not cancelled
-    pub fn call_exists(&mut self, id: AsyncCallId) -> bool {
-        // Check if the call was cancelled or deleted in the current changes
-        match self.current_changes.call_status(id.get_slot(), &id) {
-            CallStatus::Emitted => return true,
-            CallStatus::Cancelled | CallStatus::Removed => return false,
-            CallStatus::Unknown => {}
+    pub fn get_call(&self, id: &AsyncCallId) -> Option<AsyncCall> {
+        let slot: Slot = id.get_slot();
+
+        // check from latest to earliest changes
+
+        // check in current changes
+        if let Some(v) = self.current_changes.get_call(&slot, id) {
+            return Some(v.clone());
         }
 
-        // List history from most recent to oldest, and check if the call was emitted, cancelled or deleted
+        // check history from the most recent to the oldest item
         {
             let history = self.active_history.read();
             for history_item in history.0.iter().rev() {
-                match history_item
+                if let Some(v) = history_item
                     .state_changes
                     .async_call_registry_changes
-                    .get_status(id)
+                    .get_call(&slot, id)
                 {
-                    CallStatus::Emitted => return true,
-                    CallStatus::Cancelled | CallStatus::Removed => return false,
-                    CallStatus::Unknown => {}
+                    return Some(v.clone());
                 }
             }
         }
 
-        // Check the final state: return true if the call is present and not cancelled
+        // check final state
         {
             let final_state = self.final_state.read();
-            match final_state.get_asc_registry().is_call_cancelled(id) {
-                None => false,       // not found
-                Some(true) => false, // found, cancelled
-                Some(false) => true, // found, not cancelled
+            if let Some(v) = final_state.get_asc_registry().get_call(&slot, id) {
+                return Some(v.clone());
             }
         }
+
+        None
     }
 
     /// Cancel a call
-    pub fn cancel_call(&mut self, id: AsyncCallId) -> Result<(), ExecutionError> {
-        if !self.call_exists(id) {
+    /// Returns the sender address and the amount of coins to reimburse them
+    pub fn cancel_call(&mut self, id: &AsyncCallId) -> Result<(Address, Amount), ExecutionError> {
+        // get call, fail if it does not exist
+        let Some(mut call) = self.get_call(id) else {
             return Err(ExecutionError::AscError("Call ID does not exist.".into()));
+        };
+
+        // check if the call is already cancelled
+        if call.cancelled {
+            return Err(ExecutionError::AscError(
+                "Call ID is already cancelled.".into(),
+            ));
         }
-        
+
+        // set call as cancelled
+        call.cancelled = true;
+
+        // we need to reimburse coins to the sender
+        let res = (call.sender_address, call.coins);
+
         // Add a cancellation to the current changes
-        self.current_changes.cancel_call(id.get_slot(), id);
+        self.current_changes.set_call(id.clone(), call);
 
-        // TODO: reimburse coins
-        todo!();
-
-        Ok(())
+        Ok(res)
     }
 }

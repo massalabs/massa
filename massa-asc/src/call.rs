@@ -18,6 +18,8 @@ use std::ops::Bound;
 /// Definition of a call in the future
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AsyncCall {
+    // Sender address
+    pub sender_address: Address,
     // The slot in which the call will be executed
     pub target_slot: Slot,
     // The address of the contract to call
@@ -38,6 +40,7 @@ pub struct AsyncCall {
 
 impl AsyncCall {
     pub fn new(
+        sender_address: Address,
         target_slot: Slot,
         target_address: Address,
         target_function: String,
@@ -48,6 +51,7 @@ impl AsyncCall {
         cancelled: bool,
     ) -> Self {
         Self {
+            sender_address,
             target_slot,
             target_address,
             target_function,
@@ -89,6 +93,8 @@ impl AsyncCallSerializer {
 
 impl Serializer<AsyncCall> for AsyncCallSerializer {
     fn serialize(&self, value: &AsyncCall, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+        self.address_serializer
+            .serialize(&value.sender_address, buffer)?;
         self.slot_serializer.serialize(&value.target_slot, buffer)?;
         self.address_serializer
             .serialize(&value.target_address, buffer)?;
@@ -155,6 +161,9 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
         context(
             "Failed AsyncCall deserialization",
             tuple((
+                context("Failed sender_address deserialization", |input| {
+                    self.address_deserializer.deserialize(input)
+                }),
                 context("Failed target_slot deserialization", |input| {
                     self.slot_deserializer.deserialize(input)
                 }),
@@ -183,6 +192,7 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
         )
         .map(
             |(
+                sender_address,
                 target_slot,
                 target_address,
                 target_function,
@@ -193,6 +203,7 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
                 cancelled,
             )| {
                 AsyncCall::new(
+                    sender_address,
                     target_slot,
                     target_address,
                     target_function,
@@ -219,6 +230,7 @@ mod tests {
     #[test]
     fn test_serialization_deserialization() {
         let call = AsyncCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
             Slot::new(42, 0),
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
             "function".to_string(),
