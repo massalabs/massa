@@ -18,11 +18,11 @@ impl AsyncCallRegistry {
         Self { db }
     }
 
-    pub fn get_slot_calls(slot: Slot) -> Vec<AsyncCall> {
+    pub fn get_slot_calls(slot: Slot) -> AsyncSlotCallsMap {
         todo!()
     }
 
-    pub fn get_message_by_id(id: AsyncCallId) -> Option<AsyncCall> {
+    pub fn get_call(id: &AsyncCallId) -> Option<AsyncCall> {
         todo!()
     }
 }
