@@ -53,10 +53,22 @@ use tracing::{debug, info, trace, warn};
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+#[cfg(feature = "dump-block")]
+use massa_models::block::FilledBlock;
 #[cfg(feature = "execution-trace")]
 use massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK};
+#[cfg(feature = "dump-block")]
+use massa_models::operation::Operation;
 #[cfg(feature = "execution-trace")]
 use massa_models::prehash::PreHashMap;
+#[cfg(feature = "dump-block")]
+use massa_models::secure_share::SecureShare;
+#[cfg(feature = "dump-block")]
+use massa_proto_rs::massa::model::v1 as grpc_model;
+#[cfg(feature = "dump-block")]
+use prost::Message;
+#[cfg(feature = "dump-block")]
+use std::io::Write;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -324,6 +336,53 @@ impl ExecutionState {
                     }
                 }
             }
+        }
+
+        #[cfg(feature = "dump-block")]
+        {
+            let block_folder = &self.config.block_dump_folder_path;
+            let block_file_path = block_folder.join(format!(
+                "block_slot_{}_{}.bin",
+                exec_out.slot.thread, exec_out.slot.period
+            ));
+
+            let mut fs = std::fs::File::create(block_file_path.clone())
+                .unwrap_or_else(|_| panic!("Cannot create file: {:?}", block_file_path));
+
+            let mut block_ser = vec![];
+            if let Some(block_info) = exec_out.block_info {
+                let block_id = block_info.block_id;
+                let storage = exec_out.storage.unwrap();
+                let guard = storage.read_blocks();
+                let secured_block = guard
+                    .get(&block_id)
+                    .unwrap_or_else(|| panic!("Unable to get block for block id: {}", block_id));
+
+                let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
+                    secured_block
+                        .content
+                        .operations
+                        .iter()
+                        .map(|operation_id| {
+                            match storage.read_operations().get(operation_id).cloned() {
+                                Some(verifiable_operation) => {
+                                    (*operation_id, Some(verifiable_operation))
+                                }
+                                None => (*operation_id, None),
+                            }
+                        })
+                        .collect();
+
+                let filled_block = FilledBlock {
+                    header: secured_block.content.header.clone(),
+                    operations,
+                };
+
+                let grpc_filled_block = grpc_model::FilledBlock::from(filled_block);
+                grpc_filled_block.encode(&mut block_ser).unwrap();
+            }
+            fs.write_all(&block_ser[..])
+                .expect("Unable to write block to disk");
         }
     }
 
@@ -1419,16 +1478,21 @@ impl ExecutionState {
         self.trace_history
             .write()
             .save_transfers_for_slot(*slot, transfers.clone());
-        // Finish slot
-        #[cfg(not(feature = "execution-trace"))]
-        let exec_out = context_guard!(self).settle_slot(block_info);
 
+        // Finish slot
+        #[allow(unused_mut)]
+        let mut exec_out = context_guard!(self).settle_slot(block_info);
         #[cfg(feature = "execution-trace")]
-        let exec_out = {
-            let mut out = context_guard!(self).settle_slot(block_info);
-            out.slot_trace = Some((slot_trace, transfers));
-            out
+        {
+            exec_out.slot_trace = Some((slot_trace, transfers));
         };
+        #[cfg(feature = "dump-block")]
+        {
+            exec_out.storage = match exec_target {
+                Some((_block_id, block_metadata)) => block_metadata.storage.clone(),
+                _ => None,
+            }
+        }
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {

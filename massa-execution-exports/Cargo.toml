@@ -8,6 +8,7 @@ edition = "2021"
 gas_calibration = ["tempfile"]
 test-exports = ["massa_models/test-exports", "tempfile", "mockall"]
 execution-trace = ["massa-sc-runtime/execution-trace"]
+dump-block = []
 
 [dependencies]
 displaydoc = {workspace = true}

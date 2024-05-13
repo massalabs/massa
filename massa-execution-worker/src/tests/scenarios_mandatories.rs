@@ -46,6 +46,13 @@ use massa_models::operation::OperationId;
 #[cfg(feature = "execution-trace")]
 use std::thread;
 
+#[cfg(feature = "dump-block")]
+use massa_proto_rs::massa::model::v1::FilledBlock;
+#[cfg(feature = "dump-block")]
+use prost::Message;
+#[cfg(feature = "dump-block")]
+use std::io::Cursor;
+
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
@@ -2838,4 +2845,102 @@ fn execution_trace_nested() {
             }
         ]
     );
+}
+
+#[cfg(feature = "dump-block")]
+#[test]
+fn test_dump_block() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let finalized_waitpoint = WaitPoint::new();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    let recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        None,
+        None,
+        None,
+    );
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&recipient_address, || None),
+                Some(Amount::from_str("190").unwrap())
+            );
+            // 1.02 for the block rewards
+            assert_eq!(
+                changes.ledger_changes.get_balance_or_else(
+                    &Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key()
+                    ),
+                    || None
+                ),
+                Some(
+                    exec_cfg
+                        .block_reward
+                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
+                )
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+    // create the operation
+    let operation = Operation::new_verifiable(
+        Operation {
+            fee: Amount::from_str("10").unwrap(),
+            expire_period: 10,
+            op: OperationType::Transaction {
+                recipient_address,
+                amount: Amount::from_str("90").unwrap(),
+            },
+        },
+        OperationSerializer::new(),
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        *CHAINID,
+    )
+    .unwrap();
+    // create the block containing the transaction operation
+    universe.storage.store_operations(vec![operation.clone()]);
+    let block_slot = Slot::new(1, 0);
+    let block = ExecutionTestUniverse::create_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        block_slot.clone(),
+        vec![operation],
+        vec![],
+        vec![],
+    );
+    // store the block in storage
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    finalized_waitpoint.wait();
+
+    std::thread::sleep(Duration::from_secs(1));
+
+    let block_folder = &exec_cfg.block_dump_folder_path;
+    let block_file_path = block_folder.join(format!(
+        "block_slot_{}_{}.bin",
+        block_slot.thread, block_slot.period
+    ));
+
+    let block_content = std::fs::read(block_file_path).expect("Unable to read block dump");
+    let filled_block = FilledBlock::decode(&mut Cursor::new(block_content)).unwrap();
+    let header_content = filled_block.header.unwrap().content.unwrap();
+    let header_slot = header_content.slot.unwrap();
+    assert_eq!(header_slot.thread, u32::from(block_slot.thread));
+    assert_eq!(header_slot.period, block_slot.period);
+    assert_eq!(header_content.endorsements.len(), 0);
+    assert_eq!(filled_block.operations.len(), 1);
 }

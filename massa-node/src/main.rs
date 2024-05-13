@@ -449,6 +449,14 @@ async fn launch(
     )
     .expect("Failed to load gas costs");
 
+    let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
+    if !block_dump_folder_path.exists() {
+        info!("Current folder: {:?}", std::env::current_dir().unwrap());
+        info!("Creating dump folder: {:?}", block_dump_folder_path);
+        std::fs::create_dir_all(block_dump_folder_path.clone())
+            .expect("Cannot create dump block folder");
+    }
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -497,6 +505,7 @@ async fn launch(
             .execution
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
+        block_dump_folder_path,
     };
 
     let execution_channels = ExecutionChannels {

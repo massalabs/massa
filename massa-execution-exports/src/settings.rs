@@ -100,4 +100,6 @@ pub struct ExecutionConfig {
     pub broadcast_slot_execution_traces_channel_capacity: usize,
     /// Max execution traces slot to keep in trace history cache
     pub max_execution_traces_slot_limit: usize,
+    /// Where to dump blocks
+    pub block_dump_folder_path: PathBuf,
 }

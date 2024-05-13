@@ -156,9 +156,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.79"
+version = "1.0.82"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
+checksum = "f538837af36e6f6a9be0faa67f9a314f8119e4e4b5867c6ab40ed60360142519"
 
 [[package]]
 name = "arrayref"
@@ -2566,7 +2566,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=426fd325a55dfcc4033920bed2de075a7e7ad4b7#426fd325a55dfcc4033920bed2de075a7e7ad4b7"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=38950875a7aa406fedc4f0b8336864e5ff290f2c#38950875a7aa406fedc4f0b8336864e5ff290f2c"
 dependencies = [
  "glob",
  "prost",
@@ -2579,7 +2579,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=e95066a6d3a963ff0125616f404a84e5abb63d63#e95066a6d3a963ff0125616f404a84e5abb63d63"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=80352eb9f2a6b90a441cd64433d8874c33fb384f#80352eb9f2a6b90a441cd64433d8874c33fb384f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2913,6 +2913,7 @@ dependencies = [
  "mockall",
  "num",
  "parking_lot",
+ "prost",
  "rand",
  "rand_xoshiro",
  "schnellru",
@@ -4915,9 +4916,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.108"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
+checksum = "cb0652c533506ad7a2e353cce269330d6afd8bdfb6d75e0ace5b35aacbd7b9e9"
 dependencies = [
  "itoa",
  "ryu",

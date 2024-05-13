@@ -43,6 +43,10 @@ execution-trace = [
     "schnellru",
     "massa_execution_exports/execution-trace",
 ]
+dump-block = [
+    "prost",
+    "massa_execution_exports/dump-block",
+]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -83,6 +87,7 @@ tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 schnellru = { workspace = true, optional = true }
+prost = { version = "=0.12", optional = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }

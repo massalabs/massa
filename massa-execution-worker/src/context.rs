@@ -913,6 +913,8 @@ impl ExecutionContext {
             events: std::mem::take(&mut self.events),
             #[cfg(feature = "execution-trace")]
             slot_trace: None,
+            #[cfg(feature = "dump-block")]
+            storage: None,
         }
     }
 

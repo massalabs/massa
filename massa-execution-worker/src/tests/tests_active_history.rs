@@ -56,6 +56,8 @@ fn test_active_history_deferred_credits() {
         events: Default::default(),
         #[cfg(feature = "execution-trace")]
         slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
     };
 
     let active_history = ActiveHistory(VecDeque::from([exec_output_1]));

@@ -361,6 +361,9 @@ pub struct ExecutionOutput {
     /// slot trace
     #[cfg(feature = "execution-trace")]
     pub slot_trace: Option<(SlotAbiCallStack, Vec<Transfer>)>,
+    /// storage
+    #[cfg(feature = "dump-block")]
+    pub storage: Option<Storage>,
 }
 
 #[cfg(feature = "execution-trace")]

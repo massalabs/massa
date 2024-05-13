@@ -19,6 +19,14 @@ impl Default for ExecutionConfig {
                 .expect("Overflow when creating constant ledger_entry_datastore_base_size"),
         };
 
+        // Create a tmp dir then only storing the path will drop the original tmp dir object
+        // thus deleting the folders
+        // So we need to create it manually (not really safe but ok for unit testing)
+        let hd_cache_path = TempDir::new().unwrap().path().to_path_buf();
+        std::fs::create_dir_all(hd_cache_path.clone()).unwrap();
+        let block_dump_folder_path = TempDir::new().unwrap().path().to_path_buf();
+        std::fs::create_dir_all(block_dump_folder_path.clone()).unwrap();
+
         Self {
             readonly_queue_length: 100,
             max_final_events: 1000,
@@ -57,7 +65,7 @@ impl Default for ExecutionConfig {
             .unwrap(),
             base_operation_gas_cost: BASE_OPERATION_GAS_COST,
             last_start_period: 0,
-            hd_cache_path: TempDir::new().unwrap().path().to_path_buf(),
+            hd_cache_path,
             lru_cache_size: 1000,
             hd_cache_size: 10_000,
             snip_amount: 10,
@@ -72,6 +80,7 @@ impl Default for ExecutionConfig {
             broadcast_traces_enabled: true,
             broadcast_slot_execution_traces_channel_capacity: 5000,
             max_execution_traces_slot_limit: 320,
+            block_dump_folder_path,
         }
     }
 }
