@@ -1500,6 +1500,49 @@
 <a href="#1500" id="1500">1500</a>
 <a href="#1501" id="1501">1501</a>
 <a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Denunciation intro
@@ -1591,6 +1634,29 @@
         </span>hash_data.extend(content_hash.to_bytes());
         Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
     }
+
+    <span class="comment">// Getters (for GRPC From)
+    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.public_key
+    }
+    <span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.slot
+    }
+    <span class="kw">pub fn </span>get_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>u32 {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.index
+    }
+    <span class="kw">pub fn </span>get_hash_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hash_1
+    }
+    <span class="kw">pub fn </span>get_hash_2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hash_2
+    }
+    <span class="kw">pub fn </span>get_signature_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.signature_1
+    }
+    <span class="kw">pub fn </span>get_signature_2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.signature_2
+    }
 }
 
 <span class="doccomment">/// A Variant of Denunciation enum for block header
@@ -1621,6 +1687,26 @@
         <span class="comment">// Add content hash
         </span>hash_data.extend(content_hash.to_bytes());
         Hash::compute_from(<span class="kw-2">&amp;</span>hash_data)
+    }
+
+    <span class="comment">// Getters (for GRPC From)
+    </span><span class="kw">pub fn </span>get_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>PublicKey {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.public_key
+    }
+    <span class="kw">pub fn </span>get_slot(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Slot {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.slot
+    }
+    <span class="kw">pub fn </span>get_hash_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hash_1
+    }
+    <span class="kw">pub fn </span>get_hash_2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hash_2
+    }
+    <span class="kw">pub fn </span>get_signature_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.signature_1
+    }
+    <span class="kw">pub fn </span>get_signature_2(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Signature {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.signature_2
     }
 }
 
