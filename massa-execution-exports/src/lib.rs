@@ -76,11 +76,6 @@ pub mod test_exports;
 pub mod types_trace_info;
 
 #[cfg(feature = "execution-trace")]
-pub use types_trace_info::AbiTrace;
-#[cfg(feature = "execution-trace")]
-pub use types_trace_info::{SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
-
-#[cfg(feature = "execution-trace")]
-pub use types_trace_info::SlotAbiCallStack;
-#[cfg(feature = "execution-trace")]
-pub use types_trace_info::Transfer;
+pub use types_trace_info::{
+    AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue, SlotAbiCallStack, Transfer,
+};

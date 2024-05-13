@@ -22,11 +22,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 
 #[cfg(feature = "execution-trace")]
-use crate::types_trace_info::AbiTrace;
-#[cfg(feature = "execution-trace")]
-use crate::types_trace_info::SlotAbiCallStack;
-#[cfg(feature = "execution-trace")]
-use crate::types_trace_info::Transfer;
+use crate::types_trace_info::{AbiTrace, SlotAbiCallStack, Transfer};
 
 #[cfg_attr(feature = "test-exports", mockall::automock)]
 /// interface that communicates with the execution worker thread
