@@ -172,7 +172,7 @@
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::types::{AbiTrace, SlotAbiCallStack, Transfer};
+</span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::{AbiTrace, SlotAbiCallStack, Transfer};
 
 <span class="attr">#[cfg_attr(feature = <span class="string">&quot;test-exports&quot;</span>, mockall::automock)]
 </span><span class="doccomment">/// interface that communicates with the execution worker thread

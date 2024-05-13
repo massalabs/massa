@@ -2166,6 +2166,78 @@
 <a href="#2166" id="2166">2166</a>
 <a href="#2167" id="2167">2167</a>
 <a href="#2168" id="2168">2168</a>
+<a href="#2169" id="2169">2169</a>
+<a href="#2170" id="2170">2170</a>
+<a href="#2171" id="2171">2171</a>
+<a href="#2172" id="2172">2172</a>
+<a href="#2173" id="2173">2173</a>
+<a href="#2174" id="2174">2174</a>
+<a href="#2175" id="2175">2175</a>
+<a href="#2176" id="2176">2176</a>
+<a href="#2177" id="2177">2177</a>
+<a href="#2178" id="2178">2178</a>
+<a href="#2179" id="2179">2179</a>
+<a href="#2180" id="2180">2180</a>
+<a href="#2181" id="2181">2181</a>
+<a href="#2182" id="2182">2182</a>
+<a href="#2183" id="2183">2183</a>
+<a href="#2184" id="2184">2184</a>
+<a href="#2185" id="2185">2185</a>
+<a href="#2186" id="2186">2186</a>
+<a href="#2187" id="2187">2187</a>
+<a href="#2188" id="2188">2188</a>
+<a href="#2189" id="2189">2189</a>
+<a href="#2190" id="2190">2190</a>
+<a href="#2191" id="2191">2191</a>
+<a href="#2192" id="2192">2192</a>
+<a href="#2193" id="2193">2193</a>
+<a href="#2194" id="2194">2194</a>
+<a href="#2195" id="2195">2195</a>
+<a href="#2196" id="2196">2196</a>
+<a href="#2197" id="2197">2197</a>
+<a href="#2198" id="2198">2198</a>
+<a href="#2199" id="2199">2199</a>
+<a href="#2200" id="2200">2200</a>
+<a href="#2201" id="2201">2201</a>
+<a href="#2202" id="2202">2202</a>
+<a href="#2203" id="2203">2203</a>
+<a href="#2204" id="2204">2204</a>
+<a href="#2205" id="2205">2205</a>
+<a href="#2206" id="2206">2206</a>
+<a href="#2207" id="2207">2207</a>
+<a href="#2208" id="2208">2208</a>
+<a href="#2209" id="2209">2209</a>
+<a href="#2210" id="2210">2210</a>
+<a href="#2211" id="2211">2211</a>
+<a href="#2212" id="2212">2212</a>
+<a href="#2213" id="2213">2213</a>
+<a href="#2214" id="2214">2214</a>
+<a href="#2215" id="2215">2215</a>
+<a href="#2216" id="2216">2216</a>
+<a href="#2217" id="2217">2217</a>
+<a href="#2218" id="2218">2218</a>
+<a href="#2219" id="2219">2219</a>
+<a href="#2220" id="2220">2220</a>
+<a href="#2221" id="2221">2221</a>
+<a href="#2222" id="2222">2222</a>
+<a href="#2223" id="2223">2223</a>
+<a href="#2224" id="2224">2224</a>
+<a href="#2225" id="2225">2225</a>
+<a href="#2226" id="2226">2226</a>
+<a href="#2227" id="2227">2227</a>
+<a href="#2228" id="2228">2228</a>
+<a href="#2229" id="2229">2229</a>
+<a href="#2230" id="2230">2230</a>
+<a href="#2231" id="2231">2231</a>
+<a href="#2232" id="2232">2232</a>
+<a href="#2233" id="2233">2233</a>
+<a href="#2234" id="2234">2234</a>
+<a href="#2235" id="2235">2235</a>
+<a href="#2236" id="2236">2236</a>
+<a href="#2237" id="2237">2237</a>
+<a href="#2238" id="2238">2238</a>
+<a href="#2239" id="2239">2239</a>
+<a href="#2240" id="2240">2240</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2217,6 +2289,9 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::{debug, info, trace, warn};
 
+<span class="kw">use </span><span class="kw">crate</span>::execution_info::{AsyncMessageExecutionResult, DenunciationResult};
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::trace_history::TraceHistory;
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
@@ -2297,6 +2372,8 @@
     </span>massa_metrics: MassaMetrics,
     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) trace_history: Arc&lt;RwLock&lt;TraceHistory&gt;&gt;,
+    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) execution_info: Arc&lt;RwLock&lt;ExecutionInfo&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -2383,6 +2460,8 @@
                     (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) <span class="kw">as </span>u32,
                 ),
             ))),
+            <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+            </span>execution_info: Arc::new(RwLock::new(ExecutionInfo::new())),
             config,
         }
     }
@@ -2796,7 +2875,7 @@
         denunciation: <span class="kw-2">&amp;</span>Denunciation,
         block_slot: <span class="kw-2">&amp;</span>Slot,
         block_credits: <span class="kw-2">&amp;mut </span>Amount,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DenunciationResult, ExecutionError&gt; {
         <span class="kw">let </span>addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         <span class="comment">// acquire write access to the context
@@ -2900,7 +2979,7 @@
             <span class="self">self</span>.config.roll_count_to_slash_on_denunciation,
         );
 
-        <span class="kw">match </span>slashed {
+        <span class="kw">match </span>slashed.as_ref() {
             <span class="prelude-val">Ok</span>(slashed_amount) =&gt; {
                 <span class="comment">// Add slashed amount / 2 to block reward
                 </span><span class="kw">let </span>amount = slashed_amount.checked_div_u64(<span class="number">2</span>).ok_or_else(|| {
@@ -2928,7 +3007,11 @@
             }
         }
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(DenunciationResult {
+            address_denounced: addr_denounced,
+            slot: <span class="kw-2">*</span>de_slot,
+            slashed: slashed.unwrap_or_default(),
+        })
     }
 
     <span class="doccomment">/// Execute an operation of type `RollSell`
@@ -3254,7 +3337,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message: AsyncMessage,
         bytecode: <span class="prelude-ty">Option</span>&lt;Bytecode&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionResult, ExecutionError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;AsyncMessageExecutionResult, ExecutionError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>result = AsyncMessageExecutionResult::new();
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        </span>{
+            <span class="comment">// TODO: From impl + no ::new -&gt; no cfg feature
+            </span>result.sender = <span class="prelude-val">Some</span>(message.sender.clone());
+            result.destination = <span class="prelude-val">Some</span>(message.destination.clone());
+        }
+
         <span class="comment">// prepare execution context
         </span><span class="kw">let </span>context_snapshot;
         <span class="kw">let </span>bytecode = {
@@ -3304,9 +3395,12 @@
                     <span class="string">&quot;could not credit coins to target of async execution: {}&quot;</span>,
                     err
                 ));
+
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(<span class="kw-2">&amp;</span>message);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+            } <span class="kw">else </span>{
+                result.coins = <span class="prelude-val">Some</span>(message.coins);
             }
 
             bytecode.<span class="number">0
@@ -3333,12 +3427,13 @@
                     .set_init_cost(<span class="kw-2">&amp;</span>bytecode, res.init_gas_cost);
                 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
                 </span>{
-                    <span class="prelude-val">Ok</span>((res.trace.into_iter().map(|t| t.into()).collect(), <span class="bool-val">true</span>))
+                    result.traces = <span class="prelude-val">Some</span>((res.trace.into_iter().map(|t| t.into()).collect(), <span class="bool-val">true</span>));
                 }
-                <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+                <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
                 </span>{
-                    <span class="prelude-val">Ok</span>(())
+                    result.success = <span class="bool-val">true</span>;
                 }
+                <span class="prelude-val">Ok</span>(result)
             }
             <span class="prelude-val">Err</span>(error) =&gt; {
                 <span class="kw">if let </span>VMError::ExecutionError { init_gas_cost, .. } = error {
@@ -3383,6 +3478,10 @@
         };
         <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
         </span><span class="kw">let </span><span class="kw-2">mut </span>transfers = <span class="macro">vec!</span>[];
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>exec_info = ExecutionInfoForSlot::new();
+
         <span class="comment">// Create a new execution context for the whole active slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::active_slot(
             <span class="self">self</span>.config.clone(),
@@ -3408,13 +3507,21 @@
         </span><span class="kw">for </span>(opt_bytecode, message) <span class="kw">in </span>messages {
             <span class="kw">match </span><span class="self">self</span>.execute_async_message(message, opt_bytecode) {
                 <span class="prelude-val">Ok</span>(_message_return) =&gt; {
-                    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-                    </span>{
-                        slot_trace.asc_call_stacks.push(_message_return.<span class="number">0</span>);
+                    <span class="macro">cfg_if::cfg_if! </span>{
+                        <span class="kw">if </span><span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)] </span>{
+                            <span class="comment">// Safe to unwrap
+                            </span>slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().<span class="number">0</span>);
+                        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)] </span>{
+                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().<span class="number">0</span>);
+                            exec_info.async_messages.push(<span class="prelude-val">Ok</span>(_message_return));
+                        }
                     }
                 }
                 <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="macro">debug!</span>(<span class="string">&quot;failed executing async message: {}&quot;</span>, err);
+                    <span class="kw">let </span>msg = <span class="macro">format!</span>(<span class="string">&quot;failed executing async message: {}&quot;</span>, err);
+                    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                    </span>exec_info.async_messages.push(<span class="prelude-val">Err</span>(msg.clone()));
+                    <span class="macro">debug!</span>(msg);
                 }
             }
         }
@@ -3545,6 +3652,19 @@
                                 <span class="kw">_ </span>=&gt; {}
                             }
                         }
+
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>{
+                            <span class="kw">match </span><span class="kw-2">&amp;</span>operation.content.op {
+                                OperationType::RollBuy { roll_count } =&gt; exec_info
+                                    .operations
+                                    .push(OperationInfo::RollBuy(<span class="kw-2">*</span>roll_count)),
+                                OperationType::RollSell { roll_count } =&gt; exec_info
+                                    .operations
+                                    .push(OperationInfo::RollSell(<span class="kw-2">*</span>roll_count)),
+                                <span class="kw">_ </span>=&gt; {}
+                            }
+                        }
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">debug!</span>(
@@ -3557,15 +3677,24 @@
 
             <span class="comment">// Try executing the denunciations of this block
             </span><span class="kw">for </span>denunciation <span class="kw">in </span><span class="kw-2">&amp;</span>stored_block.content.header.content.denunciations {
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.execute_denunciation(
+                <span class="kw">match </span><span class="self">self</span>.execute_denunciation(
                     denunciation,
                     <span class="kw-2">&amp;</span>stored_block.content.header.content.slot,
                     <span class="kw-2">&amp;mut </span>block_credits,
                 ) {
-                    <span class="macro">debug!</span>(
-                        <span class="string">&quot;Failed processing denunciation: {:?}, in block: {}: {}&quot;</span>,
-                        denunciation, block_id, e
-                    );
+                    <span class="prelude-val">Ok</span>(_de_res) =&gt; {
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>exec_info.denunciations.push(<span class="prelude-val">Ok</span>(_de_res));
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; {
+                        <span class="kw">let </span>msg = <span class="macro">format!</span>(
+                            <span class="string">&quot;Failed processing denunciation: {:?}, in block: {}: {}&quot;</span>,
+                            denunciation, block_id, e
+                        );
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>exec_info.denunciations.push(<span class="prelude-val">Err</span>(msg.clone()));
+                        <span class="macro">debug!</span>(msg);
+                    }
                 }
             }
 
@@ -3593,6 +3722,11 @@
                 ) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>exec_info
+                            .endorsement_creator_rewards
+                            .insert(endorsement_creator, block_credit_part);
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">debug!</span>(
@@ -3611,6 +3745,11 @@
                 ) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                        </span>{
+                            exec_info.endorsement_target_reward =
+                                <span class="prelude-val">Some</span>((endorsement_target_creator, block_credit_part));
+                        }
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="macro">debug!</span>(
@@ -3629,6 +3768,11 @@
                     <span class="string">&quot;failed to credit {} coins to block creator {} on block execution: {}&quot;</span>,
                     remaining_credit, block_creator_addr, err
                 )
+            } <span class="kw">else </span>{
+                <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                </span>{
+                    exec_info.block_producer_reward = <span class="prelude-val">Some</span>((block_creator_addr, remaining_credit));
+                }
             }
         } <span class="kw">else </span>{
             <span class="comment">// the slot is a miss, check who was supposed to be the creator and update production stats
