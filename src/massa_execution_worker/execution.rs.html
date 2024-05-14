@@ -2238,6 +2238,10 @@
 <a href="#2238" id="2238">2238</a>
 <a href="#2239" id="2239">2239</a>
 <a href="#2240" id="2240">2240</a>
+<a href="#2241" id="2241">2241</a>
+<a href="#2242" id="2242">2242</a>
+<a href="#2243" id="2243">2243</a>
+<a href="#2244" id="2244">2244</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2461,7 +2465,9 @@
                 ),
             ))),
             <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
-            </span>execution_info: Arc::new(RwLock::new(ExecutionInfo::new())),
+            </span>execution_info: Arc::new(RwLock::new(ExecutionInfo::new(
+                config.max_execution_traces_slot_limit <span class="kw">as </span>u32,
+            ))),
             config,
         }
     }
@@ -3342,8 +3348,8 @@
         <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
         </span>{
             <span class="comment">// TODO: From impl + no ::new -&gt; no cfg feature
-            </span>result.sender = <span class="prelude-val">Some</span>(message.sender.clone());
-            result.destination = <span class="prelude-val">Some</span>(message.destination.clone());
+            </span>result.sender = <span class="prelude-val">Some</span>(message.sender);
+            result.destination = <span class="prelude-val">Some</span>(message.destination);
         }
 
         <span class="comment">// prepare execution context
@@ -3790,6 +3796,8 @@
         </span><span class="self">self</span>.trace_history
             .write()
             .save_transfers_for_slot(<span class="kw-2">*</span>slot, transfers.clone());
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        </span><span class="self">self</span>.execution_info.write().save_for_slot(<span class="kw-2">*</span>slot, exec_info);
 
         <span class="comment">// Finish slot
         </span><span class="attr">#[allow(unused_mut)]

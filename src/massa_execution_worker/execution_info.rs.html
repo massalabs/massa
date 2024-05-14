@@ -72,20 +72,46 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(dead_code)]
 
 </span><span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionResult;
-<span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>schnellru::{ByLength, LruMap};
+<span class="comment">// use massa_execution_exports::Transfer;
+
+</span><span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::slot::Slot;
 
-<span class="kw">pub struct </span>ExecutionInfo {}
+<span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionResult;
+
+<span class="kw">pub struct </span>ExecutionInfo {
+    info_per_slot: LruMap&lt;Slot, ExecutionInfoForSlot&gt;,
+}
 
 <span class="kw">impl </span>ExecutionInfo {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{}
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(max_slot_size_cache: u32) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            info_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
+        }
+    }
+
+    <span class="doccomment">/// Save transfer for a given slot
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>save_for_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot, info: ExecutionInfoForSlot) {
+        <span class="self">self</span>.info_per_slot.insert(slot, info);
     }
 }
 

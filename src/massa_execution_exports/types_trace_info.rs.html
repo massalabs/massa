@@ -223,7 +223,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">impl </span>AbiTrace {
     <span class="doccomment">/// Flatten and filter for abi names in an AbiTrace
-    </span><span class="kw">pub fn </span>flatten_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, abi_names: <span class="kw-2">&amp;</span>Vec&lt;String&gt;) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
+    </span><span class="kw">pub fn </span>flatten_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, abi_names: <span class="kw-2">&amp;</span>[String]) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>filtered: Vec&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; = Default::default();
         <span class="kw">let </span><span class="kw-2">mut </span>to_process: VecDeque&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt; = <span class="macro">vec!</span>[<span class="self">self</span>].into();
 
@@ -279,7 +279,7 @@
             .find_map(|p| {
                 <span class="kw">if </span>p.name == <span class="string">&quot;raw_amount&quot; </span>{
                     <span class="kw">if let </span>SCRuntimeAbiTraceType::U64(v) = <span class="kw-2">&amp;</span>p.value {
-                        <span class="kw">return </span><span class="prelude-val">Some</span>(v.clone());
+                        <span class="kw">return </span><span class="prelude-val">Some</span>(<span class="kw-2">*</span>v);
                     }
                 }
                 <span class="prelude-val">None
