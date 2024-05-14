@@ -696,14 +696,11 @@ async fn execute_read_only_bytecode() {
                     events: massa_execution_exports::EventStore::default(),
                     #[cfg(feature = "execution-trace")]
                     slot_trace: None,
-<<<<<<< HEAD
                     #[cfg(feature = "dump-block")]
                     storage: None,
-=======
                     deferred_credits_execution: vec![],
                     cancel_async_message_execution: vec![],
                     auto_sell_execution: vec![],
->>>>>>> b78aa094fd (Cargo clippy fixes)
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
