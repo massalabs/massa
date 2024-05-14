@@ -2,16 +2,29 @@
 
 use std::collections::HashMap;
 
-use crate::execution::ExecutionResult;
+use schnellru::{ByLength, LruMap};
+// use massa_execution_exports::Transfer;
+
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::slot::Slot;
 
-pub struct ExecutionInfo {}
+use crate::execution::ExecutionResult;
+
+pub struct ExecutionInfo {
+    info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
+}
 
 impl ExecutionInfo {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(max_slot_size_cache: u32) -> Self {
+        Self {
+            info_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
+        }
+    }
+
+    /// Save transfer for a given slot
+    pub(crate) fn save_for_slot(&mut self, slot: Slot, info: ExecutionInfoForSlot) {
+        self.info_per_slot.insert(slot, info);
     }
 }
 

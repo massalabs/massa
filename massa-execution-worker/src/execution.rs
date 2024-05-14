@@ -221,7 +221,9 @@ impl ExecutionState {
                 ),
             ))),
             #[cfg(feature = "execution-info")]
-            execution_info: Arc::new(RwLock::new(ExecutionInfo::new())),
+            execution_info: Arc::new(RwLock::new(ExecutionInfo::new(
+                config.max_execution_traces_slot_limit as u32,
+            ))),
             config,
         }
     }
@@ -1102,8 +1104,8 @@ impl ExecutionState {
         #[cfg(feature = "execution-info")]
         {
             // TODO: From impl + no ::new -> no cfg feature
-            result.sender = Some(message.sender.clone());
-            result.destination = Some(message.destination.clone());
+            result.sender = Some(message.sender);
+            result.destination = Some(message.destination);
         }
 
         // prepare execution context
@@ -1550,6 +1552,10 @@ impl ExecutionState {
         self.trace_history
             .write()
             .save_transfers_for_slot(*slot, transfers.clone());
+        #[cfg(feature = "execution-info")]
+        self.execution_info
+            .write()
+            .save_for_slot(*slot, exec_info);
 
         // Finish slot
         #[allow(unused_mut)]

@@ -78,7 +78,7 @@ impl From<SCRuntimeAbiTrace> for AbiTrace {
 #[cfg(feature = "execution-trace")]
 impl AbiTrace {
     /// Flatten and filter for abi names in an AbiTrace
-    pub fn flatten_filter(&self, abi_names: &Vec<String>) -> Vec<&Self> {
+    pub fn flatten_filter(&self, abi_names: &[String]) -> Vec<&Self> {
         let mut filtered: Vec<&Self> = Default::default();
         let mut to_process: VecDeque<&Self> = vec![self].into();
 
@@ -134,7 +134,7 @@ impl AbiTrace {
             .find_map(|p| {
                 if p.name == "raw_amount" {
                     if let SCRuntimeAbiTraceType::U64(v) = &p.value {
-                        return Some(v.clone());
+                        return Some(*v);
                     }
                 }
                 None
