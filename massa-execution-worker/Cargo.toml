@@ -40,7 +40,6 @@ benchmarking = [
 ]
 metrics = []
 execution-trace = [
-    "schnellru",
     "massa_execution_exports/execution-trace",
 ]
 dump-block = [
@@ -89,7 +88,7 @@ massa_db_worker = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
-schnellru = { workspace = true, optional = true }
+schnellru = { workspace = true }
 prost = { version = "=0.12", optional = true }
 cfg-if = "1.0.0"
 
