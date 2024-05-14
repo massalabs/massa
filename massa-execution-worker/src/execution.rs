@@ -1553,9 +1553,7 @@ impl ExecutionState {
             .write()
             .save_transfers_for_slot(*slot, transfers.clone());
         #[cfg(feature = "execution-info")]
-        self.execution_info
-            .write()
-            .save_for_slot(*slot, exec_info);
+        self.execution_info.write().save_for_slot(*slot, exec_info);
 
         // Finish slot
         #[allow(unused_mut)]
