@@ -40,6 +40,12 @@ pub struct ExecutionInfoForSlot {
     pub(crate) denunciations: Vec<Result<DenunciationResult, String>>,
     pub(crate) operations: Vec<OperationInfo>,
     pub(crate) async_messages: Vec<Result<AsyncMessageExecutionResult, String>>,
+    /// Deferred credits execution (empty if execution-info feature is NOT enabled)
+    pub deferred_credits_execution: Vec<(Address, Result<Amount, String>)>,
+    /// Cancel async message execution (empty if execution-info feature is NOT enabled)
+    pub cancel_async_message_execution: Vec<(Address, Result<Amount, String>)>,
+    /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
+    pub auto_sell_execution: Vec<(Address, Amount)>,
 }
 
 impl ExecutionInfoForSlot {
@@ -51,6 +57,9 @@ impl ExecutionInfoForSlot {
             denunciations: Default::default(),
             operations: Default::default(),
             async_messages: Default::default(),
+            deferred_credits_execution: vec![],
+            cancel_async_message_execution: vec![],
+            auto_sell_execution: vec![],
         }
     }
 }

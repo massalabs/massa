@@ -1552,8 +1552,6 @@ impl ExecutionState {
         self.trace_history
             .write()
             .save_transfers_for_slot(*slot, transfers.clone());
-        #[cfg(feature = "execution-info")]
-        self.execution_info.write().save_for_slot(*slot, exec_info);
 
         // Finish slot
         #[allow(unused_mut)]
@@ -1568,6 +1566,14 @@ impl ExecutionState {
                 Some((_block_id, block_metadata)) => block_metadata.storage.clone(),
                 _ => None,
             }
+        }
+        
+        #[cfg(feature = "execution-info")]
+        {
+            exec_info.deferred_credits_execution = std::mem::replace(&mut exec_out.deferred_credits_execution, vec![]);
+            exec_info.cancel_async_message_execution = std::mem::replace(&mut exec_out.cancel_async_message_execution, vec![]);
+            exec_info.auto_sell_execution = std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
+            self.execution_info.write().save_for_slot(*slot, exec_info);
         }
 
         // Broadcast a slot execution output to active channel subscribers.
