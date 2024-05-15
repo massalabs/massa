@@ -1072,6 +1072,9 @@ async fn new_slot_execution_outputs() {
         slot_trace: None,
         #[cfg(feature = "dump-block")]
         storage: None,
+        deferred_credits_execution: vec![],
+        cancel_async_message_execution: vec![],
+        auto_sell_execution: vec![],
     };
 
     let (tx_request, rx) = tokio::sync::mpsc::channel(10);

@@ -1,4 +1,5 @@
-use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+use massa_execution_exports::types_trace_info::AbiTrace;
+use massa_execution_exports::types_trace_info::{SlotAbiCallStack, Transfer};
 use massa_models::{operation::OperationId, slot::Slot};
 use schnellru::{ByLength, LruMap};
 

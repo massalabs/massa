@@ -41,7 +41,7 @@ use tokio::sync::broadcast;
 use crate::start_execution_worker;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::SlotAbiCallStack;
+use massa_execution_exports::types_trace_info::SlotAbiCallStack;
 
 pub struct ExecutionForeignControllers {
     pub selector_controller: Box<MockSelectorControllerWrapper>,

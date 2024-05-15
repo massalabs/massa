@@ -3,7 +3,7 @@
 use crate::types::SlotExecutionOutput;
 
 #[cfg(feature = "execution-trace")]
-use crate::types::SlotAbiCallStack;
+use crate::types_trace_info::SlotAbiCallStack;
 
 /// channels used by the execution worker
 #[derive(Clone)]

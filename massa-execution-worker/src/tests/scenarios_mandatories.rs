@@ -40,7 +40,9 @@ use std::{cmp::Reverse, collections::BTreeMap, str::FromStr, time::Duration};
 use super::universe::{ExecutionForeignControllers, ExecutionTestUniverse};
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::{AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
+use massa_execution_exports::types_trace_info::AbiTrace;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::{SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue};
 #[cfg(feature = "execution-trace")]
 use massa_models::operation::OperationId;
 #[cfg(feature = "execution-trace")]
