@@ -121,6 +121,7 @@ async-trait = "0.1"
 bitvec = "1.0"
 blake3 = "=1.5"
 bs58 = "=0.5"
+cfg-if = "1.0.0"
 clap = { version = "4.4", features = ["derive", "cargo"] }
 config = "0.13"
 console = "0.15"
