@@ -85,6 +85,15 @@
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(dead_code)]
 
 </span><span class="kw">use </span>std::collections::HashMap;
@@ -127,6 +136,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) denunciations: Vec&lt;<span class="prelude-ty">Result</span>&lt;DenunciationResult, String&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) operations: Vec&lt;OperationInfo&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) async_messages: Vec&lt;<span class="prelude-ty">Result</span>&lt;AsyncMessageExecutionResult, String&gt;&gt;,
+    <span class="doccomment">/// Deferred credits execution (empty if execution-info feature is NOT enabled)
+    </span><span class="kw">pub </span>deferred_credits_execution: Vec&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt;,
+    <span class="doccomment">/// Cancel async message execution (empty if execution-info feature is NOT enabled)
+    </span><span class="kw">pub </span>cancel_async_message_execution: Vec&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt;,
+    <span class="doccomment">/// Auto sell roll execution (empty if execution-info feature is NOT enabled)
+    </span><span class="kw">pub </span>auto_sell_execution: Vec&lt;(Address, Amount)&gt;,
 }
 
 <span class="kw">impl </span>ExecutionInfoForSlot {
@@ -138,6 +153,9 @@
             denunciations: Default::default(),
             operations: Default::default(),
             async_messages: Default::default(),
+            deferred_credits_execution: <span class="macro">vec!</span>[],
+            cancel_async_message_execution: <span class="macro">vec!</span>[],
+            auto_sell_execution: <span class="macro">vec!</span>[],
         }
     }
 }

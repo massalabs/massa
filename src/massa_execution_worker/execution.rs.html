@@ -2242,6 +2242,15 @@
 <a href="#2242" id="2242">2242</a>
 <a href="#2243" id="2243">2243</a>
 <a href="#2244" id="2244">2244</a>
+<a href="#2245" id="2245">2245</a>
+<a href="#2246" id="2246">2246</a>
+<a href="#2247" id="2247">2247</a>
+<a href="#2248" id="2248">2248</a>
+<a href="#2249" id="2249">2249</a>
+<a href="#2250" id="2250">2250</a>
+<a href="#2251" id="2251">2251</a>
+<a href="#2252" id="2252">2252</a>
+<a href="#2253" id="2253">2253</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3796,8 +3805,6 @@
         </span><span class="self">self</span>.trace_history
             .write()
             .save_transfers_for_slot(<span class="kw-2">*</span>slot, transfers.clone());
-        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
-        </span><span class="self">self</span>.execution_info.write().save_for_slot(<span class="kw-2">*</span>slot, exec_info);
 
         <span class="comment">// Finish slot
         </span><span class="attr">#[allow(unused_mut)]
@@ -3812,6 +3819,17 @@
                 <span class="prelude-val">Some</span>((_block_id, block_metadata)) =&gt; block_metadata.storage.clone(),
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
             }
+        }
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        </span>{
+            exec_info.deferred_credits_execution =
+                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.deferred_credits_execution, <span class="macro">vec!</span>[]);
+            exec_info.cancel_async_message_execution =
+                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.cancel_async_message_execution, <span class="macro">vec!</span>[]);
+            exec_info.auto_sell_execution =
+                std::mem::replace(<span class="kw-2">&amp;mut </span>exec_out.auto_sell_execution, <span class="macro">vec!</span>[]);
+            <span class="self">self</span>.execution_info.write().save_for_slot(<span class="kw-2">*</span>slot, exec_info);
         }
 
         <span class="comment">// Broadcast a slot execution output to active channel subscribers.
