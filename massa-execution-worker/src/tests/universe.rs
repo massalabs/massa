@@ -4,6 +4,10 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(feature = "file_storage_backend")]
+use crate::storage_backend::FileStorageBackend;
+#[cfg(feature = "db_storage_backend")]
+use crate::storage_backend::RocksDBStorageBackend;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_execution_exports::{
@@ -117,6 +121,14 @@ impl TestUniverse for ExecutionTestUniverse {
                 std::time::Duration::from_secs(5),
             )
             .0,
+            #[cfg(feature = "file_storage_backend")]
+            Arc::new(RwLock::new(FileStorageBackend::new(
+                config.block_dump_folder_path.clone(),
+            ))),
+            #[cfg(feature = "db_storage_backend")]
+            Arc::new(RwLock::new(RocksDBStorageBackend::new(
+                config.block_dump_folder_path.clone(),
+            ))),
         );
         init_execution_worker(&config, &storage, module_controller.clone());
         let universe = Self {
