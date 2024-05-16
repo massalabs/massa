@@ -1473,6 +1473,30 @@
 <a href="#1473" id="1473">1473</a>
 <a href="#1474" id="1474">1474</a>
 <a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1485,6 +1509,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 <span class="kw">use </span><span class="kw">crate</span>::survey::MassaSurvey;
 
+<span class="kw">use </span>cfg_if::cfg_if;
 <span class="kw">use </span>clap::{crate_version, Parser};
 <span class="kw">use </span>crossbeam_channel::TryRecvError;
 <span class="kw">use </span>dialoguer::Password;
@@ -1510,6 +1535,11 @@
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
 };
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
+<span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;file_storage_backend&quot;</span>))]
+</span><span class="kw">use </span>massa_execution_worker::storage_backend::FileStorageBackend;
+<span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))]
+</span><span class="kw">use </span>massa_execution_worker::storage_backend::RocksDBStorageBackend;
+
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 <span class="kw">use </span>massa_factory_worker::start_factory;
 <span class="kw">use </span>massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
@@ -1995,6 +2025,22 @@
         .<span class="number">0</span>,
     };
 
+    <span class="macro">cfg_if! </span>{
+        <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))] </span>{
+            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
+                RocksDBStorageBackend::new(
+                execution_config.block_dump_folder_path.clone()),
+            ));
+        } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;file_storage_backend&quot;</span>))] </span>{
+            <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
+                FileStorageBackend::new(
+                execution_config.block_dump_folder_path.clone()),
+            ));
+        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>{
+            <span class="macro">compile_error!</span>(<span class="string">&quot;feature dump-block requise either db_storage_backend or file_storage_backend&quot;</span>);
+        }
+    }
+
     <span class="kw">let </span>(execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
@@ -2003,6 +2049,8 @@
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
+        <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+        </span>block_storage_backend.clone(),
     );
 
     <span class="comment">// launch pool controller

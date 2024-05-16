@@ -2250,7 +2250,6 @@
 <a href="#2250" id="2250">2250</a>
 <a href="#2251" id="2251">2251</a>
 <a href="#2252" id="2252">2252</a>
-<a href="#2253" id="2253">2253</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2265,6 +2264,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
+<span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
@@ -2323,8 +2324,6 @@
 </span><span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
 <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
 </span><span class="kw">use </span>prost::Message;
-<span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
-</span><span class="kw">use </span>std::io::Write;
 
 <span class="doccomment">/// Used to acquire a lock on the execution context
 </span><span class="macro">macro_rules! </span>context_guard {
@@ -2387,6 +2386,8 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) trace_history: Arc&lt;RwLock&lt;TraceHistory&gt;&gt;,
     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) execution_info: Arc&lt;RwLock&lt;ExecutionInfo&gt;&gt;,
+    <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+    </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -2398,6 +2399,7 @@
     ///
     /// # returns
     /// A new `ExecutionState`
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     </span><span class="kw">pub fn </span>new(
         config: ExecutionConfig,
         final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
@@ -2406,6 +2408,7 @@
         channels: ExecutionChannels,
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         massa_metrics: MassaMetrics,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -2478,6 +2481,8 @@
                 config.max_execution_traces_slot_limit <span class="kw">as </span>u32,
             ))),
             config,
+            <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+            </span>block_storage_backend,
         }
     }
 
@@ -2602,15 +2607,6 @@
 
         <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
         </span>{
-            <span class="kw">let </span>block_folder = <span class="kw-2">&amp;</span><span class="self">self</span>.config.block_dump_folder_path;
-            <span class="kw">let </span>block_file_path = block_folder.join(<span class="macro">format!</span>(
-                <span class="string">&quot;block_slot_{}_{}.bin&quot;</span>,
-                exec_out.slot.thread, exec_out.slot.period
-            ));
-
-            <span class="kw">let </span><span class="kw-2">mut </span>fs = std::fs::File::create(block_file_path.clone())
-                .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Cannot create file: {:?}&quot;</span>, block_file_path));
-
             <span class="kw">let </span><span class="kw-2">mut </span>block_ser = <span class="macro">vec!</span>[];
             <span class="kw">if let </span><span class="prelude-val">Some</span>(block_info) = exec_out.block_info {
                 <span class="kw">let </span>block_id = block_info.block_id;
@@ -2643,8 +2639,10 @@
                 <span class="kw">let </span>grpc_filled_block = grpc_model::FilledBlock::from(filled_block);
                 grpc_filled_block.encode(<span class="kw-2">&amp;mut </span>block_ser).unwrap();
             }
-            fs.write_all(<span class="kw-2">&amp;</span>block_ser[..])
-                .expect(<span class="string">&quot;Unable to write block to disk&quot;</span>);
+
+            <span class="self">self</span>.block_storage_backend
+                .write()
+                .write(<span class="kw-2">&amp;</span>exec_out.slot, <span class="kw-2">&amp;</span>block_ser);
         }
     }
 

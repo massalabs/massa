@@ -114,6 +114,9 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General description
@@ -208,6 +211,9 @@
 <span class="kw">mod </span>speculative_ledger;
 <span class="kw">mod </span>speculative_roll_state;
 <span class="kw">mod </span>stats;
+<span class="doccomment">/// Provide abstraction and implementations of a storage backend for the the
+/// dump-block feature
+</span><span class="kw">pub mod </span>storage_backend;
 <span class="kw">mod </span>worker;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]

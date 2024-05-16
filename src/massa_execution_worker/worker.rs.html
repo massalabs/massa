@@ -294,6 +294,14 @@
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
 <a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -301,10 +309,14 @@
 //! orders active and final blocks in queues sorted by increasing slot number,
 //! and requests the execution of active and final slots from execution.rs.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
-<span class="kw">use </span><span class="kw">crate</span>::execution::ExecutionState;
-<span class="kw">use </span><span class="kw">crate</span>::request_queue::RequestQueue;
-<span class="kw">use </span><span class="kw">crate</span>::slot_sequencer::SlotSequencer;
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
+<span class="kw">use crate</span>::{
+    controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl},
+    execution::ExecutionState,
+    request_queue::RequestQueue,
+    slot_sequencer::SlotSequencer,
+};
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -541,6 +553,7 @@
 /// A pair `(execution_manager, execution_controller)` where:
 /// * `execution_manager`: allows to stop the worker
 /// * `execution_controller`: allows sending requests and notifications to the worker
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
@@ -549,6 +562,7 @@
     channels: ExecutionChannels,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     massa_metrics: MassaMetrics,
+    <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="comment">// create an execution state
     </span><span class="kw">let </span>execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -559,6 +573,8 @@
         channels,
         wallet,
         massa_metrics,
+        <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+        </span>block_storage_backend,
     )));
 
     <span class="comment">// define the input data interface
