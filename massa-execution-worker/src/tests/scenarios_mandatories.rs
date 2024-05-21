@@ -2852,6 +2852,8 @@ fn execution_trace_nested() {
 #[cfg(feature = "dump-block")]
 #[test]
 fn test_dump_block() {
+    use crate::storage_backend::StorageBackend;
+
     // setup the period duration
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
@@ -2931,13 +2933,20 @@ fn test_dump_block() {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    let block_folder = &exec_cfg.block_dump_folder_path;
-    let block_file_path = block_folder.join(format!(
-        "block_slot_{}_{}.bin",
-        block_slot.thread, block_slot.period
-    ));
+    // if the the storage backend for the dump-block feature is a rocksdb, this
+    // is mandatory (the db must be closed before we can reopen it to ckeck the
+    // data)
+    drop(universe);
 
-    let block_content = std::fs::read(block_file_path).expect("Unable to read block dump");
+    let block_folder = &exec_cfg.block_dump_folder_path;
+    #[cfg(feature = "file_storage_backend")]
+    let storage_backend = crate::storage_backend::FileStorageBackend::new(block_folder.to_owned());
+
+    #[cfg(feature = "db_storage_backend")]
+    let storage_backend =
+        crate::storage_backend::RocksDBStorageBackend::new(block_folder.to_owned());
+
+    let block_content = storage_backend.read(&block_slot).unwrap();
     let filled_block = FilledBlock::decode(&mut Cursor::new(block_content)).unwrap();
     let header_content = filled_block.header.unwrap().content.unwrap();
     let header_slot = header_content.slot.unwrap();

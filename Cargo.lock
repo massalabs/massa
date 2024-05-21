@@ -2517,6 +2517,7 @@ name = "massa-node"
 version = "28.3.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "clap",
  "crossbeam-channel",
  "ctrlc",
@@ -2917,6 +2918,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
+ "rocksdb",
  "schnellru",
  "serde_json",
  "sha2 0.10.8",

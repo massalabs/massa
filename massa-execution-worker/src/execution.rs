@@ -12,6 +12,8 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
+#[cfg(feature = "dump-block")]
+use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
@@ -70,8 +72,6 @@ use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
-#[cfg(feature = "dump-block")]
-use std::io::Write;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -134,6 +134,8 @@ pub(crate) struct ExecutionState {
     pub(crate) trace_history: Arc<RwLock<TraceHistory>>,
     #[cfg(feature = "execution-info")]
     pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
+    #[cfg(feature = "dump-block")]
+    block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 }
 
 impl ExecutionState {
@@ -145,6 +147,7 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new `ExecutionState`
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: ExecutionConfig,
         final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -153,6 +156,7 @@ impl ExecutionState {
         channels: ExecutionChannels,
         wallet: Arc<RwLock<Wallet>>,
         massa_metrics: MassaMetrics,
+        #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -225,6 +229,8 @@ impl ExecutionState {
                 config.max_execution_traces_slot_limit as u32,
             ))),
             config,
+            #[cfg(feature = "dump-block")]
+            block_storage_backend,
         }
     }
 
@@ -349,15 +355,6 @@ impl ExecutionState {
 
         #[cfg(feature = "dump-block")]
         {
-            let block_folder = &self.config.block_dump_folder_path;
-            let block_file_path = block_folder.join(format!(
-                "block_slot_{}_{}.bin",
-                exec_out.slot.thread, exec_out.slot.period
-            ));
-
-            let mut fs = std::fs::File::create(block_file_path.clone())
-                .unwrap_or_else(|_| panic!("Cannot create file: {:?}", block_file_path));
-
             let mut block_ser = vec![];
             if let Some(block_info) = exec_out.block_info {
                 let block_id = block_info.block_id;
@@ -390,8 +387,10 @@ impl ExecutionState {
                 let grpc_filled_block = grpc_model::FilledBlock::from(filled_block);
                 grpc_filled_block.encode(&mut block_ser).unwrap();
             }
-            fs.write_all(&block_ser[..])
-                .expect("Unable to write block to disk");
+
+            self.block_storage_backend
+                .write()
+                .write(&exec_out.slot, &block_ser);
         }
     }
 
