@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::collections::HashMap;
+use std::fmt;
 
 use schnellru::{ByLength, LruMap};
 // use massa_execution_exports::Transfer;
@@ -15,6 +16,15 @@ pub struct ExecutionInfo {
     info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
 }
 
+impl fmt::Debug for ExecutionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExecutionInfo")
+            .field("peek newest", &self.info_per_slot.peek_newest())
+            .finish()
+    }
+}
+
+
 impl ExecutionInfo {
     pub(crate) fn new(max_slot_size_cache: u32) -> Self {
         Self {
@@ -28,11 +38,13 @@ impl ExecutionInfo {
     }
 }
 
+#[derive(Debug)]
 pub enum OperationInfo {
     RollBuy(u64),
     RollSell(u64),
 }
 
+#[derive(Debug)]
 pub struct ExecutionInfoForSlot {
     pub(crate) block_producer_reward: Option<(Address, Amount)>,
     pub(crate) endorsement_creator_rewards: HashMap<Address, Amount>,
@@ -75,6 +87,7 @@ pub struct DenunciationResult {
     pub slashed: Amount,
 }
 
+#[derive(Debug)]
 pub struct AsyncMessageExecutionResult {
     pub(crate) success: bool,
     pub(crate) sender: Option<Address>,

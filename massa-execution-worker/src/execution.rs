@@ -1655,6 +1655,10 @@ impl ExecutionState {
         // apply execution output to active state
         self.apply_active_execution_output(exec_out);
 
+        #[cfg(feature = "execution-info")]
+        info!("execution-info: {:?}", self.execution_info);
+        
+        
         debug!("execute_candidate_slot: execution finished & state applied");
     }
 
