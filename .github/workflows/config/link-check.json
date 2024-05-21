@@ -1,0 +1,31 @@
+{
+  "ignorePatterns": [
+      {
+        "pattern": "(localhost|my\\.massa|discord\\.com)"
+      },
+      {
+        "pattern": "^http://manpages.ubuntu.com"
+      },
+      {
+        "pattern": "^https://test.massa.net/api/v2"
+      },
+      {
+        "pattern": "^https://buildnet.massa.net/api/v2"
+      }
+    ],
+    "replacementPatterns": [
+      {
+        "pattern": "^/",
+        "replacement": "https://docs.massa.net/"
+      }
+    ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 5,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [
+    200,
+    206,
+    0
+  ]
+}
