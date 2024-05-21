@@ -1,7 +1,7 @@
 //! Speculative async call registry.
 
 use crate::active_history::ActiveHistory;
-use massa_asc::{AsyncCall, AsyncRegistryChanges, AsyncSlotCallsMap};
+use massa_asc::{AsyncCall, AsyncRegistryChanges, AsyncSlotCalls};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{address::Address, amount::Amount, asc_call_id::AsyncCallId, slot::Slot};
@@ -45,29 +45,101 @@ impl SpeculativeAsyncCallRegistry {
         self.current_changes.set_call(id, call);
     }
 
-    /// Consumes all calls targeting a given slot, deletes them
-    pub fn take_calls_targeting_slot(&mut self, slot: Slot) -> AsyncSlotCallsMap {
-        // add calls coming from the final state
-        let mut slot_calls_map: AsyncSlotCallsMap = self
+    pub fn get_slot_gas(&self, slot: &Slot) -> u64 {
+        // get slot gas from current changes
+        if let Some(v) = self.current_changes.get_slot_gas(slot) {
+            return v;
+        }
+
+        // check in history backwards
+        {
+            let history = self.active_history.read();
+            for history_item in history.0.iter().rev() {
+                if let Some(v) = history_item
+                    .state_changes
+                    .async_call_registry_changes
+                    .get_slot_gas(slot)
+                {
+                    return v;
+                }
+            }
+        }
+
+        // check in final state
+        return self
             .final_state
             .read()
             .get_asc_registry()
-            .get_slot_calls(slot);
+            .get_slot_gas(slot);
+    }
 
-        // traverse history to add extra calls and apply changes to others
+    pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
+        // get slot base fee from current changes
+        if let Some(v) = self.current_changes.get_slot_base_fee(slot) {
+            return v;
+        }
+
+        // check in history backwards
+        {
+            let history = self.active_history.read();
+            for history_item in history.0.iter().rev() {
+                if let Some(v) = history_item
+                    .state_changes
+                    .async_call_registry_changes
+                    .get_slot_base_fee(slot)
+                {
+                    return v;
+                }
+            }
+        }
+
+        // check in final state
+        return self
+            .final_state
+            .read()
+            .get_asc_registry()
+            .get_slot_base_fee(slot);
+    }
+
+    /// Consumes and deletes the current slot, prepares a new slot in the future
+    /// and returns the calls that need to be executed in the current slot
+    pub fn advance_slot(
+        &mut self,
+        current_slot: Slot,
+        async_call_max_booking_slots: u64,
+        thread_count: u8,
+    ) -> AsyncSlotCalls {
+        // get the state of the current slot
+        let mut slot_calls: AsyncSlotCalls = self
+            .final_state
+            .read()
+            .get_asc_registry()
+            .get_slot_calls(current_slot);
         for hist_item in self.active_history.read().0.iter() {
-            slot_calls_map.apply_changes(&hist_item.state_changes.async_call_registry_changes);
+            slot_calls.apply_changes(&hist_item.state_changes.async_call_registry_changes);
         }
+        slot_calls.apply_changes(&self.current_changes);
 
-        // apply current changes
-        slot_calls_map.apply_changes(&self.current_changes);
+        // select the slot that is newly made available and set its base fee
+        let mut new_slot = current_slot
+            .skip(async_call_max_booking_slots, thread_count)
+            .expect("could not skip enough slots");
+        todo!();
+        self.current_changes.set_slot_base_fee(new_slot, todo!());
 
-        // add call deletion to current changes
-        for id in slot_calls_map.calls.keys() {
-            self.current_changes.delete_call(slot, id);
+        // subtract the current slot gas from the total gas
+        self.current_changes
+            .set_total_gas(slot_calls.total_gas.saturating_sub(slot_calls.slot_gas));
+
+        // delete the current slot
+        for (id, call) in &slot_calls.calls {
+            self.current_changes.delete_call(current_slot, id);
         }
+        self.current_changes.set_slot_gas(current_slot, 0);
+        self.current_changes
+            .set_slot_base_fee(current_slot, Amount::zero());
 
-        slot_calls_map
+        slot_calls
     }
 
     pub fn get_call(&self, id: &AsyncCallId) -> Option<AsyncCall> {
@@ -131,4 +203,145 @@ impl SpeculativeAsyncCallRegistry {
 
         Ok(res)
     }
+
+    // This function assumes that we have a resource with a total supply `resource_supply`.
+    // Below a certain target occupancy `target_occupancy` of that resource, the overbooking penalty for using a unit of the resource is zero.
+    // Above the target, the resource unit cost grows linearly with occupancy.
+    // The linear fee growth is chosen so that if someone occupies all the resource, they incur a `max_penalty` cost.
+    fn overbooking_fee(
+        resource_supply: u128,
+        target_occupancy: u128,
+        current_occupancy: u128,
+        resource_request: u128,
+        max_penalty: Amount,
+    ) -> Amount {
+        // linear part of the occupancy before booking the requested amount
+        let relu_occupancy_before =
+            std::cmp::max(current_occupancy, target_occupancy) - target_occupancy;
+
+        // linear part of the occupancy after booking the requested amount
+        let relu_occupancy_after = std::cmp::max(
+            current_occupancy.saturating_add(resource_request),
+            target_occupancy,
+        ) - target_occupancy;
+
+        // denominator for the linear fee
+        let denominator = resource_supply - target_occupancy;
+
+        // compute using the raw fee and u128 to avoid u64 overflows
+        let raw_max_penalty = max_penalty.to_raw() as u128;
+
+        let raw_fee = (raw_max_penalty * relu_occupancy_after / denominator * relu_occupancy_after
+            / denominator)
+            .saturating_sub(
+                raw_max_penalty * relu_occupancy_before / denominator * relu_occupancy_before
+                    / denominator,
+            );
+
+        Amount::from_raw(std::cmp::min(raw_fee, u64::MAX as u128) as u64)
+    }
+
+    pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
+        // get slot base fee from current changes
+        if let Some(v) = self.current_changes.get_slot_base_fee(slot) {
+            return v;
+        }
+
+        // check in history backwards
+        {
+            let history = self.active_history.read();
+            for history_item in history.0.iter().rev() {
+                if let Some(v) = history_item
+                    .state_changes
+                    .async_call_registry_changes
+                    .get_slot_base_fee(slot)
+                {
+                    return v;
+                }
+            }
+        }
+
+        // check in final state
+        return self
+            .final_state
+            .read()
+            .get_asc_registry()
+            .get_slot_base_fee(slot);
+    }
+
+    /// Compute call fee
+    pub fn compute_call_fee(
+        &self,
+        target_slot: Slot,
+        max_gas: u64,
+        thread_count: u8,
+        async_call_max_booking_slots: u64,
+        max_async_gas: u64,
+        async_gas_target: u64,
+        global_overbooking_penalty: Amount,
+        slot_overbooking_penalty: Amount,
+        current_slot: Slot,
+    ) -> Result<Amount, ExecutionError> {
+        // Check that the slot is not in the past
+        if target_slot <= current_slot {
+            return Err(ExecutionError::AscError(
+                "Target slot is in the past.".into(),
+            ));
+        }
+
+        // Check that the slot is not in the future
+        if target_slot
+            .slots_since(&current_slot, thread_count)
+            .unwrap_or(u64::MAX)
+            > async_call_max_booking_slots
+        {
+            // note: the current slot is not counted
+            return Err(ExecutionError::AscError(
+                "Target slot is too far in the future.".into(),
+            ));
+        }
+
+        // Check that the gas is not too high for the target slot
+        let slot_occupancy = self.get_slot_gas(&target_slot);
+        if slot_occupancy.saturating_add(max_gas) > max_async_gas {
+            return Err(ExecutionError::AscError(
+                "Not enough gas available in the target slot.".into(),
+            ));
+        }
+
+        // Integral fee
+        let integral_fee = self
+            .get_slot_base_fee(&target_slot)
+            .saturating_mul_u64(max_gas);
+
+        // Slot overbooking fee
+        let slot_overbooking_fee = Self::overbooking_fee(
+            max_async_gas as u128,
+            async_gas_target as u128,
+            slot_occupancy as u128,
+            max_gas as u128,
+            slot_overbooking_penalty,
+        );
+
+        // Global overbooking fee
+        let global_occupancy = self.get_total_gas();
+        let global_overbooking_fee = Self::overbooking_fee(
+            (max_async_gas as u128).saturating_mul(async_call_max_booking_slots as u128),
+            (async_gas_target as u128).saturating_mul(async_call_max_booking_slots as u128),
+            global_occupancy,
+            max_gas as u128,
+            global_overbooking_penalty,
+        );
+
+        // return the fee
+        Ok(integral_fee
+            .saturating_add(global_overbooking_fee)
+            .saturating_add(slot_overbooking_fee))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_compute_call_fee() {}
 }

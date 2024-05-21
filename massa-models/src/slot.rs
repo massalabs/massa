@@ -325,6 +325,33 @@ impl Slot {
             .ok_or(ModelsError::PeriodOverflowError)?
             .saturating_sub(s.thread as u64))
     }
+
+    /// Returns the n-th slot after the current one
+    ///
+    /// ## Example
+    /// ```rust
+    /// # use massa_models::slot::Slot;
+    /// let slot = Slot::new(10,3);
+    /// assert_eq!(slot.skip(62, 32).unwrap(), Slot::new(12, 1));
+    /// ```
+    pub fn skip(&self, n: u64, thread_count: u8) -> Result<Slot, ModelsError> {
+        let mut res_period = self
+            .period
+            .checked_add(n / (thread_count as u64))
+            .ok_or(ModelsError::PeriodOverflowError)?;
+        let mut res_thread = (self.thread as u64)
+            .checked_add(n % (thread_count as u64))
+            .ok_or(ModelsError::PeriodOverflowError)?;
+
+        if res_thread >= thread_count as u64 {
+            res_period = res_period
+                .checked_add(1)
+                .ok_or(ModelsError::PeriodOverflowError)?;
+            res_thread -= thread_count as u64;
+        }
+
+        Ok(Slot::new(res_period, res_thread as u8))
+    }
 }
 
 /// When an address is drawn to create an endorsement it is selected for a specific index
