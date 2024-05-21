@@ -11,6 +11,7 @@ pub use massa_sc_runtime::{
     AbiTrace as SCRuntimeAbiTrace, AbiTraceType as SCRuntimeAbiTraceType,
     AbiTraceValue as SCRuntimeAbiTraceValue,
 };
+use serde::Serialize;
 
 #[cfg(feature = "execution-trace")]
 #[derive(Debug, Clone)]
@@ -46,7 +47,7 @@ pub struct Transfer {
 
 #[cfg(feature = "execution-trace")]
 /// A trace of an abi call + its parameters + the result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AbiTrace {
     /// Abi name
     pub name: String,

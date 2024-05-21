@@ -92,6 +92,7 @@ schnellru = { workspace = true }
 prost = { version = "=0.12", optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use schnellru::{ByLength, LruMap};
-// use massa_execution_exports::Transfer;
+use serde::Serialize;
 
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -28,11 +28,13 @@ impl ExecutionInfo {
     }
 }
 
+#[derive(Serialize)]
 pub enum OperationInfo {
     RollBuy(u64),
     RollSell(u64),
 }
 
+#[derive(Serialize)]
 pub struct ExecutionInfoForSlot {
     pub(crate) block_producer_reward: Option<(Address, Amount)>,
     pub(crate) endorsement_creator_rewards: HashMap<Address, Amount>,
@@ -65,7 +67,7 @@ impl ExecutionInfoForSlot {
 }
 
 /// structure describing the output of a denunciation execution
-#[derive(Debug)]
+#[derive(Serialize)]
 pub struct DenunciationResult {
     /// Target address of the denunciation
     pub address_denounced: Address,
@@ -75,6 +77,7 @@ pub struct DenunciationResult {
     pub slashed: Amount,
 }
 
+#[derive(Serialize)]
 pub struct AsyncMessageExecutionResult {
     pub(crate) success: bool,
     pub(crate) sender: Option<Address>,
