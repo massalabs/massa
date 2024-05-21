@@ -22,11 +22,27 @@ sandbox = [
     "massa_models/sandbox",
     "massa_metrics/sandbox",
 ]
-execution-trace = ["massa_grpc/execution-trace", "massa_api/execution-trace", "massa_execution_worker/execution-trace", "massa_execution_exports/execution-trace"]
+execution-trace = [
+    "massa_grpc/execution-trace",
+    "massa_api/execution-trace",
+    "massa_execution_worker/execution-trace",
+    "massa_execution_exports/execution-trace",
+]
+dump-block = [
+    "massa_execution_worker/dump-block",
+    "massa_execution_exports/dump-block",
+    "db_storage_backend",
+]
+db_storage_backend = []
+file_storage_backend = []
+execution-info = [
+    "execution-trace"
+]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
 anyhow = { workspace = true }
+cfg-if = { workspace = true }
 lazy_static = { workspace = true } # BOM UPGRADE     Revert to "1.4" if problem
 parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
 serde = { workspace = true, "features" = ["derive"] }

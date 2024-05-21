@@ -31,7 +31,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::AbiTrace;
+use massa_execution_exports::types_trace_info::AbiTrace;
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
 #[cfg(feature = "execution-trace")]

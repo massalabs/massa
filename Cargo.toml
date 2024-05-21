@@ -106,8 +106,8 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "426fd325a55dfcc4033920bed2de075a7e7ad4b7" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "e95066a6d3a963ff0125616f404a84e5abb63d63" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "38950875a7aa406fedc4f0b8336864e5ff290f2c" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "80352eb9f2a6b90a441cd64433d8874c33fb384f" }
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
 
 # Common dependencies
@@ -121,6 +121,7 @@ async-trait = "0.1"
 bitvec = "1.0"
 blake3 = "=1.5"
 bs58 = "=0.5"
+cfg-if = "1.0.0"
 clap = { version = "4.4", features = ["derive", "cargo"] }
 config = "0.13"
 console = "0.15"

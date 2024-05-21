@@ -4,7 +4,7 @@ use crate::amount::Amount;
 use crate::block::{Block, BlockGraphStatus, FilledBlock, SecureShareBlock};
 use crate::block_header::{BlockHeader, SecuredHeader};
 use crate::config::CompactConfig;
-use crate::denunciation::DenunciationIndex;
+use crate::denunciation::{Denunciation, DenunciationIndex};
 use crate::endorsement::{Endorsement, SecureShareEndorsement};
 use crate::error::ModelsError;
 use crate::operation::{Operation, OperationType, SecureShareOperation};
@@ -90,6 +90,7 @@ impl From<BlockHeader> for grpc_model::BlockHeader {
                 .map(|parent| parent.to_string())
                 .collect(),
             endorsements: res,
+            denunciations: value.denunciations.into_iter().map(|d| d.into()).collect(),
             current_version: value.current_version,
             announced_version: value.announced_version,
             //TODO to be updated in Massa models
@@ -399,6 +400,38 @@ impl From<NetworkStats> for grpc_model::NetworkStats {
             known_peer_count: value.known_peer_count,
             banned_peer_count: value.banned_peer_count,
             active_node_count: value.active_node_count,
+        }
+    }
+}
+
+impl From<Denunciation> for grpc_model::Denunciation {
+    fn from(value: Denunciation) -> Self {
+        match value {
+            Denunciation::Endorsement(de) => grpc_model::Denunciation {
+                entry: Some(grpc_model::denunciation::Entry::Endorsement(
+                    grpc_model::EndorsementDenunciation {
+                        public_key: de.get_public_key().to_string(),
+                        slot: Some((*de.get_slot()).into()),
+                        index: *de.get_index(),
+                        hash_1: de.get_hash_1().to_string(),
+                        hash_2: de.get_hash_2().to_string(),
+                        signature_1: de.get_signature_1().to_string(),
+                        signature_2: de.get_signature_2().to_string(),
+                    },
+                )),
+            },
+            Denunciation::BlockHeader(db) => grpc_model::Denunciation {
+                entry: Some(grpc_model::denunciation::Entry::BlockHeader(
+                    grpc_model::BlockHeaderDenunciation {
+                        public_key: db.get_public_key().to_string(),
+                        slot: Some((*db.get_slot()).into()),
+                        hash_1: db.get_hash_1().to_string(),
+                        hash_2: db.get_hash_2().to_string(),
+                        signature_1: db.get_signature_1().to_string(),
+                        signature_2: db.get_signature_2().to_string(),
+                    },
+                )),
+            },
         }
     }
 }

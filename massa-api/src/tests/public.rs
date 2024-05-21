@@ -694,6 +694,13 @@ async fn execute_read_only_bytecode() {
                     block_info: None,
                     state_changes: massa_final_state::StateChanges::default(),
                     events: massa_execution_exports::EventStore::default(),
+                    #[cfg(feature = "execution-trace")]
+                    slot_trace: None,
+                    #[cfg(feature = "dump-block")]
+                    storage: None,
+                    deferred_credits_execution: vec![],
+                    cancel_async_message_execution: vec![],
+                    auto_sell_execution: vec![],
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
@@ -774,6 +781,13 @@ async fn execute_read_only_call() {
                     block_info: None,
                     state_changes: massa_final_state::StateChanges::default(),
                     events: massa_execution_exports::EventStore::default(),
+                    #[cfg(feature = "execution-trace")]
+                    slot_trace: None,
+                    #[cfg(feature = "dump-block")]
+                    storage: None,
+                    deferred_credits_execution: vec![],
+                    cancel_async_message_execution: vec![],
+                    auto_sell_execution: vec![],
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
