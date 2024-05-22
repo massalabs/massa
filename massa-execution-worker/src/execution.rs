@@ -1718,9 +1718,11 @@ impl ExecutionState {
 
         // apply execution output to final state
         self.apply_final_execution_output(exec_out);
-        
+
         #[cfg(feature = "execution-info")]
         println!("[Final] execution-info: {:?}", self.execution_info);
+        #[cfg(not(feature = "execution-info"))]
+        println!("[Final] features not enabled?");
 
         debug!(
             "execute_final_slot: execution finished & result applied & versioning stats updated"
