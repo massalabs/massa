@@ -31,7 +31,7 @@ use std::collections::HashSet;
 use std::str::FromStr;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::AbiTrace;
+use massa_execution_exports::types_trace_info::AbiTrace;
 #[cfg(feature = "execution-trace")]
 use massa_proto_rs::massa::api::v1::abi_call_stack_element_parent::CallStackElement;
 #[cfg(feature = "execution-trace")]
@@ -653,7 +653,7 @@ pub(crate) fn get_slot_abi_call_stacks(
 ) -> Result<grpc_api::GetSlotAbiCallStacksResponse, GrpcError> {
     let slots = request.into_inner().slots;
 
-    let slot_elements = vec![];
+    let mut slot_elements = vec![];
     for slot in slots {
         let call_stack_ = grpc
             .execution_controller
@@ -680,6 +680,7 @@ pub(crate) fn get_slot_abi_call_stacks(
                     })
             }
         }
+        slot_elements.push(slot_abi_call_stacks);
     }
 
     let resp = GetSlotAbiCallStacksResponse {

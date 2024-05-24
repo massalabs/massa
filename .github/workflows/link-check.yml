@@ -1,0 +1,25 @@
+name: Check dead links
+
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 10 * * 6'
+
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+      - name: Install markdown-link-check
+        run: npm install -g markdown-link-check
+      - name: Check links in markdown files
+        run: |
+          find . \( -name '*.md' -o -name '*.mdx' \) \
+          -exec markdown-link-check -v -c .github/workflows/config/link-check.json --progress {} \; 2>&1 | tee linkcheck.out
+          grep -F -wc "[✖] |ERROR" ./linkcheck.out && exit 1 || true

@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "2.1.0"
+version = "28.3.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -16,7 +16,7 @@ gas_calibration = [
     "massa_final_state/test-exports",
     "massa_pos_worker",
     "massa_db_worker",
-    "tempfile"
+    "tempfile",
 ]
 test-exports = [
     "massa_execution_exports/test-exports",
@@ -29,20 +29,26 @@ test-exports = [
     "massa_metrics/test-exports",
     "massa_metrics/test-exports",
     "massa_db_worker",
-    "tempfile"
+    "tempfile",
 ]
 benchmarking = [
     "massa-sc-runtime/gas_calibration",
     "criterion",
     "massa_pos_worker",
     "massa_db_worker",
-    "tempfile"
+    "tempfile",
 ]
 metrics = []
-execution-trace = [
-    "schnellru",
-    "massa_execution_exports/execution-trace",
+execution-trace = ["massa_execution_exports/execution-trace"]
+dump-block = [
+    "prost",
+    "massa_execution_exports/dump-block",
+    "db_storage_backend",
 ]
+db_storage_backend = []
+file_storage_backend = []
+
+execution-info = ["execution-trace"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -82,7 +88,10 @@ massa_db_worker = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
-schnellru = { workspace = true, optional = true }
+schnellru = { workspace = true }
+prost = { version = "=0.12", optional = true }
+cfg-if = { workspace = true }
+rocksdb = { workspace = true }
 
 [dev-dependencies]
 massa_storage = { workspace = true }
@@ -96,7 +105,7 @@ massa_wallet = { workspace = true, features = ["test-exports"] }
 massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_db_worker = { workspace = true }
 tempfile = { workspace = true }
-massa_test_framework = {workspace = true, "features" = ["test-exports"]}
+massa_test_framework = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }

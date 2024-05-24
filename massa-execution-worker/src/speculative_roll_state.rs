@@ -197,7 +197,7 @@ impl SpeculativeRollState {
         addr: &Address,
         amount: &Amount,
     ) -> Amount {
-        let credits = self.get_address_deferred_credits(addr, slot..);
+        let credits = self.get_address_deferred_credits(addr, *slot);
 
         let mut remaining_to_slash = *amount;
         for (credit_slot, credit_amount) in credits.iter() {
@@ -254,7 +254,9 @@ impl SpeculativeRollState {
         thread_count: u8,
         roll_price: Amount,
         max_miss_ratio: Ratio<u64>,
-    ) {
+    ) -> Vec<(Address, Amount)> {
+        #[allow(unused_mut)]
+        let mut result = vec![];
         let cycle = slot.get_cycle(periods_per_cycle);
 
         let (production_stats, full) =
@@ -286,6 +288,9 @@ impl SpeculativeRollState {
                             .saturating_add(amount);
                         target_credits.insert(addr, new_deferred_credits);
                         self.added_changes.roll_changes.insert(addr, 0);
+
+                        #[cfg(feature = "execution-info")]
+                        result.push((addr, amount));
                     }
                 }
             }
@@ -295,17 +300,16 @@ impl SpeculativeRollState {
             credits.credits.insert(target_slot, target_credits);
             self.added_changes.deferred_credits.extend(credits);
         }
+
+        result
     }
 
     /// Get deferred credits of an address starting from a given slot
-    pub fn get_address_deferred_credits<R>(
+    pub fn get_address_deferred_credits(
         &self,
         address: &Address,
-        slot_range: R,
-    ) -> BTreeMap<Slot, Amount>
-    where
-        R: std::ops::RangeBounds<Slot> + Clone,
-    {
+        min_slot: Slot,
+    ) -> BTreeMap<Slot, Amount> {
         let mut res: HashMap<Slot, Amount> = HashMap::default();
 
         // get added values
@@ -313,7 +317,7 @@ impl SpeculativeRollState {
             .added_changes
             .deferred_credits
             .credits
-            .range(slot_range.clone())
+            .range(min_slot..)
         {
             if let Some(amount) = addr_amount.get(address) {
                 res.entry(*slot).or_insert(*amount);
@@ -329,7 +333,7 @@ impl SpeculativeRollState {
                     .pos_changes
                     .deferred_credits
                     .credits
-                    .range(slot_range.clone())
+                    .range(min_slot..)
                 {
                     if let Some(amount) = addr_amount.get(address) {
                         res.entry(*slot).or_insert(*amount);
@@ -343,7 +347,7 @@ impl SpeculativeRollState {
             let final_state = self.final_state.read();
             for (slot, addr_amount) in final_state
                 .get_pos_state()
-                .get_deferred_credits_range(slot_range, Some(address))
+                .get_deferred_credits_range(min_slot..)
                 .credits
             {
                 if let Some(amount) = addr_amount.get(address) {
@@ -572,7 +576,7 @@ impl SpeculativeRollState {
             .final_state
             .read()
             .get_pos_state()
-            .get_deferred_credits_range(..=slot, None);
+            .get_deferred_credits_range(..=slot);
 
         // fetch active history deferred credits
         credits.extend(

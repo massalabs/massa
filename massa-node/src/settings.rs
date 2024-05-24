@@ -126,7 +126,6 @@ pub struct APISettings {
     pub enable_ws: bool,
     // whether to broadcast for blocks, endorsement and operations
     pub enable_broadcast: bool,
-    pub deferred_credits_delta: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -145,6 +144,7 @@ pub struct Settings {
     pub grpc: GrpcApiSettings,
     pub metrics: MetricsSettings,
     pub versioning: VersioningSettings,
+    pub block_dump: BlockDumpSettings,
 }
 
 /// Consensus configuration
@@ -380,6 +380,12 @@ pub struct GrpcApiSettings {
 pub struct VersioningSettings {
     // Warn user to update its node if we reach this percentage for announced network versions
     pub(crate) mip_stats_warn_announced_version: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlockDumpSettings {
+    /// Where to dump blocks
+    pub(crate) block_dump_folder_path: PathBuf,
 }
 
 #[cfg(test)]
