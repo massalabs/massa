@@ -5,10 +5,11 @@
 
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
+use serde::Serialize;
 use std::collections::VecDeque;
 
 /// Store for events emitted by smart contracts
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize)]
 pub struct EventStore(pub VecDeque<SCOutputEvent>);
 
 impl EventStore {

@@ -47,8 +47,8 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-
 execution-info = ["execution-trace"]
+slot-replayer = []
 
 [dependencies]
 anyhow = { workspace = true }

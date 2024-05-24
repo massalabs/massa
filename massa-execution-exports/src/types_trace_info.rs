@@ -13,7 +13,10 @@ pub use massa_sc_runtime::{
 };
 
 #[cfg(feature = "execution-trace")]
-#[derive(Debug, Clone)]
+use serde::Serialize;
+
+#[cfg(feature = "execution-trace")]
+#[derive(Debug, Clone, Serialize)]
 /// Structure for all abi calls in a slot
 pub struct SlotAbiCallStack {
     /// Slot
@@ -25,7 +28,7 @@ pub struct SlotAbiCallStack {
 }
 
 #[cfg(feature = "execution-trace")]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 /// structure describing a transfer
 pub struct Transfer {
     /// From
@@ -46,7 +49,7 @@ pub struct Transfer {
 
 #[cfg(feature = "execution-trace")]
 /// A trace of an abi call + its parameters + the result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct AbiTrace {
     /// Abi name
     pub name: String,

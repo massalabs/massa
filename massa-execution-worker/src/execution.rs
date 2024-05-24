@@ -272,6 +272,12 @@ impl ExecutionState {
         self.update_versioning_stats(&exec_out.block_info, &exec_out.slot);
 
         let exec_out_2 = exec_out.clone();
+        #[cfg(feature = "slot-replayer")]
+        {
+            println!(">>> Execution changes");
+            println!("{:#?}", serde_json::to_string_pretty(&exec_out));
+            println!("<<<");
+        }
         // apply state changes to the final ledger
         self.final_state
             .write()

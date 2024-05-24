@@ -619,7 +619,7 @@ impl FinalState {
                 {
                     warn!("Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return Err(anyhow!(
-                        "Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}", 
+                        "Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     ));
                 }
@@ -630,7 +630,7 @@ impl FinalState {
                 {
                     warn!("Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}", serialized_key, serialized_value);
                     return Err(anyhow!(
-                        "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}", 
+                        "Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     ));
                 }
@@ -641,7 +641,7 @@ impl FinalState {
                 {
                     warn!("Wrong key/value for MIP Store");
                     return Err(anyhow!(
-                        "Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}", 
+                        "Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}",
                         serialized_key, serialized_value
                     ));
                 }

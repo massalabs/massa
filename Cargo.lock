@@ -2873,6 +2873,7 @@ dependencies = [
  "massa_versioning",
  "mockall",
  "num",
+ "serde",
  "tempfile",
  "thiserror",
  "tokio",
