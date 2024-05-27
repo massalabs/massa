@@ -127,6 +127,7 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents an event store allowing to store, search and retrieve
@@ -135,9 +136,10 @@
 </span><span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 <span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>serde::Serialize;
 
 <span class="doccomment">/// Store for events emitted by smart contracts
-</span><span class="attr">#[derive(Default, Debug, Clone)]
+</span><span class="attr">#[derive(Default, Debug, Clone, Serialize)]
 </span><span class="kw">pub struct </span>EventStore(<span class="kw">pub </span>VecDeque&lt;SCOutputEvent&gt;);
 
 <span class="kw">impl </span>EventStore {

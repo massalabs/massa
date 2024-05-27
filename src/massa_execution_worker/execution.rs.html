@@ -2250,6 +2250,12 @@
 <a href="#2250" id="2250">2250</a>
 <a href="#2251" id="2251">2251</a>
 <a href="#2252" id="2252">2252</a>
+<a href="#2253" id="2253">2253</a>
+<a href="#2254" id="2254">2254</a>
+<a href="#2255" id="2255">2255</a>
+<a href="#2256" id="2256">2256</a>
+<a href="#2257" id="2257">2257</a>
+<a href="#2258" id="2258">2258</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2524,6 +2530,12 @@
         </span><span class="self">self</span>.update_versioning_stats(<span class="kw-2">&amp;</span>exec_out.block_info, <span class="kw-2">&amp;</span>exec_out.slot);
 
         <span class="kw">let </span>exec_out_2 = exec_out.clone();
+        <span class="attr">#[cfg(feature = <span class="string">&quot;slot-replayer&quot;</span>)]
+        </span>{
+            <span class="macro">println!</span>(<span class="string">&quot;&gt;&gt;&gt; Execution changes&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;{:#?}&quot;</span>, serde_json::to_string_pretty(<span class="kw-2">&amp;</span>exec_out));
+            <span class="macro">println!</span>(<span class="string">&quot;&lt;&lt;&lt;&quot;</span>);
+        }
         <span class="comment">// apply state changes to the final ledger
         </span><span class="self">self</span>.final_state
             .write()

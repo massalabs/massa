@@ -338,6 +338,7 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -360,6 +361,7 @@
 <span class="kw">use </span>massa_pos_exports::ProductionStats;
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>serde::Serialize;
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::{SlotAbiCallStack, Transfer};
@@ -557,7 +559,7 @@
 }
 
 <span class="doccomment">/// structure storing a block id + network versions (from a block header)
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone, Serialize)]
 </span><span class="kw">pub struct </span>ExecutedBlockInfo {
     <span class="doccomment">/// Block id
     </span><span class="kw">pub </span>block_id: BlockId,
@@ -568,7 +570,7 @@
 }
 
 <span class="doccomment">/// structure describing the output of a single execution
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone, Serialize)]
 </span><span class="kw">pub struct </span>ExecutionOutput {
     <span class="doccomment">/// slot
     </span><span class="kw">pub </span>slot: Slot,

@@ -143,6 +143,9 @@
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
 </pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="kw">use </span>std::collections::VecDeque;
 
@@ -158,7 +161,10 @@
 };
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-#[derive(Debug, Clone)]
+</span><span class="kw">use </span>serde::Serialize;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+#[derive(Debug, Clone, Serialize)]
 </span><span class="doccomment">/// Structure for all abi calls in a slot
 </span><span class="kw">pub struct </span>SlotAbiCallStack {
     <span class="doccomment">/// Slot
@@ -170,7 +176,7 @@
 }
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 </span><span class="doccomment">/// structure describing a transfer
 </span><span class="kw">pub struct </span>Transfer {
     <span class="doccomment">/// From
@@ -191,7 +197,7 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
 </span><span class="doccomment">/// A trace of an abi call + its parameters + the result
-</span><span class="attr">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone, Serialize)]
 </span><span class="kw">pub struct </span>AbiTrace {
     <span class="doccomment">/// Abi name
     </span><span class="kw">pub </span>name: String,
