@@ -767,6 +767,15 @@
 <a href="#767" id="767">767</a>
 <a href="#768" id="768">768</a>
 <a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -884,20 +893,20 @@
         // This is the max between the latest CSS-final slot, the latest blockclique slot,
         // and the latest slot to be executed in time.
         </span><span class="kw">let </span>max_slot = std::cmp::max(
-            std::cmp::max(
-                <span class="kw-2">*</span><span class="self">self
-                    </span>.latest_consensus_final_slots
-                    .iter()
-                    .max()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
-                initial_blockclique
-                    .keys()
-                    .max()
-                    .copied()
-                    .unwrap_or_else(|| Slot::new(<span class="self">self</span>.config.last_start_period, <span class="number">0</span>)),
-            ),
-            <span class="self">self</span>.get_time_cursor(),
+            <span class="kw-2">*</span><span class="self">self
+                </span>.latest_consensus_final_slots
+                .iter()
+                .max()
+                .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
+            initial_blockclique
+                .keys()
+                .max()
+                .copied()
+                .unwrap_or_else(|| Slot::new(<span class="self">self</span>.config.last_start_period, <span class="number">0</span>)),
         );
+
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="kw">let </span>max_slot = std::cmp::max(max_slot, <span class="self">self</span>.get_time_cursor());
 
         <span class="comment">// Iterate from the starting slot to the `max_slot` to build the slot sequence.
         </span><span class="kw">while </span>slot &lt;= max_slot {
@@ -978,9 +987,16 @@
     </span><span class="kw">pub fn </span>update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>new_consensus_final_blocks: HashMap&lt;Slot, BlockId&gt;,
-        <span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
+        <span class="attr">#[cfg_attr(feature = <span class="string">&quot;slot-replayer&quot;</span>, allow(unused_assignments))]
+        </span><span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
         <span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
+        <span class="comment">// as a precaution, if we don&#39;t want to process speculative slots, clear the speculative feed just in case
+        </span><span class="attr">#[cfg(feature = <span class="string">&quot;slot-replayer&quot;</span>)]
+        </span>{
+            new_blockclique = <span class="prelude-val">None</span>;
+        }
+
         <span class="comment">// If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
         </span><span class="kw">if </span><span class="self">self</span>.sequence.is_empty() {
@@ -1358,6 +1374,7 @@
         }
 
         <span class="comment">// Check if the next candidate slot is available for execution.
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
         </span>{
             <span class="comment">// Get the slot just after the last executed candidate slot.
             </span><span class="kw">let </span>next_candidate_slot = <span class="self">self
@@ -1475,6 +1492,7 @@
         <span class="comment">// Here we know that there are no SCE-final slots to execute.
 
         // Low priority: execute the next candidate slot that is available for execution, if any.
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
         </span>{
             <span class="comment">// Get the slot just after the latest executed speculative slot.
             </span><span class="kw">let </span>slot = <span class="self">self
