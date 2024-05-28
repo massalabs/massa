@@ -28,6 +28,7 @@ massa_pos_exports = {workspace = true}
 massa_module_cache = {workspace = true}
 massa_versioning = {workspace = true}
 massa-sc-runtime = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
 
 [dev-dependencies]
 mockall = {workspace = true}
