@@ -776,6 +776,12 @@
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows Execution to manage slot sequencing.
@@ -905,7 +911,10 @@
                 .unwrap_or_else(|| Slot::new(<span class="self">self</span>.config.last_start_period, <span class="number">0</span>)),
         );
 
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        <span class="comment">// slot-replayer doesn&#39;t need the &quot;latest slot to be executed in time&quot;
+        // as it replays blocks in known period of time. Moreover this may
+        // introduce huge performance loss.
+        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
         </span><span class="kw">let </span>max_slot = std::cmp::max(max_slot, <span class="self">self</span>.get_time_cursor());
 
         <span class="comment">// Iterate from the starting slot to the `max_slot` to build the slot sequence.
@@ -991,7 +1000,8 @@
         </span><span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
         <span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
-        <span class="comment">// as a precaution, if we don&#39;t want to process speculative slots, clear the speculative feed just in case
+        <span class="comment">// The slot-replay don&#39;t care about speculative execution. We clear
+        // them.
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;slot-replayer&quot;</span>)]
         </span>{
             new_blockclique = <span class="prelude-val">None</span>;
@@ -1375,6 +1385,7 @@
 
         <span class="comment">// Check if the next candidate slot is available for execution.
         </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="comment">// slot-replayer only replay final slot
         </span>{
             <span class="comment">// Get the slot just after the last executed candidate slot.
             </span><span class="kw">let </span>next_candidate_slot = <span class="self">self
@@ -1493,6 +1504,7 @@
 
         // Low priority: execute the next candidate slot that is available for execution, if any.
         </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="comment">// slot-replayer does not care about spectulative execution
         </span>{
             <span class="comment">// Get the slot just after the latest executed speculative slot.
             </span><span class="kw">let </span>slot = <span class="self">self
