@@ -126,6 +126,7 @@ pub struct APISettings {
     pub enable_ws: bool,
     // whether to broadcast for blocks, endorsement and operations
     pub enable_broadcast: bool,
+    pub deferred_credits_delta: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]

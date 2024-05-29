@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1704289800000) // Wednesday, January 3, 2024 1:50:00 PM UTC
+        MassaTime::from_millis(1705312800000) // Monday, January 15, 2024 10:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -70,9 +70,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.28.3"
+            "SAND.2.1"
         } else {
-            "DEVN.28.3"
+            "MAIN.2.1"
         }
         .parse()
         .unwrap()
