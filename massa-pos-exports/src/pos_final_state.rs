@@ -1626,6 +1626,7 @@ mod tests {
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
             thread_count: 2,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -1759,6 +1760,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: 2,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -1952,6 +1954,7 @@ mod tests {
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
             thread_count: 2,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -2051,6 +2054,7 @@ mod tests {
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
             thread_count: 2,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -2225,6 +2229,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: 2,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -2329,6 +2334,7 @@ mod tests {
             thread_count: 2,
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>

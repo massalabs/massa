@@ -91,6 +91,7 @@ impl Default for FinalStateConfig {
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             t0: T0,
             genesis_timestamp: *GENESIS_TIMESTAMP,
+            ledger_backup_periods_interval: 100,
         }
     }
 }

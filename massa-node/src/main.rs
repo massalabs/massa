@@ -200,6 +200,7 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        ledger_backup_periods_interval: SETTINGS.ledger.ledger_backup_periods_interval,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
@@ -233,6 +234,7 @@ async fn launch(
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
+        max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -530,12 +532,12 @@ async fn launch(
         if #[cfg(all(feature = "dump-block", feature = "db_storage_backend"))] {
             let block_storage_backend = Arc::new(RwLock::new(
                 RocksDBStorageBackend::new(
-                execution_config.block_dump_folder_path.clone()),
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
         } else if #[cfg(all(feature = "dump-block", feature = "file_storage_backend"))] {
             let block_storage_backend = Arc::new(RwLock::new(
                 FileStorageBackend::new(
-                execution_config.block_dump_folder_path.clone()),
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
         } else if #[cfg(feature = "dump-block")] {
             compile_error!("feature dump-block requise either db_storage_backend or file_storage_backend");

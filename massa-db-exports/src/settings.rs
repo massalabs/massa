@@ -13,4 +13,6 @@ pub struct MassaDBConfig {
     pub max_final_state_elements_size: usize,
     /// Thread count for slot serialization
     pub thread_count: u8,
+    /// Maximum number of ledger backups to keep
+    pub max_ledger_backups: u64,
 }

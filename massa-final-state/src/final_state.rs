@@ -23,13 +23,10 @@ use massa_ledger_exports::LedgerController;
 use massa_ledger_exports::SetOrKeep;
 use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
+use massa_models::timeslots::get_block_slot_timestamp;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
-
-#[cfg(feature = "bootstrap_server")]
-use massa_models::config::PERIODS_BETWEEN_BACKUPS;
-use massa_models::timeslots::get_block_slot_timestamp;
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 pub struct FinalState {
@@ -502,7 +499,10 @@ impl FinalState {
 
         // Backup DB if needed
         #[cfg(feature = "bootstrap_server")]
-        if slot.period % PERIODS_BETWEEN_BACKUPS == 0 && slot.period != 0 && slot.thread == 0 {
+        if slot.period % self.config.ledger_backup_periods_interval == 0
+            && slot.period != 0
+            && slot.thread == 0
+        {
             let state_slot = self.db.read().get_change_id();
             match state_slot {
                 Ok(slot) => {
@@ -1010,6 +1010,7 @@ mod test {
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             t0: T0,
+            ledger_backup_periods_interval: 10,
             genesis_timestamp,
         };
 
@@ -1028,6 +1029,7 @@ mod test {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>

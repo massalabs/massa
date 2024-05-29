@@ -79,7 +79,7 @@
 //!
 //! By default, the network restarts from the state associated with the last final slot before the shutdown.
 //! However, we may sometimes want to recover from an earlier state (e.g. if an attacker stole 50% of all Massa, we want to restart with the state before the attack.
-//! We use RocksDB checkpoint system to save the state at regular interval (see the `PERIODS_BETWEEN_BACKUPS` constant in `massa > massa-models > src > config > constants.rs`)
+//! We use RocksDB checkpoint system to save the state at regular interval (see the `ledger_backup_periods_interval` in the `massa-node` config).
 //! Backups for `Slot {period, thread}` are stored in `massa > massa-node > storage > ledger > rocks_db_backup > backup_[period]_[thread]`
 //! Backups are hard links of the rocks_db, so the overhead of storing them should be minimal.
 //! To recover from a backup, simply replace the contents of the rocks_db folder by the contents of the target backup folder.
