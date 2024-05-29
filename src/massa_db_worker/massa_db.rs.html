@@ -3056,7 +3056,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>backups = BTreeMap::default();
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(db_config.max_ledger_backups + <span class="number">1</span>) {
-            <span class="kw">let </span>slot = Slot::new(i <span class="kw">as </span>u64, <span class="number">0</span>);
+            <span class="kw">let </span>slot = Slot::new(i, <span class="number">0</span>);
             <span class="kw">let </span>i_ = i <span class="kw">as </span>u8;
             <span class="kw">let </span>batch = DBBatch::from([(<span class="macro">vec!</span>[i_], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[i_ + <span class="number">10</span>]))]);
             <span class="kw">let </span>versioning_batch = DBBatch::from([(<span class="macro">vec!</span>[i_ + <span class="number">1</span>], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[i_ + <span class="number">20</span>]))]);
@@ -3075,7 +3075,7 @@
         db_opts_no_create.create_if_missing(<span class="bool-val">false</span>);
 
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(db_config.max_ledger_backups + <span class="number">1</span>) {
-            <span class="kw">let </span>slot = Slot::new(i <span class="kw">as </span>u64, <span class="number">0</span>);
+            <span class="kw">let </span>slot = Slot::new(i, <span class="number">0</span>);
             <span class="kw">let </span>(backup_xof, backup_path) = backups.get(<span class="kw-2">&amp;</span>slot).unwrap();
 
             <span class="comment">// println!(
