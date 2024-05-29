@@ -1243,7 +1243,7 @@ mod test {
         let mut backups = BTreeMap::default();
 
         for i in 0..(db_config.max_ledger_backups + 1) {
-            let slot = Slot::new(i as u64, 0);
+            let slot = Slot::new(i, 0);
             let i_ = i as u8;
             let batch = DBBatch::from([(vec![i_], Some(vec![i_ + 10]))]);
             let versioning_batch = DBBatch::from([(vec![i_ + 1], Some(vec![i_ + 20]))]);
@@ -1262,7 +1262,7 @@ mod test {
         db_opts_no_create.create_if_missing(false);
 
         for i in 0..(db_config.max_ledger_backups + 1) {
-            let slot = Slot::new(i as u64, 0);
+            let slot = Slot::new(i, 0);
             let (backup_xof, backup_path) = backups.get(&slot).unwrap();
 
             // println!(
