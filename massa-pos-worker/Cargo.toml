@@ -1,6 +1,6 @@
 [package]
 name = "massa_pos_worker"
-version = "28.3.0"
+version = "2.1.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 

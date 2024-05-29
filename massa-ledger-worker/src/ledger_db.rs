@@ -600,6 +600,7 @@ mod tests {
             max_history_length: 10,
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
+            max_ledger_backups: 10,
             thread_count: 32,
         };
 

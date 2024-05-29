@@ -50,6 +50,8 @@ pub struct LedgerSettings {
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
     pub initial_deferred_credits_path: Option<PathBuf>,
+    pub ledger_backup_periods_interval: u64,
+    pub max_ledger_backups: u64,
 }
 
 /// Bootstrap configuration.
@@ -126,6 +128,7 @@ pub struct APISettings {
     pub enable_ws: bool,
     // whether to broadcast for blocks, endorsement and operations
     pub enable_broadcast: bool,
+    pub deferred_credits_delta: MassaTime,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -386,6 +389,9 @@ pub struct VersioningSettings {
 pub struct BlockDumpSettings {
     /// Where to dump blocks
     pub(crate) block_dump_folder_path: PathBuf,
+    #[cfg(feature = "dump-block")]
+    /// Number of blocks to keep
+    pub(crate) max_blocks: u64,
 }
 
 #[cfg(test)]

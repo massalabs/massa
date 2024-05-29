@@ -40,6 +40,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_final_state_elements_size: 100_000,
         max_versioning_elements_size: 100_000,
         thread_count,
+        max_ledger_backups: 10,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -92,6 +93,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
+        ledger_backup_periods_interval: 10,
     };
 
     // setup selector local config

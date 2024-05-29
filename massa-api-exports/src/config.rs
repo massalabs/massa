@@ -80,6 +80,8 @@ pub struct APIConfig {
     pub last_start_period: u64,
     /// chain id
     pub chain_id: u64,
+    /// Delta to compute upper bounds when fetching deferred credits
+    pub deferred_credits_delta: MassaTime,
     /// minimal fees to include an operation in a block
     pub minimal_fees: Amount,
 }

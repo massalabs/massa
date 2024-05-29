@@ -1,6 +1,6 @@
 [package]
 name = "massa_db_exports"
-version = "28.3.0"
+version = "2.1.0"
 edition = "2021"
 
 [features]

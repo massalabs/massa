@@ -616,7 +616,7 @@ fn send_and_receive_async_message() {
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
         // Note: generated address (from send_message.ts createSC call)
         //       this can changes when modification to the final state are done (see create_new_sc_address function)
-        destination: Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ")
+        destination: Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
             .unwrap(),
         function: String::from("receive"),
         // value from SC: send_message.ts
@@ -672,7 +672,7 @@ fn send_and_receive_async_message() {
                 .ledger_changes
                 .0
                 .get(
-                    &Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ")
+                    &Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
                         .unwrap(),
                 )
                 .unwrap()
@@ -2203,7 +2203,9 @@ fn datastore_manipulations() {
             ],
         });
     // Just checking that is works no asserts for now
-    universe.module_controller.get_addresses_infos(&[addr]);
+    universe
+        .module_controller
+        .get_addresses_infos(&[addr], std::ops::Bound::Unbounded);
 }
 
 /// This test checks causes a history rewrite in slot sequencing and ensures that emitted events match

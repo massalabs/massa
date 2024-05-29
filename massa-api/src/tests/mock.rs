@@ -68,6 +68,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
         chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
     };
 
@@ -143,6 +144,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: 0,
         chain_id: *CHAINID,
+        deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
     };
 

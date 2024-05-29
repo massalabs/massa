@@ -244,6 +244,7 @@ pub struct ExecutionOutput {
     pub slot_trace: Option<(SlotAbiCallStack, Vec<Transfer>)>,
     /// storage
     #[cfg(feature = "dump-block")]
+    #[serde(skip_serializing)]
     pub storage: Option<Storage>,
     /// Deferred credits execution (empty if execution-info feature is NOT enabled)
     pub deferred_credits_execution: Vec<(Address, Result<Amount, String>)>,
