@@ -2071,6 +2071,7 @@
 <a href="#2071" id="2071">2071</a>
 <a href="#2072" id="2072">2072</a>
 <a href="#2073" id="2073">2073</a>
+<a href="#2074" id="2074">2074</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2188,6 +2189,7 @@
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
 
         <span class="kw">let </span>db = Arc::new(RwLock::new(

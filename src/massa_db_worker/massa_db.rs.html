@@ -1802,6 +1802,15 @@
 <a href="#1802" id="1802">1802</a>
 <a href="#1803" id="1803">1803</a>
 <a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
+<a href="#1808" id="1808">1808</a>
+<a href="#1809" id="1809">1809</a>
+<a href="#1810" id="1810">1810</a>
+<a href="#1811" id="1811">1811</a>
+<a href="#1812" id="1812">1812</a>
+<a href="#1813" id="1813">1813</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1810,7 +1819,6 @@
 };
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{
-    config::MAX_BACKUPS_TO_KEEP,
     error::ModelsError,
     slot::{Slot, SlotDeserializer, SlotSerializer},
     streaming_step::StreamingStep,
@@ -2440,38 +2448,35 @@
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>subpath = <span class="macro">format!</span>(<span class="string">&quot;backup_{}_{}&quot;</span>, slot.period, slot.thread);
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(max_backups) = MAX_BACKUPS_TO_KEEP {
-            <span class="kw">let </span>previous_backups_paths = std::fs::read_dir(db.path())
-                .expect(<span class="string">&quot;Cannot walk db path&quot;</span>)
-                .map(|res| res.map(|e| e.path()))
-                .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, std::io::Error&gt;&gt;()
-                .expect(<span class="string">&quot;Cannot walk db path&quot;</span>);
+        <span class="kw">let </span>previous_backups_paths = std::fs::read_dir(db.path())
+            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>)
+            .map(|res| res.map(|e| e.path()))
+            .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, std::io::Error&gt;&gt;()
+            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>);
 
-            <span class="kw">let </span><span class="kw-2">mut </span>previous_backups = BTreeMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>previous_backups = BTreeMap::new();
 
-            <span class="kw">for </span>backup_path <span class="kw">in </span>previous_backups_paths.iter() {
-                <span class="kw">let </span><span class="prelude-val">Some</span>(path_str) = backup_path.file_name().and_then(|f| f.to_str()) <span class="kw">else </span>{
+        <span class="kw">for </span>backup_path <span class="kw">in </span>previous_backups_paths.iter() {
+            <span class="kw">let </span><span class="prelude-val">Some</span>(path_str) = backup_path.file_name().and_then(|f| f.to_str()) <span class="kw">else </span>{
+                <span class="kw">continue</span>;
+            };
+            <span class="kw">let </span>vec = path_str.split(<span class="string">&#39;_&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
+            <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">&quot;backup&quot; </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(period) = vec[<span class="number">1</span>].parse::&lt;u64&gt;() <span class="kw">else </span>{
                     <span class="kw">continue</span>;
                 };
-                <span class="kw">let </span>vec = path_str.split(<span class="string">&#39;_&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
-                <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">&quot;backup&quot; </span>{
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(period) = vec[<span class="number">1</span>].parse::&lt;u64&gt;() <span class="kw">else </span>{
-                        <span class="kw">continue</span>;
-                    };
-                    <span class="kw">let </span><span class="prelude-val">Ok</span>(thread) = vec[<span class="number">2</span>].parse::&lt;u8&gt;() <span class="kw">else </span>{
-                        <span class="kw">continue</span>;
-                    };
-                    <span class="kw">let </span>backup_slot = Slot::new(period, thread);
-                    previous_backups.insert(backup_slot, backup_path);
-                }
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(thread) = vec[<span class="number">2</span>].parse::&lt;u8&gt;() <span class="kw">else </span>{
+                    <span class="kw">continue</span>;
+                };
+                <span class="kw">let </span>backup_slot = Slot::new(period, thread);
+                previous_backups.insert(backup_slot, backup_path);
             }
+        }
 
-            <span class="comment">// Remove the oldest backups if we have too many
-            </span><span class="kw">while </span>previous_backups.len() &gt;= max_backups {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, oldest_backup_path)) = previous_backups.pop_first() {
-                    std::fs::remove_dir_all(oldest_backup_path)
-                        .expect(<span class="string">&quot;Cannot remove oldest backup&quot;</span>);
-                }
+        <span class="comment">// Remove the oldest backups if we have too many
+        </span><span class="kw">while </span>previous_backups.len() &gt;= <span class="self">self</span>.config.max_ledger_backups <span class="kw">as </span>usize {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, oldest_backup_path)) = previous_backups.pop_first() {
+                std::fs::remove_dir_all(oldest_backup_path).expect(<span class="string">&quot;Cannot remove oldest backup&quot;</span>);
             }
         }
 
@@ -2732,6 +2737,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2761,6 +2767,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2844,6 +2851,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2928,6 +2936,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2976,6 +2985,7 @@
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
+                max_ledger_backups: <span class="number">10</span>,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_1_opts = MassaDB::default_db_opts();
             db_backup_1_opts.create_if_missing(<span class="bool-val">false</span>);
@@ -2999,6 +3009,7 @@
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
+                max_ledger_backups: <span class="number">10</span>,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_2_opts = MassaDB::default_db_opts();
             db_backup_2_opts.create_if_missing(<span class="bool-val">false</span>);
@@ -3031,19 +3042,20 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
         </span>db_opts.set_paranoid_checks(<span class="bool-val">true</span>);
 
         <span class="kw">let </span>db = Arc::new(RwLock::new(Box::new(
-            MassaDB::new_with_options(db_config, db_opts.clone()).unwrap(),
+            MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap(),
         )
             <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;));
 
         <span class="kw">let </span><span class="kw-2">mut </span>backups = BTreeMap::default();
 
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(MAX_BACKUPS_TO_KEEP.unwrap() + <span class="number">1</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(db_config.max_ledger_backups + <span class="number">1</span>) {
             <span class="kw">let </span>slot = Slot::new(i <span class="kw">as </span>u64, <span class="number">0</span>);
             <span class="kw">let </span>i_ = i <span class="kw">as </span>u8;
             <span class="kw">let </span>batch = DBBatch::from([(<span class="macro">vec!</span>[i_], <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[i_ + <span class="number">10</span>]))]);
@@ -3062,7 +3074,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts_no_create = db_opts.clone();
         db_opts_no_create.create_if_missing(<span class="bool-val">false</span>);
 
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(MAX_BACKUPS_TO_KEEP.unwrap() + <span class="number">1</span>) {
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..(db_config.max_ledger_backups + <span class="number">1</span>) {
             <span class="kw">let </span>slot = Slot::new(i <span class="kw">as </span>u64, <span class="number">0</span>);
             <span class="kw">let </span>(backup_xof, backup_path) = backups.get(<span class="kw-2">&amp;</span>slot).unwrap();
 
@@ -3077,6 +3089,7 @@
                 max_final_state_elements_size: <span class="number">100</span>,
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
+                max_ledger_backups: <span class="number">10</span>,
             };
             <span class="comment">// let db_backup_2_opts = MassaDB::default_db_opts();
 
@@ -3125,6 +3138,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3217,6 +3231,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3304,6 +3319,7 @@
             max_final_state_elements_size: <span class="number">10</span>,
             max_versioning_elements_size: <span class="number">10</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3388,6 +3404,7 @@
             max_final_state_elements_size: <span class="number">20</span>,
             max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3499,6 +3516,7 @@
             max_final_state_elements_size: <span class="number">20</span>,
             max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
 
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);

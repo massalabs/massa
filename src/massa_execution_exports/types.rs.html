@@ -339,6 +339,7 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -585,6 +586,7 @@
     </span><span class="kw">pub </span>slot_trace: <span class="prelude-ty">Option</span>&lt;(SlotAbiCallStack, Vec&lt;Transfer&gt;)&gt;,
     <span class="doccomment">/// storage
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+    #[serde(skip_serializing)]
     </span><span class="kw">pub </span>storage: <span class="prelude-ty">Option</span>&lt;Storage&gt;,
     <span class="doccomment">/// Deferred credits execution (empty if execution-info feature is NOT enabled)
     </span><span class="kw">pub </span>deferred_credits_execution: Vec&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt;,

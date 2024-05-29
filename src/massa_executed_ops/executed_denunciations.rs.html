@@ -307,6 +307,7 @@
 <a href="#307" id="307">307</a>
 <a href="#308" id="308">308</a>
 <a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed denunciations.
@@ -557,6 +558,7 @@
             max_history_length: <span class="number">100</span>,
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
+            max_ledger_backups: <span class="number">10</span>,
             thread_count: THREAD_COUNT,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(

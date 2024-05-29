@@ -1367,6 +1367,19 @@
 <a href="#1367" id="1367">1367</a>
 <a href="#1368" id="1368">1368</a>
 <a href="#1369" id="1369">1369</a>
+<a href="#1370" id="1370">1370</a>
+<a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2356,8 +2369,21 @@
                 .collect()
         };
 
+        <span class="comment">// Compute a limit (as a slot) for deferred credits as it can be quite huge
+        </span><span class="kw">let </span>bound_ts = MassaTime::now().saturating_add(<span class="self">self</span>.<span class="number">0</span>.api_settings.deferred_credits_delta);
+
+        <span class="kw">let </span>deferred_credit_max_slot = timeslots::get_closest_slot_to_timestamp(
+            <span class="self">self</span>.<span class="number">0</span>.api_settings.thread_count,
+            <span class="self">self</span>.<span class="number">0</span>.api_settings.t0,
+            <span class="self">self</span>.<span class="number">0</span>.api_settings.genesis_timestamp,
+            bound_ts,
+        );
+
         <span class="comment">// get execution info
-        </span><span class="kw">let </span>execution_infos = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_addresses_infos(<span class="kw-2">&amp;</span>addresses);
+        </span><span class="kw">let </span>execution_infos = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_addresses_infos(
+            <span class="kw-2">&amp;</span>addresses,
+            std::ops::Bound::Included(deferred_credit_max_slot),
+        );
 
         <span class="comment">// get future draws from selector
         </span><span class="kw">let </span>selection_draws = {

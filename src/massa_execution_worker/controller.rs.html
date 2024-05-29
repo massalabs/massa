@@ -543,6 +543,12 @@
 <a href="#543" id="543">543</a>
 <a href="#544" id="544">544</a>
 <a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -983,7 +989,11 @@
     }
 
     <span class="doccomment">/// Gets information about a batch of addresses
-    </span><span class="kw">fn </span>get_addresses_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, addresses: <span class="kw-2">&amp;</span>[Address]) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
+    </span><span class="kw">fn </span>get_addresses_infos(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addresses: <span class="kw-2">&amp;</span>[Address],
+        deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
+    ) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
         <span class="kw">let </span>exec_state = <span class="self">self</span>.execution_state.read();
         <span class="kw">for </span>addr <span class="kw">in </span>addresses {
@@ -993,6 +1003,8 @@
                 exec_state.get_final_and_candidate_balance(addr);
             <span class="kw">let </span>(final_roll_count, candidate_roll_count) =
                 exec_state.get_final_and_candidate_rolls(addr);
+            <span class="kw">let </span>future_deferred_credits =
+                exec_state.get_address_future_deferred_credits(addr, deferred_credits_max_slot);
             res.push(ExecutionAddressInfo {
                 final_datastore_keys: final_datastore_keys.unwrap_or_default(),
                 candidate_datastore_keys: candidate_datastore_keys.unwrap_or_default(),
@@ -1000,7 +1012,7 @@
                 candidate_balance: candidate_balance.unwrap_or_default(),
                 final_roll_count,
                 candidate_roll_count,
-                future_deferred_credits: exec_state.get_address_future_deferred_credits(addr),
+                future_deferred_credits,
                 cycle_infos: exec_state.get_address_cycle_infos(addr),
             });
         }

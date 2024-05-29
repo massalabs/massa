@@ -1321,6 +1321,8 @@
 <a href="#1321" id="1321">1321</a>
 <a href="#1322" id="1322">1322</a>
 <a href="#1323" id="1323">1323</a>
+<a href="#1324" id="1324">1324</a>
+<a href="#1325" id="1325">1325</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1346,13 +1348,10 @@
 <span class="kw">use </span>massa_ledger_exports::SetOrKeep;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::slot::Slot;
+<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
-
-<span class="attr">#[cfg(feature = <span class="string">&quot;bootstrap_server&quot;</span>)]
-</span><span class="kw">use </span>massa_models::config::PERIODS_BETWEEN_BACKUPS;
-<span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
 </span><span class="kw">pub struct </span>FinalState {
@@ -1825,7 +1824,10 @@
 
         <span class="comment">// Backup DB if needed
         </span><span class="attr">#[cfg(feature = <span class="string">&quot;bootstrap_server&quot;</span>)]
-        </span><span class="kw">if </span>slot.period % PERIODS_BETWEEN_BACKUPS == <span class="number">0 </span>&amp;&amp; slot.period != <span class="number">0 </span>&amp;&amp; slot.thread == <span class="number">0 </span>{
+        </span><span class="kw">if </span>slot.period % <span class="self">self</span>.config.ledger_backup_periods_interval == <span class="number">0
+            </span>&amp;&amp; slot.period != <span class="number">0
+            </span>&amp;&amp; slot.thread == <span class="number">0
+        </span>{
             <span class="kw">let </span>state_slot = <span class="self">self</span>.db.read().get_change_id();
             <span class="kw">match </span>state_slot {
                 <span class="prelude-val">Ok</span>(slot) =&gt; {
@@ -2333,6 +2335,7 @@
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
             t0: T0,
+            ledger_backup_periods_interval: <span class="number">10</span>,
             genesis_timestamp,
         };
 
@@ -2351,6 +2354,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;

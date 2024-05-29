@@ -2256,6 +2256,22 @@
 <a href="#2256" id="2256">2256</a>
 <a href="#2257" id="2257">2257</a>
 <a href="#2258" id="2258">2258</a>
+<a href="#2259" id="2259">2259</a>
+<a href="#2260" id="2260">2260</a>
+<a href="#2261" id="2261">2261</a>
+<a href="#2262" id="2262">2262</a>
+<a href="#2263" id="2263">2263</a>
+<a href="#2264" id="2264">2264</a>
+<a href="#2265" id="2265">2265</a>
+<a href="#2266" id="2266">2266</a>
+<a href="#2267" id="2267">2267</a>
+<a href="#2268" id="2268">2268</a>
+<a href="#2269" id="2269">2269</a>
+<a href="#2270" id="2270">2270</a>
+<a href="#2271" id="2271">2271</a>
+<a href="#2272" id="2272">2272</a>
+<a href="#2273" id="2273">2273</a>
+<a href="#2274" id="2274">2274</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -4437,8 +4453,16 @@
     }
 
     <span class="doccomment">/// Get future deferred credits of an address
-    </span><span class="kw">pub fn </span>get_address_future_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; BTreeMap&lt;Slot, Amount&gt; {
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_future_deferred_credits(address, <span class="self">self</span>.config.thread_count)
+    </span><span class="kw">pub fn </span>get_address_future_deferred_credits(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        address: <span class="kw-2">&amp;</span>Address,
+        max_slot: std::ops::Bound&lt;Slot&gt;,
+    ) -&gt; BTreeMap&lt;Slot, Amount&gt; {
+        <span class="macro">context_guard!</span>(<span class="self">self</span>).get_address_future_deferred_credits(
+            address,
+            <span class="self">self</span>.config.thread_count,
+            max_slot,
+        )
     }
 
     <span class="doccomment">/// Get future deferred credits of an address
@@ -4448,11 +4472,17 @@
         address: <span class="kw-2">&amp;</span>Address,
     ) -&gt; (BTreeMap&lt;Slot, Amount&gt;, BTreeMap&lt;Slot, Amount&gt;) {
         <span class="comment">// get values from final state
-        </span><span class="kw">let </span>res_final = <span class="self">self
+        </span><span class="kw">let </span>res_final: BTreeMap&lt;Slot, Amount&gt; = <span class="self">self
             </span>.final_state
             .read()
             .get_pos_state()
-            .get_address_deferred_credits(address);
+            .get_deferred_credits_range(.., <span class="prelude-val">Some</span>(address))
+            .credits
+            .iter()
+            .filter_map(|(slot, addr_amount)| {
+                addr_amount.get(address).map(|amount| (<span class="kw-2">*</span>slot, <span class="kw-2">*</span>amount))
+            })
+            .collect();
 
         <span class="comment">// get values from active history, backwards
         </span><span class="kw">let </span><span class="kw-2">mut </span>res_speculative: BTreeMap&lt;Slot, Amount&gt; = BTreeMap::default();
@@ -4464,10 +4494,12 @@
                 };
             }
         }
+
         <span class="comment">// fill missing speculative entries with final entries
-        </span><span class="kw">for </span>(s, v) <span class="kw">in </span>res_final.iter() {
-            res_speculative.entry(<span class="kw-2">*</span>s).or_insert(<span class="kw-2">*</span>v);
+        </span><span class="kw">for </span>(slot, amount) <span class="kw">in </span><span class="kw-2">&amp;</span>res_final {
+            res_speculative.entry(<span class="kw-2">*</span>slot).or_insert(<span class="kw-2">*</span>amount);
         }
+
         <span class="comment">// remove zero entries from speculative
         </span>res_speculative.retain(|_s, a| !a.is_zero());
 

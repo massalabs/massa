@@ -2736,6 +2736,7 @@
 <a href="#2736" id="2736">2736</a>
 <a href="#2737" id="2737">2737</a>
 <a href="#2738" id="2738">2738</a>
+<a href="#2739" id="2739">2739</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -5283,6 +5284,7 @@
             max_final_state_elements_size: <span class="number">100_000</span>,
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;

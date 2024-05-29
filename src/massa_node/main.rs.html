@@ -1497,6 +1497,9 @@
 <a href="#1497" id="1497">1497</a>
 <a href="#1498" id="1498">1498</a>
 <a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1699,6 +1702,7 @@
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        ledger_backup_periods_interval: SETTINGS.ledger.ledger_backup_periods_interval,
         t0: T0,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
     };
@@ -1732,6 +1736,7 @@
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
+        max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
@@ -2029,12 +2034,12 @@
         <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))] </span>{
             <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
                 RocksDBStorageBackend::new(
-                execution_config.block_dump_folder_path.clone()),
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
         } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;file_storage_backend&quot;</span>))] </span>{
             <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
                 FileStorageBackend::new(
-                execution_config.block_dump_folder_path.clone()),
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
         } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>{
             <span class="macro">compile_error!</span>(<span class="string">&quot;feature dump-block requise either db_storage_backend or file_storage_backend&quot;</span>);
@@ -2370,6 +2375,7 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
         chain_id: <span class="kw-2">*</span>CHAINID,
+        deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
     };
 
