@@ -54,7 +54,7 @@
                         "$ref": "#/components/schemas/ExecuteReadOnlyResponse"
                     }
                 },
-                "name": "ExecuteReadOnlyResponse(s)"
+                "name": "ExecuteReadOnlyResponses"
             },
             "name": "execute_read_only_bytecode",
             "summary": "Execute a smart contract in a read only context",
@@ -85,7 +85,7 @@
                         "$ref": "#/components/schemas/ExecuteReadOnlyResponse"
                     }
                 },
-                "name": "ExecuteReadOnlyResponse(s)"
+                "name": "ExecuteReadOnlyResponses"
             },
             "name": "execute_read_only_call",
             "summary": "Call a function of a contract in a read only context",
@@ -118,7 +118,7 @@
                         "$ref": "#/components/schemas/AddressInfo"
                     }
                 },
-                "name": "AddressInfo(s)"
+                "name": "AddressInfos"
             },
             "name": "get_addresses",
             "summary": "To check when your address is selected to stake.",
@@ -133,7 +133,7 @@
             ],
             "params": [
                 {
-                    "name": "address filter",
+                    "name": "addressFilter",
                     "description": "Need to provide at least one valid address filter",
                     "schema": {
                         "type": "array",
@@ -148,7 +148,8 @@
                 "schema": {
                     "type": "array",
                     "items": {
-                        "type": "integer"
+                        "type": "string",
+                        "format": "byte"
                     }
                 },
                 "name": "Addresses bytecode array"
@@ -185,8 +186,8 @@
                 "name": "BlockInfo"
             },
             "name": "get_blocks",
-            "summary": "Get block(s)",
-            "description": "Get block(s)."
+            "summary": "Get blocks",
+            "description": "Get blocks."
         },
         {
             "tags": [
@@ -231,7 +232,7 @@
                         "$ref": "#/components/schemas/Clique"
                     }
                 },
-                "name": "Clique(s)"
+                "name": "Cliques"
             },
             "name": "get_cliques",
             "summary": "Get cliques",
@@ -246,7 +247,7 @@
             ],
             "params": [
                 {
-                    "name": "DatastoreEntryInput(s)",
+                    "name": "DatastoreEntryInputs",
                     "description": "Datastore entry input",
                     "schema": {
                         "type": "array",
@@ -263,7 +264,7 @@
                         "$ref": "#/components/schemas/DataStoreEntryOutput"
                     }
                 },
-                "name": "DataStoreEntryOutput(s)"
+                "name": "DataStoreEntryOutputs"
             },
             "name": "get_datastore_entries",
             "summary": "Get a data entry both at the latest final and active executed slots for the given addresses.",
@@ -366,7 +367,7 @@
                         "$ref": "#/components/schemas/EndorsementInfo"
                     }
                 },
-                "name": "EndorsementInfo(s)"
+                "name": "EndorsementInfos"
             },
             "name": "get_endorsements",
             "summary": "Get endorsements",
@@ -394,7 +395,7 @@
                         "$ref": "#/components/schemas/SCOutputEvent"
                     }
                 },
-                "name": "SCOutputEvent(s)"
+                "name": "SCOutputEvents"
             },
             "name": "get_filtered_sc_output_event",
             "summary": "Returns events optionally filtered",
@@ -460,7 +461,7 @@
                         "$ref": "#/components/schemas/OperationInfo"
                     }
                 },
-                "name": "OperationInfo(s)"
+                "name": "OperationInfos"
             },
             "name": "get_operations",
             "summary": "Get operations",
@@ -559,7 +560,7 @@
                     }
                 },
                 "description": "The strings are addresses.",
-                "name": "Address(es)"
+                "name": "Addresses"
             },
             "name": "get_staking_addresses",
             "summary": "Return hashset of staking addresses",
@@ -575,7 +576,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -592,8 +593,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_blacklist",
-            "summary": "Add to bootstrap blacklist given IP address(es)",
-            "description": "Add to bootstrap blacklist given IP address(es)."
+            "summary": "Add to bootstrap blacklist given IP addresses",
+            "description": "Add to bootstrap blacklist given IP addresses."
         },
         {
             "tags": [
@@ -605,7 +606,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -622,8 +623,8 @@
                 "schema": false
             },
             "name": "node_add_to_bootstrap_whitelist",
-            "summary": "Add to bootstrap whitelist given IP address(es)",
-            "description": "Add to bootstrap whitelist given IP address(es)."
+            "summary": "Add to bootstrap whitelist given IP addresses",
+            "description": "Add to bootstrap whitelist given IP addresses."
         },
         {
             "tags": [
@@ -635,7 +636,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -652,8 +653,8 @@
                 "schema": false
             },
             "name": "node_add_to_peers_whitelist",
-            "summary": "Add to peers whitelist given IP address(es)",
-            "description": "Add to peers whitelist given IP address(es)."
+            "summary": "Add to peers whitelist given IP addresses",
+            "description": "Add to peers whitelist given IP addresses."
         },
         {
             "tags": [
@@ -681,8 +682,8 @@
                 "schema": false
             },
             "name": "node_ban_by_id",
-            "summary": "Ban given id(s)",
-            "description": "Ban given id(s)."
+            "summary": "Ban given ids",
+            "description": "Ban given ids."
         },
         {
             "tags": [
@@ -710,8 +711,8 @@
                 "schema": false
             },
             "name": "node_ban_by_ip",
-            "summary": "Ban given IP address(es)",
-            "description": "Ban given IP address(es)."
+            "summary": "Ban given IP addresses",
+            "description": "Ban given IP addresses."
         },
         {
             "tags": [
@@ -723,7 +724,7 @@
             "params": [],
             "result": {
                 "name": "ip",
-                "description": "The strings must be IP address(es)",
+                "description": "The strings must be IP addresses",
                 "schema": {
                     "type": "array",
                     "items": {
@@ -733,8 +734,8 @@
                 }
             },
             "name": "node_bootstrap_blacklist",
-            "summary": "Returns bootstrap blacklist IP address(es)",
-            "description": "Returns bootstrap blacklist IP address(es)."
+            "summary": "Returns bootstrap blacklist IP addresses",
+            "description": "Returns bootstrap blacklist IP addresses."
         },
         {
             "tags": [
@@ -746,7 +747,7 @@
             "params": [],
             "result": {
                 "name": "ip",
-                "description": "The strings must be IP address(es)",
+                "description": "The strings must be IP addresses",
                 "schema": {
                     "type": "array",
                     "items": {
@@ -756,8 +757,8 @@
                 }
             },
             "name": "node_bootstrap_whitelist",
-            "summary": "Returns bootstrap whitelist IP address(es)",
-            "description": "Returns bootstrap whitelist IP address(es)."
+            "summary": "Returns bootstrap whitelist IP addresses",
+            "description": "Returns bootstrap whitelist IP addresses."
         },
         {
             "tags": [
@@ -786,7 +787,7 @@
             "params": [],
             "result": {
                 "name": "ip",
-                "description": "The strings must be IP address(es)",
+                "description": "The strings must be IP addresses",
                 "schema": {
                     "type": "array",
                     "items": {
@@ -796,8 +797,8 @@
                 }
             },
             "name": "node_peers_whitelist",
-            "summary": "Returns peers whitelist IP address(es)",
-            "description": "Returns peers whitelist IP address(es)."
+            "summary": "Returns peers whitelist IP addresses",
+            "description": "Returns peers whitelist IP addresses."
         },
         {
             "tags": [
@@ -809,7 +810,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -826,8 +827,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_blacklist",
-            "summary": "Remove from bootstrap blacklist given IP address(es)",
-            "description": "Remove from bootstrap blacklist given IP address(es)."
+            "summary": "Remove from bootstrap blacklist given IP addresses",
+            "description": "Remove from bootstrap blacklist given IP addresses."
         },
         {
             "tags": [
@@ -839,7 +840,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -856,8 +857,8 @@
                 "schema": false
             },
             "name": "node_remove_from_bootstrap_whitelist",
-            "summary": "Remove from bootstrap whitelist given IP address(es)",
-            "description": "Remove from bootstrap whitelist given IP address(es)."
+            "summary": "Remove from bootstrap whitelist given IP addresses",
+            "description": "Remove from bootstrap whitelist given IP addresses."
         },
         {
             "tags": [
@@ -869,7 +870,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -886,8 +887,8 @@
                 "schema": false
             },
             "name": "node_remove_from_peers_whitelist",
-            "summary": "Remove from peers whitelist given IP address(es)",
-            "description": "Remove from peers whitelist given IP address(es)."
+            "summary": "Remove from peers whitelist given IP addresses",
+            "description": "Remove from peers whitelist given IP addresses."
         },
         {
             "tags": [
@@ -899,7 +900,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -916,8 +917,8 @@
                 "schema": false
             },
             "name": "node_remove_from_whitelist",
-            "summary": "Remove from whitelist given IP address(es)",
-            "description": "Remove from whitelist given IP address(es)."
+            "summary": "Remove from whitelist given IP addresses",
+            "description": "Remove from whitelist given IP addresses."
         },
         {
             "tags": [
@@ -1021,8 +1022,8 @@
                 "schema": false
             },
             "name": "node_unban_by_id",
-            "summary": "Unban given id(s)",
-            "description": "Unban given id(s)."
+            "summary": "Unban given ids",
+            "description": "Unban given ids."
         },
         {
             "tags": [
@@ -1051,8 +1052,8 @@
                 "schema": false
             },
             "name": "node_unban_by_ip",
-            "summary": "Unban given IP address(es)",
-            "description": "Unban given IP address(es)."
+            "summary": "Unban given IP addresses",
+            "description": "Unban given IP addresses."
         },
         {
             "tags": [
@@ -1064,7 +1065,7 @@
             "params": [
                 {
                     "name": "ip",
-                    "description": "The strings must be IP address(es)",
+                    "description": "The strings must be IP addresses",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -1081,8 +1082,8 @@
                 "schema": false
             },
             "name": "node_whitelist",
-            "summary": "Whitelist given IP address(es)",
-            "description": "Whitelist given IP address(es)."
+            "summary": "Whitelist given IP addresses",
+            "description": "Whitelist given IP addresses."
         },
         {
             "tags": [
@@ -1109,7 +1110,7 @@
                         "$ref": "#/components/schemas/OperationId"
                     }
                 },
-                "name": "Operation(s)"
+                "name": "Operations"
             },
             "name": "send_operations",
             "summary": "Adds operations to pool",
@@ -1445,10 +1446,12 @@
     "components": {
         "schemas": {
             "Address": {
+                "title": "Address",
                 "description": "Address",
                 "type": "string"
             },
             "AddressFilter": {
+                "title": "AddressFilter",
                 "description": "Address filter",
                 "type": "object",
                 "properties": {
@@ -1460,7 +1463,8 @@
                         "type": "boolean",
                         "description": "true means final, false means candidate"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "AddressInfo": {
                 "title": "AddressInfo",
@@ -1591,6 +1595,7 @@
                 "additionalProperties": false
             },
             "ApiRequest": {
+                "title": "ApiRequest",
                 "description": "ApiRequest for apiV2",
                 "type": "object",
                 "properties": {
@@ -1598,7 +1603,8 @@
                         "$ref": "#/components/schemas/PageRequest",
                         "description": "Optional page request"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "Balance": {
                 "title": "Balance",
@@ -1647,6 +1653,7 @@
                 "additionalProperties": false
             },
             "BlockId": {
+                "title": "BlockId",
                 "description": "Block identifier",
                 "type": "string"
             },
@@ -1750,6 +1757,7 @@
                 "additionalProperties": false
             },
             "Clique": {
+                "title": "Clique",
                 "description": "Clique",
                 "required": [
                     "block_ids",
@@ -1773,7 +1781,8 @@
                         "description": "True if it is the clique of higher fitness",
                         "type": "boolean"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "CompactConfig": {
                 "title": "Config",
@@ -1941,6 +1950,7 @@
                 ]
             },
             "DataStoreEntry": {
+                "title": "DatastoreEntry",
                 "description": "Datastore entry",
                 "type": "object",
                 "properties": {
@@ -1952,9 +1962,11 @@
                         "description": "",
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "DatastoreEntryInput": {
+                "title": "DatastoreEntryInput",
                 "description": "",
                 "required": [
                     "address",
@@ -1974,9 +1986,11 @@
                             "type": "string"
                         }
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "DataStoreEntryOutput": {
+                "title": "DatastoreEntryOutput",
                 "description": "Datastore entry",
                 "type": "object",
                 "properties": {
@@ -1988,7 +2002,8 @@
                         "description": "",
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "Endorsement": {
                 "title": "Endorsement",
@@ -2101,7 +2116,7 @@
                 "additionalProperties": false
             },
             "ExecutedAt": {
-                "title": "Slot",
+                "title": "ExecuteAt",
                 "required": [
                     "period",
                     "thread"
@@ -2203,7 +2218,8 @@
                     "active_rolls": {
                         "type": "number"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "EventFilter": {
                 "title": "EventFilter",
@@ -2311,6 +2327,7 @@
                 "additionalProperties": false
             },
             "IpAddress": {
+                "title": "IpAddress",
                 "description": "Ipv4 or Ipv6 address",
                 "type": "string"
             },
@@ -2619,6 +2636,7 @@
                 "additionalProperties": false
             },
             "OperationId": {
+                "title": "OperationId",
                 "description": "Operation id",
                 "type": "string"
             },
@@ -2670,6 +2688,7 @@
                 "additionalProperties": false
             },
             "OperationInput": {
+                "title": "OperationInput",
                 "description": "Operation input",
                 "required": [
                     "creator_public_key",
@@ -2698,6 +2717,7 @@
                 "additionalProperties": false
             },
             "OperationType": {
+                "title": "OperationType",
                 "description": "Type specific operation content.",
                 "type": "object",
                 "properties": {
@@ -2721,10 +2741,11 @@
                         "$ref": "#/components/schemas/RollSell",
                         "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "PageRequest": {
-                "title": "PageRequest",
+                "title": "Pagination",
                 "description": "An PageRequest object, which contains limit (max elements par page) and a page offset.",
                 "type": "object",
                 "required": [
@@ -2738,9 +2759,11 @@
                     "offset": {
                         "type": "number"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "PagedVecStaker": {
+                "title": "PagedVecStaker",
                 "description": "PagedVec of stakers for apiV2",
                 "type": "object",
                 "properties": {
@@ -2753,7 +2776,8 @@
                     "total_count": {
                         "type": "number"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "PoolStats": {
                 "title": "PoolStats",
@@ -2774,6 +2798,7 @@
                 "additionalProperties": false
             },
             "PrivateKey": {
+                "title": "PrivateKey",
                 "description": "`PrivateKey` is used for signature and decryption",
                 "type": "string"
             },
@@ -2803,10 +2828,12 @@
                 "additionalProperties": false
             },
             "PublicKey": {
+                "title": "PublicKey",
                 "description": "Public key used to check if a message was encoded by the corresponding `PublicKey`.\nGenerated from the `KeyPair` using `SignatureEngine`",
                 "type": "string"
             },
             "PubkeySig": {
+                "title": "PubkeySig",
                 "description": "Public key and a signature it has produced used for serialization/deserialization purpose",
                 "required": [
                     "public_key",
@@ -2822,7 +2849,8 @@
                         "description": "signature",
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "ReadOnlyBytecodeExecution": {
                 "title": "ReadOnlyBytecodeExecution",
@@ -2931,7 +2959,8 @@
                         "description": "Included in case of error. The error message",
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "Roll": {
                 "title": "Roll",
@@ -2948,6 +2977,7 @@
                 "additionalProperties": false
             },
             "RollBuy": {
+                "title": "RollBuy",
                 "description": "the sender buys `roll_count` rolls. Roll price is defined in configuration",
                 "required": [
                     "roll_count"
@@ -2958,10 +2988,11 @@
                         "description": "roll count",
                         "type": "number"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "RollsInfo": {
-                "title": "Rolls",
+                "title": "RollsInfo",
                 "required": [
                     "active_rolls",
                     "candidate_rolls",
@@ -2982,6 +3013,7 @@
                 "additionalProperties": false
             },
             "RollSell": {
+                "title": "RollSell",
                 "description": "the sender sells `roll_count` rolls. Roll price is defined in configuration",
                 "required": [
                     "roll_count"
@@ -2992,7 +3024,8 @@
                         "description": "roll count",
                         "type": "number"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "SCOEContext": {
                 "title": "SCOEContext",
@@ -3052,11 +3085,12 @@
                 "additionalProperties": false
             },
             "Signature": {
+                "title": "Signature",
                 "description": "Signature generated from a message and a `KeyPair`.",
                 "type": "string"
             },
             "Slot": {
-                "title": "TSlot",
+                "title": "Slot",
                 "description": "Slot",
                 "required": [
                     "period",
@@ -3191,13 +3225,16 @@
                         "description": "ID of the block in which the operation is included",
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "Version": {
+                "title": "Version",
                 "description": "Application version, checked during handshakes",
                 "type": "string"
             },
             "WrappedHeader": {
+                "title": "WrappedHeader",
                 "description": "signed operation",
                 "required": [
                     "content",
@@ -3223,9 +3260,11 @@
                         "$ref": "#/components/schemas/Address",
                         "description": "the content creator address"
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "WrappedOperation": {
+                "title": "WrappedOperation",
                 "description": "signed operation",
                 "required": [
                     "content",
@@ -3251,7 +3290,8 @@
                         "$ref": "#/components/schemas/Address",
                         "description": "the content creator address"
                     }
-                }
+                },
+                "additionalProperties": false
             }
         },
         "contentDescriptors": {
