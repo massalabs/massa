@@ -50,6 +50,8 @@ pub struct LedgerSettings {
     pub disk_ledger_path: PathBuf,
     pub final_history_length: usize,
     pub initial_deferred_credits_path: Option<PathBuf>,
+    pub ledger_backup_periods_interval: u64,
+    pub max_ledger_backups: u64,
 }
 
 /// Bootstrap configuration.
@@ -145,6 +147,7 @@ pub struct Settings {
     pub grpc: GrpcApiSettings,
     pub metrics: MetricsSettings,
     pub versioning: VersioningSettings,
+    pub block_dump: BlockDumpSettings,
 }
 
 /// Consensus configuration
@@ -380,6 +383,15 @@ pub struct GrpcApiSettings {
 pub struct VersioningSettings {
     // Warn user to update its node if we reach this percentage for announced network versions
     pub(crate) mip_stats_warn_announced_version: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct BlockDumpSettings {
+    /// Where to dump blocks
+    pub(crate) block_dump_folder_path: PathBuf,
+    #[cfg(feature = "dump-block")]
+    /// Number of blocks to keep
+    pub(crate) max_blocks: u64,
 }
 
 #[cfg(test)]

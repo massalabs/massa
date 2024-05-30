@@ -254,7 +254,9 @@ impl SpeculativeRollState {
         thread_count: u8,
         roll_price: Amount,
         max_miss_ratio: Ratio<u64>,
-    ) {
+    ) -> Vec<(Address, Amount)> {
+        #[allow(unused_mut)]
+        let mut result = vec![];
         let cycle = slot.get_cycle(periods_per_cycle);
 
         let (production_stats, full) =
@@ -286,6 +288,9 @@ impl SpeculativeRollState {
                             .saturating_add(amount);
                         target_credits.insert(addr, new_deferred_credits);
                         self.added_changes.roll_changes.insert(addr, 0);
+
+                        #[cfg(feature = "execution-info")]
+                        result.push((addr, amount));
                     }
                 }
             }
@@ -295,6 +300,8 @@ impl SpeculativeRollState {
             credits.credits.insert(target_slot, target_credits);
             self.added_changes.deferred_credits.extend(credits);
         }
+
+        result
     }
 
     /// Get deferred credits of an address starting from a given slot

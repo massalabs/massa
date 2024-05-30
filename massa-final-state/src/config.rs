@@ -43,4 +43,6 @@ pub struct FinalStateConfig {
     pub t0: MassaTime,
     /// TODO
     pub genesis_timestamp: MassaTime,
+    /// Interval of periods between creation of each ledger backup
+    pub ledger_backup_periods_interval: u64,
 }

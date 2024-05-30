@@ -10,6 +10,7 @@ use crate::operation_injector::start_operation_injector;
 use crate::settings::SETTINGS;
 use crate::survey::MassaSurvey;
 
+use cfg_if::cfg_if;
 use clap::{crate_version, Parser};
 use crossbeam_channel::TryRecvError;
 use dialoguer::Password;
@@ -35,6 +36,11 @@ use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
 };
 use massa_execution_worker::start_execution_worker;
+#[cfg(all(feature = "dump-block", feature = "file_storage_backend"))]
+use massa_execution_worker::storage_backend::FileStorageBackend;
+#[cfg(all(feature = "dump-block", feature = "db_storage_backend"))]
+use massa_execution_worker::storage_backend::RocksDBStorageBackend;
+
 use massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
 use massa_factory_worker::start_factory;
 use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
@@ -194,6 +200,7 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
         max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+        ledger_backup_periods_interval: SETTINGS.ledger.ledger_backup_periods_interval,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
     };
@@ -227,6 +234,7 @@ async fn launch(
         max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE.try_into().unwrap(),
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
+        max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -449,6 +457,14 @@ async fn launch(
     )
     .expect("Failed to load gas costs");
 
+    let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
+    if !block_dump_folder_path.exists() {
+        info!("Current folder: {:?}", std::env::current_dir().unwrap());
+        info!("Creating dump folder: {:?}", block_dump_folder_path);
+        std::fs::create_dir_all(block_dump_folder_path.clone())
+            .expect("Cannot create dump block folder");
+    }
+
     // launch execution module
     let execution_config = ExecutionConfig {
         max_final_events: SETTINGS.execution.max_final_events,
@@ -497,6 +513,7 @@ async fn launch(
             .execution
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
+        block_dump_folder_path,
     };
 
     let execution_channels = ExecutionChannels {
@@ -511,6 +528,22 @@ async fn launch(
         .0,
     };
 
+    cfg_if! {
+        if #[cfg(all(feature = "dump-block", feature = "db_storage_backend"))] {
+            let block_storage_backend = Arc::new(RwLock::new(
+                RocksDBStorageBackend::new(
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
+            ));
+        } else if #[cfg(all(feature = "dump-block", feature = "file_storage_backend"))] {
+            let block_storage_backend = Arc::new(RwLock::new(
+                FileStorageBackend::new(
+                execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
+            ));
+        } else if #[cfg(feature = "dump-block")] {
+            compile_error!("feature dump-block requise either db_storage_backend or file_storage_backend");
+        }
+    }
+
     let (execution_manager, execution_controller) = start_execution_worker(
         execution_config,
         final_state.clone(),
@@ -519,6 +552,8 @@ async fn launch(
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
+        #[cfg(feature = "dump-block")]
+        block_storage_backend.clone(),
     );
 
     // launch pool controller

@@ -201,6 +201,7 @@ pub fn get_sample_state(
         max_denunciations_per_block_header: 0,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
+        ledger_backup_periods_interval: 10,
     };
 
     let mut final_state = if last_start_period > 0 {

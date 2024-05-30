@@ -450,6 +450,7 @@ fn test_staying_connected_without_message_trigger_read_timeout() {
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count: THREAD_COUNT,
+        max_ledger_backups: 10,
     }))
         as Box<(dyn MassaDBController + 'static)>));
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
@@ -547,6 +548,7 @@ fn test_staying_connected_pass_handshake_but_deadline_after() {
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count: THREAD_COUNT,
+        max_ledger_backups: 10,
     }))
         as Box<(dyn MassaDBController + 'static)>));
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();
@@ -644,6 +646,7 @@ fn test_staying_connected_pass_handshake_but_deadline_during_data_exchange() {
         max_final_state_elements_size: 100_000_000,
         max_versioning_elements_size: 100_000_000,
         thread_count: THREAD_COUNT,
+        max_ledger_backups: 10,
     }))
         as Box<(dyn MassaDBController + 'static)>));
     let rolls_path = PathBuf::from_str("../massa-node/base_config/initial_rolls.json").unwrap();

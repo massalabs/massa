@@ -490,7 +490,7 @@ async fn send_operations_low_fee() {
     let keypair = KeyPair::generate(0).unwrap();
 
     // send transaction
-    let operation = create_operation_with_expire_period(&keypair, 500000);
+    let operation = create_operation_with_expire_period(&keypair, u64::MAX);
 
     let input: OperationInput = OperationInput {
         creator_public_key: keypair.get_public_key(),
@@ -551,7 +551,7 @@ async fn send_operations() {
 
     ////
     // send transaction
-    let operation = create_operation_with_expire_period(&keypair, 500000);
+    let operation = create_operation_with_expire_period(&keypair, u64::MAX);
 
     let input: OperationInput = OperationInput {
         creator_public_key: keypair.get_public_key(),
@@ -694,6 +694,13 @@ async fn execute_read_only_bytecode() {
                     block_info: None,
                     state_changes: massa_final_state::StateChanges::default(),
                     events: massa_execution_exports::EventStore::default(),
+                    #[cfg(feature = "execution-trace")]
+                    slot_trace: None,
+                    #[cfg(feature = "dump-block")]
+                    storage: None,
+                    deferred_credits_execution: vec![],
+                    cancel_async_message_execution: vec![],
+                    auto_sell_execution: vec![],
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
@@ -774,6 +781,13 @@ async fn execute_read_only_call() {
                     block_info: None,
                     state_changes: massa_final_state::StateChanges::default(),
                     events: massa_execution_exports::EventStore::default(),
+                    #[cfg(feature = "execution-trace")]
+                    slot_trace: None,
+                    #[cfg(feature = "dump-block")]
+                    storage: None,
+                    deferred_credits_execution: vec![],
+                    cancel_async_message_execution: vec![],
+                    auto_sell_execution: vec![],
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),

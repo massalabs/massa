@@ -5,10 +5,14 @@
 //! orders active and final blocks in queues sorted by increasing slot number,
 //! and requests the execution of active and final slots from execution.rs.
 
-use crate::controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl};
-use crate::execution::ExecutionState;
-use crate::request_queue::RequestQueue;
-use crate::slot_sequencer::SlotSequencer;
+#[cfg(feature = "dump-block")]
+use crate::storage_backend::StorageBackend;
+use crate::{
+    controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl},
+    execution::ExecutionState,
+    request_queue::RequestQueue,
+    slot_sequencer::SlotSequencer,
+};
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -245,6 +249,7 @@ impl ExecutionThread {
 /// A pair `(execution_manager, execution_controller)` where:
 /// * `execution_manager`: allows to stop the worker
 /// * `execution_controller`: allows sending requests and notifications to the worker
+#[allow(clippy::too_many_arguments)]
 pub fn start_execution_worker(
     config: ExecutionConfig,
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -253,6 +258,7 @@ pub fn start_execution_worker(
     channels: ExecutionChannels,
     wallet: Arc<RwLock<Wallet>>,
     massa_metrics: MassaMetrics,
+    #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
@@ -263,6 +269,8 @@ pub fn start_execution_worker(
         channels,
         wallet,
         massa_metrics,
+        #[cfg(feature = "dump-block")]
+        block_storage_backend,
     )));
 
     // define the input data interface

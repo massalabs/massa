@@ -12,6 +12,8 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
+#[cfg(feature = "dump-block")]
+use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
@@ -49,14 +51,27 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
+use crate::execution_info::{AsyncMessageExecutionResult, DenunciationResult};
+#[cfg(feature = "execution-info")]
+use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::{AbiTrace, SlotAbiCallStack, Transfer};
+#[cfg(feature = "dump-block")]
+use massa_models::block::FilledBlock;
 #[cfg(feature = "execution-trace")]
 use massa_models::config::{BASE_OPERATION_GAS_COST, MAX_GAS_PER_BLOCK, MAX_OPERATIONS_PER_BLOCK};
+#[cfg(feature = "dump-block")]
+use massa_models::operation::Operation;
 #[cfg(feature = "execution-trace")]
 use massa_models::prehash::PreHashMap;
+#[cfg(feature = "dump-block")]
+use massa_models::secure_share::SecureShare;
+#[cfg(feature = "dump-block")]
+use massa_proto_rs::massa::model::v1 as grpc_model;
+#[cfg(feature = "dump-block")]
+use prost::Message;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -117,6 +132,10 @@ pub(crate) struct ExecutionState {
     massa_metrics: MassaMetrics,
     #[cfg(feature = "execution-trace")]
     pub(crate) trace_history: Arc<RwLock<TraceHistory>>,
+    #[cfg(feature = "execution-info")]
+    pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
+    #[cfg(feature = "dump-block")]
+    block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 }
 
 impl ExecutionState {
@@ -128,6 +147,7 @@ impl ExecutionState {
     ///
     /// # returns
     /// A new `ExecutionState`
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: ExecutionConfig,
         final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -136,6 +156,7 @@ impl ExecutionState {
         channels: ExecutionChannels,
         wallet: Arc<RwLock<Wallet>>,
         massa_metrics: MassaMetrics,
+        #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
         // This should be among the latest final slots.
@@ -203,7 +224,13 @@ impl ExecutionState {
                     (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) as u32,
                 ),
             ))),
+            #[cfg(feature = "execution-info")]
+            execution_info: Arc::new(RwLock::new(ExecutionInfo::new(
+                config.max_execution_traces_slot_limit as u32,
+            ))),
             config,
+            #[cfg(feature = "dump-block")]
+            block_storage_backend,
         }
     }
 
@@ -245,6 +272,12 @@ impl ExecutionState {
         self.update_versioning_stats(&exec_out.block_info, &exec_out.slot);
 
         let exec_out_2 = exec_out.clone();
+        #[cfg(feature = "slot-replayer")]
+        {
+            println!(">>> Execution changes");
+            println!("{:#?}", serde_json::to_string_pretty(&exec_out));
+            println!("<<<");
+        }
         // apply state changes to the final ledger
         self.final_state
             .write()
@@ -324,6 +357,46 @@ impl ExecutionState {
                     }
                 }
             }
+        }
+
+        #[cfg(feature = "dump-block")]
+        {
+            let mut block_ser = vec![];
+            if let Some(block_info) = exec_out.block_info {
+                let block_id = block_info.block_id;
+                let storage = exec_out.storage.unwrap();
+                let guard = storage.read_blocks();
+                let secured_block = guard
+                    .get(&block_id)
+                    .unwrap_or_else(|| panic!("Unable to get block for block id: {}", block_id));
+
+                let operations: Vec<(OperationId, Option<SecureShare<Operation, OperationId>>)> =
+                    secured_block
+                        .content
+                        .operations
+                        .iter()
+                        .map(|operation_id| {
+                            match storage.read_operations().get(operation_id).cloned() {
+                                Some(verifiable_operation) => {
+                                    (*operation_id, Some(verifiable_operation))
+                                }
+                                None => (*operation_id, None),
+                            }
+                        })
+                        .collect();
+
+                let filled_block = FilledBlock {
+                    header: secured_block.content.header.clone(),
+                    operations,
+                };
+
+                let grpc_filled_block = grpc_model::FilledBlock::from(filled_block);
+                grpc_filled_block.encode(&mut block_ser).unwrap();
+            }
+
+            self.block_storage_backend
+                .write()
+                .write(&exec_out.slot, &block_ser);
         }
     }
 
@@ -569,7 +642,7 @@ impl ExecutionState {
         denunciation: &Denunciation,
         block_slot: &Slot,
         block_credits: &mut Amount,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<DenunciationResult, ExecutionError> {
         let addr_denounced = Address::from_public_key(denunciation.get_public_key());
 
         // acquire write access to the context
@@ -673,7 +746,7 @@ impl ExecutionState {
             self.config.roll_count_to_slash_on_denunciation,
         );
 
-        match slashed {
+        match slashed.as_ref() {
             Ok(slashed_amount) => {
                 // Add slashed amount / 2 to block reward
                 let amount = slashed_amount.checked_div_u64(2).ok_or_else(|| {
@@ -701,7 +774,11 @@ impl ExecutionState {
             }
         }
 
-        Ok(())
+        Ok(DenunciationResult {
+            address_denounced: addr_denounced,
+            slot: *de_slot,
+            slashed: slashed.unwrap_or_default(),
+        })
     }
 
     /// Execute an operation of type `RollSell`
@@ -1027,7 +1104,15 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
-    ) -> Result<ExecutionResult, ExecutionError> {
+    ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
+        let mut result = AsyncMessageExecutionResult::new();
+        #[cfg(feature = "execution-info")]
+        {
+            // TODO: From impl + no ::new -> no cfg feature
+            result.sender = Some(message.sender);
+            result.destination = Some(message.destination);
+        }
+
         // prepare execution context
         let context_snapshot;
         let bytecode = {
@@ -1077,9 +1162,12 @@ impl ExecutionState {
                     "could not credit coins to target of async execution: {}",
                     err
                 ));
+
                 context.reset_to_snapshot(context_snapshot, err.clone());
                 context.cancel_async_message(&message);
                 return Err(err);
+            } else {
+                result.coins = Some(message.coins);
             }
 
             bytecode.0
@@ -1106,12 +1194,13 @@ impl ExecutionState {
                     .set_init_cost(&bytecode, res.init_gas_cost);
                 #[cfg(feature = "execution-trace")]
                 {
-                    Ok((res.trace.into_iter().map(|t| t.into()).collect(), true))
+                    result.traces = Some((res.trace.into_iter().map(|t| t.into()).collect(), true));
                 }
-                #[cfg(not(feature = "execution-trace"))]
+                #[cfg(feature = "execution-info")]
                 {
-                    Ok(())
+                    result.success = true;
                 }
+                Ok(result)
             }
             Err(error) => {
                 if let VMError::ExecutionError { init_gas_cost, .. } = error {
@@ -1156,6 +1245,10 @@ impl ExecutionState {
         };
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
+
+        #[cfg(feature = "execution-info")]
+        let mut exec_info = ExecutionInfoForSlot::new();
+
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1181,13 +1274,21 @@ impl ExecutionState {
         for (opt_bytecode, message) in messages {
             match self.execute_async_message(message, opt_bytecode) {
                 Ok(_message_return) => {
-                    #[cfg(feature = "execution-trace")]
-                    {
-                        slot_trace.asc_call_stacks.push(_message_return.0);
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                            exec_info.async_messages.push(Ok(_message_return));
+                        }
                     }
                 }
                 Err(err) => {
-                    debug!("failed executing async message: {}", err);
+                    let msg = format!("failed executing async message: {}", err);
+                    #[cfg(feature = "execution-info")]
+                    exec_info.async_messages.push(Err(msg.clone()));
+                    debug!(msg);
                 }
             }
         }
@@ -1318,6 +1419,19 @@ impl ExecutionState {
                                 _ => {}
                             }
                         }
+
+                        #[cfg(feature = "execution-info")]
+                        {
+                            match &operation.content.op {
+                                OperationType::RollBuy { roll_count } => exec_info
+                                    .operations
+                                    .push(OperationInfo::RollBuy(*roll_count)),
+                                OperationType::RollSell { roll_count } => exec_info
+                                    .operations
+                                    .push(OperationInfo::RollSell(*roll_count)),
+                                _ => {}
+                            }
+                        }
                     }
                     Err(err) => {
                         debug!(
@@ -1330,15 +1444,24 @@ impl ExecutionState {
 
             // Try executing the denunciations of this block
             for denunciation in &stored_block.content.header.content.denunciations {
-                if let Err(e) = self.execute_denunciation(
+                match self.execute_denunciation(
                     denunciation,
                     &stored_block.content.header.content.slot,
                     &mut block_credits,
                 ) {
-                    debug!(
-                        "Failed processing denunciation: {:?}, in block: {}: {}",
-                        denunciation, block_id, e
-                    );
+                    Ok(_de_res) => {
+                        #[cfg(feature = "execution-info")]
+                        exec_info.denunciations.push(Ok(_de_res));
+                    }
+                    Err(e) => {
+                        let msg = format!(
+                            "Failed processing denunciation: {:?}, in block: {}: {}",
+                            denunciation, block_id, e
+                        );
+                        #[cfg(feature = "execution-info")]
+                        exec_info.denunciations.push(Err(msg.clone()));
+                        debug!(msg);
+                    }
                 }
             }
 
@@ -1366,6 +1489,11 @@ impl ExecutionState {
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+
+                        #[cfg(feature = "execution-info")]
+                        exec_info
+                            .endorsement_creator_rewards
+                            .insert(endorsement_creator, block_credit_part);
                     }
                     Err(err) => {
                         debug!(
@@ -1384,6 +1512,11 @@ impl ExecutionState {
                 ) {
                     Ok(_) => {
                         remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+                        #[cfg(feature = "execution-info")]
+                        {
+                            exec_info.endorsement_target_reward =
+                                Some((endorsement_target_creator, block_credit_part));
+                        }
                     }
                     Err(err) => {
                         debug!(
@@ -1402,6 +1535,11 @@ impl ExecutionState {
                     "failed to credit {} coins to block creator {} on block execution: {}",
                     remaining_credit, block_creator_addr, err
                 )
+            } else {
+                #[cfg(feature = "execution-info")]
+                {
+                    exec_info.block_producer_reward = Some((block_creator_addr, remaining_credit));
+                }
             }
         } else {
             // the slot is a miss, check who was supposed to be the creator and update production stats
@@ -1419,16 +1557,32 @@ impl ExecutionState {
         self.trace_history
             .write()
             .save_transfers_for_slot(*slot, transfers.clone());
-        // Finish slot
-        #[cfg(not(feature = "execution-trace"))]
-        let exec_out = context_guard!(self).settle_slot(block_info);
 
+        // Finish slot
+        #[allow(unused_mut)]
+        let mut exec_out = context_guard!(self).settle_slot(block_info);
         #[cfg(feature = "execution-trace")]
-        let exec_out = {
-            let mut out = context_guard!(self).settle_slot(block_info);
-            out.slot_trace = Some((slot_trace, transfers));
-            out
+        {
+            exec_out.slot_trace = Some((slot_trace, transfers));
         };
+        #[cfg(feature = "dump-block")]
+        {
+            exec_out.storage = match exec_target {
+                Some((_block_id, block_metadata)) => block_metadata.storage.clone(),
+                _ => None,
+            }
+        }
+
+        #[cfg(feature = "execution-info")]
+        {
+            exec_info.deferred_credits_execution =
+                std::mem::replace(&mut exec_out.deferred_credits_execution, vec![]);
+            exec_info.cancel_async_message_execution =
+                std::mem::replace(&mut exec_out.cancel_async_message_execution, vec![]);
+            exec_info.auto_sell_execution =
+                std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
+            self.execution_info.write().save_for_slot(*slot, exec_info);
+        }
 
         // Broadcast a slot execution output to active channel subscribers.
         if self.config.broadcast_enabled {

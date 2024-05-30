@@ -187,6 +187,7 @@
         client_certificate_path = "../massa-client/config/tls_private_client.pem"
         # client private key path
         client_private_key_path = "../massa-client/config/tls_private_client.key"
+
 [execution]
     # max number of generated events kept in RAM
     max_final_events = 10000
@@ -215,6 +216,7 @@
     snip_amount = 10
     # slot execution outputs channel capacity
     broadcast_slot_execution_output_channel_capacity = 5000
+    # Enable execution-traces (detailed execution info like SC abi calls) with: --features execution-trace
     # slot execution traces channel capacity
     broadcast_slot_execution_traces_channel_capacity = 5000
     # Max slots execution traces to keep in cache
@@ -229,6 +231,10 @@
     final_history_length = 100
     # path of the initial deferred credits file
     initial_deferred_credits_path = "base_config/deferred_credits.json"
+    # Interval of periods between creation of each ledger backup
+    ledger_backup_periods_interval = 100
+    # Maximum number of ledger backup saved
+    max_ledger_backups = 100
 
 [consensus]
     # max number of previously discarded blocks kept in RAM
@@ -430,3 +436,9 @@
 [versioning]
     # Warn user to update its node if we reach this percentage for announced network versions
     mip_stats_warn_announced_version = 30
+
+# Dump final blocks (in grpc binary format) by activating the feature: --features dump-block
+[block_dump]
+    block_dump_folder_path = "dump/blocks"
+    # max number of blocks to keep in the dump folder
+    max_blocks = 2048000

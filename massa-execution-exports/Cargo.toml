@@ -8,6 +8,8 @@ edition = "2021"
 gas_calibration = ["tempfile"]
 test-exports = ["massa_models/test-exports", "tempfile", "mockall"]
 execution-trace = ["massa-sc-runtime/execution-trace"]
+dump-block = []
+execution-info = ["execution-trace"]
 
 [dependencies]
 displaydoc = {workspace = true}
@@ -26,6 +28,7 @@ massa_pos_exports = {workspace = true}
 massa_module_cache = {workspace = true}
 massa_versioning = {workspace = true}
 massa-sc-runtime = {workspace = true}
+serde = {workspace = true, "features" = ["derive"]}
 
 [dev-dependencies]
 mockall = {workspace = true}

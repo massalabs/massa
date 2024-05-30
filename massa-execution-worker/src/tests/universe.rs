@@ -4,6 +4,10 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(feature = "file_storage_backend")]
+use crate::storage_backend::FileStorageBackend;
+#[cfg(feature = "db_storage_backend")]
+use crate::storage_backend::RocksDBStorageBackend;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_execution_exports::{
@@ -41,7 +45,7 @@ use tokio::sync::broadcast;
 use crate::start_execution_worker;
 
 #[cfg(feature = "execution-trace")]
-use massa_execution_exports::SlotAbiCallStack;
+use massa_execution_exports::types_trace_info::SlotAbiCallStack;
 
 pub struct ExecutionForeignControllers {
     pub selector_controller: Box<MockSelectorControllerWrapper>,
@@ -59,6 +63,7 @@ impl ExecutionForeignControllers {
             max_final_state_elements_size: 100_000,
             max_versioning_elements_size: 100_000,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
         };
 
         let db = Arc::new(RwLock::new(
@@ -117,6 +122,14 @@ impl TestUniverse for ExecutionTestUniverse {
                 std::time::Duration::from_secs(5),
             )
             .0,
+            #[cfg(feature = "file_storage_backend")]
+            Arc::new(RwLock::new(FileStorageBackend::new(
+                config.block_dump_folder_path.clone(),
+            ))),
+            #[cfg(feature = "db_storage_backend")]
+            Arc::new(RwLock::new(RocksDBStorageBackend::new(
+                config.block_dump_folder_path.clone(),
+            ))),
         );
         init_execution_worker(&config, &storage, module_controller.clone());
         let universe = Self {
