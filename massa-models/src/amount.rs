@@ -254,8 +254,8 @@ impl Amount {
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// let value = Amount::from_str("11.111").unwrap();
-/// assert_eq!(format!("{}", value), "11.111")
+/// let value = Amount::from_raw(11111);
+/// assert_eq!(format!("{}", value), "11111")
 /// ```
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -277,7 +277,8 @@ impl fmt::Debug for Amount {
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// assert!(Amount::from_str("11.1").is_ok());
+/// assert!(Amount::from_str("11").is_ok());
+/// assert!(Amount::from_str("11.1").is_err());
 /// assert!(Amount::from_str("11.1111111111111111111111").is_err());
 /// assert!(Amount::from_str("1111111111111111111111").is_err());
 /// assert!(Amount::from_str("-11.1").is_err());
@@ -287,12 +288,9 @@ impl FromStr for Amount {
     type Err = ModelsError;
 
     fn from_str(str_amount: &str) -> Result<Self, Self::Err> {
-        // let res = Decimal::from_str_exact(str_amount)
-        // .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
-
-        let amount = str_amount
-            .parse::<u64>()
-            .map_err(|_| ModelsError::AmountParseError("invalid integer".to_string()))?;
+        let amount = str_amount.parse::<u64>().map_err(|_| {
+            ModelsError::AmountParseError(format!("invalid integer : {}", str_amount))
+        })?;
         Ok(Amount(amount))
     }
 }
@@ -326,7 +324,7 @@ impl Serializer<Amount> for AmountSerializer {
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let amount = Amount::from_str("11111").unwrap();
     /// let serializer = AmountSerializer::new();
     /// let mut serialized = vec![];
     /// serializer.serialize(&amount, &mut serialized).unwrap();
@@ -371,7 +369,7 @@ impl Deserializer<Amount> for AmountDeserializer {
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str("11.111").unwrap();
+    /// let amount = Amount::from_raw(11111);
     /// let serializer = AmountSerializer::new();
     /// let deserializer = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
     /// let mut serialized = vec![];

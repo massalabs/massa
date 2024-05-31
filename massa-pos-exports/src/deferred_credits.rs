@@ -340,7 +340,7 @@ mod test {
             Address::from_str("AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8").unwrap();
 
         let mut def_credits = DeferredCredits::default();
-        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("0.0").unwrap());
+        def_credits.insert(Slot::new(1, 0), addr1, Amount::zero());
         def_credits.insert(Slot::new(1, 3), addr2, Amount::from_raw(u64::MAX));
 
         let mut buf = Vec::new();

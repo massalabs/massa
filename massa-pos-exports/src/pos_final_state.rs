@@ -1723,10 +1723,10 @@ mod tests {
 
         let addr1 =
             Address::from_str("AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa").unwrap();
-        let a_a1_s3 = Amount::from_str("5.01").unwrap();
+        let a_a1_s3 = Amount::from_raw(5010000000);
         let addr2 =
             Address::from_str("AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53").unwrap();
-        let a_a2_s3 = Amount::from_str("2.01").unwrap();
+        let a_a2_s3 = Amount::from_raw(2010000000);
         let expected_credits = vec![
             (
                 Slot::new(3, 0),
@@ -1736,7 +1736,7 @@ mod tests {
             ),
             (
                 Slot::new(4, 1),
-                vec![(addr1, Amount::from_str("6.0").unwrap())]
+                vec![(addr1, Amount::from_raw(6000000000))]
                     .into_iter()
                     .collect(),
             ),
