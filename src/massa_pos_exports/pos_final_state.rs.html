@@ -4070,10 +4070,10 @@
         <span class="kw">let </span>deferred_credits = pos_state.get_deferred_credits().credits;
         <span class="kw">let </span>addr1 =
             Address::from_str(<span class="string">&quot;AU12pAcVUzsgUBJHaYSAtDKVTYnUT9NorBDjoDovMfAFTLFa16MNa&quot;</span>).unwrap();
-        <span class="kw">let </span>a_a1_s3 = Amount::from_str(<span class="string">&quot;5.01&quot;</span>).unwrap();
+        <span class="kw">let </span>a_a1_s3 = Amount::from_raw(<span class="number">5010000000</span>);
         <span class="kw">let </span>addr2 =
             Address::from_str(<span class="string">&quot;AU1wN8rn4SkwYSTDF3dHFY4U28KtsqKL1NnEjDZhHnHEy6cEQm53&quot;</span>).unwrap();
-        <span class="kw">let </span>a_a2_s3 = Amount::from_str(<span class="string">&quot;2.01&quot;</span>).unwrap();
+        <span class="kw">let </span>a_a2_s3 = Amount::from_raw(<span class="number">2010000000</span>);
         <span class="kw">let </span>expected_credits = <span class="macro">vec!</span>[
             (
                 Slot::new(<span class="number">3</span>, <span class="number">0</span>),
@@ -4083,7 +4083,7 @@
             ),
             (
                 Slot::new(<span class="number">4</span>, <span class="number">1</span>),
-                <span class="macro">vec!</span>[(addr1, Amount::from_str(<span class="string">&quot;6.0&quot;</span>).unwrap())]
+                <span class="macro">vec!</span>[(addr1, Amount::from_raw(<span class="number">6000000000</span>))]
                     .into_iter()
                     .collect(),
             ),

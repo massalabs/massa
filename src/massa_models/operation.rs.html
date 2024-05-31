@@ -3550,7 +3550,7 @@
 
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
+            max_coins: Amount::from_raw(<span class="number">1000000000</span>),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
@@ -3632,7 +3632,7 @@
         <span class="kw">let </span>op = OperationType::CallSC {
             max_gas: <span class="number">123</span>,
             target_addr,
-            coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
+            coins: Amount::from_raw(<span class="number">456789000000</span>),
             target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
             param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
         };
@@ -3744,7 +3744,7 @@
     </span><span class="kw">fn </span>test_executesc_serde() {
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
+            max_coins: Amount::from_raw(<span class="number">1000000000</span>),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
@@ -3789,7 +3789,7 @@
         <span class="kw">let </span>op = OperationType::CallSC {
             max_gas: <span class="number">123</span>,
             target_addr,
-            coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
+            coins: Amount::from_raw(<span class="number">456789000000</span>),
             target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
             param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
         };
@@ -3810,7 +3810,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_raw(<span class="number">20000000000</span>),
             op,
             expire_period: <span class="number">50</span>,
         };

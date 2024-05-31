@@ -188,7 +188,7 @@
     </span><span class="kw">fn </span>test_execute_sc_with_datastore() {
         <span class="kw">let </span>expected_op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;5000000&quot;</span>).unwrap(),
+            max_coins: Amount::from_raw(<span class="number">5000000</span>),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),

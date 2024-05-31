@@ -433,6 +433,26 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::ModelsError;
@@ -441,7 +461,6 @@
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>nom::{IResult, Parser};
 <span class="kw">use </span>rust_decimal::prelude::<span class="kw-2">*</span>;
-<span class="kw">use </span>serde::de::Unexpected;
 <span class="kw">use </span>std::fmt;
 <span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::str::FromStr;
@@ -469,14 +488,6 @@
     </span><span class="kw">pub const fn </span>zero() -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(<span class="number">0</span>)
     }
-
-    <span class="doccomment">/// Convert to decimal
-    </span><span class="kw">fn </span>to_decimal(<span class="self">self</span>) -&gt; Decimal {
-        Decimal::from_u64(<span class="self">self</span>.<span class="number">0</span>)
-            .unwrap() <span class="comment">// will never panic
-            </span>.checked_div(AMOUNT_DECIMAL_FACTOR.into()) <span class="comment">// will never panic
-            </span>.unwrap() <span class="comment">// will never panic
-    </span>}
 
     <span class="doccomment">/// Create an Amount from a Decimal
     </span><span class="kw">fn </span>from_decimal(dec: Decimal) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ModelsError&gt; {
@@ -509,7 +520,7 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1: Amount = Amount::from_str(&quot;0.042&quot;).unwrap();
+    /// let amount_1: Amount = Amount::from_str(&quot;42000000&quot;).unwrap();
     /// let amount_2: Amount = Amount::const_init(42, 3);
     /// assert_eq!(amount_1, amount_2);
     /// let amount_1: Amount = Amount::from_str(&quot;1000&quot;).unwrap();
@@ -534,7 +545,7 @@
     /// # use massa_models::amount::Amount;
     /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
     /// # use std::str::FromStr;
-    /// let amount = Amount::from_str(&quot;0.123456789&quot;).unwrap();
+    /// let amount = Amount::from_str(&quot;123456789&quot;).unwrap();
     /// let (mantissa, scale) = amount.to_mantissa_scale();
     /// assert_eq!(mantissa, 123456789);
     /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
@@ -548,7 +559,7 @@
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let a = Amount::from_mantissa_scale(123, 2).unwrap();
-    /// assert_eq!(a.to_string(), &quot;1.23&quot;);
+    /// assert_eq!(a.to_string(), &quot;123&quot;);
     /// let a = Amount::from_mantissa_scale(123, 100);
     /// assert!(a.is_err());
     /// ```
@@ -568,7 +579,7 @@
     <span class="doccomment">/// constructs an `Amount` from the underlying raw `u64` representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account
-    /// In most cases, you should be using `Amount::from_str(&quot;11.23&quot;)`
+    /// In most cases, you should be using `Amount::from_str(&quot;11230000000&quot;)`
     </span><span class="kw">pub const fn </span>from_raw(raw: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(raw)
     }
@@ -697,12 +708,12 @@
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// let value = Amount::from_str(&quot;11.111&quot;).unwrap();
-/// assert_eq!(format!(&quot;{}&quot;, value), &quot;11.111&quot;)
+/// let value = Amount::from_raw(11111);
+/// assert_eq!(format!(&quot;{}&quot;, value), &quot;11111&quot;)
 /// ```
 </span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>Amount {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_decimal())
+        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_raw())
     }
 }
 
@@ -720,7 +731,8 @@
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// assert!(Amount::from_str(&quot;11.1&quot;).is_ok());
+/// assert!(Amount::from_str(&quot;11&quot;).is_ok());
+/// assert!(Amount::from_str(&quot;11.1&quot;).is_err());
 /// assert!(Amount::from_str(&quot;11.1111111111111111111111&quot;).is_err());
 /// assert!(Amount::from_str(&quot;1111111111111111111111&quot;).is_err());
 /// assert!(Amount::from_str(&quot;-11.1&quot;).is_err());
@@ -730,9 +742,10 @@
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
 
     <span class="kw">fn </span>from_str(str_amount: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
-        <span class="kw">let </span>res = Decimal::from_str_exact(str_amount)
-            .map_err(|err| ModelsError::AmountParseError(err.to_string()))<span class="question-mark">?</span>;
-        Amount::from_decimal(res)
+        <span class="kw">let </span>amount = str_amount.parse::&lt;u64&gt;().map_err(|<span class="kw">_</span>| {
+            ModelsError::AmountParseError(<span class="macro">format!</span>(<span class="string">&quot;invalid integer : {}&quot;</span>, str_amount))
+        })<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(Amount(amount))
     }
 }
 
@@ -765,7 +778,7 @@
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let amount = Amount::from_str(&quot;11111&quot;).unwrap();
     /// let serializer = AmountSerializer::new();
     /// let mut serialized = vec![];
     /// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();
@@ -810,7 +823,7 @@
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let amount = Amount::from_raw(11111);
     /// let serializer = AmountSerializer::new();
     /// let deserializer = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
     /// let mut serialized = vec![];
@@ -831,12 +844,41 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Amount {
+<span class="comment">// impl&lt;&#39;de&gt; serde::Deserialize&lt;&#39;de&gt; for Amount {
+//     fn deserialize&lt;D&gt;(deserializer: D) -&gt; Result&lt;Amount, D::Error&gt;
+//     where
+//         D: serde::de::Deserializer&lt;&#39;de&gt;,
+//     {
+//         deserializer.deserialize_str(AmountVisitor)
+//     }
+// }
+
+// struct AmountVisitor;
+
+// impl&lt;&#39;de&gt; serde::de::Visitor&lt;&#39;de&gt; for AmountVisitor {
+//     type Value = Amount;
+
+//     fn visit_str&lt;E&gt;(self, value: &amp;str) -&gt; Result&lt;Amount, E&gt;
+//     where
+//         E: serde::de::Error,
+//     {
+//         Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &amp;self))
+//     }
+
+//     fn expecting(&amp;self, formatter: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+//         write!(
+//             formatter,
+//             &quot;an Amount type representing a fixed-point currency amount&quot;
+//         )
+//     }
+// }
+
+</span><span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Amount {
     <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, D::Error&gt;
     <span class="kw">where
         </span>D: serde::de::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        deserializer.deserialize_str(AmountVisitor)
+        deserializer.deserialize_u64(AmountVisitor)
     }
 }
 
@@ -845,18 +887,15 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>AmountVisitor {
     <span class="kw">type </span>Value = Amount;
 
-    <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, E&gt;
+    <span class="kw">fn </span>visit_u64&lt;E&gt;(<span class="self">self</span>, value: u64) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, E&gt;
     <span class="kw">where
         </span>E: serde::de::Error,
     {
-        Amount::from_str(value).map_err(|<span class="kw">_</span>| E::invalid_value(Unexpected::Str(value), <span class="kw-2">&amp;</span><span class="self">self</span>))
+        <span class="prelude-val">Ok</span>(Amount::from_raw(value))
     }
 
     <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
-        <span class="macro">write!</span>(
-            formatter,
-            <span class="string">&quot;an Amount type representing a fixed-point currency amount&quot;
-        </span>)
+        <span class="macro">write!</span>(formatter, <span class="string">&quot;a u64 representing an Amount in nanoMassa&quot;</span>)
     }
 }
 
@@ -865,7 +904,8 @@
     <span class="kw">where
         </span>S: serde::Serializer,
     {
-        serializer.serialize_str(<span class="kw-2">&amp;</span><span class="self">self</span>.to_string())
+        <span class="comment">// let a = format!(&quot;{}&quot;, self.to_raw());
+        </span>serializer.serialize_u64(<span class="self">self</span>.to_raw())
     }
 }
 </code></pre></div></section></main></body></html>
