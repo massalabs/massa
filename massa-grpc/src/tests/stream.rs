@@ -27,7 +27,7 @@ use massa_protocol_exports::{
 use massa_serialization::Serializer;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
-use std::{net::SocketAddr, ops::Add, str::FromStr, time::Duration};
+use std::{net::SocketAddr, ops::Add, time::Duration};
 use tokio_stream::StreamExt;
 
 #[tokio::test]

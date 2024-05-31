@@ -71,7 +71,6 @@ mod tests {
     use massa_models::{amount::Amount, operation::OperationType};
     use serial_test::serial;
     use std::collections::BTreeMap;
-    use std::str::FromStr;
 
     #[test]
     #[serial]
