@@ -35,14 +35,6 @@ impl Amount {
         Self(0)
     }
 
-    /// Convert to decimal
-    fn to_decimal(self) -> Decimal {
-        Decimal::from_u64(self.0)
-            .unwrap() // will never panic
-            .checked_div(AMOUNT_DECIMAL_FACTOR.into()) // will never panic
-            .unwrap() // will never panic
-    }
-
     /// Create an Amount from a Decimal
     fn from_decimal(dec: Decimal) -> Result<Self, ModelsError> {
         let res = dec
@@ -74,7 +66,7 @@ impl Amount {
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
+    /// let amount_1: Amount = Amount::from_str("42000000").unwrap();
     /// let amount_2: Amount = Amount::const_init(42, 3);
     /// assert_eq!(amount_1, amount_2);
     /// let amount_1: Amount = Amount::from_str("1000").unwrap();
@@ -99,7 +91,7 @@ impl Amount {
     /// # use massa_models::amount::Amount;
     /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
     /// # use std::str::FromStr;
-    /// let amount = Amount::from_str("0.123456789").unwrap();
+    /// let amount = Amount::from_str("123456789").unwrap();
     /// let (mantissa, scale) = amount.to_mantissa_scale();
     /// assert_eq!(mantissa, 123456789);
     /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
@@ -113,7 +105,7 @@ impl Amount {
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let a = Amount::from_mantissa_scale(123, 2).unwrap();
-    /// assert_eq!(a.to_string(), "1.23");
+    /// assert_eq!(a.to_string(), "123");
     /// let a = Amount::from_mantissa_scale(123, 100);
     /// assert!(a.is_err());
     /// ```
@@ -133,7 +125,7 @@ impl Amount {
     /// constructs an `Amount` from the underlying raw `u64` representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account
-    /// In most cases, you should be using `Amount::from_str("11.23")`
+    /// In most cases, you should be using `Amount::from_str("11230000000")`
     pub const fn from_raw(raw: u64) -> Self {
         Self(raw)
     }
@@ -267,7 +259,7 @@ impl Amount {
 /// ```
 impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_decimal())
+        write!(f, "{}", self.to_raw())
     }
 }
 
@@ -295,9 +287,13 @@ impl FromStr for Amount {
     type Err = ModelsError;
 
     fn from_str(str_amount: &str) -> Result<Self, Self::Err> {
-        let res = Decimal::from_str_exact(str_amount)
-            .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
-        Amount::from_decimal(res)
+        // let res = Decimal::from_str_exact(str_amount)
+        // .map_err(|err| ModelsError::AmountParseError(err.to_string()))?;
+
+        let amount = str_amount
+            .parse::<u64>()
+            .map_err(|_| ModelsError::AmountParseError("invalid integer".to_string()))?;
+        Ok(Amount(amount))
     }
 }
 
@@ -396,12 +392,41 @@ impl Deserializer<Amount> for AmountDeserializer {
     }
 }
 
+// impl<'de> serde::Deserialize<'de> for Amount {
+//     fn deserialize<D>(deserializer: D) -> Result<Amount, D::Error>
+//     where
+//         D: serde::de::Deserializer<'de>,
+//     {
+//         deserializer.deserialize_str(AmountVisitor)
+//     }
+// }
+
+// struct AmountVisitor;
+
+// impl<'de> serde::de::Visitor<'de> for AmountVisitor {
+//     type Value = Amount;
+
+//     fn visit_str<E>(self, value: &str) -> Result<Amount, E>
+//     where
+//         E: serde::de::Error,
+//     {
+//         Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
+//     }
+
+//     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//         write!(
+//             formatter,
+//             "an Amount type representing a fixed-point currency amount"
+//         )
+//     }
+// }
+
 impl<'de> serde::Deserialize<'de> for Amount {
     fn deserialize<D>(deserializer: D) -> Result<Amount, D::Error>
     where
         D: serde::de::Deserializer<'de>,
     {
-        deserializer.deserialize_str(AmountVisitor)
+        deserializer.deserialize_u64(AmountVisitor)
     }
 }
 
@@ -410,18 +435,15 @@ struct AmountVisitor;
 impl<'de> serde::de::Visitor<'de> for AmountVisitor {
     type Value = Amount;
 
-    fn visit_str<E>(self, value: &str) -> Result<Amount, E>
+    fn visit_u64<E>(self, value: u64) -> Result<Amount, E>
     where
         E: serde::de::Error,
     {
-        Amount::from_str(value).map_err(|_| E::invalid_value(Unexpected::Str(value), &self))
+        Ok(Amount::from_raw(value))
     }
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            formatter,
-            "an Amount type representing a fixed-point currency amount"
-        )
+        write!(formatter, "a u64 representing an Amount in nanoMassa")
     }
 }
 
@@ -430,6 +452,7 @@ impl serde::Serialize for Amount {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        // let a = format!("{}", self.to_raw());
+        serializer.serialize_u64(self.to_raw())
     }
 }
