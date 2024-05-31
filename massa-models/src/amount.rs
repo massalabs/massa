@@ -6,7 +6,6 @@ use massa_serialization::{U64VarIntDeserializer, U64VarIntSerializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::{IResult, Parser};
 use rust_decimal::prelude::*;
-use serde::de::Unexpected;
 use std::fmt;
 use std::ops::Bound;
 use std::str::FromStr;
