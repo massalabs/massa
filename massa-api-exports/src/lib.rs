@@ -23,8 +23,6 @@ pub mod endorsement;
 pub mod error;
 /// execution
 pub mod execution;
-/// ledger structures
-pub mod ledger;
 /// node related structure
 pub mod node;
 /// operations

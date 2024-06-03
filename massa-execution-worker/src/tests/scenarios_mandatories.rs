@@ -110,7 +110,7 @@ fn final_state_boilerplate(
     ledger_controller.set_expectations(|ledger_controller| {
         ledger_controller
             .expect_get_balance()
-            .returning(move |_| Some(Amount::from_str("100").unwrap()));
+            .returning(move |_| Some(Amount::from_raw(100000000000)));
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
                 .expect_get_bytecode()
@@ -254,7 +254,7 @@ fn test_readonly_execution() {
         .set_expectations(|ledger_controller| {
             ledger_controller
                 .expect_get_balance()
-                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+                .returning(move |_| Some(Amount::from_raw(100000000000)));
             ledger_controller
                 .expect_entry_exists()
                 .times(1)
@@ -413,8 +413,8 @@ fn test_nested_call_gas_usage() {
     let operation = ExecutionTestUniverse::create_call_sc_operation(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         10000000,
-        Amount::from_str("0").unwrap(),
-        Amount::from_str("0").unwrap(),
+        Amount::zero(),
+        Amount::zero(),
         Address::from_str(&address).unwrap(),
         String::from("test"),
         address.as_bytes().to_vec(),
@@ -516,7 +516,7 @@ fn test_get_call_coins() {
     let operation = ExecutionTestUniverse::create_call_sc_operation(
         &KeyPair::from_str(TEST_SK_2).unwrap(),
         10000000,
-        Amount::from_str("0").unwrap(),
+        Amount::zero(),
         coins_sent,
         Address::from_str(&address).unwrap(),
         String::from("test"),
@@ -681,7 +681,7 @@ fn send_and_receive_async_message() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                        SetOrKeep::Set(Amount::from_raw(100000000100))
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -816,9 +816,7 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(
-                        Amount::from_str("100.670399899").unwrap()
-                    ),
+                    balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_raw(100670399899)),
                     bytecode: massa_ledger_exports::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
@@ -841,7 +839,7 @@ fn cancel_async_message() {
                 SetUpdateOrDelete::Update(change_sender_update) => {
                     assert_eq!(
                         change_sender_update.balance,
-                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                        SetOrKeep::Set(Amount::from_raw(100000000100))
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -993,7 +991,7 @@ fn local_execution() {
     );
     assert_eq!(events[2].data, "one local execution completed");
     let amount = Amount::from_raw(events[5].data.parse().unwrap());
-    assert_eq!(Amount::from_str("89.6713").unwrap(), amount);
+    assert_eq!(Amount::from_raw(89671300000), amount);
     assert_eq!(events[5].context.call_stack.len(), 1);
     assert_eq!(
         events[1].context.call_stack.back().unwrap(),

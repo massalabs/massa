@@ -277,11 +277,11 @@ mod tests {
         );
 
         let mut message2 = message.clone();
-        message2.fee = Amount::from_str("2").unwrap();
+        message2.fee = Amount::from_raw(2000000000);
         assert_ne!(message.compute_id(), message2.compute_id());
 
         let mut message3 = message.clone();
-        message3.fee = Amount::from_str("3").unwrap();
+        message3.fee = Amount::from_raw(3000000000);
         assert_ne!(message.compute_id(), message3.compute_id());
 
         changes
@@ -289,7 +289,7 @@ mod tests {
             .insert(message2.compute_id(), SetUpdateOrDelete::Delete);
 
         let update3 = AsyncMessageUpdate {
-            coins: SetOrKeep::Set(Amount::from_str("3").unwrap()),
+            coins: SetOrKeep::Set(Amount::from_raw(3000000000)),
             ..Default::default()
         };
 

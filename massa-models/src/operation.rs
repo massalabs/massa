@@ -724,7 +724,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    max_coins: Amount::from_str("5000000").unwrap(),
+    ///    max_coins: Amount::from_raw(5000000000000000),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -1638,7 +1638,7 @@ mod tests {
 
         let op = OperationType::ExecuteSC {
             max_gas: 123,
-            max_coins: Amount::from_str("1.0").unwrap(),
+            max_coins: Amount::from_raw(1000000000),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
@@ -1720,7 +1720,7 @@ mod tests {
         let op = OperationType::CallSC {
             max_gas: 123,
             target_addr,
-            coins: Amount::from_str("456.789").unwrap(),
+            coins: Amount::from_raw(456789000000),
             target_func: "target function".to_string(),
             param: b"parameter".to_vec(),
         };
@@ -1832,7 +1832,7 @@ mod tests {
     fn test_executesc_serde() {
         let op = OperationType::ExecuteSC {
             max_gas: 123,
-            max_coins: Amount::from_str("1.0").unwrap(),
+            max_coins: Amount::from_raw(1000000000),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
@@ -1877,7 +1877,7 @@ mod tests {
         let op = OperationType::CallSC {
             max_gas: 123,
             target_addr,
-            coins: Amount::from_str("456.789").unwrap(),
+            coins: Amount::from_raw(456789000000),
             target_func: "target function".to_string(),
             param: b"parameter".to_vec(),
         };
@@ -1898,7 +1898,7 @@ mod tests {
         assert_eq!(res_type, op);
 
         let orig_operation = Operation {
-            fee: Amount::from_str("20").unwrap(),
+            fee: Amount::from_raw(20000000000),
             op,
             expire_period: 50,
         };

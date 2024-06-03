@@ -570,7 +570,6 @@ mod tests {
     use parking_lot::RwLock;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
-    use std::str::FromStr;
     use std::sync::Arc;
     use tempfile::TempDir;
 
@@ -582,12 +581,12 @@ mod tests {
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
         let entry = LedgerEntry {
-            balance: Amount::from_str("42").unwrap(),
+            balance: Amount::from_raw(42000000000),
             datastore: data.clone(),
             ..Default::default()
         };
         let entry_update = LedgerEntryUpdate {
-            balance: SetOrKeep::Set(Amount::from_str("21").unwrap()),
+            balance: SetOrKeep::Set(Amount::from_raw(21000000000)),
             bytecode: SetOrKeep::Keep,
             ..Default::default()
         };
@@ -647,7 +646,7 @@ mod tests {
                 )
                 .unwrap()
                 .1,
-            Amount::from_str("21").unwrap()
+            Amount::from_raw(21000000000)
         );
         assert_eq!(data, ledger_db.get_entire_datastore(&addr));
 

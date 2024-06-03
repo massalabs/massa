@@ -232,7 +232,7 @@ mod test {
             },
         );
         let mut def_credits = DeferredCredits::default();
-        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_str("300.0").unwrap());
+        def_credits.insert(Slot::new(1, 0), addr1, Amount::from_raw(300000000000));
 
         let pos_changes = PoSChanges {
             roll_changes,

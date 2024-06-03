@@ -1065,8 +1065,8 @@ mod test {
             Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
             String::from("test"),
             10000000,
-            Amount::from_str("1").unwrap(),
-            Amount::from_str("1").unwrap(),
+            Amount::from_raw(1000000000),
+            Amount::from_raw(1000000000),
             Slot::new(2, 0),
             Slot::new(3, 0),
             vec![1, 2, 3, 4],
@@ -1079,7 +1079,7 @@ mod test {
             .insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
-        let amount = Amount::from_str("1").unwrap();
+        let amount = Amount::from_raw(1000000000);
         let bytecode = Bytecode(vec![1, 2, 3]);
         let ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),

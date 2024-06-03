@@ -155,7 +155,7 @@ pub fn get_initials() -> (NamedTempFile, HashMap<Address, LedgerEntry>) {
         ledger.insert(
             addr,
             LedgerEntry {
-                balance: Amount::from_str("300_000").unwrap(),
+                balance: Amount::from_raw(300000000000000),
                 ..Default::default()
             },
         );

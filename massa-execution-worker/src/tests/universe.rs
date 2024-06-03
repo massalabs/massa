@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    str::FromStr,
     sync::Arc,
 };
 
@@ -165,7 +164,7 @@ impl ExecutionTestUniverse {
             // here we use 1.5B as most of the tests perform a SC creation:
             // 314_000_000 (SP COMPIL) + 745_000_000 (CL COMPIL) + margin
             max_gas: 1_500_000_000,
-            max_coins: Amount::from_str("5000000").unwrap(),
+            max_coins: Amount::from_raw(5000000000000),
             datastore,
         };
         let op = Operation::new_verifiable(

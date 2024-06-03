@@ -4,7 +4,6 @@ use crate::AsyncMessage;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_signature::KeyPair;
 use rand::Rng;
-use std::str::FromStr;
 
 /// This file defines tools to test the asynchronous pool bootstrap
 
@@ -23,7 +22,7 @@ pub fn get_random_message(fee: Option<Amount>, thread_count: u8) -> AsyncMessage
         String::from("test"),
         10_000,
         fee.unwrap_or_default(),
-        Amount::from_str("100").unwrap(),
+        Amount::from_raw(100000000000),
         Slot::new(2, 0),
         Slot::new(4, 0),
         vec![1, 2, 3],

@@ -454,8 +454,8 @@ async fn send_operations_low_fee() {
     let addr: SocketAddr = "[::]:5049".parse().unwrap();
     let (mut api_public, mut config) = start_public_api(addr);
 
-    config.minimal_fees = Amount::from_str("0.01").unwrap();
-    api_public.0.api_settings.minimal_fees = Amount::from_str("0.01").unwrap();
+    config.minimal_fees = Amount::from_raw(10000000);
+    api_public.0.api_settings.minimal_fees = Amount::from_raw(10000000);
 
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl.expect_clone_box().returning(|| {
@@ -559,6 +559,7 @@ async fn send_operations() {
         serialized_content: operation.serialized_data,
     };
 
+    dbg!(serde_json::to_string(&input).unwrap());
     let response: Vec<OperationId> = client
         .request("send_operations", rpc_params![vec![input]])
         .await
@@ -762,6 +763,39 @@ async fn execute_read_only_bytecode() {
     assert!(response.is_err());
     api_public_handle.stop().await;
 }
+#[test]
+fn test_amount() {
+    // decimal now return error
+    assert!(Amount::from_str("15463.123").is_err());
+    assert!(Amount::from_str("100.0").is_err());
+
+    // from str now uses nanoMassa
+    let amount = Amount::from_str("100").unwrap(); // nanoMassa
+
+    // print no longer display massa unit as decimal
+    // print display nanoMassa
+    // println!("{}", amount); // Should print 100 (nanoMassa)
+
+    // to_raw return nanoMassa as u64 like before
+    assert_eq!(amount.to_raw(), 100);
+    // to_string return nanoMassa as string
+    assert_eq!(amount.to_string(), "100".to_string());
+
+    let serialized_serde = serde_json::to_string(&amount).unwrap();
+    assert_eq!(serialized_serde, "100".to_string());
+
+    // serde from_str
+    let deserialized_serde: Amount = serde_json::from_str(&serialized_serde).unwrap();
+    // amount from_str
+    let deserialized_amount: Amount = Amount::from_str(&serialized_serde).unwrap();
+
+    assert_eq!(deserialized_serde.to_string(), "100");
+    assert_eq!(deserialized_serde.to_raw(), 100);
+
+    assert_eq!(deserialized_amount.to_string(), "100");
+    assert_eq!(deserialized_amount.to_raw(), 100);
+    assert_eq!(deserialized_serde, deserialized_amount);
+}
 
 #[tokio::test]
 async fn execute_read_only_call() {
@@ -821,7 +855,7 @@ async fn execute_read_only_call() {
         target_function: "hello".to_string(),
         parameter: vec![],
         caller_address: None,
-        fee: None,
+        fee: Some(Amount::from_raw(10000000)),
         coins: None,
     }]];
     let response: Vec<ExecuteReadOnlyResponse> = client
@@ -842,8 +876,8 @@ async fn get_addresses() {
     exec_ctrl.expect_get_addresses_infos().returning(|a, _s| {
         a.iter()
             .map(|_addr| ExecutionAddressInfo {
-                candidate_balance: Amount::from_str("100000").unwrap(),
-                final_balance: Amount::from_str("80000").unwrap(),
+                candidate_balance: Amount::from_raw(10000000),
+                final_balance: Amount::from_raw(80000),
                 final_roll_count: 55,
                 final_datastore_keys: std::collections::BTreeSet::new(),
                 candidate_roll_count: 12,

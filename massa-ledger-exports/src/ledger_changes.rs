@@ -208,7 +208,7 @@ impl Serializer<LedgerEntryUpdate> for LedgerEntryUpdateSerializer {
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let amount = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -276,7 +276,7 @@ impl Deserializer<LedgerEntryUpdate> for LedgerEntryUpdateDeserializer {
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str("1").unwrap();
+    /// let amount = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -377,7 +377,7 @@ impl Serializer<LedgerChanges> for LedgerChangesSerializer {
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str("1").unwrap();
+    /// let balance = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
@@ -459,7 +459,7 @@ impl Deserializer<LedgerChanges> for LedgerChangesDeserializer {
     /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str("1").unwrap();
+    /// let balance = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,

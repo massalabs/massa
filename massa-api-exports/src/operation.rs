@@ -71,14 +71,13 @@ mod tests {
     use massa_models::{amount::Amount, operation::OperationType};
     use serial_test::serial;
     use std::collections::BTreeMap;
-    use std::str::FromStr;
 
     #[test]
     #[serial]
     fn test_execute_sc_with_datastore() {
         let expected_op = OperationType::ExecuteSC {
             max_gas: 123,
-            max_coins: Amount::from_str("5000000").unwrap(),
+            max_coins: Amount::from_raw(5000000),
             data: vec![23u8, 123u8, 44u8],
             datastore: BTreeMap::from([
                 (vec![1, 2, 3], vec![4, 5, 6, 7, 8, 9]),
