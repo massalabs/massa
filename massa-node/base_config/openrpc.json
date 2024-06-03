@@ -148,8 +148,7 @@
                 "schema": {
                     "type": "array",
                     "items": {
-                        "type": "string",
-                        "format": "byte"
+                        "type": "number"
                     }
                 },
                 "name": "Addresses bytecode array"
@@ -1516,7 +1515,7 @@
                                     "type": "object"
                                 },
                                 "amount": {
-                                    "type": "string"
+                                    "$ref": "#/components/schemas/Amount"
                                 }
                             }
                         },
@@ -1584,6 +1583,11 @@
                 },
                 "additionalProperties": false
             },
+            "Amount": {
+                "title": "Amount",
+                "description": "Amount in nanoMassa",
+                "type": "integer"
+            },
             "ApiRequest": {
                 "title": "ApiRequest",
                 "description": "ApiRequest for apiV2",
@@ -1607,15 +1611,15 @@
                 "properties": {
                     "candidate_balance": {
                         "description": "Represent an Amount in coins",
-                        "type": "string"
+                        "$ref": "#/components/schemas/Amount"
                     },
                     "final_balance": {
                         "description": "Represent an Amount in coins",
-                        "type": "string"
+                        "$ref": "#/components/schemas/Amount"
                     },
                     "locked_balance": {
                         "description": "Represent an Amount in coins",
-                        "type": "string"
+                        "$ref": "#/components/schemas/Amount"
                     }
                 },
                 "additionalProperties": false
@@ -3107,7 +3111,8 @@
                                 "type": "null"
                             },
                             {
-                                "type": "number"
+                                "$ref": "#/components/schemas/Amount",
+                                "description": "Amount in nanoMassa"
                             }
                         ]
                     },
@@ -3395,11 +3400,11 @@
                     },
                     "amount": {
                         "description": "Amount transferred",
-                        "type": "integer"
+                        "$ref": "#/components/schemas/Amount"
                     },
                     "effective_amount_received": {
                         "description": "Amount received by the receiver",
-                        "type": "integer"
+                        "$ref": "#/components/schemas/Amount"
                     },
                     "context": {
                         "description": "Context of the transfer : operation or asyncronous execution",
@@ -3514,6 +3519,14 @@
                 "description": "A AddressInfo object",
                 "schema": {
                     "$ref": "#/components/schemas/AddressInfo"
+                }
+            },
+            "Amount": {
+                "name": "Amount",
+                "summary": "Amount",
+                "description": "A Amount value in nanoMassa",
+                "schema": {
+                    "$ref": "#/components/schemas/Amount"
                 }
             },
             "BlockId": {
