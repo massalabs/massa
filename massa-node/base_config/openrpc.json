@@ -1584,8 +1584,6 @@
                 "additionalProperties": false
             },
             "Amount": {
-                "title": "Amount",
-                "description": "Amount in nanoMassa",
                 "type": "integer"
             },
             "ApiRequest": {
@@ -2615,34 +2613,6 @@
                 },
                 "additionalProperties": false
             },
-            "LedgerInfo": {
-                "title": "SceLedgerInfo",
-                "required": [
-                    "balance",
-                    "datastore"
-                ],
-                "type": "object",
-                "properties": {
-                    "balance": {
-                        "description": "Represent an amount",
-                        "type": "string"
-                    },
-                    "module": {
-                        "description": "Stored bytecode",
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
-                    "datastore": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/DataStore"
-                        }
-                    }
-                },
-                "additionalProperties": false
-            },
             "NetworkStats": {
                 "title": "NetworkStats",
                 "description": "Network stats",
@@ -3523,7 +3493,6 @@
             },
             "Amount": {
                 "name": "Amount",
-                "summary": "Amount",
                 "description": "A Amount value in nanoMassa",
                 "schema": {
                     "$ref": "#/components/schemas/Amount"
