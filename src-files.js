@@ -1,6 +1,6 @@
 var srcIndex = JSON.parse('{\
 "massa_api":["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]],\
-"massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
+"massa_api_exports":["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]],\
 "massa_async_pool":["",[],["changes.rs","config.rs","lib.rs","mapping_grpc.rs","message.rs","pool.rs"]],\
 "massa_bootstrap":["",[["bindings",[],["client.rs","server.rs"]]],["bindings.rs","client.rs","error.rs","lib.rs","listener.rs","messages.rs","server.rs","settings.rs","tools.rs","white_black_list.rs"]],\
 "massa_channel":["",[],["lib.rs","receiver.rs","sender.rs"]],\
