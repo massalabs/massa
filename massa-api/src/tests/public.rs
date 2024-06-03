@@ -777,7 +777,7 @@ fn test_amount() {
     // println!("{}", amount); // Should print 100 (nanoMassa)
 
     // to_raw return nanoMassa as u64 like before
-    assert_eq!(amount.to_raw(), 000000000100);
+    assert_eq!(amount.to_raw(), 100);
     // to_string return nanoMassa as string
     assert_eq!(amount.to_string(), "100".to_string());
 
@@ -790,10 +790,10 @@ fn test_amount() {
     let deserialized_amount: Amount = Amount::from_str(&serialized_serde).unwrap();
 
     assert_eq!(deserialized_serde.to_string(), "100");
-    assert_eq!(deserialized_serde.to_raw(), 000000000100);
+    assert_eq!(deserialized_serde.to_raw(), 100);
 
     assert_eq!(deserialized_amount.to_string(), "100");
-    assert_eq!(deserialized_amount.to_raw(), 000000000100);
+    assert_eq!(deserialized_amount.to_raw(), 100);
     assert_eq!(deserialized_serde, deserialized_amount);
 }
 

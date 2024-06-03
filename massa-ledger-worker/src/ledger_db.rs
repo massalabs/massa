@@ -570,7 +570,6 @@ mod tests {
     use parking_lot::RwLock;
     use std::collections::BTreeMap;
     use std::ops::Bound::Included;
-    use std::str::FromStr;
     use std::sync::Arc;
     use tempfile::TempDir;
 

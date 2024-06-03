@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use super::BlockTestFactory;
 use massa_consensus_exports::MockConsensusController;
