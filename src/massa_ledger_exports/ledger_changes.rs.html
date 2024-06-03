@@ -1222,7 +1222,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let amount = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -1290,7 +1290,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let amount = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -1391,7 +1391,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let balance = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
@@ -1473,7 +1473,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let balance = Amount::from_raw(1000000000);
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,

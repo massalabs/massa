@@ -2390,8 +2390,8 @@
             Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
             String::from(<span class="string">&quot;test&quot;</span>),
             <span class="number">10000000</span>,
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Amount::from_raw(<span class="number">1000000000</span>),
+            Amount::from_raw(<span class="number">1000000000</span>),
             Slot::new(<span class="number">2</span>, <span class="number">0</span>),
             Slot::new(<span class="number">3</span>, <span class="number">0</span>),
             <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
@@ -2404,7 +2404,7 @@
             </span>.insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
-        <span class="kw">let </span>amount = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
+        <span class="kw">let </span>amount = Amount::from_raw(<span class="number">1000000000</span>);
         <span class="kw">let </span>bytecode = Bytecode(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
         <span class="kw">let </span>ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),
