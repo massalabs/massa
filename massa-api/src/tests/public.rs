@@ -454,8 +454,8 @@ async fn send_operations_low_fee() {
     let addr: SocketAddr = "[::]:5049".parse().unwrap();
     let (mut api_public, mut config) = start_public_api(addr);
 
-    config.minimal_fees = Amount::from_str("10000000").unwrap();
-    api_public.0.api_settings.minimal_fees = Amount::from_str("10000000").unwrap();
+    config.minimal_fees = Amount::from_raw(10000000);
+    api_public.0.api_settings.minimal_fees = Amount::from_raw(10000000);
 
     let mut pool_ctrl = MockPoolController::new();
     pool_ctrl.expect_clone_box().returning(|| {
@@ -774,7 +774,7 @@ fn test_amount() {
 
     // print no longer display massa unit as decimal
     // print display nanoMassa
-    println!("{}", amount); // Should print 100 (nanoMassa)
+    // println!("{}", amount); // Should print 100 (nanoMassa)
 
     // to_raw return nanoMassa as u64 like before
     assert_eq!(amount.to_raw(), 000000000100);
@@ -855,7 +855,7 @@ async fn execute_read_only_call() {
         target_function: "hello".to_string(),
         parameter: vec![],
         caller_address: None,
-        fee: Some(Amount::from_str("10000000").unwrap()),
+        fee: Some(Amount::from_raw(10000000)),
         coins: None,
     }]];
     let response: Vec<ExecuteReadOnlyResponse> = client
@@ -876,8 +876,8 @@ async fn get_addresses() {
     exec_ctrl.expect_get_addresses_infos().returning(|a| {
         a.iter()
             .map(|_addr| ExecutionAddressInfo {
-                candidate_balance: Amount::from_str("100000").unwrap(),
-                final_balance: Amount::from_str("80000").unwrap(),
+                candidate_balance: Amount::from_raw(10000000),
+                final_balance: Amount::from_raw(80000),
                 final_roll_count: 55,
                 final_datastore_keys: std::collections::BTreeSet::new(),
                 candidate_roll_count: 12,

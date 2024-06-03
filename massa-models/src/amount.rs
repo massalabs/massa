@@ -269,10 +269,8 @@ impl fmt::Debug for Amount {
     }
 }
 
-/// build an Amount from decimal string form (like "10.33")
+/// build an Amount from nanoMassa string (like "11230000000")
 /// note that this will fail if the string format is invalid
-/// or if the conversion would cause an overflow, underflow or precision loss
-///
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
@@ -449,7 +447,6 @@ impl serde::Serialize for Amount {
     where
         S: serde::Serializer,
     {
-        // let a = format!("{}", self.to_raw());
         serializer.serialize_u64(self.to_raw())
     }
 }

@@ -110,7 +110,7 @@ fn final_state_boilerplate(
     ledger_controller.set_expectations(|ledger_controller| {
         ledger_controller
             .expect_get_balance()
-            .returning(move |_| Some(Amount::from_str("100").unwrap()));
+            .returning(move |_| Some(Amount::from_raw(100000000000)));
         if let Some(saved_bytecode) = saved_bytecode {
             ledger_controller
                 .expect_get_bytecode()
@@ -254,7 +254,7 @@ fn test_readonly_execution() {
         .set_expectations(|ledger_controller| {
             ledger_controller
                 .expect_get_balance()
-                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+                .returning(move |_| Some(Amount::from_raw(100000000000)));
             ledger_controller
                 .expect_entry_exists()
                 .times(1)

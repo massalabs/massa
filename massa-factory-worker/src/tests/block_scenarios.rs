@@ -131,7 +131,7 @@ fn basic_creation_with_operation() {
         .returning(move |slot| {
             assert_eq!(*slot, Slot::new(1, 0));
             let content = Operation {
-                fee: Amount::from_str("10000000").unwrap(),
+                fee: Amount::from_raw(10000000000000000),
                 expire_period: 2,
                 op: OperationType::RollBuy { roll_count: 1 },
             };

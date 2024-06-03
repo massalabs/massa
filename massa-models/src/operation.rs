@@ -724,7 +724,7 @@ impl Serializer<OperationType> for OperationTypeSerializer {
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    max_coins: Amount::from_str("5000000").unwrap(),
+    ///    max_coins: Amount::from_raw(5000000000000000),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
