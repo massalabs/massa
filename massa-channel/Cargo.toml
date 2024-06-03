@@ -1,6 +1,6 @@
 [package]
 name = "massa_channel"
-version = "28.3.0"
+version = "2.2.0"
 edition = "2021"
 
 [features]

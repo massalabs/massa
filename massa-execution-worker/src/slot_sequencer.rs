@@ -115,20 +115,23 @@ impl SlotSequencer {
         // This is the max between the latest CSS-final slot, the latest blockclique slot,
         // and the latest slot to be executed in time.
         let max_slot = std::cmp::max(
-            std::cmp::max(
-                *self
-                    .latest_consensus_final_slots
-                    .iter()
-                    .max()
-                    .expect("latest_consensus_final_slots is empty"),
-                initial_blockclique
-                    .keys()
-                    .max()
-                    .copied()
-                    .unwrap_or_else(|| Slot::new(self.config.last_start_period, 0)),
-            ),
-            self.get_time_cursor(),
+            *self
+                .latest_consensus_final_slots
+                .iter()
+                .max()
+                .expect("latest_consensus_final_slots is empty"),
+            initial_blockclique
+                .keys()
+                .max()
+                .copied()
+                .unwrap_or_else(|| Slot::new(self.config.last_start_period, 0)),
         );
+
+        // slot-replayer doesn't need the "latest slot to be executed in time"
+        // as it replays blocks in known period of time. Moreover this may
+        // introduce huge performance loss.
+        #[cfg(not(feature = "slot-replayer"))]
+        let max_slot = std::cmp::max(max_slot, self.get_time_cursor());
 
         // Iterate from the starting slot to the `max_slot` to build the slot sequence.
         while slot <= max_slot {
@@ -209,9 +212,17 @@ impl SlotSequencer {
     pub fn update(
         &mut self,
         mut new_consensus_final_blocks: HashMap<Slot, BlockId>,
+        #[cfg_attr(feature = "slot-replayer", allow(unused_assignments))]
         mut new_blockclique: Option<HashMap<Slot, BlockId>>,
         mut new_blocks_metadata: PreHashMap<BlockId, ExecutionBlockMetadata>,
     ) {
+        // The slot-replay don't care about speculative execution. We clear
+        // them.
+        #[cfg(feature = "slot-replayer")]
+        {
+            new_blockclique = None;
+        }
+
         // If the slot sequence is empty, initialize it by calling `Self::init` and quit.
         // This happens on the first call to `Self::update` (see the doc of `Self::update`).
         if self.sequence.is_empty() {
@@ -589,6 +600,8 @@ impl SlotSequencer {
         }
 
         // Check if the next candidate slot is available for execution.
+        #[cfg(not(feature = "slot-replayer"))]
+        // slot-replayer only replay final slot
         {
             // Get the slot just after the last executed candidate slot.
             let next_candidate_slot = self
@@ -706,6 +719,8 @@ impl SlotSequencer {
         // Here we know that there are no SCE-final slots to execute.
 
         // Low priority: execute the next candidate slot that is available for execution, if any.
+        #[cfg(not(feature = "slot-replayer"))]
+        // slot-replayer does not care about spectulative execution
         {
             // Get the slot just after the latest executed speculative slot.
             let slot = self

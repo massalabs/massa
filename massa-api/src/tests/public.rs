@@ -873,7 +873,7 @@ async fn get_addresses() {
     let (mut api_public, config) = start_public_api(addr);
 
     let mut exec_ctrl = MockExecutionController::new();
-    exec_ctrl.expect_get_addresses_infos().returning(|a| {
+    exec_ctrl.expect_get_addresses_infos().returning(|a, _s| {
         a.iter()
             .map(|_addr| ExecutionAddressInfo {
                 candidate_balance: Amount::from_raw(10000000),

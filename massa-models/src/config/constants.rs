@@ -51,7 +51,7 @@ lazy_static::lazy_static! {
             )
         )
     } else {
-        MassaTime::from_millis(1704289800000) // Wednesday, January 3, 2024 1:50:00 PM UTC
+        MassaTime::from_millis(1705312800000) // Monday, January 15, 2024 10:00:00 AM UTC
     };
 
     /// TESTNET: time when the blockclique is ended.
@@ -70,9 +70,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.28.3"
+            "SAND.2.2"
         } else {
-            "DEVN.28.3"
+            "MAIN.2.2"
         }
         .parse()
         .unwrap()
@@ -148,10 +148,7 @@ pub const OPERATION_VALIDITY_PERIODS: u64 = 10;
 pub const KEEP_EXECUTED_HISTORY_EXTRA_PERIODS: u64 = 10;
 /// cycle duration in periods
 pub const PERIODS_PER_CYCLE: u64 = 128;
-/// Number of periods between two backups
-pub const PERIODS_BETWEEN_BACKUPS: u64 = 100 * PERIODS_PER_CYCLE;
-/// Maximum number of backups to keep. If reached, will delete the oldest ones.
-pub const MAX_BACKUPS_TO_KEEP: Option<usize> = Some(10);
+
 /// Number of cycles saved in `PoSFinalState`
 ///
 /// 6 for PoS itself so we can check denuncations on selections at C-2 after a bootstrap

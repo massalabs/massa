@@ -257,6 +257,7 @@ impl AsyncPool {
                 self.message_info_cache.insert(message_id, message.into());
             }
 
+            // The -1 is to remove the IDENT byte at the end of the key
             last_id = Some(
                 serialized_message_id[ASYNC_POOL_PREFIX.len()..serialized_message_id.len() - 1]
                     .to_vec(),
@@ -1098,6 +1099,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1139,6 +1141,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1200,6 +1203,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1256,6 +1260,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1312,6 +1317,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1361,6 +1367,7 @@ mod tests {
             max_final_state_elements_size: 100,
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),

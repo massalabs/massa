@@ -19,6 +19,7 @@ use massa_models::{
 };
 use massa_pos_exports::ProductionStats;
 use massa_storage::Storage;
+use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(feature = "execution-trace")]
@@ -217,7 +218,7 @@ pub enum SlotExecutionOutput {
 }
 
 /// structure storing a block id + network versions (from a block header)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecutedBlockInfo {
     /// Block id
     pub block_id: BlockId,
@@ -228,7 +229,7 @@ pub struct ExecutedBlockInfo {
 }
 
 /// structure describing the output of a single execution
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecutionOutput {
     /// slot
     pub slot: Slot,
@@ -243,6 +244,7 @@ pub struct ExecutionOutput {
     pub slot_trace: Option<(SlotAbiCallStack, Vec<Transfer>)>,
     /// storage
     #[cfg(feature = "dump-block")]
+    #[serde(skip_serializing)]
     pub storage: Option<Storage>,
     /// Deferred credits execution (empty if execution-info feature is NOT enabled)
     pub deferred_credits_execution: Vec<(Address, Result<Amount, String>)>,

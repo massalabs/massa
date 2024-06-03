@@ -10,9 +10,12 @@
 **/target
 massa-client/config/*
 massa-client/wallet.dat
+massa-execution-worker/test_db/*
+massa-execution-worker/**.bin
 massa-node/config/*
 massa-node/logs.txt
 massa-node/storage/*
+massa-node/dump/*
 massa-node/storage/peers.json
 massa-node/src/tests/storage
 shell.nix
