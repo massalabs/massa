@@ -148,7 +148,10 @@
                 "schema": {
                     "type": "array",
                     "items": {
-                        "type": "number"
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
                     }
                 },
                 "name": "Addresses bytecode array"
@@ -1515,7 +1518,7 @@
                                     "type": "object"
                                 },
                                 "amount": {
-                                    "type": "number"
+                                    "type": "string"
                                 }
                             }
                         },
@@ -3082,7 +3085,7 @@
                             },
                             {
                                 "description": "Amount in coins",
-                                "type": "number"
+                                "type": "string"
                             }
                         ]
                     },
@@ -3093,7 +3096,7 @@
                                 "type": "null"
                             },
                             {
-                                "type": "number"
+                                "type": "string"
                             }
                         ]
                     }
