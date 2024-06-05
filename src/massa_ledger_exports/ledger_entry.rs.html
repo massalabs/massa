@@ -266,7 +266,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_raw(1000000000);
+    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
@@ -328,7 +328,7 @@
     /// let key = &quot;hello world&quot;.as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_raw(1000000000);
+    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,

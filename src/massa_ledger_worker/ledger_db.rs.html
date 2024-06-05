@@ -680,6 +680,7 @@
 <a href="#680" id="680">680</a>
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1252,6 +1253,7 @@
     <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>std::collections::BTreeMap;
     <span class="kw">use </span>std::ops::Bound::Included;
+    <span class="kw">use </span>std::str::FromStr;
     <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::TempDir;
 
@@ -1263,12 +1265,12 @@
         data.insert(<span class="string">b&quot;2&quot;</span>.to_vec(), <span class="string">b&quot;b&quot;</span>.to_vec());
         data.insert(<span class="string">b&quot;3&quot;</span>.to_vec(), <span class="string">b&quot;c&quot;</span>.to_vec());
         <span class="kw">let </span>entry = LedgerEntry {
-            balance: Amount::from_raw(<span class="number">42000000000</span>),
+            balance: Amount::from_str(<span class="string">&quot;42&quot;</span>).unwrap(),
             datastore: data.clone(),
             ..Default::default()
         };
         <span class="kw">let </span>entry_update = LedgerEntryUpdate {
-            balance: SetOrKeep::Set(Amount::from_raw(<span class="number">21000000000</span>)),
+            balance: SetOrKeep::Set(Amount::from_str(<span class="string">&quot;21&quot;</span>).unwrap()),
             bytecode: SetOrKeep::Keep,
             ..Default::default()
         };
@@ -1328,7 +1330,7 @@
                 )
                 .unwrap()
                 .<span class="number">1</span>,
-            Amount::from_raw(<span class="number">21000000000</span>)
+            Amount::from_str(<span class="string">&quot;21&quot;</span>).unwrap()
         );
         <span class="macro">assert_eq!</span>(data, ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr));
 

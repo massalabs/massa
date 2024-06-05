@@ -490,7 +490,7 @@
             },
         );
         <span class="kw">let </span><span class="kw-2">mut </span>def_credits = DeferredCredits::default();
-        def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">0</span>), addr1, Amount::from_raw(<span class="number">300000000000</span>));
+        def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">0</span>), addr1, Amount::from_str(<span class="string">&quot;300.0&quot;</span>).unwrap());
 
         <span class="kw">let </span>pos_changes = PoSChanges {
             roll_changes,

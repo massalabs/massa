@@ -703,7 +703,7 @@
             Address::from_str(<span class="string">&quot;AU12nfJdBNotWffSEDDCS9mMXAxDbHbAVM9GW7pvVJoLxdCeeroX8&quot;</span>).unwrap();
 
         <span class="kw">let </span><span class="kw-2">mut </span>def_credits = DeferredCredits::default();
-        def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">0</span>), addr1, Amount::zero());
+        def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">0</span>), addr1, Amount::from_str(<span class="string">&quot;0.0&quot;</span>).unwrap());
         def_credits.insert(Slot::new(<span class="number">1</span>, <span class="number">3</span>), addr2, Amount::from_raw(u64::MAX));
 
         <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
