@@ -2664,12 +2664,13 @@ fn execution_trace() {
     finalized_waitpoint.wait();
 
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
-    let join_handle = thread::spawn(move || {
-        loop {
-            if let Ok(exec_traces) = receiver.blocking_recv() {
-                if exec_traces.1 == true {
-                    return Ok::<(massa_execution_exports::SlotAbiCallStack, bool), tokio::sync::broadcast::error::RecvError>(exec_traces);
-                }
+    let join_handle = thread::spawn(move || loop {
+        if let Ok(exec_traces) = receiver.blocking_recv() {
+            if exec_traces.1 == true {
+                return Ok::<
+                    (massa_execution_exports::SlotAbiCallStack, bool),
+                    tokio::sync::broadcast::error::RecvError,
+                >(exec_traces);
             }
         }
     });
@@ -2785,7 +2786,10 @@ fn execution_trace_nested() {
         loop {
             if let Ok(exec_traces) = receiver.blocking_recv() {
                 if exec_traces.1 == true {
-                    return Ok::<(massa_execution_exports::SlotAbiCallStack, bool), tokio::sync::broadcast::error::RecvError>(exec_traces);
+                    return Ok::<
+                        (massa_execution_exports::SlotAbiCallStack, bool),
+                        tokio::sync::broadcast::error::RecvError,
+                    >(exec_traces);
                 }
             }
         }
