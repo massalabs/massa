@@ -1857,7 +1857,7 @@
     }
 
     <span class="doccomment">/// Internal function called by is_db_valid
-    </span><span class="kw">pub fn </span>_is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AnyResult&lt;()&gt; {
+    </span><span class="kw">fn </span>_is_db_valid(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; AnyResult&lt;()&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// check if the execution trial hash is present and valid
