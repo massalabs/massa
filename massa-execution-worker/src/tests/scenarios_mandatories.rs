@@ -2665,15 +2665,13 @@ fn execution_trace() {
 
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || {
-        let exec_traces = receiver.blocking_recv();
-        /*
-        let exec_traces_2 = receiver.blocking_recv();
-        return vec![
-            exec_traces.expect("Execution output"),
-            exec_traces_2.expect("Final execution output"),
-        ];
-        */
-        return exec_traces;
+        loop {
+            if let Ok(exec_traces) = receiver.blocking_recv() {
+                if exec_traces.1 == true {
+                    return Ok::<(massa_execution_exports::SlotAbiCallStack, bool), tokio::sync::broadcast::error::RecvError>(exec_traces);
+                }
+            }
+        }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
     let (broadcast_result, _) = broadcast_result_.unwrap();
@@ -2784,8 +2782,13 @@ fn execution_trace_nested() {
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || {
         // Execution Output
-        let exec_traces = receiver.blocking_recv();
-        return exec_traces;
+        loop {
+            if let Ok(exec_traces) = receiver.blocking_recv() {
+                if exec_traces.1 == true {
+                    return Ok::<(massa_execution_exports::SlotAbiCallStack, bool), tokio::sync::broadcast::error::RecvError>(exec_traces);
+                }
+            }
+        }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
