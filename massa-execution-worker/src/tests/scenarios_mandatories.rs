@@ -606,6 +606,18 @@ fn send_and_receive_async_message() {
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    let destination = match *CHAINID {
+        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77658366 => {
+            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+        }
+        77658377 => {
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap()
+        }
+        _ => panic!("CHAINID not supported"),
+    };
+
     // Expected message from SC: send_message.ts (see massa unit tests src repo)
     let message = AsyncMessage {
         emission_slot: Slot {
@@ -616,8 +628,7 @@ fn send_and_receive_async_message() {
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
         // Note: generated address (from send_message.ts createSC call)
         //       this can changes when modification to the final state are done (see create_new_sc_address function)
-        destination: Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
-            .unwrap(),
+        destination,
         function: String::from("receive"),
         // value from SC: send_message.ts
         max_gas: 3000000,
@@ -668,15 +679,7 @@ fn send_and_receive_async_message() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            match changes
-                .ledger_changes
-                .0
-                .get(
-                    &Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
-                        .unwrap(),
-                )
-                .unwrap()
-            {
+            match changes.ledger_changes.0.get(&destination).unwrap() {
                 // sc has received the coins (0.0000001)
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
