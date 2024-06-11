@@ -2841,7 +2841,7 @@ fn execution_trace_nested() {
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
+                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
                 )
             },
             SCRuntimeAbiTraceValue {
@@ -2949,11 +2949,12 @@ fn test_dump_block() {
 
     let block_folder = &exec_cfg.block_dump_folder_path;
     #[cfg(feature = "file_storage_backend")]
-    let storage_backend = crate::storage_backend::FileStorageBackend::new(block_folder.to_owned());
+    let storage_backend =
+        crate::storage_backend::FileStorageBackend::new(block_folder.to_owned(), 10);
 
     #[cfg(feature = "db_storage_backend")]
     let storage_backend =
-        crate::storage_backend::RocksDBStorageBackend::new(block_folder.to_owned());
+        crate::storage_backend::RocksDBStorageBackend::new(block_folder.to_owned(), 10);
 
     let block_content = storage_backend.read(&block_slot).unwrap();
     let filled_block = FilledBlock::decode(&mut Cursor::new(block_content)).unwrap();
