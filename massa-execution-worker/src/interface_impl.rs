@@ -1183,6 +1183,16 @@ impl Interface for InterfaceImpl {
         if validity_end.1 >= self.config.thread_count {
             bail!("validity end thread exceeds the configuration thread count")
         }
+
+        if max_gas < self.config.gas_costs.max_instance_cost {
+            bail!("max gas is lower than the minimum instance cost")
+        }
+
+        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
+        {
+            bail!("validity end is earlier than the validity start")
+        }
+
         let target_addr = Address::from_str(target_address)?;
 
         // check that the target address is an SC address
@@ -1200,6 +1210,11 @@ impl Interface for InterfaceImpl {
 
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
+
+        if emission_slot > Slot::new(validity_start.0, validity_start.1) {
+            bail!("validity start is earlier than the current slot")
+        }
+
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
