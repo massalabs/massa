@@ -8,6 +8,7 @@ use std::{
 use crate::storage_backend::FileStorageBackend;
 #[cfg(feature = "db_storage_backend")]
 use crate::storage_backend::RocksDBStorageBackend;
+use cfg_if::cfg_if;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_execution_exports::{
@@ -108,6 +109,23 @@ impl TestUniverse for ExecutionTestUniverse {
             #[cfg(feature = "execution-trace")]
             slot_execution_traces_sender: tx_traces,
         };
+
+        cfg_if! {
+            if #[cfg(all(feature = "dump-block", feature = "db_storage_backend"))] {
+                let block_storage_backend = Arc::new(RwLock::new(RocksDBStorageBackend::new(
+                    config.block_dump_folder_path.clone(),
+                    10
+                )));
+            } else if #[cfg(all(feature = "dump-block", feature = "file_storage_backend"))] {
+                let block_storage_backend = Arc::new(RwLock::new(FileStorageBackend::new(
+                    config.block_dump_folder_path.clone(),
+                    10
+                )));
+            } else if #[cfg(feature = "dump-block")] {
+                compile_error!("feature dump-block require either db_storage_backend or file_storage_backend");
+            }
+        }
+
         let (module_manager, module_controller) = start_execution_worker(
             config.clone(),
             controllers.final_state.clone(),
@@ -122,15 +140,10 @@ impl TestUniverse for ExecutionTestUniverse {
                 std::time::Duration::from_secs(5),
             )
             .0,
-            #[cfg(feature = "file_storage_backend")]
-            Arc::new(RwLock::new(FileStorageBackend::new(
-                config.block_dump_folder_path.clone(),
-            ))),
-            #[cfg(feature = "db_storage_backend")]
-            Arc::new(RwLock::new(RocksDBStorageBackend::new(
-                config.block_dump_folder_path.clone(),
-            ))),
+            #[cfg(feature = "dump-block")]
+            block_storage_backend.clone(),
         );
+
         init_execution_worker(&config, &storage, module_controller.clone());
         let universe = Self {
             storage,

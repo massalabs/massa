@@ -69,7 +69,7 @@ async fn get_status() {
     let status = result.status.unwrap();
     assert_eq!(status.version, *VERSION.to_string());
     // Chain id == 77 for Node in sandbox mode otherwise it is always greater
-    assert!(status.chain_id > 77);
+    assert!(status.chain_id >= 77);
 
     stop_handle.stop();
 }
