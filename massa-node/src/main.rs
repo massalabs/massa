@@ -36,7 +36,11 @@ use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
 };
 use massa_execution_worker::start_execution_worker;
-#[cfg(all(feature = "dump-block", feature = "file_storage_backend"))]
+#[cfg(all(
+    feature = "dump-block",
+    feature = "file_storage_backend",
+    not(feature = "db_storage_backend")
+))]
 use massa_execution_worker::storage_backend::FileStorageBackend;
 #[cfg(all(feature = "dump-block", feature = "db_storage_backend"))]
 use massa_execution_worker::storage_backend::RocksDBStorageBackend;

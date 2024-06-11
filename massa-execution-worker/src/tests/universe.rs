@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-#[cfg(feature = "file_storage_backend")]
+#[cfg(all(feature = "file_storage_backend", not(feature = "db_storage_backend")))]
 use crate::storage_backend::FileStorageBackend;
 #[cfg(feature = "db_storage_backend")]
 use crate::storage_backend::RocksDBStorageBackend;
