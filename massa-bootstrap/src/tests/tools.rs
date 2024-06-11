@@ -1249,11 +1249,10 @@ pub fn parametric_test<F, T>(
     F: Fn(&T, &mut SmallRng),
 {
     #[cfg(feature = "heavy_testing")]
-    let duration = match std::env::var("NEXTEST_PROFILE") {
-        Ok(s) if s == String::from("ci") => duration,
+    let duration = match std::env::var("NEXTEST") {
+        Ok(s) if s == String::from("1") => duration,
         _ => duration * 120,
     };
-
     for reg in regressions {
         println!("[*] Regression {reg}");
         let mut rng = SmallRng::seed_from_u64(reg);
