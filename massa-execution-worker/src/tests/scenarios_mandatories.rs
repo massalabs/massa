@@ -2948,7 +2948,7 @@ fn test_dump_block() {
     drop(universe);
 
     let block_folder = &exec_cfg.block_dump_folder_path;
-    #[cfg(feature = "file_storage_backend")]
+    #[cfg(all(feature = "file_storage_backend", not(feature = "db_storage_backend")))]
     let storage_backend =
         crate::storage_backend::FileStorageBackend::new(block_folder.to_owned(), 10);
 

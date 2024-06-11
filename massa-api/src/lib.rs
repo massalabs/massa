@@ -50,6 +50,11 @@ use std::sync::{Arc, Condvar, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{info, warn};
 
+#[cfg(feature = "test-exports")]
+use massa_channel as _;
+#[cfg(feature = "test-exports")]
+use massa_grpc as _;
+
 mod api;
 mod api_trait;
 mod private;
