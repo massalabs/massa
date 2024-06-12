@@ -1500,6 +1500,10 @@
 <a href="#1500" id="1500">1500</a>
 <a href="#1501" id="1501">1501</a>
 <a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1538,7 +1542,11 @@
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
 };
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;file_storage_backend&quot;</span>))]
+<span class="attr">#[cfg(all(
+    feature = <span class="string">&quot;dump-block&quot;</span>,
+    feature = <span class="string">&quot;file_storage_backend&quot;</span>,
+    not(feature = <span class="string">&quot;db_storage_backend&quot;</span>)
+))]
 </span><span class="kw">use </span>massa_execution_worker::storage_backend::FileStorageBackend;
 <span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))]
 </span><span class="kw">use </span>massa_execution_worker::storage_backend::RocksDBStorageBackend;

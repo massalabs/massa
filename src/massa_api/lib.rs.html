@@ -400,6 +400,11 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -451,6 +456,11 @@
 <span class="kw">use </span>std::sync::{Arc, Condvar, Mutex};
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::{info, warn};
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+</span><span class="kw">use </span>massa_channel <span class="kw">as _</span>;
+<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+</span><span class="kw">use </span>massa_grpc <span class="kw">as _</span>;
 
 <span class="kw">mod </span>api;
 <span class="kw">mod </span>api_trait;
