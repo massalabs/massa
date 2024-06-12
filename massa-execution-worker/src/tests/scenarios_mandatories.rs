@@ -606,6 +606,18 @@ fn send_and_receive_async_message() {
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    let destination = match *CHAINID {
+        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77658366 => {
+            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+        }
+        77658377 => {
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap()
+        }
+        _ => panic!("CHAINID not supported"),
+    };
+
     // Expected message from SC: send_message.ts (see massa unit tests src repo)
     let message = AsyncMessage {
         emission_slot: Slot {
@@ -616,8 +628,7 @@ fn send_and_receive_async_message() {
         sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
         // Note: generated address (from send_message.ts createSC call)
         //       this can changes when modification to the final state are done (see create_new_sc_address function)
-        destination: Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
-            .unwrap(),
+        destination,
         function: String::from("receive"),
         // value from SC: send_message.ts
         max_gas: 3000000,
@@ -668,15 +679,7 @@ fn send_and_receive_async_message() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            match changes
-                .ledger_changes
-                .0
-                .get(
-                    &Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6")
-                        .unwrap(),
-                )
-                .unwrap()
-            {
+            match changes.ledger_changes.0.get(&destination).unwrap() {
                 // sc has received the coins (0.0000001)
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
@@ -2664,16 +2667,15 @@ fn execution_trace() {
     finalized_waitpoint.wait();
 
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
-    let join_handle = thread::spawn(move || {
-        let exec_traces = receiver.blocking_recv();
-        /*
-        let exec_traces_2 = receiver.blocking_recv();
-        return vec![
-            exec_traces.expect("Execution output"),
-            exec_traces_2.expect("Final execution output"),
-        ];
-        */
-        return exec_traces;
+    let join_handle = thread::spawn(move || loop {
+        if let Ok(exec_traces) = receiver.blocking_recv() {
+            if exec_traces.1 == true {
+                return Ok::<
+                    (massa_execution_exports::SlotAbiCallStack, bool),
+                    tokio::sync::broadcast::error::RecvError,
+                >(exec_traces);
+            }
+        }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
     let (broadcast_result, _) = broadcast_result_.unwrap();
@@ -2784,8 +2786,16 @@ fn execution_trace_nested() {
     let mut receiver = universe.broadcast_traces_channel_receiver.take().unwrap();
     let join_handle = thread::spawn(move || {
         // Execution Output
-        let exec_traces = receiver.blocking_recv();
-        return exec_traces;
+        loop {
+            if let Ok(exec_traces) = receiver.blocking_recv() {
+                if exec_traces.1 == true {
+                    return Ok::<
+                        (massa_execution_exports::SlotAbiCallStack, bool),
+                        tokio::sync::broadcast::error::RecvError,
+                    >(exec_traces);
+                }
+            }
+        }
     });
     let broadcast_result_ = join_handle.join().expect("Nothing received from thread");
 
@@ -2834,7 +2844,7 @@ fn execution_trace_nested() {
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
+                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
                 )
             },
             SCRuntimeAbiTraceValue {
@@ -2941,12 +2951,13 @@ fn test_dump_block() {
     drop(universe);
 
     let block_folder = &exec_cfg.block_dump_folder_path;
-    #[cfg(feature = "file_storage_backend")]
-    let storage_backend = crate::storage_backend::FileStorageBackend::new(block_folder.to_owned());
+    #[cfg(all(feature = "file_storage_backend", not(feature = "db_storage_backend")))]
+    let storage_backend =
+        crate::storage_backend::FileStorageBackend::new(block_folder.to_owned(), 10);
 
     #[cfg(feature = "db_storage_backend")]
     let storage_backend =
-        crate::storage_backend::RocksDBStorageBackend::new(block_folder.to_owned());
+        crate::storage_backend::RocksDBStorageBackend::new(block_folder.to_owned(), 10);
 
     let block_content = storage_backend.read(&block_slot).unwrap();
     let filled_block = FilledBlock::decode(&mut Cursor::new(block_content)).unwrap();

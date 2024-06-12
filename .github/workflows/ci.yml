@@ -209,7 +209,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
-          args: run --retries 10 --profile ci
+          args: run --retries 10 --profile ci --all-features
       - uses: actions-rs/cargo@v1
         with:
           command: clean

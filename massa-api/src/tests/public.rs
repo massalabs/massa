@@ -129,7 +129,7 @@ async fn get_status() {
     assert_eq!(response.network_stats.out_connection_count, 5);
     assert_eq!(response.config.thread_count, 32);
     // Chain id == 77 for Node in sandbox mode otherwise it is always greater
-    assert!(response.chain_id > 77);
+    assert!(response.chain_id >= 77);
 
     api_public_handle.stop().await;
 }
