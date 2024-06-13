@@ -44,15 +44,14 @@ pub fn to_querystate_filter(
                     Address::from_str(&value.address)?,
                 ))
             }
-            exec::RequestItem::AddressBytecodeFinal(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(&value.address)?,
-                ))
-            }
+            exec::RequestItem::AddressBytecodeFinal(value) => Ok(
+                ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
+            ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(&value.address)?,
-                ))
+                Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    addr: Address::from_str(&value.address)?,
+                    prefix: value.prefix,
+                })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
