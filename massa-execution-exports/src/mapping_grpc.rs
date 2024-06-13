@@ -48,9 +48,10 @@ pub fn to_querystate_filter(
                 ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
             ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
-                Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate(
-                    Address::from_str(&value.address)?,
-                ))
+                Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    addr: Address::from_str(&value.address)?,
+                    prefix: value.prefix,
+                })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
