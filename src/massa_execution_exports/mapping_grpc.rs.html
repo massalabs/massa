@@ -351,7 +351,6 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -398,15 +397,14 @@
                     Address::from_str(<span class="kw-2">&amp;</span>value.address)<span class="question-mark">?</span>,
                 ))
             }
-            exec::RequestItem::AddressBytecodeFinal(value) =&gt; {
-                <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(<span class="kw-2">&amp;</span>value.address)<span class="question-mark">?</span>,
-                ))
-            }
+            exec::RequestItem::AddressBytecodeFinal(value) =&gt; <span class="prelude-val">Ok</span>(
+                ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(<span class="kw-2">&amp;</span>value.address)<span class="question-mark">?</span>),
+            ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) =&gt; {
-                <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::AddressBytecodeCandidate(
-                    Address::from_str(<span class="kw-2">&amp;</span>value.address)<span class="question-mark">?</span>,
-                ))
+                <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    addr: Address::from_str(<span class="kw-2">&amp;</span>value.address)<span class="question-mark">?</span>,
+                    prefix: value.prefix,
+                })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) =&gt; {
                 <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
