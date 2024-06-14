@@ -532,7 +532,7 @@ impl FinalState {
     }
 
     /// Internal function called by is_db_valid
-    pub fn _is_db_valid(&self) -> AnyResult<()> {
+    fn _is_db_valid(&self) -> AnyResult<()> {
         let db = self.db.read();
 
         // check if the execution trial hash is present and valid
