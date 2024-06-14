@@ -3406,7 +3406,7 @@
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: message.coins,
+                    coins: Default::default(),
                     owned_addresses: <span class="macro">vec!</span>[message.sender],
                     operation_datastore: <span class="prelude-val">None</span>,
                 },
