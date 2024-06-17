@@ -1158,6 +1158,9 @@
 <a href="#1158" id="1158">1158</a>
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1525,8 +1528,11 @@
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
     ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
-        <span class="self">self</span>.speculative_async_pool
-            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
+        <span class="self">self</span>.speculative_async_pool.take_batch_to_execute(
+            <span class="self">self</span>.slot,
+            max_gas,
+            async_msg_cst_gas_cost,
+        )
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for executing an active slot.
