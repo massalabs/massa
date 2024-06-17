@@ -1271,7 +1271,10 @@ impl ExecutionState {
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        for (opt_bytecode, message) in messages {
+        for (_message_id, message) in messages {
+            
+            let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
+            
             match self.execute_async_message(message, opt_bytecode) {
                 Ok(_message_return) => {
                     cfg_if::cfg_if! {
