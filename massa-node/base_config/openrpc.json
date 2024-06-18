@@ -2742,6 +2742,10 @@
                     "chain_id": {
                         "description": "Chain id",
                         "type": "number"
+                    },
+                    "minimal_fees": {
+                        "description": "Minimal fees to include operation in a block",
+                        "type": "string"
                     }
                 },
                 "additionalProperties": false
