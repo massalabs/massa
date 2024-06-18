@@ -364,12 +364,6 @@ impl ExecutionContext {
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self.speculative_async_pool.take_batch_to_execute(
-            self.slot,
-            max_gas,
-            async_msg_cst_gas_cost,
-        )
     ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
             .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
