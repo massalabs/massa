@@ -52,7 +52,7 @@ as seen after everything that happened so far in the context</p>
 so <em>excluding</em> the gas used by the last sc call.</p>
 </div><h2 id="implementations" class="small-section-header">Implementations<a href="#implementations" class="anchor">§</a></h2><div id="implementations-list"><details class="toggle implementors-toggle" open><summary><section id="impl-ExecutionContext" class="impl"><a class="src rightside" href="../../src/massa_execution_worker/context.rs.html#184-1119">source</a><a href="#impl-ExecutionContext" class="anchor">§</a><h3 class="code-header">impl <a class="struct" href="struct.ExecutionContext.html" title="struct massa_execution_worker::context::ExecutionContext">ExecutionContext</a></h3></section></summary><div class="impl-items"><details class="toggle method-toggle" open><summary><section id="method.new" class="method"><a class="src rightside" href="../../src/massa_execution_worker/context.rs.html#196-247">source</a><h4 class="code-header">pub(crate) fn <a href="#method.new" class="fn">new</a>(
     config: ExecutionConfig,
-    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn FinalStateController&gt;&gt;,
+    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn <a class="trait" href="../../massa_final_state/controller_trait/trait.FinalStateController.html" title="trait massa_final_state::controller_trait::FinalStateController">FinalStateController</a>&gt;&gt;,
     active_history: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../active_history/struct.ActiveHistory.html" title="struct massa_execution_worker::active_history::ActiveHistory">ActiveHistory</a>&gt;&gt;,
     module_cache: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;ModuleCache&gt;&gt;,
     mip_store: MipStore,
@@ -86,7 +86,7 @@ Note that the snapshot does not include slot-level information such as the slot 
     config: ExecutionConfig,
     slot: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     call_stack: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;ExecutionStackElement&gt;,
-    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn FinalStateController&gt;&gt;,
+    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn <a class="trait" href="../../massa_final_state/controller_trait/trait.FinalStateController.html" title="trait massa_final_state::controller_trait::FinalStateController">FinalStateController</a>&gt;&gt;,
     active_history: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../active_history/struct.ActiveHistory.html" title="struct massa_execution_worker::active_history::ActiveHistory">ActiveHistory</a>&gt;&gt;,
     module_cache: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;ModuleCache&gt;&gt;,
     mip_store: MipStore
@@ -119,7 +119,7 @@ This should be used before performing a read-only execution.</p>
     config: ExecutionConfig,
     slot: <a class="struct" href="../../massa_models/slot/struct.Slot.html" title="struct massa_models::slot::Slot">Slot</a>,
     opt_block_id: <a class="enum" href="https://doc.rust-lang.org/1.74.1/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="enum" href="../../massa_models/block_id/enum.BlockId.html" title="enum massa_models::block_id::BlockId">BlockId</a>&gt;,
-    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn FinalStateController&gt;&gt;,
+    final_state: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;dyn <a class="trait" href="../../massa_final_state/controller_trait/trait.FinalStateController.html" title="trait massa_final_state::controller_trait::FinalStateController">FinalStateController</a>&gt;&gt;,
     active_history: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;<a class="struct" href="../active_history/struct.ActiveHistory.html" title="struct massa_execution_worker::active_history::ActiveHistory">ActiveHistory</a>&gt;&gt;,
     module_cache: <a class="struct" href="https://doc.rust-lang.org/1.74.1/alloc/sync/struct.Arc.html" title="struct alloc::sync::Arc">Arc</a>&lt;RwLock&lt;ModuleCache&gt;&gt;,
     mip_store: MipStore
