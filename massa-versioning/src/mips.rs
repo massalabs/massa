@@ -7,23 +7,19 @@ use massa_time::MassaTime;
 #[allow(unused_imports)]
 use crate::versioning::{MipComponent, MipInfo, MipState};
 
-pub fn get_mip_list() -> [(MipInfo, MipState); 0] {
-    // placeholder
+pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     let mip_list = [
-        /*
-        (MipInfo {
-            name: "MIP-0000".to_string(),
-            version: 0,
-            components: BTreeMap::from([
-                (MipComponent::Address, 0),
-                (MipComponent::KeyPair, 0),
-            ]),
-            start: MassaTime::from_millis(0),
-            timeout: MassaTime::from_millis(0),
-            activation_delay: MassaTime::from_millis(0),
-        },
-        MipState::new(MassaTime::from_millis(0)))
-        */
+        (
+            MipInfo {
+                name: "MIP-0001-ASC-BugFix".to_string(),
+                version: 1,
+                components: BTreeMap::from([(MipComponent::AscExecution, 1)]),
+                start: MassaTime::from_millis(0), // TODO: set when known
+                timeout: MassaTime::from_millis(0), // TODO: set when known
+                activation_delay: MassaTime::from_millis(3 * 24 * 60 * 60 * 1000), // TODO: set when known, 3 days as an example
+            },
+            MipState::new(MassaTime::from_millis(0)),
+        ), // TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch)
     ];
 
     // debug!("MIP list: {:?}", mip_list);
