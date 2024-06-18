@@ -360,10 +360,28 @@ impl ExecutionContext {
     /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
     /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
     /// * `AsyncMessage` is the asynchronous message to execute
-    pub(crate) fn take_async_batch(
+    pub(crate) fn take_async_batch_v0(
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        self.speculative_async_pool.take_batch_to_execute(
+            self.slot,
+            max_gas,
+            async_msg_cst_gas_cost,
+        )
+    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
+        self.speculative_async_pool
+            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
+            .into_iter()
+            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
+            .collect()
+    }
+
+    pub(crate) fn take_async_batch_v1(
+        &mut self,
+        max_gas: u64,
+        async_msg_cst_gas_cost: u64
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.speculative_async_pool.take_batch_to_execute(
             self.slot,

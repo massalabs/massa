@@ -14,7 +14,7 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
                 name: "MIP-0001-ASC-BugFix".to_string(),
                 version: 1,
                 components: BTreeMap::from([(MipComponent::AscExecution, 1)]),
-                start: MassaTime::from_millis(0), // TODO: set when known
+                start: MassaTime::from_millis(0), // TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
                 timeout: MassaTime::from_millis(0), // TODO: set when known
                 activation_delay: MassaTime::from_millis(3 * 24 * 60 * 60 * 1000), // TODO: set when known, 3 days as an example
             },
