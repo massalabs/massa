@@ -26,6 +26,10 @@
 <a href="#26" id="26">26</a>
 <a href="#27" id="27">27</a>
 <a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
 </pre></div><pre class="rust"><code><span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
 
@@ -35,19 +39,23 @@
 <span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span><span class="kw">crate</span>::versioning::{MipComponent, MipInfo, MipState};
 
-<span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">1</span>] {
-    <span class="kw">let </span>mip_list = [
-        (
-            MipInfo {
-                name: <span class="string">&quot;MIP-0001-ASC-BugFix&quot;</span>.to_string(),
-                version: <span class="number">1</span>,
-                components: BTreeMap::from([(MipComponent::AscExecution, <span class="number">1</span>)]),
-                start: MassaTime::from_millis(<span class="number">0</span>), <span class="comment">// TODO: set when known
-                </span>timeout: MassaTime::from_millis(<span class="number">0</span>), <span class="comment">// TODO: set when known
-                </span>activation_delay: MassaTime::from_millis(<span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// TODO: set when known, 3 days as an example
-            </span>},
-            MipState::new(MassaTime::from_millis(<span class="number">0</span>)),
-        ), <span class="comment">// TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch)
+<span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">0</span>] {
+    <span class="comment">// placeholder
+    </span><span class="kw">let </span>mip_list = [
+        <span class="comment">/*
+        (MipInfo {
+            name: &quot;MIP-0000&quot;.to_string(),
+            version: 0,
+            components: BTreeMap::from([
+                (MipComponent::Address, 0),
+                (MipComponent::KeyPair, 0),
+            ]),
+            start: MassaTime::from_millis(0),
+            timeout: MassaTime::from_millis(0),
+            activation_delay: MassaTime::from_millis(0),
+        },
+        MipState::new(MassaTime::from_millis(0)))
+        */
     </span>];
 
     <span class="comment">// debug!(&quot;MIP list: {:?}&quot;, mip_list);
