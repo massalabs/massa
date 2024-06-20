@@ -22,7 +22,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, SetOrKeep};
+use massa_ledger_exports::{Applicable, LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
@@ -911,9 +911,7 @@ impl ExecutionContext {
         // take the ledger changes again to take into account the balance change of canceled messages
         let ledger_changes_canceled = self.speculative_ledger.take();
 
-        for (address, change) in ledger_changes_canceled.0 {
-            ledger_changes.0.insert(address, change);
-        }
+        ledger_changes.apply(ledger_changes_canceled);
 
         // update module cache
         let bc_updates = ledger_changes.get_bytecode_updates();
