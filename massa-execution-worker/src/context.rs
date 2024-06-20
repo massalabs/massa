@@ -894,7 +894,7 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // take the ledger changes first as they are needed for async messages and cache
-        let ledger_changes = self.speculative_ledger.take();
+        let mut ledger_changes = self.speculative_ledger.take();
 
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
@@ -906,6 +906,13 @@ impl ExecutionContext {
             if let Some(t) = self.cancel_async_message(&msg) {
                 cancel_async_message_transfers.push(t)
             }
+        }
+
+        // take the ledger changes again to take into account the balance change of canceled messages
+        let ledger_changes_canceled = self.speculative_ledger.take();
+
+        for (address, change) in ledger_changes_canceled.0 {
+            ledger_changes.0.insert(address, change);
         }
 
         // update module cache
