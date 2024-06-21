@@ -1123,7 +1123,7 @@ impl ExecutionState {
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: message.coins,
+                    coins: Default::default(),
                     owned_addresses: vec![message.sender],
                     operation_datastore: None,
                 },
