@@ -1808,7 +1808,7 @@
                         "type": "number"
                     },
                     "end_timestamp": {
-                        "description": "(Only in tesnets)\nTime in milliseconds when the blockclique started.",
+                        "description": "(Only in testnets)\nTime in milliseconds when the blockclique started.",
                         "oneOf": [
                             {
                                 "type": "null"
@@ -2123,7 +2123,7 @@
                         "type": "number"
                     },
                     "active_cursor": {
-                        "descritpion": "active execution cursor slot",
+                        "description": "active execution cursor slot",
                         "$ref": "#/components/schemas/Slot"
                     },
                     "final_cursor": {
@@ -2397,8 +2397,15 @@
                         "description": "When was it generated"
                     },
                     "block": {
-                        "$ref": "#/components/schemas/BlockId",
-                        "description": "Block Id"
+                        "description": "Block Id",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/BlockId"
+                            }
+                        ]
                     },
                     "read_only": {
                         "description": "Wether the event was generated during  read only call",
@@ -2416,8 +2423,15 @@
                         "type": "number"
                     },
                     "origin_operation_id": {
-                        "$ref": "#/components/schemas/OperationId",
-                        "description": "Origin operation id"
+                        "description": "Origin operation id",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "$ref": "#/components/schemas/OperationId"
+                            }
+                        ]
                     },
                     "is_final": {
                         "description": "Whether the event is final",
@@ -2877,7 +2891,7 @@
                         "$ref": "#/components/schemas/Transaction",
                         "description": "transfer coins from sender to recipient"
                     },
-                    "ExecutSC": {
+                    "ExecuteSC": {
                         "$ref": "#/components/schemas/ExecuteSC",
                         "description": "Execute a smart contract."
                     },
@@ -3328,14 +3342,29 @@
                     },
                     "execution_trail_hash_change": {
                         "description": "execution trail hash change",
-                        "type": "string"
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "Set": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "Set"
+                                ]
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
                     }
                 },
                 "additionalProperties": false
             },
             "Transaction": {
                 "title": "Transaction",
-                "description": "Transation",
+                "description": "Transaction",
                 "required": [
                     "amount",
                     "recipient_address"
@@ -3384,7 +3413,7 @@
                         "type": "string"
                     },
                     "context": {
-                        "description": "Context of the transfer : operation or asyncronous execution",
+                        "description": "Context of the transfer : operation or asynchronous execution",
                         "type": "object"
                     },
                     "succeed": {
