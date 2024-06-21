@@ -2272,8 +2272,6 @@
 <a href="#2272" id="2272">2272</a>
 <a href="#2273" id="2273">2273</a>
 <a href="#2274" id="2274">2274</a>
-<a href="#2275" id="2275">2275</a>
-<a href="#2276" id="2276">2276</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3399,7 +3397,7 @@
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: Default::default(),
+                    coins: message.coins,
                     owned_addresses: <span class="macro">vec!</span>[message.sender],
                     operation_datastore: <span class="prelude-val">None</span>,
                 },
@@ -3547,9 +3545,7 @@
 
         <span class="comment">// Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        </span><span class="kw">for </span>(_message_id, message) <span class="kw">in </span>messages {
-            <span class="kw">let </span>opt_bytecode = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_bytecode(<span class="kw-2">&amp;</span>message.destination);
-
+        </span><span class="kw">for </span>(opt_bytecode, message) <span class="kw">in </span>messages {
             <span class="kw">match </span><span class="self">self</span>.execute_async_message(message, opt_bytecode) {
                 <span class="prelude-val">Ok</span>(_message_return) =&gt; {
                     <span class="macro">cfg_if::cfg_if! </span>{
