@@ -22,7 +22,7 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
-use massa_ledger_exports::{Applicable, LedgerChanges, SetOrKeep};
+use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
@@ -894,7 +894,7 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // take the ledger changes first as they are needed for async messages and cache
-        let mut ledger_changes = self.speculative_ledger.take();
+        let mut ledger_changes = self.speculative_ledger.get_snapshot();
 
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
@@ -908,10 +908,7 @@ impl ExecutionContext {
             }
         }
 
-        // take the ledger changes again to take into account the balance change of canceled messages
-        let ledger_changes_canceled = self.speculative_ledger.take();
-
-        ledger_changes.apply(ledger_changes_canceled);
+        ledger_changes = self.speculative_ledger.take();
 
         // update module cache
         let bc_updates = ledger_changes.get_bytecode_updates();
