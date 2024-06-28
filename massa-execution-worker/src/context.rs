@@ -894,12 +894,11 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // take the ledger changes first as they are needed for async messages and cache
-        let mut ledger_changes = self.speculative_ledger.get_snapshot();
 
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
-            .settle_slot(&slot, &ledger_changes);
+            .settle_slot(&slot, &self.speculative_ledger.added_changes);
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
@@ -908,10 +907,8 @@ impl ExecutionContext {
             }
         }
 
-        ledger_changes = self.speculative_ledger.take();
-
         // update module cache
-        let bc_updates = ledger_changes.get_bytecode_updates();
+        let bc_updates = self.speculative_ledger.added_changes.get_bytecode_updates();
         {
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
@@ -937,7 +934,7 @@ impl ExecutionContext {
 
         // generate the execution output
         let state_changes = StateChanges {
-            ledger_changes,
+            ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
