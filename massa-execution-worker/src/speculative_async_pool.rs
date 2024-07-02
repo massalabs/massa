@@ -221,9 +221,14 @@ impl SpeculativeAsyncPool {
         }
 
         // Query eliminated messages
-        let eliminated_msg =
+        let mut eliminated_msg =
             self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
 
+        eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
+            SetUpdateOrDelete::Update(_v) => None,
+            SetUpdateOrDelete::Delete => None,
+        }));
         eliminated_msg
     }
 
