@@ -893,8 +893,6 @@ impl ExecutionContext {
         // execute the deferred credits coming from roll sells
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
-        // take the ledger changes first as they are needed for async messages and cache
-
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
