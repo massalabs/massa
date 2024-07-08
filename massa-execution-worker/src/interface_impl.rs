@@ -1339,7 +1339,11 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
-    fn get_asc_call_fee(&self, target_slot: (u64, u8), gas_limit: u64) -> Result<(bool, u64)> {
+    fn get_deferred_call_quote(
+        &self,
+        target_slot: (u64, u8),
+        gas_limit: u64,
+    ) -> Result<(bool, u64)> {
         // write-lock context
         let mut context = context_guard!(self);
 
@@ -1348,7 +1352,7 @@ impl Interface for InterfaceImpl {
         todo!()
     }
 
-    /// Register an asynchronous call
+    /// Register deferred call
     ///
     /// # Arguments
     /// * target_slot: tuple containing the period and thread of the target slot
@@ -1360,7 +1364,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// The id of the call
-    fn asc_call_register(
+    fn deferred_call_register(
         &self,
         target_slot: (u64, u8),
         target_addr: &str,
@@ -1385,7 +1389,7 @@ impl Interface for InterfaceImpl {
         }
 
         // check fee, slot, gas
-        let (available, fee_raw) = self.get_asc_call_fee(target_slot, max_gas)?;
+        let (available, fee_raw) = self.get_deferred_call_quote(target_slot, max_gas)?;
         if !available {
             bail!("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
         }
@@ -1422,14 +1426,14 @@ impl Interface for InterfaceImpl {
         todo!()
     }
 
-    /// Check if an asynchronous call exists
+    /// Check if an deferred call exists
     ///
     /// # Arguments
     /// * id: the id of the call
     ///
     /// # Returns
     /// true if the call exists, false otherwise
-    fn asc_call_exists(&self, id: &[u8]) -> Result<bool> {
+    fn deferred_call_exists(&self, id: &[u8]) -> Result<bool> {
         // write-lock context
         let mut context = context_guard!(self);
 
@@ -1442,7 +1446,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * id: the id of the call
-    fn asc_call_cancel(&self, id: &[u8]) -> Result<()> {
+    fn deferred_call_cancel(&self, id: &[u8]) -> Result<()> {
         // write-lock context
         let mut context = context_guard!(self);
 
