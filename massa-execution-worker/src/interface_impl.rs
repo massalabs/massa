@@ -7,6 +7,7 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
+use massa_asc::AsyncCall;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -1328,6 +1329,126 @@ impl Interface for InterfaceImpl {
     /// The byte array of the resulting hash
     fn hash_blake3(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         Ok(blake3::hash(bytes).into())
+    }
+
+    /// Get the number of fees needed to reserve space in the target slot
+    ///
+    /// # Arguments
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * gas_limit: the gas limit for the call
+    ///
+    /// # Returns
+    /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
+    fn get_asc_call_fee(&self, target_slot: (u64, u8), gas_limit: u64) -> Result<(bool, u64)> {
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        //TODO: interrogate the context to check for target slot availability and fees
+
+        todo!()
+    }
+
+    /// Register an asynchronous call
+    ///
+    /// # Arguments
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * target_addr: string representation of the target address
+    /// * target_func: string representation of the target function
+    /// * params: byte array of the parameters
+    /// * coins: the amount of coins to send
+    /// * max_gas: the gas limit for the call
+    ///
+    /// # Returns
+    /// The id of the call
+    fn asc_call_register(
+        &self,
+        target_slot: (u64, u8),
+        target_addr: &str,
+        target_func: &str,
+        params: &[u8],
+        coins: u64,
+        max_gas: u64,
+    ) -> Result<Vec<u8>> {
+        let target_addr = Address::from_str(target_addr)?;
+
+        // check that the target address is an SC address
+        if !matches!(target_addr, Address::SC(..)) {
+            bail!("target address is not a smart contract address")
+        }
+
+        // Length verifications
+        if target_func.len() > self.config.max_function_length as usize {
+            bail!("Function name is too large");
+        }
+        if params.len() > self.config.max_parameter_length as usize {
+            bail!("Parameter size is too large");
+        }
+
+        // check fee, slot, gas
+        let (available, fee_raw) = self.get_asc_call_fee(target_slot, max_gas)?;
+        if !available {
+            bail!("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
+        }
+        let fee = Amount::from_raw(fee_raw);
+        let coins = Amount::from_raw(coins);
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get caller address
+        let sender_address = match context.stack.last() {
+            Some(addr) => addr.address,
+            _ => bail!("failed to read call stack sender address"),
+        };
+
+        let call = AsyncCall::new(
+            sender_address,
+            Slot::new(target_slot.0, target_slot.1),
+            target_addr,
+            target_func.to_string(),
+            params.to_vec(),
+            coins,
+            max_gas,
+            fee,
+            false,
+        );
+
+        /*
+            TODO:
+                * ask the context to register the call
+                * return the id of the call
+        */
+
+        todo!()
+    }
+
+    /// Check if an asynchronous call exists
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    ///
+    /// # Returns
+    /// true if the call exists, false otherwise
+    fn asc_call_exists(&self, id: &[u8]) -> Result<bool> {
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        //TODO: ask the context if the call exists
+
+        todo!()
+    }
+
+    /// Cancel an asynchronous call
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    fn asc_call_cancel(&self, id: &[u8]) -> Result<()> {
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        //TODO: ask the context to cancel the call
+
+        todo!()
     }
 
     #[allow(unused_variables)]

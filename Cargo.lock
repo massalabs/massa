@@ -2579,7 +2579,6 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=80352eb9f2a6b90a441cd64433d8874c33fb384f#80352eb9f2a6b90a441cd64433d8874c33fb384f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2668,6 +2667,17 @@ dependencies = [
  "serial_test",
  "strum",
  "thiserror",
+]
+
+[[package]]
+name = "massa_asc"
+version = "28.3.0"
+dependencies = [
+ "massa_db_exports",
+ "massa_ledger_exports",
+ "massa_models",
+ "massa_serialization",
+ "nom",
 ]
 
 [[package]]
@@ -2891,6 +2901,7 @@ dependencies = [
  "libsecp256k1",
  "massa-proto-rs",
  "massa-sc-runtime",
+ "massa_asc",
  "massa_async_pool",
  "massa_channel",
  "massa_db_exports",

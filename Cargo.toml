@@ -66,6 +66,7 @@ lto = true           # Enables Link Time Optimization, enabling more aggressive 
 # The saved snapshot can then be used to restart the network from the snapshot.
 [workspace.dependencies]
 # Internal packages
+massa_asc = { path = "./massa-asc" }
 massa_api = { path = "./massa-api" }
 massa_api_exports = { path = "./massa-api-exports" }
 massa_async_pool = { path = "./massa-async-pool" }
@@ -107,7 +108,9 @@ massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
 massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "38950875a7aa406fedc4f0b8336864e5ff290f2c" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "80352eb9f2a6b90a441cd64433d8874c33fb384f" }
+massa-sc-runtime = { path = "/Users/urvoy/dev/massa-sc-runtime" }
+
+
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
 
 # Common dependencies
