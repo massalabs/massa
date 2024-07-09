@@ -122,9 +122,11 @@ impl SpeculativeAsyncPool {
 
         for (message_id, message_info) in message_infos.iter() {
             let corrected_max_gas = message_info.max_gas.saturating_add(async_msg_cst_gas_cost);
+            // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
+            //       so to be consistent here, use >= & <= checks
             if available_gas >= corrected_max_gas
                 && slot >= message_info.validity_start
-                && slot < message_info.validity_end
+                && slot <= message_info.validity_end
                 && message_info.can_be_executed
             {
                 available_gas -= corrected_max_gas;
