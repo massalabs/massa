@@ -25,8 +25,9 @@ pub use ledger_changes::{
 };
 pub use ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
 pub use types::{
-    Applicable, SetOrDelete, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer,
-    SetUpdateOrDelete, SetUpdateOrDeleteDeserializer, SetUpdateOrDeleteSerializer,
+    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
 };
 
 #[cfg(feature = "test-exports")]

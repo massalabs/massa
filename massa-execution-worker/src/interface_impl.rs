@@ -7,7 +7,7 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_asc::AsyncCall;
+use massa_asc::DeferredCall;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
@@ -1405,7 +1405,7 @@ impl Interface for InterfaceImpl {
             _ => bail!("failed to read call stack sender address"),
         };
 
-        let call = AsyncCall::new(
+        let call = DeferredCall::new(
             sender_address,
             Slot::new(target_slot.0, target_slot.1),
             target_addr,

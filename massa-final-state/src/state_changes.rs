@@ -2,6 +2,9 @@
 
 //! This file provides structures representing changes to the final state
 
+use massa_asc::{
+    DeferredRegistryChanges, DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
+};
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
@@ -31,6 +34,8 @@ pub struct StateChanges {
     pub ledger_changes: LedgerChanges,
     /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
+    /// deferred call changes
+    pub deferred_call_changes: DeferredRegistryChanges,
     /// roll state changes
     pub pos_changes: PoSChanges,
     /// executed operations changes
@@ -93,6 +98,7 @@ impl Serializer<StateChanges> for StateChangesSerializer {
 pub struct StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
+    deferred_call_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
     de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
@@ -133,6 +139,12 @@ impl StateChangesDeserializer {
                 max_function_params_length,
                 max_datastore_key_length as u32,
             ),
+            // todo pass max gas && max deferred call changes
+            deferred_call_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(
+                thread_count,
+                u64::MAX,
+                100_000,
+            ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,
                 max_rolls_length,
@@ -169,6 +181,10 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
                 context("Failed async_pool_changes deserialization", |input| {
                     self.async_pool_changes_deserializer.deserialize(input)
                 }),
+                context("Failed deferred_call_changes deserialization", |input| {
+                    todo!("Deferred call changes deserialization not implemented")
+                    // self.def.deserialize(input)
+                }),
                 context("Failed roll_state_changes deserialization", |input| {
                     self.pos_changes_deserializer.deserialize(input)
                 }),
@@ -191,6 +207,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
             |(
                 ledger_changes,
                 async_pool_changes,
+                deferred_call_changes,
                 pos_changes,
                 executed_ops_changes,
                 executed_denunciations_changes,
@@ -198,6 +215,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
+                deferred_call_changes,
                 pos_changes,
                 executed_ops_changes,
                 executed_denunciations_changes,

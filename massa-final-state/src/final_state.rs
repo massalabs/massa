@@ -9,6 +9,7 @@ use crate::controller_trait::FinalStateController;
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use anyhow::{anyhow, Result as AnyResult};
+use massa_asc::DeferredCallRegistry;
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
@@ -36,6 +37,8 @@ pub struct FinalState {
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
+    /// deferred calls
+    pub deferred_call_registry: DeferredCallRegistry,
     /// proof of stake state containing cycle history and deferred credits
     pub pos_state: PoSFinalState,
     /// executed operations
@@ -106,9 +109,12 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
+        let deferred_call_registry = DeferredCallRegistry::new(db.clone());
+
         let mut final_state = FinalState {
             ledger,
             async_pool,
+            deferred_call_registry,
             pos_state,
             config,
             executed_ops,
@@ -916,6 +922,10 @@ impl FinalStateController for FinalState {
 
     fn get_mip_store(&self) -> &MipStore {
         &self.mip_store
+    }
+
+    fn get_deferred_call_registry(&self) -> &DeferredCallRegistry {
+        &self.deferred_call_registry
     }
 }
 

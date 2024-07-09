@@ -12,8 +12,6 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
-/// async call id
-pub mod asc_call_id;
 /// block structure
 pub mod block;
 /// block-related structure: block_header
@@ -30,6 +28,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// deferred call id
+pub mod deferred_call_id;
 /// denunciation
 pub mod denunciation;
 /// endorsements

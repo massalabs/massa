@@ -9,6 +9,7 @@ test-exports = []
 sandbox = []
 
 [dependencies]
+serde = { workspace = true, "features" = ["derive"] }
 nom = { workspace = true }
 massa_db_exports = { workspace = true }
 massa_ledger_exports = { workspace = true }

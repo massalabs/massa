@@ -13,11 +13,12 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
+use serde::{Deserialize, Serialize};
 use std::ops::Bound;
 
 /// Definition of a call in the future
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AsyncCall {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeferredCall {
     // Sender address
     pub sender_address: Address,
     // The slot in which the call will be executed
@@ -38,7 +39,7 @@ pub struct AsyncCall {
     pub cancelled: bool,
 }
 
-impl AsyncCall {
+impl DeferredCall {
     pub fn new(
         sender_address: Address,
         target_slot: Slot,
@@ -66,7 +67,7 @@ impl AsyncCall {
 
 /// Serializer for `AsyncCall`
 #[derive(Clone)]
-pub struct AsyncCallSerializer {
+pub struct DeferredCallSerializer {
     slot_serializer: SlotSerializer,
     address_serializer: AddressSerializer,
     string_serializer: StringSerializer<U16VarIntSerializer, u16>,
@@ -76,7 +77,7 @@ pub struct AsyncCallSerializer {
     bool_serializer: BoolSerializer,
 }
 
-impl AsyncCallSerializer {
+impl DeferredCallSerializer {
     /// Serializes an `AsyncCall` into a `Vec<u8>`
     pub fn new() -> Self {
         Self {
@@ -91,8 +92,8 @@ impl AsyncCallSerializer {
     }
 }
 
-impl Serializer<AsyncCall> for AsyncCallSerializer {
-    fn serialize(&self, value: &AsyncCall, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<DeferredCall> for DeferredCallSerializer {
+    fn serialize(&self, value: &DeferredCall, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         self.address_serializer
             .serialize(&value.sender_address, buffer)?;
         self.slot_serializer.serialize(&value.target_slot, buffer)?;
@@ -113,7 +114,7 @@ impl Serializer<AsyncCall> for AsyncCallSerializer {
 
 /// Deserializer for `AsyncCall`
 #[derive(Clone)]
-pub struct AsyncCallDeserializer {
+pub struct DeferredCallDeserializer {
     slot_deserializer: SlotDeserializer,
     address_deserializer: AddressDeserializer,
     string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
@@ -123,7 +124,7 @@ pub struct AsyncCallDeserializer {
     bool_deserializer: BoolDeserializer,
 }
 
-impl AsyncCallDeserializer {
+impl DeferredCallDeserializer {
     /// Deserializes a `Vec<u8>` into an `AsyncCall`
     pub fn new(thread_count: u8) -> Self {
         Self {
@@ -153,11 +154,11 @@ impl AsyncCallDeserializer {
     }
 }
 
-impl Deserializer<AsyncCall> for AsyncCallDeserializer {
+impl Deserializer<DeferredCall> for DeferredCallDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], AsyncCall, E> {
+    ) -> IResult<&'a [u8], DeferredCall, E> {
         context(
             "Failed AsyncCall deserialization",
             tuple((
@@ -202,7 +203,7 @@ impl Deserializer<AsyncCall> for AsyncCallDeserializer {
                 max_gas,
                 cancelled,
             )| {
-                AsyncCall::new(
+                DeferredCall::new(
                     sender_address,
                     target_slot,
                     target_address,
@@ -229,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_serialization_deserialization() {
-        let call = AsyncCall::new(
+        let call = DeferredCall::new(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
             Slot::new(42, 0),
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
@@ -240,8 +241,8 @@ mod tests {
             Amount::from_raw(42),
             false,
         );
-        let serializer = AsyncCallSerializer::new();
-        let deserializer = AsyncCallDeserializer::new(1);
+        let serializer = DeferredCallSerializer::new();
+        let deserializer = DeferredCallDeserializer::new(1);
         let mut buffer = Vec::new();
         serializer.serialize(&call, &mut buffer).unwrap();
         let (rest, deserialized_call) = deserializer

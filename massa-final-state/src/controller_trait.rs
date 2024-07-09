@@ -1,3 +1,4 @@
+use massa_asc::DeferredCallRegistry;
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_executed_ops::ExecutedDenunciations;
@@ -90,4 +91,7 @@ pub trait FinalStateController: Send + Sync {
 
     /// Get mutable reference to MIP Store
     fn get_mip_store_mut(&mut self) -> &mut MipStore;
+
+    /// Get deferred call registry
+    fn get_deferred_call_registry(&self) -> &DeferredCallRegistry;
 }

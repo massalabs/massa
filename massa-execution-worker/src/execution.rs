@@ -2271,4 +2271,50 @@ impl ExecutionState {
                 .map(|i| (i.current_version, i.announced_version)),
         );
     }
+
+    // // Get the price it would cost to reserve "gas" at target slot "slot".
+    // pub fn deferred_call_quote(&self, slot: Slot, gas: u64) -> Result<Amount, ExecutionError> {
+    //     let current_slot = self.active_cursor;
+
+    //     // check if the slot is valid
+    //     if (slot <= current_slot || slot > current_slot + deferred_call_max_future_slots) {
+
+    //         return Err(ExecutionError::("Invalid target slot"));
+    //     }
+
+    //     // check if there is enough gas available at the target slot
+    //     if (gas > max_async_gas - slot.async_gas_booked) {
+    //         return Err("No enough gas available at target slot");
+    //     }
+
+    //     // We perform Dynamic Pricing of slot gas booking using a Proportional-Integral controller (https://en.wikipedia.org/wiki/Proportional–integral–derivative_controller).
+    //     // It regulates the average slot async gas usage towards `target_async_gas` by adjusting fees.
+
+    //     // Constant part of the fee: directly depends on the base async gas cost for the target slot.
+    //     // This is the "Integral" part of the Proportional-Integral controller.
+    //     // When a new slot `S` is made available for booking, the `S.base_async_gas_cost` is increased or decreased compared to `(S-1).base_async_gas_cost` depending on the average gas usage over the `deferred_call_max_future_slots` slots before `S`.
+    //     let integral_fee = slot.base_deferred_call_gas_cost * gas;
+
+    //     // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
+
+    //     // A fee that linearly depends on the total load over `deferred_call_max_future_slots` slots but only when the average load is above `target_async_gas` to not penalize normal use. Booking all the gas from all slots within the booking period requires using the whole initial coin supply.
+    //     let proportional_fee = compute_overbooking_fee(
+    //         deferred_call_max_future_slots * max_async_gas, // total available async gas during the booking period
+    //         deferred_call_max_future_slots * max_async_gas / 2, // target a 50% async gas usage over the booking period
+    //         get_current_total_booked_async_gas(), // total amount of async gas currently booked in the booking period
+    //         gas,                                  // amount of gas to book
+    //         total_initial_coin_supply, // fully booking all slots of the booking period requires spending the whole initial supply of coins
+    //     );
+
+    //     // Finally, a per-slot proportional fee is also added to prevent attackers from denying significant ranges of consecutive slots within the long booking period.
+    //     let proportional_slot_fee = compute_overbooking_fee(
+    //         max_async_gas,                     // total available async gas during the target slot
+    //         max_async_gas / 2, // target a 50% async gas usage during the target slot
+    //         slot.async_gas_booked, // total amount of async gas currently booked in the target slot
+    //         gas,               // amount of gas to book in the target slot
+    //         total_initial_coin_supply / 10000, // fully booking 10000 consecutive slots (~1h40 of slots) requires spending the whole initial supply of coins
+    //     );
+
+    //     return Ok(integral_fee + proportional_fee + proportional_slot_fee);
+    // }
 }

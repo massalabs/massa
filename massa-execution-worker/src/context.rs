@@ -9,6 +9,7 @@
 
 use crate::active_history::HistorySearchResult;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
@@ -121,6 +122,9 @@ pub struct ExecutionContext {
     /// as seen after everything that happened so far in the context
     speculative_async_pool: SpeculativeAsyncPool,
 
+    /// speculative deferred calls state,
+    speculative_deferred_calls: SpeculativeDeferredCallRegistry,
+
     /// speculative roll state,
     /// as seen after everything that happened so far in the context
     speculative_roll_state: SpeculativeRollState,
@@ -211,6 +215,10 @@ impl ExecutionContext {
                 config.storage_costs_constants,
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
+                final_state.clone(),
+                active_history.clone(),
+            ),
+            speculative_deferred_calls: SpeculativeDeferredCallRegistry::new(
                 final_state.clone(),
                 active_history.clone(),
             ),
@@ -937,6 +945,7 @@ impl ExecutionContext {
         let state_changes = StateChanges {
             ledger_changes,
             async_pool_changes: self.speculative_async_pool.take(),
+            deferred_call_changes: self.speculative_deferred_calls.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),

@@ -15,22 +15,22 @@ use crate::{
     slot::{Slot, SlotSerializer},
 };
 
-const ASC_CALL_ID_PREFIX: &str = "ASC";
+const DEFERRED_CALL_ID_PREFIX: &str = "D";
 
 /// block id
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct AsyncCallId(Vec<u8>);
+pub struct DeferredCallId(Vec<u8>);
 
-/// Serializer for `AsyncCallId`
+/// Serializer for `DeferredCallId`
 #[derive(Default, Clone)]
-pub struct AsyncCallIdSerializer {
+pub struct DeferredCallIdSerializer {
     bytes_serializer: VecU8Serializer,
 }
 
-impl AsyncCallIdSerializer {
-    /// Serializes an `AsyncCallId` into a `Vec<u8>`
+impl DeferredCallIdSerializer {
+    /// Serializes an `DeferredCallId` into a `Vec<u8>`
     pub fn new() -> Self {
         Self {
             bytes_serializer: VecU8Serializer::new(),
@@ -38,10 +38,14 @@ impl AsyncCallIdSerializer {
     }
 }
 
-impl Serializer<AsyncCallId> for AsyncCallIdSerializer {
-    fn serialize(&self, value: &AsyncCallId, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
+impl Serializer<DeferredCallId> for DeferredCallIdSerializer {
+    fn serialize(
+        &self,
+        value: &DeferredCallId,
+        buffer: &mut Vec<u8>,
+    ) -> Result<(), SerializeError> {
         match value {
-            AsyncCallId::AsyncCallIdV0(id) => {
+            DeferredCallId::DeferredCallIdV0(id) => {
                 self.bytes_serializer.serialize(&id.0, buffer)?;
             }
         }
@@ -49,13 +53,14 @@ impl Serializer<AsyncCallId> for AsyncCallIdSerializer {
     }
 }
 
-/// Deserializer for `AsyncCallId`
-pub struct AsyncCallIdDeserializer {
+/// Deserializer for `DeferredCallId`
+#[derive(Clone)]
+pub struct DeferredCallIdDeserializer {
     bytes_deserializer: VecU8Deserializer,
 }
 
-impl AsyncCallIdDeserializer {
-    /// Deserializes a `Vec<u8>` into an `AsyncCallId`
+impl DeferredCallIdDeserializer {
+    /// Deserializes a `Vec<u8>` into an `DeferredCallId`
     pub fn new() -> Self {
         Self {
             bytes_deserializer: VecU8Deserializer::new(
@@ -66,46 +71,52 @@ impl AsyncCallIdDeserializer {
     }
 }
 
-impl Deserializer<AsyncCallId> for AsyncCallIdDeserializer {
+impl Deserializer<DeferredCallId> for DeferredCallIdDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], AsyncCallId, E> {
+    ) -> IResult<&'a [u8], DeferredCallId, E> {
         let (rest, bytes) = self.bytes_deserializer.deserialize(buffer)?;
-        Ok((rest, AsyncCallId::AsyncCallIdV0(AsyncCallIdV0(bytes))))
+        Ok((
+            rest,
+            DeferredCallId::DeferredCallIdV0(DeferredCallIdV0(bytes)),
+        ))
     }
 }
 
-impl FromStr for AsyncCallId {
+impl FromStr for DeferredCallId {
     type Err = ModelsError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if !s.starts_with(ASC_CALL_ID_PREFIX) {
+        if !s.starts_with(DEFERRED_CALL_ID_PREFIX) {
             return Err(ModelsError::DeserializeError(format!(
-                "Invalid prefix for AsyncCallId: {}",
+                "Invalid prefix for DeferredCallId: {}",
                 s
             )));
         }
-        let s = &s[ASC_CALL_ID_PREFIX.len()..];
+        let s = &s[DEFERRED_CALL_ID_PREFIX.len()..];
         let bytes = bs58::decode(s).with_check(None).into_vec().map_err(|_| {
-            ModelsError::DeserializeError(format!("Invalid base58 string for AsyncCallId: {}", s))
+            ModelsError::DeserializeError(format!(
+                "Invalid base58 string for DeferredCallId: {}",
+                s
+            ))
         })?;
-        AsyncCallId::from_bytes(&bytes)
+        DeferredCallId::from_bytes(&bytes)
     }
 }
 
-impl std::fmt::Display for AsyncCallId {
+impl std::fmt::Display for DeferredCallId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}{}",
-            ASC_CALL_ID_PREFIX,
+            DEFERRED_CALL_ID_PREFIX,
             bs58::encode(self.as_bytes()).with_check().into_string()
         )
     }
 }
 
-impl ::serde::Serialize for AsyncCallId {
+impl ::serde::Serialize for DeferredCallId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: ::serde::Serializer,
@@ -118,13 +129,13 @@ impl ::serde::Serialize for AsyncCallId {
     }
 }
 
-impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
-    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<AsyncCallId, D::Error> {
+impl<'de> ::serde::Deserialize<'de> for DeferredCallId {
+    fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<DeferredCallId, D::Error> {
         if d.is_human_readable() {
-            struct AsyncCallIdVisitor;
+            struct DeferredCallIdVisitor;
 
-            impl<'de> ::serde::de::Visitor<'de> for AsyncCallIdVisitor {
-                type Value = AsyncCallId;
+            impl<'de> ::serde::de::Visitor<'de> for DeferredCallIdVisitor {
+                type Value = DeferredCallId;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                     formatter.write_str("ASC + base58::encode(bytes)")
@@ -135,7 +146,7 @@ impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
                     E: ::serde::de::Error,
                 {
                     if let Ok(v_str) = std::str::from_utf8(v) {
-                        AsyncCallId::from_str(v_str).map_err(E::custom)
+                        DeferredCallId::from_str(v_str).map_err(E::custom)
                     } else {
                         Err(E::invalid_value(::serde::de::Unexpected::Bytes(v), &self))
                     }
@@ -145,15 +156,15 @@ impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
                 where
                     E: ::serde::de::Error,
                 {
-                    AsyncCallId::from_str(v).map_err(E::custom)
+                    DeferredCallId::from_str(v).map_err(E::custom)
                 }
             }
-            d.deserialize_str(AsyncCallIdVisitor)
+            d.deserialize_str(DeferredCallIdVisitor)
         } else {
             struct BytesVisitor;
 
             impl<'de> ::serde::de::Visitor<'de> for BytesVisitor {
-                type Value = AsyncCallId;
+                type Value = DeferredCallId;
 
                 fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
                     formatter.write_str("[u64varint-of-addr-variant][u64varint-of-version][bytes]")
@@ -163,7 +174,7 @@ impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
                 where
                     E: ::serde::de::Error,
                 {
-                    AsyncCallId::from_bytes(v).map_err(E::custom)
+                    DeferredCallId::from_bytes(v).map_err(E::custom)
                 }
             }
 
@@ -172,12 +183,12 @@ impl<'de> ::serde::Deserialize<'de> for AsyncCallId {
     }
 }
 
-impl AsyncCallId {
+impl DeferredCallId {
     pub fn get_slot(&self) -> Slot {
         todo!();
     }
 
-    /// Create a new `AsyncCallId`
+    /// Create a new `DeferredCallId`
     pub fn new(
         version: u64,
         target_slot: Slot,
@@ -193,25 +204,25 @@ impl AsyncCallId {
                 slot_serializer.serialize(&target_slot, &mut id)?;
                 id.extend(index.to_be_bytes());
                 id.extend(trail_hash);
-                Ok(AsyncCallId::AsyncCallIdV0(AsyncCallIdV0(id)))
+                Ok(DeferredCallId::DeferredCallIdV0(DeferredCallIdV0(id)))
             }
             _ => {
                 return Err(ModelsError::InvalidVersionError(format!(
-                    "Invalid version to create an AsyncCallId: {}",
+                    "Invalid version to create an DeferredCallId: {}",
                     version
                 )))
             }
         }
     }
 
-    /// Return the version of the `AsyncCallId` as bytes
+    /// Return the version of the `DeferredCallId` as bytes
     pub fn as_bytes(&self) -> &[u8] {
         match self {
-            AsyncCallId::AsyncCallIdV0(block_id) => block_id.as_bytes(),
+            DeferredCallId::DeferredCallIdV0(block_id) => block_id.as_bytes(),
         }
     }
 
-    /// Create an `AsyncCallId` from bytes
+    /// Create an `DeferredCallId` from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ModelsError> {
         if bytes.is_empty() {
             return Err(ModelsError::SerializeError("Empty bytes".to_string()));
@@ -223,11 +234,11 @@ impl AsyncCallId {
         let (_, version) = version.deserialize(bytes)?;
         match version {
             0 => {
-                let id = AsyncCallIdV0::from_bytes(bytes)?;
-                Ok(AsyncCallId::AsyncCallIdV0(id))
+                let id = DeferredCallIdV0::from_bytes(bytes)?;
+                Ok(DeferredCallId::DeferredCallIdV0(id))
             }
             _ => Err(ModelsError::InvalidVersionError(format!(
-                "Invalid version to create an AsyncCallId: {}",
+                "Invalid version to create an DeferredCallId: {}",
                 version
             ))),
         }
@@ -235,15 +246,15 @@ impl AsyncCallId {
 }
 
 #[transition::impl_version(versions("0"))]
-impl AsyncCallId {
-    /// Return the version of the `AsyncCallId` as bytes
+impl DeferredCallId {
+    /// Return the version of the `DeferredCallId` as bytes
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
 
-    /// Create an `AsyncCallId` from bytes
+    /// Create an `DeferredCallId` from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, ModelsError> {
-        Ok(AsyncCallIdV0(bytes.to_vec()))
+        Ok(DeferredCallId(bytes.to_vec()))
     }
 }
 
@@ -255,15 +266,15 @@ mod tests {
     use crate::slot::Slot;
 
     #[test]
-    fn test_async_call_id_ser_deser() {
+    fn test_deferred_call_id_ser_deser() {
         let slot = Slot::new(1, 2);
         let index = 3;
         let trail_hash = [4, 5, 6];
-        let id = AsyncCallId::new(0, slot, index, &trail_hash).unwrap();
-        let serializer = AsyncCallIdSerializer::new();
+        let id = DeferredCallId::new(0, slot, index, &trail_hash).unwrap();
+        let serializer = DeferredCallIdSerializer::new();
         let mut buffer = Vec::new();
         serializer.serialize(&id, &mut buffer).unwrap();
-        let deserializer = AsyncCallIdDeserializer::new();
+        let deserializer = DeferredCallIdDeserializer::new();
         let (rest, deserialized_id) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();
@@ -272,13 +283,13 @@ mod tests {
     }
 
     #[test]
-    fn test_async_call_id_from_str() {
+    fn test_deferred_call_id_from_str() {
         let slot = Slot::new(1, 2);
         let index = 3;
         let trail_hash = [4, 5, 6];
-        let id = AsyncCallId::new(0, slot, index, &trail_hash).unwrap();
+        let id = DeferredCallId::new(0, slot, index, &trail_hash).unwrap();
         let id_str = id.to_string();
-        let deserialized_id = AsyncCallId::from_str(&id_str).unwrap();
+        let deserialized_id = DeferredCallId::from_str(&id_str).unwrap();
         assert_eq!(deserialized_id, id);
     }
 }
