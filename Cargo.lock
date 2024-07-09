@@ -2661,18 +2661,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "massa_asc"
-version = "28.3.0"
-dependencies = [
- "massa_db_exports",
- "massa_ledger_exports",
- "massa_models",
- "massa_serialization",
- "nom",
- "serde",
-]
-
-[[package]]
 name = "massa_async_pool"
 version = "2.2.0"
 dependencies = [
@@ -2844,6 +2832,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_deferred_calls"
+version = "2.2.0"
+dependencies = [
+ "massa_db_exports",
+ "massa_ledger_exports",
+ "massa_models",
+ "massa_serialization",
+ "nom",
+ "serde",
+]
+
+[[package]]
 name = "massa_executed_ops"
 version = "2.2.0"
 dependencies = [
@@ -2893,11 +2893,11 @@ dependencies = [
  "libsecp256k1",
  "massa-proto-rs",
  "massa-sc-runtime",
- "massa_asc",
  "massa_async_pool",
  "massa_channel",
  "massa_db_exports",
  "massa_db_worker",
+ "massa_deferred_calls",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",
@@ -2980,10 +2980,10 @@ dependencies = [
  "bs58",
  "displaydoc",
  "massa-proto-rs",
- "massa_asc",
  "massa_async_pool",
  "massa_db_exports",
  "massa_db_worker",
+ "massa_deferred_calls",
  "massa_executed_ops",
  "massa_hash",
  "massa_ledger_exports",

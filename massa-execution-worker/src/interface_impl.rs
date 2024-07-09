@@ -7,8 +7,8 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_asc::DeferredCall;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
+use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;

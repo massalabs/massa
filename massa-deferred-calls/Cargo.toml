@@ -1,6 +1,6 @@
 [package]
-name = "massa_asc"
-version = "28.3.0"
+name = "massa_deferred_calls"
+version = "2.2.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 

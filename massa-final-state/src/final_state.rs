@@ -9,7 +9,6 @@ use crate::controller_trait::FinalStateController;
 use crate::{config::FinalStateConfig, error::FinalStateError, state_changes::StateChanges};
 
 use anyhow::{anyhow, Result as AnyResult};
-use massa_asc::DeferredCallRegistry;
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
@@ -17,6 +16,7 @@ use massa_db_exports::{
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 use massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_hash::Hash;

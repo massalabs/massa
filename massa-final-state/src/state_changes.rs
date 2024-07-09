@@ -2,11 +2,11 @@
 
 //! This file provides structures representing changes to the final state
 
-use massa_asc::{
-    DeferredRegistryChanges, DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
-};
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
+};
+use massa_deferred_calls::{
+    DeferredRegistryChanges, DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
 };
 use massa_executed_ops::{
     ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,

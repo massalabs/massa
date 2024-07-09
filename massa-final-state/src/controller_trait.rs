@@ -1,6 +1,6 @@
-use massa_asc::DeferredCallRegistry;
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::ExecutedDenunciations;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
