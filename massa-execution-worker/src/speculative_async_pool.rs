@@ -160,9 +160,7 @@ impl SpeculativeAsyncPool {
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
-
         // Note: that the validity_end bound is included in the validity interval of the message.
-        //
 
         let mut eliminated_infos = Vec::new();
         self.message_infos.retain(|id, info| {
