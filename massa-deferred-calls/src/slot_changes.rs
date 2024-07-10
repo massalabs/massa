@@ -16,8 +16,10 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
-    error::{ContextError, ParseError},
-    IResult,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
 use std::ops::Bound::Included;
@@ -178,33 +180,45 @@ impl Deserializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesDe
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], DeferredRegistrySlotChanges, E> {
-        unimplemented!("DeferredRegistrySlotChangesDeserializer::deserialize")
-        // context(
-        //     "Failed DeferredRegistrySlotChanges deserialization",
-        //     length_count(
-        //         context("Failed length deserialization", |input| {
-        //             self.async_pool_changes_length.deserialize(input)
-        //         }),
-        //         |input: &'a [u8]| {
-        //             tuple((
-        //                 context("Failed id deserialization", |input| {
-        //                     self.call_id_deserializer.deserialize(input)
-        //                 }),
-        //                 context(
-        //                     "Failed set_update_or_delete_message deserialization",
-        //                     |input| {
-        //                         self.set_update_or_delete_message_deserializer
-        //                             .deserialize(input)
-        //                     },
-        //                 ),
-        //             ))(input)
-        //         },
-        //     ),
-        // )
-        // .map(|vec| {
-        //     DeferredRegistrySlotChanges(vec.into_iter().map(|data| (data.0, data.1)).collect())
-        // })
-        // .parse(buffer)
+        // unimplemented!("DeferredRegistrySlotChangesDeserializer::deserialize")
+        context(
+            "Failed DeferredRegistrySlotChanges deserialization",
+            tuple((
+                length_count(
+                    context("Failed length deserialization", |input| {
+                        self.deferred_registry_slot_changes_length
+                            .deserialize(input)
+                    }),
+                    |input: &'a [u8]| {
+                        tuple((
+                            context("Failed id deserialization", |input| {
+                                self.call_id_deserializer.deserialize(input)
+                            }),
+                            context(
+                                "Failed set_update_or_delete_message deserialization",
+                                |input| self.calls_set_or_delete_deserializer.deserialize(input),
+                            ),
+                        ))(input)
+                    },
+                ),
+                context("Failed gas deserialization", |input| {
+                    self.gas_deserializer.deserialize(input)
+                }),
+                context("Failed base fee deserialize", |input| {
+                    self.base_fee_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(vec, gas, base_fee)| {
+            let calls = vec.into_iter().collect::<BTreeMap<_, _>>();
+
+            DeferredRegistrySlotChanges {
+                calls,
+                gas,
+                base_fee,
+            }
+        })
+        .parse(buffer)
     }
 }
 
@@ -217,7 +231,7 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
-    use crate::{DeferredCall, DeferredRegistryBaseFeeChange};
+    use crate::DeferredCall;
 
     use super::{
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
