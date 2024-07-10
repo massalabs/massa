@@ -338,6 +338,9 @@ pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
+/// Maximum size of deferred call pool changes
+// todo define this value
+pub const MAX_DEFERRED_CALL_POOL_CHANGES: u64 = 100_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

@@ -132,7 +132,7 @@ impl DeferredSlotCalls {
     }
 
     pub fn apply_changes(&mut self, changes: &DeferredRegistryChanges) {
-        let Some(slot_changes) = changes.slots.get(&self.slot) else {
+        let Some(slot_changes) = changes.slots_change.get(&self.slot) else {
             return;
         };
         for (id, change) in &slot_changes.calls {

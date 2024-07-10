@@ -29,14 +29,14 @@ use std::ops::Bound::Included;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredRegistryChanges {
-    pub slots: BTreeMap<Slot, DeferredRegistrySlotChanges>,
+    pub slots_change: BTreeMap<Slot, DeferredRegistrySlotChanges>,
     pub total_gas: DeferredRegistryGasChange<u128>,
 }
 
 impl DeferredRegistryChanges {
     pub fn merge(&mut self, other: DeferredRegistryChanges) {
-        for (slot, changes) in other.slots {
-            match self.slots.entry(slot) {
+        for (slot, changes) in other.slots_change {
+            match self.slots_change.entry(slot) {
                 std::collections::btree_map::Entry::Occupied(mut entry) => {
                     entry.get_mut().merge(changes);
                 }
@@ -52,41 +52,47 @@ impl DeferredRegistryChanges {
     }
 
     pub fn delete_call(&mut self, target_slot: Slot, id: &DeferredCallId) {
-        self.slots.entry(target_slot).or_default().delete_call(id)
+        self.slots_change
+            .entry(target_slot)
+            .or_default()
+            .delete_call(id)
     }
 
     pub fn set_call(&mut self, id: DeferredCallId, call: DeferredCall) {
-        self.slots
+        self.slots_change
             .entry(call.target_slot.clone())
             .or_default()
             .set_call(id, call);
     }
 
     pub fn get_call(&self, target_slot: &Slot, id: &DeferredCallId) -> Option<&DeferredCall> {
-        self.slots
+        self.slots_change
             .get(target_slot)
             .and_then(|slot_changes| slot_changes.get_call(id))
     }
 
     pub fn get_slot_gas(&self, target_slot: &Slot) -> Option<u64> {
-        self.slots
+        self.slots_change
             .get(target_slot)
             .and_then(|slot_changes| slot_changes.get_gas())
     }
 
     pub fn set_slot_gas(&mut self, target_slot: Slot, gas: u64) {
-        self.slots.entry(target_slot).or_default().set_gas(gas);
+        self.slots_change
+            .entry(target_slot)
+            .or_default()
+            .set_gas(gas);
     }
 
     pub fn set_slot_base_fee(&mut self, target_slot: Slot, base_fee: Amount) {
-        self.slots
+        self.slots_change
             .entry(target_slot)
             .or_default()
             .set_base_fee(base_fee);
     }
 
     pub fn get_slot_base_fee(&self, target_slot: &Slot) -> Option<Amount> {
-        self.slots
+        self.slots_change
             .get(target_slot)
             .and_then(|slot_changes| slot_changes.get_base_fee())
     }
@@ -128,13 +134,13 @@ impl Serializer<DeferredRegistryChanges> for DeferredRegistryChangesSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         self.slots_length.serialize(
-            &(value.slots.len().try_into().map_err(|_| {
+            &(value.slots_change.len().try_into().map_err(|_| {
                 SerializeError::GeneralError("Fail to transform usize to u64".to_string())
             })?),
             buffer,
         )?;
 
-        for (slot, changes) in &value.slots {
+        for (slot, changes) in &value.slots_change {
             self.slot_serializer.serialize(slot, buffer)?;
             self.slot_changes_serializer.serialize(changes, buffer)?;
         }
@@ -145,8 +151,6 @@ impl Serializer<DeferredRegistryChanges> for DeferredRegistryChangesSerializer {
         Ok(())
     }
 }
-
-// todo deserialize
 
 pub struct DeferredRegistryChangesDeserializer {
     slots_length: U64VarIntDeserializer,
@@ -209,7 +213,7 @@ impl Deserializer<DeferredRegistryChanges> for DeferredRegistryChangesDeserializ
             )),
         )
         .map(|(changes, total_gas)| DeferredRegistryChanges {
-            slots: changes.into_iter().collect::<BTreeMap<_, _>>(),
+            slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
             total_gas,
         })
         .parse(buffer)
@@ -239,7 +243,7 @@ mod tests {
         use std::collections::BTreeMap;
 
         let mut changes = DeferredRegistryChanges {
-            slots: BTreeMap::new(),
+            slots_change: BTreeMap::new(),
             total_gas: Default::default(),
         };
 
@@ -275,7 +279,7 @@ mod tests {
         registry_slot_changes.set_call(id, call);
 
         changes
-            .slots
+            .slots_change
             .insert(target_slot.clone(), registry_slot_changes);
 
         changes.set_total_gas(100_000);
@@ -290,8 +294,8 @@ mod tests {
             .unwrap();
 
         assert_eq!(rest.len(), 0);
-        let base = changes.slots.get(&target_slot).unwrap();
-        let slot_changes_deser = deserialized.slots.get(&target_slot).unwrap();
+        let base = changes.slots_change.get(&target_slot).unwrap();
+        let slot_changes_deser = deserialized.slots_change.get(&target_slot).unwrap();
         assert_eq!(base.calls, slot_changes_deser.calls);
         assert_eq!(changes.total_gas, deserialized.total_gas);
     }
