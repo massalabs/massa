@@ -9,6 +9,7 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, export_active_block::ExportActiveBlock,
 };
 use massa_db_exports::{DBBatch, ShareableMassaDBController, StreamBatch};
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -275,6 +276,8 @@ pub fn get_random_final_state_bootstrap(
         .write()
         .write_batch(batch, versioning_batch, None);
 
+    let deferred_call_registry = DeferredCallRegistry::new(db.clone());
+
     let executed_ops = get_random_executed_ops(
         r_limit,
         slot,
@@ -304,6 +307,7 @@ pub fn get_random_final_state_bootstrap(
         config,
         Box::new(final_ledger),
         async_pool,
+        deferred_call_registry,
         pos_state,
         executed_ops,
         executed_denunciations,

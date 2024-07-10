@@ -43,6 +43,7 @@ fn test_active_history_deferred_credits() {
         state_changes: StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
             pos_changes: PoSChanges {
                 seed_bits: Default::default(),
                 roll_changes: Default::default(),

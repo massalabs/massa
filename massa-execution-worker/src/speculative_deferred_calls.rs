@@ -1,7 +1,9 @@
 //! Speculative async call registry.
 
 use crate::active_history::ActiveHistory;
-use massa_deferred_calls::{DeferredCall, DeferredRegistryChanges, DeferredSlotCalls};
+use massa_deferred_calls::{
+    registry_changes::DeferredRegistryChanges, DeferredCall, DeferredSlotCalls,
+};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{

@@ -9,10 +9,12 @@ use std::{
     sync::Arc,
 };
 
+use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
 };
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
@@ -27,14 +29,13 @@ use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use tempfile::NamedTempFile;
 
-use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
-
 #[allow(clippy::too_many_arguments)]
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
     config: FinalStateConfig,
     ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
+    deferred_call_registry: DeferredCallRegistry,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
@@ -45,6 +46,7 @@ pub fn create_final_state(
         config,
         ledger,
         async_pool,
+        deferred_call_registry,
         pos_state,
         executed_ops,
         executed_denunciations,

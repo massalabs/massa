@@ -9,6 +9,7 @@ use num::rational::Ratio;
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_db_exports::ShareableMassaDBController;
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
@@ -34,6 +35,7 @@ impl FinalState {
         FinalState {
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
             async_pool: AsyncPool::new(config.async_pool_config.clone(), db.clone()),
+            deferred_call_registry: DeferredCallRegistry::new(db.clone()),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), db.clone()),
             executed_denunciations: ExecutedDenunciations::new(
