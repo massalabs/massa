@@ -13,7 +13,8 @@ use massa_serialization::{
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
-    IResult,
+    sequence::tuple,
+    IResult, Parser,
 };
 use serde::{Deserialize, Serialize};
 
@@ -183,17 +184,115 @@ impl Deserializer<DeferredRegistryChanges> for DeferredRegistryChangesDeserializ
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], DeferredRegistryChanges, E> {
-        unimplemented!("DeferredRegistryChangesDeserializer::deserialize")
-        // context(
-        //     "Failed DeferredRegistryChanges deserialization",
-        //     length_count(
-        //         context("Failed length deserialization", |input| {
-        //             self.slots_length.deserialize(input)
-        //         }),
-        //         |input| {
+        context(
+            "Failed DeferredRegistryChanges deserialization",
+            tuple((
+                length_count(
+                    context("Failed length deserialization", |input| {
+                        self.slots_length.deserialize(input)
+                    }),
+                    |input| {
+                        tuple((
+                            context("Failed slot deserialization", |input| {
+                                self.slot_deserializer.deserialize(input)
+                            }),
+                            context(
+                                "Failed set_update_or_delete_message deserialization",
+                                |input| self.slot_changes_deserializer.deserialize(input),
+                            ),
+                        ))(input)
+                    },
+                ),
+                context("Failed total_gas deserialization", |input| {
+                    self.total_gas_deserializer.deserialize(input)
+                }),
+            )),
+        )
+        .map(|(changes, total_gas)| DeferredRegistryChanges {
+            slots: changes.into_iter().collect::<BTreeMap<_, _>>(),
+            total_gas,
+        })
+        .parse(buffer)
+    }
+}
 
-        //         },
-        //     ),
-        // )
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use massa_models::{address::Address, amount::Amount, deferred_call_id::DeferredCallId};
+    use massa_serialization::DeserializeError;
+
+    use crate::{
+        registry_changes::{
+            DeferredRegistryChangesDeserializer, DeferredRegistryChangesSerializer,
+        },
+        slot_changes::DeferredRegistrySlotChanges,
+        DeferredCall,
+    };
+
+    #[test]
+    fn test_deferred_registry_ser_deser() {
+        use crate::DeferredRegistryChanges;
+        use massa_models::slot::Slot;
+        use massa_serialization::{Deserializer, Serializer};
+        use std::collections::BTreeMap;
+
+        let mut changes = DeferredRegistryChanges {
+            slots: BTreeMap::new(),
+            total_gas: Default::default(),
+        };
+
+        let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
+        registry_slot_changes.set_base_fee(Amount::from_str("100").unwrap());
+        registry_slot_changes.set_gas(100_000);
+        let target_slot = Slot {
+            thread: 5,
+            period: 1,
+        };
+
+        let call = DeferredCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            target_slot.clone(),
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
+            "receive".to_string(),
+            vec![42, 42, 42, 42],
+            Amount::from_raw(100),
+            3000000,
+            Amount::from_raw(1),
+            false,
+        );
+        let id = DeferredCallId::new(
+            0,
+            Slot {
+                thread: 5,
+                period: 1,
+            },
+            1,
+            &[],
+        )
+        .unwrap();
+        registry_slot_changes.set_call(id, call);
+
+        changes
+            .slots
+            .insert(target_slot.clone(), registry_slot_changes);
+
+        changes.set_total_gas(100_000);
+
+        let mut buffer = Vec::new();
+        let serializer = DeferredRegistryChangesSerializer::new();
+        serializer.serialize(&changes, &mut buffer).unwrap();
+
+        let deserializer = DeferredRegistryChangesDeserializer::new(32, 300_000, 10_000);
+        let (rest, deserialized) = deserializer
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
+
+        assert_eq!(rest.len(), 0);
+        let base = changes.slots.get(&target_slot).unwrap();
+        let slot_changes_deser = deserialized.slots.get(&target_slot).unwrap();
+        assert_eq!(base.calls, slot_changes_deser.calls);
+        assert_eq!(changes.total_gas, deserialized.total_gas);
     }
 }

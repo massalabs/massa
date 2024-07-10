@@ -180,7 +180,6 @@ impl Deserializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesDe
         &self,
         buffer: &'a [u8],
     ) -> IResult<&'a [u8], DeferredRegistrySlotChanges, E> {
-        // unimplemented!("DeferredRegistrySlotChangesDeserializer::deserialize")
         context(
             "Failed DeferredRegistrySlotChanges deserialization",
             tuple((
