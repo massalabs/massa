@@ -68,13 +68,13 @@ impl DeferredCall {
 /// Serializer for `AsyncCall`
 #[derive(Clone)]
 pub struct DeferredCallSerializer {
-    slot_serializer: SlotSerializer,
-    address_serializer: AddressSerializer,
-    string_serializer: StringSerializer<U16VarIntSerializer, u16>,
-    vec_u8_serializer: VecU8Serializer,
-    amount_serializer: AmountSerializer,
-    u64_var_int_serializer: U64VarIntSerializer,
-    bool_serializer: BoolSerializer,
+    pub(crate) slot_serializer: SlotSerializer,
+    pub(crate) address_serializer: AddressSerializer,
+    pub(crate) string_serializer: StringSerializer<U16VarIntSerializer, u16>,
+    pub(crate) vec_u8_serializer: VecU8Serializer,
+    pub(crate) amount_serializer: AmountSerializer,
+    pub(crate) u64_var_int_serializer: U64VarIntSerializer,
+    pub(crate) bool_serializer: BoolSerializer,
 }
 
 impl DeferredCallSerializer {
@@ -120,7 +120,7 @@ pub struct DeferredCallDeserializer {
     string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     vec_u8_deserializer: VecU8Deserializer,
     amount_deserializer: AmountDeserializer,
-    u64_var_int_deserializer: U64VarIntDeserializer,
+    pub(crate) u64_var_int_deserializer: U64VarIntDeserializer,
     bool_deserializer: BoolDeserializer,
 }
 
