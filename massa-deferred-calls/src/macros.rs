@@ -1,26 +1,42 @@
-use massa_db_exports::DEFERRED_CALLS_PREFIX;
+use massa_db_exports::DEFERRED_CALLS_SLOT_PREFIX;
 
-pub(crate) const CALL_SENDER_ADDRESS: u8 = 1u8;
-pub(crate) const CALL_TARGET_SLOT: u8 = 2u8;
-pub(crate) const CALL_TARGET_ADDRESS: u8 = 3u8;
-pub(crate) const CALL_TARGET_FUNCTION: u8 = 4u8;
-pub(crate) const CALL_PARAMETERS: u8 = 5u8;
-pub(crate) const CALL_COINS: u8 = 6u8;
-pub(crate) const CALL_MAX_GAS: u8 = 7u8;
-pub(crate) const CALL_FEE: u8 = 8u8;
-pub(crate) const CALL_CANCELED: u8 = 9u8;
+pub(crate) const DEFERRED_CALL_TOTAL_GAS: &str = "deferred_call_total_gas";
 
 pub(crate) const CALLS_TAG: u8 = 0u8;
+// slot fields
+pub(crate) const SLOT_TOTAL_GAS: u8 = 1u8;
+pub(crate) const SLOT_BASE_FEE: u8 = 2u8;
 
-pub(crate) const TOTAL_GAS_TAG: u8 = 1u8;
+// call fields
+pub(crate) const CALL_FIELD_SENDER_ADDRESS: u8 = 1u8;
+pub(crate) const CALL_FIELD_TARGET_SLOT: u8 = 2u8;
+pub(crate) const CALL_FIELD_TARGET_ADDRESS: u8 = 3u8;
+pub(crate) const CALL_FIELD_TARGET_FUNCTION: u8 = 4u8;
+pub(crate) const CALL_FIELD_PARAMETERS: u8 = 5u8;
+pub(crate) const CALL_FIELD_COINS: u8 = 6u8;
+pub(crate) const CALL_FIELD_MAX_GAS: u8 = 7u8;
+pub(crate) const CALL_FIELD_FEE: u8 = 8u8;
+pub(crate) const CALL_FIELD_CANCELED: u8 = 9u8;
 
 #[macro_export]
 macro_rules! deferred_call_slot_total_gas_key {
     ($slot:expr) => {
         [
-            DEFERRED_CALLS_PREFIX.as_bytes(),
+            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
             &$slot[..],
-            &[$crate::macros::TOTAL_GAS_TAG],
+            &[$crate::macros::SLOT_TOTAL_GAS],
+        ]
+        .concat()
+    };
+}
+
+#[macro_export]
+macro_rules! deferred_call_slot_base_fee_key {
+    ($slot:expr) => {
+        [
+            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
+            &$slot[..],
+            &[$crate::macros::SLOT_BASE_FEE],
         ]
         .concat()
     };
@@ -30,7 +46,7 @@ macro_rules! deferred_call_slot_total_gas_key {
 macro_rules! deferred_call_prefix_key {
     ($id:expr, $slot:expr) => {
         [
-            DEFERRED_CALLS_PREFIX.as_bytes(),
+            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
             &$slot[..],
             &[$crate::macros::CALLS_TAG],
             &$id[..],
@@ -51,7 +67,7 @@ macro_rules! deferred_call_field_key {
 #[macro_export]
 macro_rules! sender_address_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_SENDER_ADDRESS)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_SENDER_ADDRESS)
     };
 }
 
@@ -59,7 +75,7 @@ macro_rules! sender_address_key {
 #[macro_export]
 macro_rules! target_slot_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_TARGET_SLOT)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_TARGET_SLOT)
     };
 }
 
@@ -67,7 +83,7 @@ macro_rules! target_slot_key {
 #[macro_export]
 macro_rules! target_address_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_TARGET_ADDRESS)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_TARGET_ADDRESS)
     };
 }
 
@@ -75,7 +91,7 @@ macro_rules! target_address_key {
 #[macro_export]
 macro_rules! target_function_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_TARGET_FUNCTION)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_TARGET_FUNCTION)
     };
 }
 
@@ -83,7 +99,7 @@ macro_rules! target_function_key {
 #[macro_export]
 macro_rules! parameters_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_PARAMETERS)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_PARAMETERS)
     };
 }
 
@@ -91,7 +107,7 @@ macro_rules! parameters_key {
 #[macro_export]
 macro_rules! coins_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_COINS)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_COINS)
     };
 }
 
@@ -99,7 +115,7 @@ macro_rules! coins_key {
 #[macro_export]
 macro_rules! max_gas_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_MAX_GAS)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_MAX_GAS)
     };
 }
 
@@ -107,7 +123,7 @@ macro_rules! max_gas_key {
 #[macro_export]
 macro_rules! fee_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FEE)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_FEE)
     };
 }
 
@@ -115,13 +131,13 @@ macro_rules! fee_key {
 #[macro_export]
 macro_rules! cancelled_key {
     ($id:expr, $slot:expr) => {
-        deferred_call_field_key!($id, $slot, $crate::macros::CALL_CANCELED)
+        deferred_call_field_key!($id, $slot, $crate::macros::CALL_FIELD_CANCELED)
     };
 }
 
 #[cfg(test)]
 mod tests {
-    use massa_db_exports::DEFERRED_CALLS_PREFIX;
+    use massa_db_exports::DEFERRED_CALLS_SLOT_PREFIX;
     use massa_models::{
         deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
         slot::Slot,

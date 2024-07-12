@@ -156,7 +156,8 @@ pub struct DeferredRegistryChangesDeserializer {
     slots_length: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
     slot_deserializer: SlotDeserializer,
-    total_gas_deserializer: SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
+    // total gas deserializer should be a u128 or SetOrKeep ?
+    pub(crate) total_gas_deserializer: SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
 }
 
 impl DeferredRegistryChangesDeserializer {

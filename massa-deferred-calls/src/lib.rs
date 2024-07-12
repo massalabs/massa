@@ -1,10 +1,11 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
+use macros::DEFERRED_CALL_TOTAL_GAS;
 use massa_db_exports::{
-    DBBatch, ShareableMassaDBController, DEFERRED_CALLS_PREFIX, KEY_SER_ERROR, MESSAGE_DESER_ERROR,
-    MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_SLOT_PREFIX, KEY_SER_ERROR,
+    MESSAGE_DESER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use registry_changes::DeferredRegistryChanges;
+use registry_changes::{DeferredRegistryChanges, DeferredRegistryChangesDeserializer};
 
 /// This module implements a new version of the Autonomous Smart Contracts. (ASC)
 /// This new version allow asynchronous calls to be registered for a specific slot and ensure his execution.
@@ -20,7 +21,7 @@ use massa_ledger_exports::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
     config::THREAD_COUNT,
-    deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
+    deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
     slot::Slot,
 };
 use std::collections::BTreeMap;
@@ -28,25 +29,34 @@ use std::collections::BTreeMap;
 // #[derive(Debug)]
 pub struct DeferredCallRegistry {
     db: ShareableMassaDBController,
-    deferred_call_serializer: DeferredCallSerializer,
-    deferred_call_id_serializer: DeferredCallIdSerializer,
-    deferred_call_deserializer: DeferredCallDeserializer,
+    call_serializer: DeferredCallSerializer,
+    call_id_serializer: DeferredCallIdSerializer,
+    call_deserializer: DeferredCallDeserializer,
+    registry_changes_deserializer: DeferredRegistryChangesDeserializer,
 }
 
 impl DeferredCallRegistry {
     /*
      DB layout:
-        [ASYNC_CALL_TOTAL_GAS_PREFIX] -> u64 // total currently booked gas
-        [ASYNC_CAL_SLOT_PREFIX][slot][TOTAL_GAS_TAG] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
-        [ASYNC_CAL_SLOT_PREFIX][slot][CALLS_TAG][id][ASYNC_CALL_FIELD_X_TAG] -> AsyncCall.x // call data
+        [DEFERRED_CALL_TOTAL_GAS] -> u64 // total currently booked gas
+        [DEFERRED_CALLS_SLOT_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
+        [DEFERRED_CALLS_SLOT_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
+        [DEFERRED_CALLS_SLOT_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> AsyncCall.x // call data
     */
 
+    // todo pass args
     pub fn new(db: ShareableMassaDBController) -> Self {
         Self {
             db,
-            deferred_call_serializer: DeferredCallSerializer::new(),
-            deferred_call_id_serializer: DeferredCallIdSerializer::new(),
-            deferred_call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
+            call_serializer: DeferredCallSerializer::new(),
+            call_id_serializer: DeferredCallIdSerializer::new(),
+            call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
+            // todo args
+            registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
+                THREAD_COUNT,
+                100_000,
+                100_000,
+            ),
         }
     }
 
@@ -57,7 +67,7 @@ impl DeferredCallRegistry {
     /// Returns the DeferredCall for a given slot and id
     pub fn get_call(&self, slot: &Slot, id: &DeferredCallId) -> Option<DeferredCall> {
         let mut buf_id = Vec::new();
-        self.deferred_call_id_serializer
+        self.call_id_serializer
             .serialize(id, &mut buf_id)
             .expect(MESSAGE_SER_ERROR);
         let key = deferred_call_prefix_key!(buf_id, slot.to_bytes_key());
@@ -73,7 +83,7 @@ impl DeferredCallRegistry {
         }
 
         match self
-            .deferred_call_deserializer
+            .call_deserializer
             .deserialize::<DeserializeError>(&serialized_call)
         {
             Ok((_rest, call)) => Some(call),
@@ -88,7 +98,7 @@ impl DeferredCallRegistry {
         match self.db.read().get_cf(STATE_CF, key) {
             Ok(Some(v)) => {
                 let result = self
-                    .deferred_call_deserializer
+                    .call_deserializer
                     .u64_var_int_deserializer
                     .deserialize::<DeserializeError>(&v)
                     .expect(MESSAGE_DESER_ERROR)
@@ -111,8 +121,27 @@ impl DeferredCallRegistry {
     }
 
     /// Returns the total amount of gas booked
-    pub fn get_total_gas() -> u128 {
-        todo!()
+    pub fn get_total_gas(&self) -> u128 {
+        match self
+            .db
+            .read()
+            .get_cf(STATE_CF, DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec())
+            .expect(CRUD_ERROR)
+        {
+            Some(v) => {
+                let result = self
+                    .registry_changes_deserializer
+                    .total_gas_deserializer
+                    .deserialize::<DeserializeError>(&v)
+                    .expect(MESSAGE_DESER_ERROR)
+                    .1;
+                match result {
+                    SetOrKeep::Set(v) => v,
+                    SetOrKeep::Keep => 0,
+                }
+            }
+            None => 0,
+        }
     }
 
     pub fn put_entry(
@@ -123,7 +152,7 @@ impl DeferredCallRegistry {
         batch: &mut DBBatch,
     ) {
         let mut buffer_id = Vec::new();
-        self.deferred_call_id_serializer
+        self.call_id_serializer
             .serialize(call_id, &mut buffer_id)
             .expect(MESSAGE_SER_ERROR);
 
@@ -133,7 +162,7 @@ impl DeferredCallRegistry {
 
         // sender address
         let mut temp_buffer = Vec::new();
-        self.deferred_call_serializer
+        self.call_serializer
             .address_serializer
             .serialize(&call.sender_address, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -145,7 +174,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // target slot
-        self.deferred_call_serializer
+        self.call_serializer
             .slot_serializer
             .serialize(&call.target_slot, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -153,7 +182,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // target address
-        self.deferred_call_serializer
+        self.call_serializer
             .address_serializer
             .serialize(&call.target_address, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -165,7 +194,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // target function
-        self.deferred_call_serializer
+        self.call_serializer
             .string_serializer
             .serialize(&call.target_function, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -177,7 +206,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // parameters
-        self.deferred_call_serializer
+        self.call_serializer
             .vec_u8_serializer
             .serialize(&call.parameters, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -185,7 +214,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // coins
-        self.deferred_call_serializer
+        self.call_serializer
             .amount_serializer
             .serialize(&call.coins, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -193,7 +222,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // max gas
-        self.deferred_call_serializer
+        self.call_serializer
             .u64_var_int_serializer
             .serialize(&call.max_gas, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -201,7 +230,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // fee
-        self.deferred_call_serializer
+        self.call_serializer
             .amount_serializer
             .serialize(&call.fee, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -209,7 +238,7 @@ impl DeferredCallRegistry {
         temp_buffer.clear();
 
         // cancelled
-        self.deferred_call_serializer
+        self.call_serializer
             .bool_serializer
             .serialize(&call.cancelled, &mut temp_buffer)
             .expect(MESSAGE_SER_ERROR);
@@ -218,7 +247,7 @@ impl DeferredCallRegistry {
 
     fn delete_entry(&self, id: &DeferredCallId, slot: &Slot, batch: &mut DBBatch) {
         let mut buffer_id = Vec::new();
-        self.deferred_call_id_serializer
+        self.call_id_serializer
             .serialize(id, &mut buffer_id)
             .expect(MESSAGE_SER_ERROR);
 
@@ -262,7 +291,7 @@ impl DeferredCallRegistry {
                         self.db.read().delete_key(batch, key);
                     } else {
                         let mut value_ser = Vec::new();
-                        self.deferred_call_serializer
+                        self.call_serializer
                             .u64_var_int_serializer
                             .serialize(&v, &mut value_ser)
                             .expect(MESSAGE_SER_ERROR);
@@ -273,18 +302,25 @@ impl DeferredCallRegistry {
                 }
                 DeferredRegistryGasChange::Keep => {}
             }
-            // match slot_changes.base_fee {
-            //     DeferredRegistryBaseFeeChange::Set(v) => {
-            //         if v.eq(&0) {
-            //             batch.delete_key(ASYNC_CAL_SLOT_PREFIX, slot, BASE_FEE_TAG);
-            //         } else {
-            //             let key = BASE_FEE_TAG;
-            //             let value = v.to_bytes().to_vec();
-            //             batch.put_or_update_entry_value(ASYNC_CAL_SLOT_PREFIX, slot, key, value);
-            //         }
-            //     }
-            //     DeferredRegistryBaseFeeChange::Keep => {}
-            // }
+            match slot_changes.base_fee {
+                DeferredRegistryBaseFeeChange::Set(v) => {
+                    let key = deferred_call_slot_base_fee_key!(slot.to_bytes_key());
+                    //Note: if a base fee is zet to 0, delete the base fee entry
+                    if v.eq(&Amount::zero()) {
+                        self.db.read().delete_key(batch, key);
+                    } else {
+                        let mut value_ser = Vec::new();
+                        self.call_serializer
+                            .amount_serializer
+                            .serialize(&v, &mut value_ser)
+                            .expect(MESSAGE_SER_ERROR);
+                        self.db
+                            .read()
+                            .put_or_update_entry_value(batch, key, &value_ser);
+                    }
+                }
+                DeferredRegistryBaseFeeChange::Keep => {}
+            }
         }
     }
 }
@@ -390,7 +426,7 @@ mod tests {
     use crate::{DeferredCall, DeferredCallRegistry, DeferredRegistryChanges};
     use massa_db_exports::{
         DBBatch, Key, MassaDBConfig, MassaDBController, ShareableMassaDBController,
-        DEFERRED_CALLS_PREFIX, STATE_CF,
+        DEFERRED_CALLS_SLOT_PREFIX, STATE_CF,
     };
     use massa_db_worker::MassaDB;
     use massa_models::{
