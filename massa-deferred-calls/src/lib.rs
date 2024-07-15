@@ -1,11 +1,13 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
 use macros::DEFERRED_CALL_TOTAL_GAS;
 use massa_db_exports::{
-    DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_SLOT_PREFIX, KEY_SER_ERROR,
-    MESSAGE_DESER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_SLOT_PREFIX, KEY_DESER_ERROR,
+    KEY_SER_ERROR, MESSAGE_DESER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use registry_changes::{DeferredRegistryChanges, DeferredRegistryChangesDeserializer};
+use registry_changes::{
+    DeferredRegistryChanges, DeferredRegistryChangesDeserializer, DeferredRegistryChangesSerializer,
+};
 
 /// This module implements a new version of the Autonomous Smart Contracts. (ASC)
 /// This new version allow asynchronous calls to be registered for a specific slot and ensure his execution.
@@ -21,7 +23,7 @@ use massa_ledger_exports::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
     config::THREAD_COUNT,
-    deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
+    deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
 use std::collections::BTreeMap;
@@ -32,7 +34,9 @@ pub struct DeferredCallRegistry {
     call_serializer: DeferredCallSerializer,
     call_id_serializer: DeferredCallIdSerializer,
     call_deserializer: DeferredCallDeserializer,
+    call_id_deserializer: DeferredCallIdDeserializer,
     registry_changes_deserializer: DeferredRegistryChangesDeserializer,
+    registry_changes_serializer: DeferredRegistryChangesSerializer,
 }
 
 impl DeferredCallRegistry {
@@ -51,17 +55,53 @@ impl DeferredCallRegistry {
             call_serializer: DeferredCallSerializer::new(),
             call_id_serializer: DeferredCallIdSerializer::new(),
             call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
+            call_id_deserializer: DeferredCallIdDeserializer::new(),
             // todo args
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
                 THREAD_COUNT,
                 100_000,
                 100_000,
             ),
+            registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
         }
     }
 
     pub fn get_slot_calls(&self, slot: Slot) -> DeferredSlotCalls {
-        todo!()
+        let mut to_return = DeferredSlotCalls::new(slot);
+        let key = deferred_slot_call_prefix_key!(slot.to_bytes_key());
+
+        // cache the call ids to avoid duplicates iteration
+        let mut temp = Vec::new();
+
+        for (serialized_key, _serialized_value) in self.db.read().prefix_iterator_cf(STATE_CF, &key)
+        {
+            if !serialized_key.starts_with(&key) {
+                break;
+            }
+
+            let rest_key = &serialized_key[key.len()..];
+
+            let (_rest, call_id) = self
+                .call_id_deserializer
+                .deserialize::<DeserializeError>(&rest_key)
+                .expect(KEY_DESER_ERROR);
+
+            if temp.contains(&call_id) {
+                continue;
+            }
+
+            temp.push(call_id.clone());
+
+            if let Some(call) = self.get_call(&slot, &call_id) {
+                to_return.slot_calls.insert(call_id, call);
+            }
+        }
+
+        to_return.slot_base_fee = self.get_slot_base_fee(&slot);
+        to_return.slot_gas = self.get_slot_gas(slot);
+        to_return.total_gas = self.get_total_gas();
+
+        to_return
     }
 
     /// Returns the DeferredCall for a given slot and id
@@ -111,13 +151,17 @@ impl DeferredCallRegistry {
 
     /// Returns the base fee for a slot
     pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
-        unimplemented!("get_slot_base_fee");
-        // self.db.read().get_cf(handle_cf, key)
-        // // By default, if it is absent, it is 0
-        // self.db.read().get
-        //     .get(ASYNC_CAL_SLOT_PREFIX, slot, BASE_FEE_TAG)
-        //     .map(|v| Amount::from_bytes(v).unwrap())
-        //     .unwrap_or(Amount::zero())
+        let key = deferred_call_slot_base_fee_key!(slot.to_bytes_key());
+        match self.db.read().get_cf(STATE_CF, key) {
+            Ok(Some(v)) => {
+                self.call_deserializer
+                    .amount_deserializer
+                    .deserialize::<DeserializeError>(&v)
+                    .expect(MESSAGE_DESER_ERROR)
+                    .1
+            }
+            _ => Amount::zero(),
+        }
     }
 
     /// Returns the total amount of gas booked
@@ -322,6 +366,21 @@ impl DeferredCallRegistry {
                 DeferredRegistryBaseFeeChange::Keep => {}
             }
         }
+
+        match changes.total_gas {
+            DeferredRegistryGasChange::Set(v) => {
+                let key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
+                let mut value_ser = Vec::new();
+                self.registry_changes_serializer
+                    .total_gas_serializer
+                    .serialize(&DeferredRegistryGasChange::Set(v), &mut value_ser)
+                    .expect(MESSAGE_SER_ERROR);
+                self.db
+                    .read()
+                    .put_or_update_entry_value(batch, key, &value_ser);
+            }
+            DeferredRegistryGasChange::Keep => {}
+        }
     }
 }
 
@@ -424,10 +483,7 @@ impl DeferredSlotCalls {
 mod tests {
     use super::*;
     use crate::{DeferredCall, DeferredCallRegistry, DeferredRegistryChanges};
-    use massa_db_exports::{
-        DBBatch, Key, MassaDBConfig, MassaDBController, ShareableMassaDBController,
-        DEFERRED_CALLS_SLOT_PREFIX, STATE_CF,
-    };
+    use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController, ShareableMassaDBController};
     use massa_db_worker::MassaDB;
     use massa_models::{
         address::Address,
@@ -437,7 +493,7 @@ mod tests {
         slot::Slot,
     };
     use parking_lot::RwLock;
-    use std::{str::FromStr, sync::Arc};
+    use std::{result, str::FromStr, sync::Arc};
     use tempfile::tempdir;
 
     #[test]
@@ -490,5 +546,70 @@ mod tests {
         let result = registry.get_call(&target_slot, &id).unwrap();
         assert!(result.target_function.eq(&call.target_function));
         assert_eq!(result.sender_address, call.sender_address);
+    }
+
+    #[test]
+    fn get_slot_calls() {
+        let temp_dir = tempdir().expect("Unable to create a temp folder");
+        let db_config = MassaDBConfig {
+            path: temp_dir.path().to_path_buf(),
+            max_history_length: 100,
+            max_final_state_elements_size: 100,
+            max_versioning_elements_size: 100,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 100,
+        };
+        let call_id_serializer = DeferredCallIdSerializer::new();
+        let db: ShareableMassaDBController = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
+        ));
+
+        let registry = DeferredCallRegistry::new(db);
+
+        let mut changes = DeferredRegistryChanges::default();
+
+        let target_slot = Slot {
+            thread: 5,
+            period: 1,
+        };
+
+        let call = DeferredCall::new(
+            Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+            target_slot.clone(),
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
+            "receive".to_string(),
+            vec![42, 42, 42, 42],
+            Amount::from_raw(100),
+            3000000,
+            Amount::from_raw(1),
+            false,
+        );
+        let id = DeferredCallId::new(0, target_slot.clone(), 1, &[]).unwrap();
+
+        let id2 = DeferredCallId::new(0, target_slot.clone(), 1, &[123]).unwrap();
+
+        let mut buf_id = Vec::new();
+        call_id_serializer.serialize(&id, &mut buf_id).unwrap();
+
+        changes.set_call(id.clone(), call.clone());
+        changes.set_call(id2.clone(), call.clone());
+        changes.set_total_gas(100);
+        changes.set_slot_gas(target_slot.clone(), 100_000);
+
+        changes.set_slot_base_fee(target_slot.clone(), Amount::from_raw(10000000));
+
+        let mut batch = DBBatch::new();
+        registry.apply_changes_to_batch(changes, &mut batch);
+
+        registry.db.write().write_batch(batch, DBBatch::new(), None);
+
+        let result = registry.get_slot_calls(target_slot.clone());
+
+        assert!(result.slot_calls.len() == 2);
+        assert!(result.slot_calls.contains_key(&id));
+        assert!(result.slot_calls.contains_key(&id2));
+        assert_eq!(result.total_gas, 100);
+        assert_eq!(result.slot_base_fee, Amount::from_raw(10000000));
+        assert_eq!(result.slot_gas, 100_000);
     }
 }

@@ -113,7 +113,7 @@ pub struct DeferredRegistryChangesSerializer {
     slots_length: U64VarIntSerializer,
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
-    total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
+    pub(crate) total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
 }
 
 impl DeferredRegistryChangesSerializer {

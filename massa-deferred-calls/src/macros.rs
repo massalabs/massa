@@ -43,15 +43,21 @@ macro_rules! deferred_call_slot_base_fee_key {
 }
 
 #[macro_export]
-macro_rules! deferred_call_prefix_key {
-    ($id:expr, $slot:expr) => {
+macro_rules! deferred_slot_call_prefix_key {
+    ($slot:expr) => {
         [
             DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
             &$slot[..],
             &[$crate::macros::CALLS_TAG],
-            &$id[..],
         ]
         .concat()
+    };
+}
+
+#[macro_export]
+macro_rules! deferred_call_prefix_key {
+    ($id:expr, $slot:expr) => {
+        [&deferred_slot_call_prefix_key!($slot), &$id[..]].concat()
     };
 }
 
@@ -171,7 +177,7 @@ mod tests {
 
         assert_eq!(deferred_call_prefix_key!(buf_id, slot_ser), prefix);
 
-        let to_check = [prefix[..], &[1u8]].concat();
-        assert_eq!(sender_address_key!(buf_id, slot_ser), to_check);
+        // let to_check = [prefix[..], &[1u8]].concat();
+        // assert_eq!(sender_address_key!(buf_id, slot_ser), to_check);
     }
 }

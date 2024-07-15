@@ -119,7 +119,7 @@ pub struct DeferredCallDeserializer {
     address_deserializer: AddressDeserializer,
     string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
     vec_u8_deserializer: VecU8Deserializer,
-    amount_deserializer: AmountDeserializer,
+    pub(crate) amount_deserializer: AmountDeserializer,
     pub(crate) u64_var_int_deserializer: U64VarIntDeserializer,
     bool_deserializer: BoolDeserializer,
 }
