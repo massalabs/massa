@@ -288,8 +288,8 @@ pub fn start_execution_worker(
     // launch the execution thread
     let input_data_clone = input_data.clone();
     let thread_builder = thread::Builder::new()
-        .stack_size(200 * 1024 * 1024)
-        .name("execution".into()); //200 Mb stack size
+        .stack_size(200 * 1024 * 1024) //200 Mb stack size
+        .name("execution".into());
     let thread_handle = thread_builder
         .spawn(move || {
             ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
