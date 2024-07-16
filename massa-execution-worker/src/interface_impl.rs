@@ -11,7 +11,6 @@ use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::MAX_RECURSIVE_CALLS_DEPTH;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
@@ -232,7 +231,7 @@ impl Interface for InterfaceImpl {
 
         context.recursion_counter += 1;
 
-        if context.recursion_counter > MAX_RECURSIVE_CALLS_DEPTH {
+        if context.recursion_counter > self.config.max_recursive_calls_depth {
             bail!("recursion depth limit reached");
         }
 
