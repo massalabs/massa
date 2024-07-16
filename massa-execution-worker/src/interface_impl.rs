@@ -231,7 +231,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         context.recursion_counter += 1;
-        
+
         if context.recursion_counter > MAX_RECURSIVE_CALLS_DEPTH {
             bail!("recursion depth limit reached");
         }
@@ -246,7 +246,7 @@ impl Interface for InterfaceImpl {
             Some(value) => context.recursion_counter = value,
             None => bail!("recursion counter underflow"),
         }
-        
+
         Ok(())
     }
 
