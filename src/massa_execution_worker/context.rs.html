@@ -1161,11 +1161,6 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
-<a href="#1164" id="1164">1164</a>
-<a href="#1165" id="1165">1165</a>
-<a href="#1166" id="1166">1166</a>
-<a href="#1167" id="1167">1167</a>
-<a href="#1168" id="1168">1168</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1259,9 +1254,6 @@
     <span class="doccomment">/// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-
-    <span class="doccomment">/// recursion counter, incremented for each new nested call
-    </span><span class="kw">pub </span>recursion_counter: usize,
 }
 
 <span class="doccomment">/// An execution context that needs to be initialized before executing bytecode,
@@ -1350,9 +1342,6 @@
     <span class="doccomment">/// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-
-    <span class="doccomment">/// recursion counter, incremented for each new nested call
-    </span><span class="kw">pub </span>recursion_counter: usize,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1417,7 +1406,6 @@
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
             gas_remaining_before_subexecution: <span class="prelude-val">None</span>,
-            recursion_counter: <span class="number">0</span>,
         }
     }
 
@@ -1439,7 +1427,6 @@
             event_count: <span class="self">self</span>.events.<span class="number">0</span>.len(),
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
             gas_remaining_before_subexecution: <span class="self">self</span>.gas_remaining_before_subexecution,
-            recursion_counter: <span class="self">self</span>.recursion_counter,
         }
     }
 
@@ -1540,12 +1527,12 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
-        <span class="self">self</span>.speculative_async_pool.take_batch_to_execute(
-            <span class="self">self</span>.slot,
-            max_gas,
-            async_msg_cst_gas_cost,
-        )
+    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, AsyncMessage)&gt; {
+        <span class="self">self</span>.speculative_async_pool
+            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
+            .into_iter()
+            .map(|(_id, msg)| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
+            .collect()
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for executing an active slot.
@@ -2069,10 +2056,13 @@
         <span class="comment">// execute the deferred credits coming from roll sells
         </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
+        <span class="comment">// take the ledger changes first as they are needed for async messages and cache
+        </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
+
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
         </span><span class="kw">let </span>deleted_messages = <span class="self">self
             </span>.speculative_async_pool
-            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes);
+            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
@@ -2082,7 +2072,7 @@
         }
 
         <span class="comment">// update module cache
-        </span><span class="kw">let </span>bc_updates = <span class="self">self</span>.speculative_ledger.added_changes.get_bytecode_updates();
+        </span><span class="kw">let </span>bc_updates = ledger_changes.get_bytecode_updates();
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
             <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
@@ -2108,7 +2098,7 @@
 
         <span class="comment">// generate the execution output
         </span><span class="kw">let </span>state_changes = StateChanges {
-            ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
+            ledger_changes,
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
