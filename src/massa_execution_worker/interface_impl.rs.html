@@ -2349,7 +2349,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         context.recursion_counter += <span class="number">1</span>;
-        
+
         <span class="kw">if </span>context.recursion_counter &gt; MAX_RECURSIVE_CALLS_DEPTH {
             <span class="macro">bail!</span>(<span class="string">&quot;recursion depth limit reached&quot;</span>);
         }
@@ -2364,7 +2364,7 @@
             <span class="prelude-val">Some</span>(value) =&gt; context.recursion_counter = value,
             <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;recursion counter underflow&quot;</span>),
         }
-        
+
         <span class="prelude-val">Ok</span>(())
     }
 
