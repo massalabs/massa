@@ -341,6 +341,8 @@ pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 /// Maximum size of deferred call pool changes
 // todo define this value
 pub const MAX_DEFERRED_CALL_POOL_CHANGES: u64 = 100_000;
+/// Maximum size of deferred call future slots (1 week)
+pub const MAX_DEFERRED_CALL_FUTURE_SLOTS: u64 = 1209600;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

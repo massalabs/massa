@@ -1125,6 +1125,36 @@ impl ExecutionContext {
             ))),
         }
     }
+
+    pub fn deferred_calls_get_slot_booked_gas(&self, slot: &Slot) -> u64 {
+        self.speculative_deferred_calls.get_slot_gas(slot)
+    }
+
+    /// Get the price it would cost to reserve "gas" at target slot "slot".
+    pub fn deferred_calls_compute_call_fee(
+        &self,
+        target_slot: Slot,
+        max_gas: u64,
+        thread_count: u8,
+        async_call_max_booking_slots: u64,
+        max_async_gas: u64,
+        async_gas_target: u64,
+        global_overbooking_penalty: Amount,
+        slot_overbooking_penalty: Amount,
+        current_slot: Slot,
+    ) -> Result<Amount, ExecutionError> {
+        self.speculative_deferred_calls.compute_call_fee(
+            target_slot,
+            max_gas,
+            thread_count,
+            async_call_max_booking_slots,
+            max_async_gas,
+            async_gas_target,
+            global_overbooking_penalty,
+            slot_overbooking_penalty,
+            current_slot,
+        )
+    }
 }
 
 /// Generate the execution trail hash

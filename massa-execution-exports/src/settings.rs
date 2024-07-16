@@ -102,4 +102,6 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
+    /// Max deferred call future slot
+    pub max_deferred_call_future_slots: u64,
 }

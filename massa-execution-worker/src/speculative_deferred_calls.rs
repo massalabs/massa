@@ -50,33 +50,31 @@ impl SpeculativeDeferredCallRegistry {
     }
 
     pub fn get_slot_gas(&self, slot: &Slot) -> u64 {
-        unimplemented!("get_slot_gas");
+        // get slot gas from current changes
+        if let Some(v) = self.deferred_calls_changes.get_slot_gas(slot) {
+            return v;
+        }
 
-        // // get slot gas from current changes
-        // if let Some(v) = self.current_changes.get_slot_gas(slot) {
-        //     return v;
-        // }
+        // check in history backwards
+        {
+            let history = self.active_history.read();
+            for history_item in history.0.iter().rev() {
+                if let Some(v) = history_item
+                    .state_changes
+                    .deferred_call_changes
+                    .get_slot_gas(slot)
+                {
+                    return v;
+                }
+            }
+        }
 
-        // // check in history backwards
-        // {
-        //     let history = self.active_history.read();
-        //     for history_item in history.0.iter().rev() {
-        //         if let Some(v) = history_item
-        //             .state_changes
-        //             .async_call_registry_changes
-        //             .get_slot_gas(slot)
-        //         {
-        //             return v;
-        //         }
-        //     }
-        // }
-
-        // // check in final state
-        // return self
-        //     .final_state
-        //     .read()
-        //     .get_asc_registry()
-        //     .get_slot_gas(slot);
+        // check in final state
+        return self
+            .final_state
+            .read()
+            .get_deferred_call_registry()
+            .get_slot_gas(slot);
     }
 
     pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
@@ -131,7 +129,7 @@ impl SpeculativeDeferredCallRegistry {
         let mut new_slot = current_slot
             .skip(async_call_max_booking_slots, thread_count)
             .expect("could not skip enough slots");
-        todo!();
+
         self.deferred_calls_changes
             .set_slot_base_fee(new_slot, todo!());
 
@@ -143,7 +141,7 @@ impl SpeculativeDeferredCallRegistry {
         );
 
         // delete the current slot
-        for (id, call) in &slot_calls.slot_calls {
+        for (id, _call) in &slot_calls.slot_calls {
             self.deferred_calls_changes.delete_call(current_slot, id);
         }
         self.deferred_calls_changes.set_slot_gas(current_slot, 0);
@@ -197,12 +195,14 @@ impl SpeculativeDeferredCallRegistry {
     ) -> Result<(Address, Amount), ExecutionError> {
         // get call, fail if it does not exist
         let Some(mut call) = self.get_call(id) else {
-            return Err(ExecutionError::AscError("Call ID does not exist.".into()));
+            return Err(ExecutionError::DeferredCallsError(
+                "Call ID does not exist.".into(),
+            ));
         };
 
         // check if the call is already cancelled
         if call.cancelled {
-            return Err(ExecutionError::AscError(
+            return Err(ExecutionError::DeferredCallsError(
                 "Call ID is already cancelled.".into(),
             ));
         }
@@ -256,34 +256,6 @@ impl SpeculativeDeferredCallRegistry {
         Amount::from_raw(std::cmp::min(raw_fee, u64::MAX as u128) as u64)
     }
 
-    // pub fn get_slot_base_fee(&self, slot: &Slot) -> Amount {
-    //     // get slot base fee from current changes
-    //     if let Some(v) = self.current_changes.get_slot_base_fee(slot) {
-    //         return v;
-    //     }
-
-    //     // check in history backwards
-    //     {
-    //         let history = self.active_history.read();
-    //         for history_item in history.0.iter().rev() {
-    //             if let Some(v) = history_item
-    //                 .state_changes
-    //                 .async_call_registry_changes
-    //                 .get_slot_base_fee(slot)
-    //             {
-    //                 return v;
-    //             }
-    //         }
-    //     }
-
-    //     // check in final state
-    //     return self
-    //         .final_state
-    //         .read()
-    //         .get_asc_registry()
-    //         .get_slot_base_fee(slot);
-    // }
-
     /// Compute call fee
     pub fn compute_call_fee(
         &self,
@@ -299,7 +271,7 @@ impl SpeculativeDeferredCallRegistry {
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
         if target_slot <= current_slot {
-            return Err(ExecutionError::AscError(
+            return Err(ExecutionError::DeferredCallsError(
                 "Target slot is in the past.".into(),
             ));
         }
@@ -311,7 +283,7 @@ impl SpeculativeDeferredCallRegistry {
             > async_call_max_booking_slots
         {
             // note: the current slot is not counted
-            return Err(ExecutionError::AscError(
+            return Err(ExecutionError::DeferredCallsError(
                 "Target slot is too far in the future.".into(),
             ));
         }
@@ -319,24 +291,26 @@ impl SpeculativeDeferredCallRegistry {
         // Check that the gas is not too high for the target slot
         let slot_occupancy = self.get_slot_gas(&target_slot);
         if slot_occupancy.saturating_add(max_gas) > max_async_gas {
-            return Err(ExecutionError::AscError(
+            return Err(ExecutionError::DeferredCallsError(
                 "Not enough gas available in the target slot.".into(),
             ));
         }
+
+        // We perform Dynamic Pricing of slot gas booking using a Proportional-Integral controller (https://en.wikipedia.org/wiki/Proportional–integral–derivative_controller).
+        // It regulates the average slot async gas usage towards `target_async_gas` by adjusting fees.
+
+        // Constant part of the fee: directly depends on the base async gas cost for the target slot.
+        // This is the "Integral" part of the Proportional-Integral controller.
+        // When a new slot `S` is made available for booking, the `S.base_async_gas_cost` is increased or decreased compared to `(S-1).base_async_gas_cost` depending on the average gas usage over the `deferred_call_max_future_slots` slots before `S`.
 
         // Integral fee
         let integral_fee = self
             .get_slot_base_fee(&target_slot)
             .saturating_mul_u64(max_gas);
 
-        // Slot overbooking fee
-        let slot_overbooking_fee = Self::overbooking_fee(
-            max_async_gas as u128,
-            async_gas_target as u128,
-            slot_occupancy as u128,
-            max_gas as u128,
-            slot_overbooking_penalty,
-        );
+        // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
+
+        // A fee that linearly depends on the total load over `deferred_call_max_future_slots` slots but only when the average load is above `target_async_gas` to not penalize normal use. Booking all the gas from all slots within the booking period requires using the whole initial coin supply.
 
         // Global overbooking fee
         // todo check if this is correct
@@ -349,7 +323,17 @@ impl SpeculativeDeferredCallRegistry {
             (async_gas_target as u128).saturating_mul(async_call_max_booking_slots as u128),
             global_occupancy,
             max_gas as u128,
-            global_overbooking_penalty,
+            global_overbooking_penalty, // total_supply
+        );
+
+        // Finally, a per-slot proportional fee is also added to prevent attackers from denying significant ranges of consecutive slots within the long booking period.
+        // Slot overbooking fee
+        let slot_overbooking_fee = Self::overbooking_fee(
+            max_async_gas as u128,
+            async_gas_target as u128,
+            slot_occupancy as u128,
+            max_gas as u128,
+            slot_overbooking_penalty, //   total_initial_coin_supply/10000
         );
 
         // return the fee
