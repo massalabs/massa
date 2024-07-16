@@ -103,6 +103,8 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -207,5 +209,7 @@
     </span><span class="kw">pub </span>max_execution_traces_slot_limit: usize,
     <span class="doccomment">/// Where to dump blocks
     </span><span class="kw">pub </span>block_dump_folder_path: PathBuf,
+    <span class="doccomment">/// Max recursive calls depth
+    </span><span class="kw">pub </span>max_recursive_calls_depth: usize,
 }
 </code></pre></div></section></main></body></html>
