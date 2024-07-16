@@ -2271,28 +2271,4 @@ impl ExecutionState {
                 .map(|i| (i.current_version, i.announced_version)),
         );
     }
-
-    // Get the price it would cost to reserve "gas" at target slot "slot".
-    pub fn deferred_call_quote(&self, slot: Slot, gas: u64) -> Result<Amount, ExecutionError> {
-        let current_slot = self.active_cursor;
-
-        let gas_booked_slot = self
-            .execution_context
-            .lock()
-            .deferred_calls_get_slot_booked_gas(&slot);
-
-        self.execution_context
-            .lock()
-            .deferred_calls_compute_call_fee(
-                slot,
-                gas,
-                self.config.thread_count,
-                self.config.max_deferred_call_future_slots,
-                self.config.max_async_gas,
-                gas_booked_slot,
-                Amount::from_raw(1_000_000_000),
-                Amount::from_raw(1_000_000_000 / 10_000),
-                current_slot,
-            )
-    }
 }
