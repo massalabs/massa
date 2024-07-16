@@ -91,6 +91,9 @@ pub struct ExecutionContextSnapshot {
     /// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
+
+    /// recursion counter, incremented for each new nested call
+    pub recursion_counter: usize,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -179,6 +182,9 @@ pub struct ExecutionContext {
     /// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
+
+    /// recursion counter, incremented for each new nested call
+    pub recursion_counter: usize,
 }
 
 impl ExecutionContext {
@@ -243,6 +249,7 @@ impl ExecutionContext {
             address_factory: AddressFactory { mip_store },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
+            recursion_counter: 0,
         }
     }
 
@@ -264,6 +271,7 @@ impl ExecutionContext {
             event_count: self.events.0.len(),
             unsafe_rng: self.unsafe_rng.clone(),
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
+            recursion_counter: self.recursion_counter,
         }
     }
 
