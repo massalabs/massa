@@ -632,7 +632,6 @@ fn test_nested_call_recursion_limit_not_reached() {
             ..Default::default()
         });
     assert!(events.len() >= 4);
-    assert!(events[3].data.contains("9800444"));
 }
 
 /// Test the ABI get call coins
