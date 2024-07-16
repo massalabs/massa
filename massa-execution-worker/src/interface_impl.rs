@@ -1518,8 +1518,8 @@ impl Interface for InterfaceImpl {
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
         match addr {
-            Address::User(_) => Ok(AddressCategory::ScAddress),
-            Address::SC(_) => Ok(AddressCategory::UserAddress),
+            Address::User(_) => Ok(AddressCategory::UserAddress),
+            Address::SC(_) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
             _ => Ok(AddressCategory::Unspecified),
         }
