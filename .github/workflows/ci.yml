@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main, 'testnet_*', 'mainnet_2_3']
+    branches: [main, 'testnet_*', 'mainnet_*']
     types:
     - opened
     - reopened
