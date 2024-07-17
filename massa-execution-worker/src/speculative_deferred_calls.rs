@@ -50,6 +50,34 @@ impl SpeculativeDeferredCallRegistry {
         self.deferred_calls_changes.set_call(id, call);
     }
 
+    pub fn get_total_gas(&self) -> u128 {
+        // get total gas from current changes
+        if let Some(v) = self.deferred_calls_changes.get_total_gas() {
+            return v;
+        }
+
+        // check in history backwards
+        {
+            let history = self.active_history.read();
+            for history_item in history.0.iter().rev() {
+                if let Some(v) = history_item
+                    .state_changes
+                    .deferred_call_changes
+                    .get_total_gas()
+                {
+                    return v;
+                }
+            }
+        }
+
+        // check in final state
+        return self
+            .final_state
+            .read()
+            .get_deferred_call_registry()
+            .get_total_gas();
+    }
+
     pub fn get_slot_gas(&self, slot: &Slot) -> u64 {
         // get slot gas from current changes
         if let Some(v) = self.deferred_calls_changes.get_slot_gas(slot) {
@@ -374,7 +402,16 @@ impl SpeculativeDeferredCallRegistry {
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
-        self.deferred_calls_changes.set_call(id.clone(), call);
+        self.deferred_calls_changes
+            .set_call(id.clone(), call.clone());
+
+        let current_gas = self.get_slot_gas(&call.target_slot);
+
+        self.deferred_calls_changes
+            .set_slot_gas(call.target_slot, current_gas + call.max_gas);
+
+        self.deferred_calls_changes
+            .set_total_gas(self.get_total_gas().saturating_add(call.max_gas as u128));
 
         Ok(id)
     }

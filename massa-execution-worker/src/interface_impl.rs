@@ -1339,11 +1339,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
-    fn get_deferred_call_quote(
-        &self,
-        target_slot: (u64, u8),
-        gas_limit: u64,
-    ) -> Result<(bool, u64)> {
+    fn deferred_call_quote(&self, target_slot: (u64, u8), gas_limit: u64) -> Result<(bool, u64)> {
         // write-lock context
 
         let context = context_guard!(self);
@@ -1391,6 +1387,24 @@ impl Interface for InterfaceImpl {
         coins: u64,
         max_gas: u64,
     ) -> Result<Vec<u8>> {
+        // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
+
+        //    let total_booked_gas = get_current_total_booked_async_gas();
+
+        //    const CONST_ASYNC_GAS: u64 = XXXXX; // TODO calibrate: const_gas is the gas used even when gas=0 in order to process the item
+        //    let effective_gas = CONST_ASYNC_GAS + max_gas;
+        //    let fee = get_price(target_slot, effective_gas)?;
+
+        //    // TODO: make sender pay `coins + fee`
+
+        //    let call = /* ... */;
+        //    let id = /* ... */ ;
+
+        //    target_slot.booked_calls.push(callID, call);
+        //    target_slot.async_gas_booked += effective_gas;
+
+        //    set_current_total_booked_async_gas(total_booked_gas + effective_gas)
+
         let target_addr = Address::from_str(target_addr)?;
 
         // check that the target address is an SC address
@@ -1407,7 +1421,7 @@ impl Interface for InterfaceImpl {
         }
 
         // check fee, slot, gas
-        let (available, fee_raw) = self.get_deferred_call_quote(target_slot, max_gas)?;
+        let (available, fee_raw) = self.deferred_call_quote(target_slot, max_gas)?;
         if !available {
             bail!("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
         }
@@ -1422,6 +1436,15 @@ impl Interface for InterfaceImpl {
             Some(addr) => addr.address,
             _ => bail!("failed to read call stack sender address"),
         };
+
+        // transfer coins from caller to target address
+        // coins + cost for booking the deferred call
+        context.transfer_coins(
+            Some(sender_address),
+            Some(target_addr),
+            coins.saturating_add(fee),
+            true,
+        )?;
 
         let call = DeferredCall::new(
             sender_address,
