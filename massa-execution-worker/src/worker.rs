@@ -287,7 +287,12 @@ pub fn start_execution_worker(
 
     // launch the execution thread
     let input_data_clone = input_data.clone();
-    let thread_builder = thread::Builder::new().name("execution".into());
+
+    // We set the stack size to 200 Mb instead of the default 2 Mb to avoid stack overflows
+    // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
+    let thread_builder = thread::Builder::new()
+        .stack_size(200 * 1024 * 1024)
+        .name("execution".into());
     let thread_handle = thread_builder
         .spawn(move || {
             ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
