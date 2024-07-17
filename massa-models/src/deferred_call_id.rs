@@ -4,7 +4,7 @@ use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
-    error::{ContextError, ErrorKind, ParseError},
+    error::{ContextError, ParseError},
     IResult,
 };
 use transition::Versioned;
@@ -195,7 +195,7 @@ impl DeferredCallId {
         index: u64,
         trail_hash: &[u8],
     ) -> Result<Self, ModelsError> {
-        let mut id = Vec::new();
+        let mut id: Vec<u8> = Vec::new();
         match version {
             0 => {
                 let version_serializer = U64VarIntSerializer::new();

@@ -169,7 +169,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut id_ser = DeferredCallIdSerializer::new();
+        let id_ser = DeferredCallIdSerializer::new();
         let mut buf_id = Vec::new();
         id_ser.serialize(&id, &mut buf_id).unwrap();
 

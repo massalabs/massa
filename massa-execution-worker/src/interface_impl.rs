@@ -13,6 +13,7 @@ use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::deferred_call_id::DeferredCallId;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -1405,6 +1406,10 @@ impl Interface for InterfaceImpl {
 
         //    set_current_total_booked_async_gas(total_booked_gas + effective_gas)
 
+        const CONST_DEFERRED_CALL_GAS: u64 = 0; // TODO calibrate: const_gas is the gas used even when gas=0 in order to process the item
+
+        let max_gas = CONST_DEFERRED_CALL_GAS + max_gas;
+
         let target_addr = Address::from_str(target_addr)?;
 
         // check that the target address is an SC address
@@ -1437,14 +1442,9 @@ impl Interface for InterfaceImpl {
             _ => bail!("failed to read call stack sender address"),
         };
 
-        // transfer coins from caller to target address
+        // make sender pay coins + fee
         // coins + cost for booking the deferred call
-        context.transfer_coins(
-            Some(sender_address),
-            Some(target_addr),
-            coins.saturating_add(fee),
-            true,
-        )?;
+        context.transfer_coins(Some(sender_address), None, coins.saturating_add(fee), true)?;
 
         let call = DeferredCall::new(
             sender_address,
@@ -1472,24 +1472,27 @@ impl Interface for InterfaceImpl {
     /// true if the call exists, false otherwise
     fn deferred_call_exists(&self, id: &[u8]) -> Result<bool> {
         // write-lock context
-        let mut context = context_guard!(self);
-
-        //TODO: ask the context if the call exists
-
-        todo!()
+        let call_id = DeferredCallId::from_bytes(id)?;
+        let context = context_guard!(self);
+        Ok(context.deferred_call_exist(&call_id))
     }
 
-    /// Cancel an asynchronous call
+    /// Cancel a deferred call
     ///
     /// # Arguments
     /// * id: the id of the call
     fn deferred_call_cancel(&self, id: &[u8]) -> Result<()> {
-        // write-lock context
+        // Reimburses coins to the sender but not the deferred call fee to avoid spam. Cancelled items are not removed from storage to avoid manipulation, just ignored when it is their turn to be executed.
+
         let mut context = context_guard!(self);
 
-        //TODO: ask the context to cancel the call
+        // Can only be called by the creator of the deferred call.
+        let caller = context.get_current_address()?;
 
-        todo!()
+        let call_id = DeferredCallId::from_bytes(id)?;
+
+        context.deferred_call_cancel(&call_id, caller)?;
+        Ok(())
     }
 
     #[allow(unused_variables)]

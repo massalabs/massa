@@ -243,7 +243,18 @@ impl SpeculativeDeferredCallRegistry {
         let res = (call.sender_address, call.coins);
 
         // Add a cancellation to the current changes
-        self.deferred_calls_changes.set_call(id.clone(), call);
+        self.deferred_calls_changes
+            .set_call(id.clone(), call.clone());
+
+        let current_gas = self.get_slot_gas(&call.target_slot);
+
+        // set slot gas
+        self.deferred_calls_changes
+            .set_slot_gas(call.target_slot, current_gas - call.max_gas);
+
+        // set total gas
+        self.deferred_calls_changes
+            .set_total_gas(self.get_total_gas().saturating_sub(call.max_gas as u128));
 
         Ok(res)
     }
@@ -407,9 +418,11 @@ impl SpeculativeDeferredCallRegistry {
 
         let current_gas = self.get_slot_gas(&call.target_slot);
 
+        // set slot gas
         self.deferred_calls_changes
             .set_slot_gas(call.target_slot, current_gas + call.max_gas);
 
+        // set total gas
         self.deferred_calls_changes
             .set_total_gas(self.get_total_gas().saturating_add(call.max_gas as u128));
 

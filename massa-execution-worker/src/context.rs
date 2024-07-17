@@ -1165,6 +1165,45 @@ impl ExecutionContext {
         self.speculative_deferred_calls
             .register_call(call, self.execution_trail_hash)
     }
+
+    pub fn deferred_call_exist(&self, call_id: &DeferredCallId) -> bool {
+        self.speculative_deferred_calls.get_call(call_id).is_some()
+    }
+
+    pub fn deferred_call_cancel(
+        &mut self,
+        call_id: &DeferredCallId,
+        caller_address: Address,
+    ) -> Result<(), ExecutionError> {
+        match self.speculative_deferred_calls.get_call(call_id) {
+            Some(call) => {
+                // check that the caller is the one who registered the deferred call
+                if call.sender_address != caller_address {
+                    return Err(ExecutionError::DeferredCallsError(format!(
+                        "only the caller {} can cancel the deferred call",
+                        call.sender_address
+                    )));
+                }
+
+                let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
+
+                // refund the coins to the caller
+                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                if let Err(e) = transfer_result.as_ref() {
+                    debug!(
+                        "deferred call cancel: reimbursement of {} failed: {}",
+                        address, e
+                    );
+                }
+
+                Ok(())
+            }
+            _ => Err(ExecutionError::DeferredCallsError(format!(
+                "deferred call {} does not exist",
+                call_id
+            )))?,
+        }
+    }
 }
 
 /// Generate the execution trail hash
