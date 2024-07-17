@@ -759,6 +759,273 @@ fn send_and_receive_async_message() {
 }
 
 #[test]
+fn send_and_receive_async_message_expired() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            //println!("changes S (1 0): {:?}", changes);
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message_expired.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("validity end is earlier than the validity start"));
+}
+
+#[test]
+fn send_and_receive_async_message_expired_2() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message_expired_2.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("validity end is earlier than the current slot"));
+}
+
+#[test]
+fn send_and_receive_async_message_without_init_gas() {
+    let mut exec_cfg = ExecutionConfig::default();
+    exec_cfg.gas_costs.max_instance_cost = 4000000;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("max gas is lower than the minimum instance cost"));
+}
+
+#[test]
 fn cancel_async_message() {
     let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
