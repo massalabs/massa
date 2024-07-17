@@ -597,7 +597,7 @@
     <span class="comment">// launch the execution thread
     </span><span class="kw">let </span>input_data_clone = input_data.clone();
 
-    <span class="comment">// We set the stack size to 200 Mb instead of the default 2 Mb
+    <span class="comment">// We set the stack size to 200 Mb instead of the default 2 Mb to avoid stack overflows
     // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
     </span><span class="kw">let </span>thread_builder = thread::Builder::new()
         .stack_size(<span class="number">200 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
