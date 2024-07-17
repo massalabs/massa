@@ -9,6 +9,7 @@ use massa_final_state::FinalStateController;
 use massa_models::{
     address::Address, amount::Amount, deferred_call_id::DeferredCallId, slot::Slot,
 };
+use num::Zero;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -340,6 +341,42 @@ impl SpeculativeDeferredCallRegistry {
         Ok(integral_fee
             .saturating_add(global_overbooking_fee)
             .saturating_add(slot_overbooking_fee))
+    }
+
+    pub fn register_call(
+        &mut self,
+        call: DeferredCall,
+        trail_hash: massa_hash::Hash,
+    ) -> Result<DeferredCallId, ExecutionError> {
+        let mut index = 0;
+
+        if let Some(val) = self
+            .deferred_calls_changes
+            .slots_change
+            .get(&call.target_slot)
+        {
+            index += val.calls_len();
+        }
+
+        {
+            // final state
+            let slots_call = self
+                .final_state
+                .read()
+                .get_deferred_call_registry()
+                .get_slot_calls(call.target_slot);
+            index += slots_call.slot_calls.len();
+        }
+
+        if !index.is_zero() {
+            index += 1;
+        }
+
+        let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
+
+        self.deferred_calls_changes.set_call(id.clone(), call);
+
+        Ok(id)
     }
 
     /// Take the deferred registry slot changes

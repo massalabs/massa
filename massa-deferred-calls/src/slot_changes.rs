@@ -32,6 +32,10 @@ pub struct DeferredRegistrySlotChanges {
 }
 
 impl DeferredRegistrySlotChanges {
+    pub fn calls_len(&self) -> usize {
+        self.calls.len()
+    }
+
     pub fn merge(&mut self, other: DeferredRegistrySlotChanges) {
         unimplemented!("DeferredRegistrySlotChanges::merge")
         // for (id, change) in other.calls {

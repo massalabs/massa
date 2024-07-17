@@ -1345,7 +1345,8 @@ impl Interface for InterfaceImpl {
         gas_limit: u64,
     ) -> Result<(bool, u64)> {
         // write-lock context
-        let mut context = context_guard!(self);
+
+        let context = context_guard!(self);
 
         let current_slot = context.slot;
 
@@ -1434,13 +1435,9 @@ impl Interface for InterfaceImpl {
             false,
         );
 
-        /*
-            TODO:
-                * ask the context to register the call
-                * return the id of the call
-        */
+        let call_id = context.deferred_call_register(call)?;
 
-        todo!()
+        Ok(call_id.as_bytes().to_vec())
     }
 
     /// Check if an deferred call exists

@@ -16,6 +16,7 @@ use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
+use massa_deferred_calls::DeferredCall;
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -27,6 +28,7 @@ use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::deferred_call_id::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -1154,6 +1156,14 @@ impl ExecutionContext {
             slot_overbooking_penalty,
             current_slot,
         )
+    }
+
+    pub fn deferred_call_register(
+        &mut self,
+        call: DeferredCall,
+    ) -> Result<DeferredCallId, ExecutionError> {
+        self.speculative_deferred_calls
+            .register_call(call, self.execution_trail_hash)
     }
 }
 
