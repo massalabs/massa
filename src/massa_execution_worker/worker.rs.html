@@ -302,6 +302,11 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -591,7 +596,12 @@
 
     <span class="comment">// launch the execution thread
     </span><span class="kw">let </span>input_data_clone = input_data.clone();
-    <span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;execution&quot;</span>.into());
+
+    <span class="comment">// We set the stack size to 200 Mb instead of the default 2 Mb to avoid stack overflows
+    // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
+    </span><span class="kw">let </span>thread_builder = thread::Builder::new()
+        .stack_size(<span class="number">200 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
+        .name(<span class="string">&quot;execution&quot;</span>.into());
     <span class="kw">let </span>thread_handle = thread_builder
         .spawn(<span class="kw">move </span>|| {
             ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
