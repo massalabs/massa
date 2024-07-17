@@ -102,6 +102,6 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
-    /// Max recursive calls depth
+    /// Max recursive calls depth in SC
     pub max_recursive_calls_depth: usize,
 }
