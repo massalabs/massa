@@ -928,14 +928,80 @@ impl ExecutionContext {
         result
     }
 
-    /// Finishes a slot and generates the execution output.
-    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
+    fn settle_slot_v0(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
+        let slot = self.slot;
+        // execute the deferred credits coming from roll sells
+        let deferred_credits_transfers = self.execute_deferred_credits(&slot);
+
+        // take the ledger changes first as they are needed for async messages and cache
+        let ledger_changes = self.speculative_ledger.take();
+
+        // settle emitted async messages and reimburse the senders of deleted messages
+        let deleted_messages = self
+            .speculative_async_pool
+            .settle_slot(&slot, &ledger_changes);
+
+        let mut cancel_async_message_transfers = vec![];
+        for (_msg_id, msg) in deleted_messages {
+            if let Some(t) = self.cancel_async_message(&msg) {
+                cancel_async_message_transfers.push(t)
+            }
+        }
+
+        // update module cache
+        let bc_updates = ledger_changes.get_bytecode_updates();
+
+        {
+            let mut cache_write_lock = self.module_cache.write();
+            for bytecode in bc_updates {
+                cache_write_lock.save_module(&bytecode.0);
+            }
+        }
+        // if the current slot is last in cycle check the production stats and act accordingly
+        let auto_sell_rolls = if self
+            .slot
+            .is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count)
+        {
+            self.speculative_roll_state.settle_production_stats(
+                &slot,
+                self.config.periods_per_cycle,
+                self.config.thread_count,
+                self.config.roll_price,
+                self.config.max_miss_ratio,
+            )
+        } else {
+            vec![]
+        };
+
+        // generate the execution output
+        let state_changes = StateChanges {
+            ledger_changes,
+            async_pool_changes: self.speculative_async_pool.take(),
+            pos_changes: self.speculative_roll_state.take(),
+            executed_ops_changes: self.speculative_executed_ops.take(),
+            executed_denunciations_changes: self.speculative_executed_denunciations.take(),
+            execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
+        };
+        std::mem::take(&mut self.opt_block_id);
+        ExecutionOutput {
+            slot,
+            block_info,
+            state_changes,
+            events: std::mem::take(&mut self.events),
+            #[cfg(feature = "execution-trace")]
+            slot_trace: None,
+            #[cfg(feature = "dump-block")]
+            storage: None,
+            deferred_credits_execution: deferred_credits_transfers,
+            cancel_async_message_execution: cancel_async_message_transfers,
+            auto_sell_execution: auto_sell_rolls,
+        }
+    }
+
+    fn settle_slot_with_fixed_ledger_change_handling(
+        &mut self,
+        block_info: Option<ExecutedBlockInfo>,
+    ) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -1001,6 +1067,20 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
+        }
+    }
+
+    /// Finishes a slot and generates the execution output.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
+        match self.execution_component_version {
+            0 => self.settle_slot_v0(block_info),
+            _ => self.settle_slot_with_fixed_ledger_change_handling(block_info),
         }
     }
 
