@@ -155,6 +155,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: &Slot,
         ledger_changes: &LedgerChanges,
+        fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
@@ -223,12 +224,13 @@ impl SpeculativeAsyncPool {
         // Query eliminated messages
         let mut eliminated_msg =
             self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
-
-        eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
-            SetUpdateOrDelete::Update(_v) => None,
-            SetUpdateOrDelete::Delete => None,
-        }));
+        if fix_eliminated_msg {
+            eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+                SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
+                SetUpdateOrDelete::Update(_v) => None,
+                SetUpdateOrDelete::Delete => None,
+            }));
+        }
         eliminated_msg
     }
 

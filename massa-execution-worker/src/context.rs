@@ -937,9 +937,9 @@ impl ExecutionContext {
         let ledger_changes = self.speculative_ledger.take();
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self
-            .speculative_async_pool
-            .settle_slot(&slot, &ledger_changes);
+        let deleted_messages =
+            self.speculative_async_pool
+                .settle_slot(&slot, &ledger_changes, false);
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
@@ -1008,9 +1008,11 @@ impl ExecutionContext {
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
         // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages = self
-            .speculative_async_pool
-            .settle_slot(&slot, &self.speculative_ledger.added_changes);
+        let deleted_messages = self.speculative_async_pool.settle_slot(
+            &slot,
+            &self.speculative_ledger.added_changes,
+            true,
+        );
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
