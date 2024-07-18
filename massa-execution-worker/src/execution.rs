@@ -1179,17 +1179,28 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let Ok(module) = self
-            .module_cache
-            .write()
-            .load_module(&bytecode, message.max_gas)
-        else {
-            let err =
-                ExecutionError::RuntimeError("could not load module for async execution".into());
-            let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, err.clone());
-            context.cancel_async_message(&message);
-            return Err(err);
+        let module = match context_guard!(self).execution_component_version {
+            0 => {
+                self
+                    .module_cache
+                    .write()
+                    .load_module(&bytecode, message.max_gas)?
+            }
+            _ => {
+                let Ok(_module) = self
+                    .module_cache
+                    .write()
+                    .load_module(&bytecode, message.max_gas)
+                else {
+                    let err =
+                        ExecutionError::RuntimeError("could not load module for async execution".into());
+                    let mut context = context_guard!(self);
+                    context.reset_to_snapshot(context_snapshot, err.clone());
+                    context.cancel_async_message(&message);
+                    return Err(err);
+                };
+                _module
+            }
         };
 
         let response = massa_sc_runtime::run_function(
