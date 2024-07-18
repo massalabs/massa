@@ -2091,6 +2091,8 @@
 <a href="#2091" id="2091">2091</a>
 <a href="#2092" id="2092">2092</a>
 <a href="#2093" id="2093">2093</a>
+<a href="#2094" id="2094">2094</a>
+<a href="#2095" id="2095">2095</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -3282,10 +3284,6 @@
             <span class="macro">bail!</span>(<span class="string">&quot;validity end thread exceeds the configuration thread count&quot;</span>)
         }
 
-        <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
-            <span class="macro">bail!</span>(<span class="string">&quot;max gas is lower than the minimum instance cost&quot;</span>)
-        }
-
         <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
@@ -3304,12 +3302,18 @@
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
 
-        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
-        {
-            <span class="macro">bail!</span>(<span class="string">&quot;validity end is earlier than the validity start&quot;</span>)
-        }
-        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
-            <span class="macro">bail!</span>(<span class="string">&quot;validity end is earlier than the current slot&quot;</span>)
+        <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
+        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
+            <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
+                <span class="macro">bail!</span>(<span class="string">&quot;max gas is lower than the minimum instance cost&quot;</span>)
+            }
+            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
+            {
+                <span class="macro">bail!</span>(<span class="string">&quot;validity end is earlier than the validity start&quot;</span>)
+            }
+            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
+                <span class="macro">bail!</span>(<span class="string">&quot;validity end is earlier than the current slot&quot;</span>)
+            }
         }
 
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
