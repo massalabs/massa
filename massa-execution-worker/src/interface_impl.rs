@@ -226,6 +226,11 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    fn get_interface_version(&self) -> Result<u32> {
+        let context = context_guard!(self);
+        Ok(context.execution_component_version)
+    }
+
     /// Initialize the call when bytecode calls a function from another bytecode
     /// This function transfers the coins passed as parameter,
     /// prepares the current execution context by pushing a new element on the top of the call stack,

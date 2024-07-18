@@ -40,7 +40,7 @@ use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
 use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
-use massa_versioning::versioning::MipStore;
+use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -179,6 +179,9 @@ pub struct ExecutionContext {
     /// The gas remaining before the last subexecution.
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
+
+    /// The version of the execution component
+    pub execution_component_version: u32,
 }
 
 impl ExecutionContext {
@@ -201,6 +204,15 @@ impl ExecutionContext {
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
+        let slot = Slot::new(0, 0);
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot
+        )
+        .unwrap();
+
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
@@ -227,7 +239,7 @@ impl ExecutionContext {
                 active_history,
             ),
             creator_min_balance: Default::default(),
-            slot: Slot::new(0, 0),
+            slot,
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
             created_message_index: Default::default(),
@@ -240,9 +252,10 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            address_factory: AddressFactory { mip_store },
+            address_factory: AddressFactory { mip_store: mip_store.clone() },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
+            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
         }
     }
 
@@ -335,11 +348,20 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot
+        )
+        .unwrap();
+
         // return readonly context
         ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
+            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -364,12 +386,12 @@ impl ExecutionContext {
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self.speculative_async_pool.take_batch_to_execute(
-            self.slot,
-            max_gas,
-            async_msg_cst_gas_cost,
-        )
+    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
+        self.speculative_async_pool
+            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
+            .into_iter()
+            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
+            .collect()
     }
 
     pub(crate) fn take_async_batch_v1(
@@ -417,10 +439,19 @@ impl ExecutionContext {
             false,
         );
 
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot
+        )
+        .unwrap();
+
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
+            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,

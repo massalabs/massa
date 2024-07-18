@@ -44,7 +44,7 @@ use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
 use massa_sc_runtime::{Interface, Response, VMError};
-use massa_versioning::versioning::{MipComponent, MipStore};
+use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
@@ -1104,7 +1104,7 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
-        asc_execution_version: u32
+        execution_version: u32
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
 
         let mut result = AsyncMessageExecutionResult::new();
@@ -1125,7 +1125,7 @@ impl ExecutionState {
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: match asc_execution_version {
+                    coins: match execution_version {
                         0 => message.coins,
                         _ => Default::default()
                     },
@@ -1234,7 +1234,7 @@ impl ExecutionState {
             }
         }
     }
-
+    
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.
     ///
@@ -1274,17 +1274,8 @@ impl ExecutionState {
             self.mip_store.clone(),
         );
 
-        let ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            self.final_cursor,
-        )
-        .unwrap();
-        
-        let asc_execution_version = self.final_state.read().get_mip_store().get_latest_component_version_at(&MipComponent::AscExecution, ts);
-        
-        match asc_execution_version {
+        let execution_version = execution_context.execution_component_version;
+        match execution_version {
             0 => {
                 // Get asynchronous messages to execute
                 let messages = execution_context.take_async_batch_v0(
@@ -1298,7 +1289,7 @@ impl ExecutionState {
                 // Try executing asynchronous messages.
                 // Effects are cancelled on failure and the sender is reimbursed.
                 for (opt_bytecode, message) in messages {
-                    match self.execute_async_message(message, opt_bytecode, asc_execution_version) {
+                    match self.execute_async_message(message, opt_bytecode, execution_version) {
                         Ok(_message_return) => {
                             cfg_if::cfg_if! {
                                 if #[cfg(feature = "execution-trace")] {
@@ -1334,7 +1325,7 @@ impl ExecutionState {
                 for (_message_id, message) in messages {
                     let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
                 
-                    match self.execute_async_message(message, opt_bytecode, asc_execution_version) {
+                    match self.execute_async_message(message, opt_bytecode, execution_version) {
                         Ok(_message_return) => {
                             cfg_if::cfg_if! {
                                 if #[cfg(feature = "execution-trace")] {
