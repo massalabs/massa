@@ -209,7 +209,7 @@ impl ExecutionContext {
             config.thread_count,
             config.t0,
             config.genesis_timestamp,
-            slot
+            slot,
         )
         .unwrap();
 
@@ -252,10 +252,13 @@ impl ExecutionContext {
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            address_factory: AddressFactory { mip_store: mip_store.clone() },
+            address_factory: AddressFactory {
+                mip_store: mip_store.clone(),
+            },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
-            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
         }
     }
 
@@ -352,7 +355,7 @@ impl ExecutionContext {
             config.thread_count,
             config.t0,
             config.genesis_timestamp,
-            slot
+            slot,
         )
         .unwrap();
 
@@ -361,7 +364,8 @@ impl ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
-            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -397,7 +401,7 @@ impl ExecutionContext {
     pub(crate) fn take_async_batch_v1(
         &mut self,
         max_gas: u64,
-        async_msg_cst_gas_cost: u64
+        async_msg_cst_gas_cost: u64,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         self.speculative_async_pool.take_batch_to_execute(
             self.slot,
@@ -443,7 +447,7 @@ impl ExecutionContext {
             config.thread_count,
             config.t0,
             config.genesis_timestamp,
-            slot
+            slot,
         )
         .unwrap();
 
@@ -451,7 +455,8 @@ impl ExecutionContext {
         ExecutionContext {
             slot,
             opt_block_id,
-            execution_component_version: mip_store.get_latest_component_version_at(&MipComponent::Execution, ts),
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,

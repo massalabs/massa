@@ -1104,9 +1104,8 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
-        execution_version: u32
+        execution_version: u32,
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
-
         let mut result = AsyncMessageExecutionResult::new();
         #[cfg(feature = "execution-info")]
         {
@@ -1127,7 +1126,7 @@ impl ExecutionState {
                     address: message.sender,
                     coins: match execution_version {
                         0 => message.coins,
-                        _ => Default::default()
+                        _ => Default::default(),
                     },
                     owned_addresses: vec![message.sender],
                     operation_datastore: None,
@@ -1234,7 +1233,7 @@ impl ExecutionState {
             }
         }
     }
-    
+
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.
     ///
@@ -1280,7 +1279,7 @@ impl ExecutionState {
                 // Get asynchronous messages to execute
                 let messages = execution_context.take_async_batch_v0(
                     self.config.max_async_gas,
-                    self.config.async_msg_cst_gas_cost
+                    self.config.async_msg_cst_gas_cost,
                 );
 
                 // Apply the created execution context for slot execution
@@ -1309,12 +1308,12 @@ impl ExecutionState {
                         }
                     }
                 }
-            },
+            }
             _ => {
                 // Get asynchronous messages to execute
                 let messages = execution_context.take_async_batch_v1(
                     self.config.max_async_gas,
-                    self.config.async_msg_cst_gas_cost
+                    self.config.async_msg_cst_gas_cost,
                 );
 
                 // Apply the created execution context for slot execution
@@ -1324,7 +1323,7 @@ impl ExecutionState {
                 // Effects are cancelled on failure and the sender is reimbursed.
                 for (_message_id, message) in messages {
                     let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
-                
+
                     match self.execute_async_message(message, opt_bytecode, execution_version) {
                         Ok(_message_return) => {
                             cfg_if::cfg_if! {
