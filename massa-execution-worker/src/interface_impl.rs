@@ -1212,7 +1212,8 @@ impl Interface for InterfaceImpl {
             if max_gas < self.config.gas_costs.max_instance_cost {
                 bail!("max gas is lower than the minimum instance cost")
             }
-            if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
+            if Slot::new(validity_end.0, validity_end.1)
+                < Slot::new(validity_start.0, validity_start.1)
             {
                 bail!("validity end is earlier than the validity start")
             }
@@ -1524,11 +1525,15 @@ impl Interface for InterfaceImpl {
 
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
-        match addr {
-            Address::User(_) => Ok(AddressCategory::UserAddress),
-            Address::SC(_) => Ok(AddressCategory::ScAddress),
+        let execution_component_version = context_guard!(self).execution_component_version;
+
+        match (addr, execution_component_version) {
+            (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
+            (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
+            (Address::User(_), _) => Ok(AddressCategory::UserAddress),
+            (Address::SC(_), _) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
-            _ => Ok(AddressCategory::Unspecified),
+            (_, _) => Ok(AddressCategory::Unspecified),
         }
     }
 
