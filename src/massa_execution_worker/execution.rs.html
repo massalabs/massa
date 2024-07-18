@@ -2336,7 +2336,6 @@
 <a href="#2336" id="2336">2336</a>
 <a href="#2337" id="2337">2337</a>
 <a href="#2338" id="2338">2338</a>
-<a href="#2339" id="2339">2339</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3519,20 +3518,19 @@
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="kw">match </span><span class="macro">context_guard!</span>(<span class="self">self</span>).execution_component_version {
-            <span class="number">0 </span>=&gt; {
-                <span class="self">self
-                    </span>.module_cache
-                    .write()
-                    .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?
-            </span>}
+            <span class="number">0 </span>=&gt; <span class="self">self
+                </span>.module_cache
+                .write()
+                .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">let </span><span class="prelude-val">Ok</span>(_module) = <span class="self">self
                     </span>.module_cache
                     .write()
                     .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)
                 <span class="kw">else </span>{
-                    <span class="kw">let </span>err =
-                        ExecutionError::RuntimeError(<span class="string">&quot;could not load module for async execution&quot;</span>.into());
+                    <span class="kw">let </span>err = ExecutionError::RuntimeError(
+                        <span class="string">&quot;could not load module for async execution&quot;</span>.into(),
+                    );
                     <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                     context.reset_to_snapshot(context_snapshot, err.clone());
                     context.cancel_async_message(<span class="kw-2">&amp;</span>message);
