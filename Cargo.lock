@@ -2486,7 +2486,7 @@ dependencies = [
 
 [[package]]
 name = "massa-client"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2513,7 +2513,7 @@ dependencies = [
 
 [[package]]
 name = "massa-node"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -2614,7 +2614,7 @@ dependencies = [
 
 [[package]]
 name = "massa_api"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -2652,7 +2652,7 @@ dependencies = [
 
 [[package]]
 name = "massa_api_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
@@ -2672,7 +2672,7 @@ dependencies = [
 
 [[package]]
 name = "massa_async_pool"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "assert_matches",
  "massa-proto-rs",
@@ -2695,7 +2695,7 @@ dependencies = [
 
 [[package]]
 name = "massa_bootstrap"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "bitvec",
  "crossbeam",
@@ -2741,7 +2741,7 @@ dependencies = [
 
 [[package]]
 name = "massa_channel"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "crossbeam",
  "prometheus",
@@ -2750,7 +2750,7 @@ dependencies = [
 
 [[package]]
 name = "massa_cipher"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "aes-gcm",
  "displaydoc",
@@ -2761,7 +2761,7 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa_channel",
@@ -2786,7 +2786,7 @@ dependencies = [
 
 [[package]]
 name = "massa_consensus_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "crossbeam",
  "crossbeam-channel",
@@ -2816,7 +2816,7 @@ dependencies = [
 
 [[package]]
 name = "massa_db_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa_hash",
@@ -2829,7 +2829,7 @@ dependencies = [
 
 [[package]]
 name = "massa_db_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "assert_matches",
  "massa_db_exports",
@@ -2843,7 +2843,7 @@ dependencies = [
 
 [[package]]
 name = "massa_executed_ops"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_db_exports",
  "massa_db_worker",
@@ -2857,7 +2857,7 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -2880,7 +2880,7 @@ dependencies = [
 
 [[package]]
 name = "massa_execution_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "blake3",
@@ -2930,7 +2930,7 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa_consensus_exports",
@@ -2947,7 +2947,7 @@ dependencies = [
 
 [[package]]
 name = "massa_factory_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "crossbeam-channel",
  "massa_channel",
@@ -2971,7 +2971,7 @@ dependencies = [
 
 [[package]]
 name = "massa_final_state"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "bs58",
@@ -3004,7 +3004,7 @@ dependencies = [
 
 [[package]]
 name = "massa_grpc"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "futures-util",
@@ -3045,7 +3045,7 @@ dependencies = [
 
 [[package]]
 name = "massa_hash"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "blake3",
  "bs58",
@@ -3060,7 +3060,7 @@ dependencies = [
 
 [[package]]
 name = "massa_ledger_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -3081,7 +3081,7 @@ dependencies = [
 
 [[package]]
 name = "massa_ledger_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_db_exports",
  "massa_db_worker",
@@ -3097,7 +3097,7 @@ dependencies = [
 
 [[package]]
 name = "massa_logging"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "serde_json",
  "tracing",
@@ -3105,7 +3105,7 @@ dependencies = [
 
 [[package]]
 name = "massa_metrics"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "hyper",
  "lazy_static",
@@ -3116,7 +3116,7 @@ dependencies = [
 
 [[package]]
 name = "massa_models"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "bitvec",
  "bs58",
@@ -3144,7 +3144,7 @@ dependencies = [
 
 [[package]]
 name = "massa_module_cache"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "anyhow",
  "displaydoc",
@@ -3165,7 +3165,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_execution_exports",
  "massa_models",
@@ -3180,7 +3180,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pool_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "crossbeam-channel",
  "massa_execution_exports",
@@ -3200,7 +3200,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "assert_matches",
  "bitvec",
@@ -3226,7 +3226,7 @@ dependencies = [
 
 [[package]]
 name = "massa_pos_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_hash",
  "massa_models",
@@ -3240,7 +3240,7 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_exports"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa_hash",
@@ -3263,7 +3263,7 @@ dependencies = [
 
 [[package]]
 name = "massa_protocol_worker"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "crossbeam",
  "ip_rfc",
@@ -3301,7 +3301,7 @@ dependencies = [
 
 [[package]]
 name = "massa_sdk"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "http",
  "jsonrpsee",
@@ -3319,7 +3319,7 @@ dependencies = [
 
 [[package]]
 name = "massa_serialization"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "nom",
@@ -3331,7 +3331,7 @@ dependencies = [
 
 [[package]]
 name = "massa_signature"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "bs58",
  "displaydoc",
@@ -3349,7 +3349,7 @@ dependencies = [
 
 [[package]]
 name = "massa_storage"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_factory_exports",
  "massa_metrics",
@@ -3360,7 +3360,7 @@ dependencies = [
 
 [[package]]
 name = "massa_test_framework"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_hash",
  "massa_models",
@@ -3370,7 +3370,7 @@ dependencies = [
 
 [[package]]
 name = "massa_time"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa-proto-rs",
@@ -3383,7 +3383,7 @@ dependencies = [
 
 [[package]]
 name = "massa_versioning"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "assert_matches",
  "machine",
@@ -3408,7 +3408,7 @@ dependencies = [
 
 [[package]]
 name = "massa_wallet"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "displaydoc",
  "massa_cipher",
@@ -3425,7 +3425,7 @@ dependencies = [
 
 [[package]]
 name = "massa_xtask"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "massa_models",
  "toml_edit 0.21.0",
