@@ -28,6 +28,7 @@ test-exports = [
     "massa_pos_worker",
     "massa_metrics/test-exports",
     "massa_metrics/test-exports",
+    "massa_versioning/test-exports",
     "massa_db_worker",
     "tempfile",
 ]
@@ -106,6 +107,7 @@ massa_metrics = { workspace = true, features = ["test-exports"] }
 massa_db_worker = { workspace = true }
 tempfile = { workspace = true }
 massa_test_framework = { workspace = true, "features" = ["test-exports"] }
+massa_versioning = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
