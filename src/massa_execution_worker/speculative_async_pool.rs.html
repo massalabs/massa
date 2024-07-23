@@ -311,13 +311,6 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -475,7 +468,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         ledger_changes: <span class="kw-2">&amp;</span>LedgerChanges,
-        fix_eliminated_msg: bool,
     ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
         <span class="comment">// Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
@@ -542,15 +534,9 @@
         }
 
         <span class="comment">// Query eliminated messages
-        </span><span class="kw">let </span><span class="kw-2">mut </span>eliminated_msg =
+        </span><span class="kw">let </span>eliminated_msg =
             <span class="self">self</span>.fetch_msgs(eliminated_infos.iter().map(|(id, <span class="kw">_</span>)| id).collect(), <span class="bool-val">true</span>);
-        <span class="kw">if </span>fix_eliminated_msg {
-            eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| <span class="kw">match </span>v {
-                SetUpdateOrDelete::Set(v) =&gt; <span class="prelude-val">Some</span>((<span class="kw-2">*</span>k, v.clone())),
-                SetUpdateOrDelete::Update(_v) =&gt; <span class="prelude-val">None</span>,
-                SetUpdateOrDelete::Delete =&gt; <span class="prelude-val">None</span>,
-            }));
-        }
+
         eliminated_msg
     }
 
