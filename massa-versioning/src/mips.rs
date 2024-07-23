@@ -9,7 +9,6 @@ use crate::versioning::{MipComponent, MipInfo, MipState};
 
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
-
     let mip_list = [
         (
             MipInfo {
@@ -31,7 +30,10 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
 
 #[cfg(feature = "test-exports")]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
-    use crate::{test_helpers::versioning_helpers::advance_state_until, versioning::{Active, ComponentState}};
+    use crate::{
+        test_helpers::versioning_helpers::advance_state_until,
+        versioning::{Active, ComponentState},
+    };
 
     println!("Running with test-exports feature");
 
@@ -44,18 +46,13 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
         activation_delay: MassaTime::from_millis(2), // TODO: set when known, 3 days as an example
     };
     let mip_state_1 = advance_state_until(
-        ComponentState::Active(
-            Active { at: MassaTime::from_millis(3)}
-        ),
-        &mip_info_1
+        ComponentState::Active(Active {
+            at: MassaTime::from_millis(3),
+        }),
+        &mip_info_1,
     );
 
-    let mip_list = [
-        (
-            mip_info_1,
-            mip_state_1,
-        ),
-    ];
+    let mip_list = [(mip_info_1, mip_state_1)];
 
     println!("MIP list: {:?}", mip_list);
     #[allow(clippy::let_and_return)]
