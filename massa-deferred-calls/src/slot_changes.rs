@@ -59,14 +59,16 @@ impl DeferredRegistrySlotChanges {
         // }
     }
 
+    /// add Delete changes will delete the call from the db registry when the slot is finalized
     pub fn delete_call(&mut self, id: &DeferredCallId) {
-        unimplemented!("DeferredRegistrySlotChanges::delete_call")
-        // match self.calls.entry(id.clone()) {
-        //     std::collections::btree_map::Entry::Occupied(mut v) => v.get_mut().delete_call(),
-        //     std::collections::btree_map::Entry::Vacant(v) => {
-        //         v.insert(DeferredRegistryCallChange::Delete);
-        //     }
-        // }
+        match self.calls.entry(id.clone()) {
+            std::collections::btree_map::Entry::Occupied(mut v) => {
+                *v.get_mut() = DeferredRegistryCallChange::Delete;
+            }
+            std::collections::btree_map::Entry::Vacant(v) => {
+                v.insert(DeferredRegistryCallChange::Delete);
+            }
+        }
     }
 
     pub fn set_call(&mut self, id: DeferredCallId, call: DeferredCall) {

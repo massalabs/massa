@@ -1421,7 +1421,9 @@ impl ExecutionState {
                     debug!(msg);
                 }
             }
-            // TODO remove D from the db
+            // remove call from the db : (added Delete to changes)
+            let mut context = context_guard!(self);
+            context.deferred_call_delete(&id, slot.clone());
         }
 
         // TODO execute async messages as long as there is remaining gas in the slot (counting both unused max_async_gas and max_block_gas, and the latter can be used in full in case of block miss)

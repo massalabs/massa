@@ -1194,6 +1194,10 @@ impl ExecutionContext {
         self.speculative_deferred_calls.get_call(call_id).is_some()
     }
 
+    pub fn deferred_call_delete(&mut self, call_id: &DeferredCallId, slot: Slot) {
+        self.speculative_deferred_calls.delete_call(call_id, slot);
+    }
+
     pub fn deferred_call_cancel(
         &mut self,
         call_id: &DeferredCallId,

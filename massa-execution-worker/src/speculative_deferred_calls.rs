@@ -281,6 +281,10 @@ impl SpeculativeDeferredCallRegistry {
         None
     }
 
+    pub fn delete_call(&mut self, id: &DeferredCallId, slot: Slot) {
+        self.deferred_calls_changes.delete_call(slot, id)
+    }
+
     /// Cancel a call
     /// Returns the sender address and the amount of coins to reimburse them
     pub fn cancel_call(
