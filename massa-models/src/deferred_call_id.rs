@@ -12,7 +12,7 @@ use transition::Versioned;
 use crate::{
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
-    slot::{Slot, SlotSerializer},
+    slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 
 const DEFERRED_CALL_ID_PREFIX: &str = "D";
@@ -185,7 +185,11 @@ impl<'de> ::serde::Deserialize<'de> for DeferredCallId {
 
 impl DeferredCallId {
     pub fn get_slot(&self) -> Slot {
-        todo!();
+        // retrieve the slot from the id
+        todo!()
+        // let slot_serializer = SlotDeserializer::new();
+        // let (_, slot) = slot_serializer.deserialize(self.as_bytes()).unwrap();
+        // slot
     }
 
     /// Create a new `DeferredCallId`

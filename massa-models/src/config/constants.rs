@@ -340,9 +340,15 @@ pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 /// Maximum size of deferred call pool changes
 // todo define this value
-pub const MAX_DEFERRED_CALL_POOL_CHANGES: u64 = 100_000;
+pub const DEFERRED_CALL_MAX_POOL_CHANGES: u64 = 100_000;
 /// Maximum size of deferred call future slots (1 week)
-pub const MAX_DEFERRED_CALL_FUTURE_SLOTS: u64 = 1209600;
+pub const DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = 1209600;
+/// max change denominator  
+pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 8;
+/// deferred call min gas increment (1 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
+/// deferred call max gas cost (10 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

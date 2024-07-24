@@ -7,11 +7,19 @@ use massa_deferred_calls::{
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{
-    address::Address, amount::Amount, deferred_call_id::DeferredCallId, slot::Slot,
+    address::Address,
+    amount::Amount,
+    config::{
+        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_MAX_FUTURE_SLOTS,
+        DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT, MAX_ASYNC_GAS,
+    },
+    deferred_call_id::DeferredCallId,
+    slot::Slot,
 };
-use num::Zero;
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{cmp::max, sync::Arc};
+
+const TARGET_BOOKING: u128 = (MAX_ASYNC_GAS / 2) as u128;
 
 pub(crate) struct SpeculativeDeferredCallRegistry {
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -154,13 +162,71 @@ impl SpeculativeDeferredCallRegistry {
         }
         slot_calls.apply_changes(&self.deferred_calls_changes);
 
+        // const BASE_FEE_MAX_CHANGE_DENOMINATOR = 8;
+        // const MIN_GAS_INCREMENT = 1 nano-massa;
+        // const MIN_GAS_COST = 10 nano-massa
+
+        // let TARGET_BOOKING = MAX_ASYNC_GAS/2;
+        // let total_booked_gas = get_current_total_booked_async_gas();
+        // let avg_booked_gas = total_booked_gas/ASYNC_BOOKING_SLOT_COUNT;
+
+        // if (avg_booked_gas == TARGET_BOOKING) {
+        //     S.base_fee_per_gas = (S-1).base_async_gas_cost;
+        // } else if (avg_booked_gas > TARGET_BOOKING) {
+        //     gas_used_delta = avg_booked_gas - TARGET_BOOKING;
+        //     S.base_fee_per_gas = (S-1).base_async_gas_cost + ((S-1).base_async_gas_cost * gas_used_delta / TARGET_BOOKING / BASE_FEE_MAX_CHANGE_DENOMINATOR, MIN_GAS_INCREMENT)
+        // } else {
+        //     gas_used_delta = TARGET_BOOKING - total_booked_gas
+        //     S.base_fee_per_gas = max((S-1).base_async_gas_cost - (S-1).base_async_gas_cost * gas_used_delta / TARGET_BOOKING / BASE_FEE_MAX_CHANGE_DENOMINATOR, MIN_GAS_COST)
+        // }
+
+        let total_booked_gas = self.get_total_gas();
+        let avg_booked_gas =
+            total_booked_gas.saturating_div(DEFERRED_CALL_MAX_FUTURE_SLOTS as u128);
+
         // select the slot that is newly made available and set its base fee
-        let mut new_slot = current_slot
+        let new_slot = current_slot
             .skip(async_call_max_booking_slots, thread_count)
             .expect("could not skip enough slots");
 
+        let prev_slot = new_slot
+            .get_prev_slot(thread_count)
+            .expect("cannot get prev slot");
+
+        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
+
+        let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
+            std::cmp::Ordering::Equal => prev_slot_base_fee,
+            std::cmp::Ordering::Greater => {
+                let gas_used_delta = avg_booked_gas.saturating_sub(TARGET_BOOKING);
+
+                let factor = gas_used_delta as u64
+                    / TARGET_BOOKING as u64
+                    / DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR as u64;
+
+                max(
+                    prev_slot_base_fee
+                        .saturating_add(prev_slot_base_fee.saturating_mul_u64(factor)),
+                    Amount::from_raw(DEFERRED_CALL_MIN_GAS_INCREMENT),
+                )
+            }
+            std::cmp::Ordering::Less => {
+                let gas_used_delta = TARGET_BOOKING.saturating_sub(total_booked_gas);
+
+                let factor = gas_used_delta as u64
+                    / TARGET_BOOKING as u64
+                    / DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR as u64;
+
+                max(
+                    prev_slot_base_fee
+                        .saturating_sub(prev_slot_base_fee.saturating_mul_u64(factor)),
+                    Amount::from_raw(DEFERRED_CALL_MIN_GAS_COST),
+                )
+            }
+        };
+
         self.deferred_calls_changes
-            .set_slot_base_fee(new_slot, todo!());
+            .set_slot_base_fee(new_slot, new_slot_base_fee);
 
         // subtract the current slot gas from the total gas
         self.deferred_calls_changes.set_total_gas(
@@ -168,7 +234,6 @@ impl SpeculativeDeferredCallRegistry {
                 .total_gas
                 .saturating_sub(slot_calls.slot_gas.into()),
         );
-
         // delete the current slot
         for (id, _call) in &slot_calls.slot_calls {
             self.deferred_calls_changes.delete_call(current_slot, id);
@@ -405,10 +470,6 @@ impl SpeculativeDeferredCallRegistry {
                 .get_deferred_call_registry()
                 .get_slot_calls(call.target_slot);
             index += slots_call.slot_calls.len();
-        }
-
-        if !index.is_zero() {
-            index += 1;
         }
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;

@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use massa_deferred_calls::DeferredCall;
 use schnellru::{ByLength, LruMap};
 // use massa_execution_exports::Transfer;
 
@@ -90,6 +91,28 @@ impl AsyncMessageExecutionResult {
             sender: None,
             destination: None,
             coins: None,
+            traces: None,
+        }
+    }
+}
+
+pub struct DeferredCallExecutionResult {
+    pub(crate) success: bool,
+    pub(crate) sender: Address,
+    pub(crate) target_address: Address,
+    pub(crate) target_function: String,
+    pub(crate) coins: Amount,
+    pub(crate) traces: Option<ExecutionResult>,
+}
+
+impl DeferredCallExecutionResult {
+    pub fn new(call: &DeferredCall) -> Self {
+        Self {
+            success: false,
+            sender: call.sender_address,
+            target_address: call.target_address,
+            target_function: call.target_function.clone(),
+            coins: call.coins,
             traces: None,
         }
     }

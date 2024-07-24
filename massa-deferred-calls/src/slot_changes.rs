@@ -6,7 +6,8 @@ use crate::{
     DeferredRegistryGasChange,
 };
 use massa_ledger_exports::{
-    SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer, SetOrKeepSerializer,
+    SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer,
+    SetOrKeepSerializer,
 };
 use massa_models::{
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -73,8 +74,10 @@ impl DeferredRegistrySlotChanges {
     }
 
     pub fn get_call(&self, id: &DeferredCallId) -> Option<&DeferredCall> {
-        unimplemented!("DeferredRegistrySlotChanges::get_call")
-        // self.calls.get(id).and_then(|change| change.get_call())
+        match self.calls.get(id) {
+            Some(SetOrDelete::Set(call)) => Some(call),
+            _ => None,
+        }
     }
 
     pub fn set_gas(&mut self, gas: u64) {

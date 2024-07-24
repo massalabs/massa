@@ -254,7 +254,7 @@ mod test {
     use massa_models::amount::Amount;
     use massa_models::bytecode::Bytecode;
     use massa_models::slot::Slot;
-    use massa_models::{address::Address, config::MAX_DEFERRED_CALL_POOL_CHANGES};
+    use massa_models::{address::Address, config::DEFERRED_CALL_MAX_POOL_CHANGES};
     use massa_serialization::DeserializeError;
 
     use massa_models::config::{
@@ -339,7 +339,7 @@ mod test {
             MAX_EXECUTED_OPS_CHANGES_LENGTH,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,
-            MAX_DEFERRED_CALL_POOL_CHANGES,
+            DEFERRED_CALL_MAX_POOL_CHANGES,
         )
         .deserialize::<DeserializeError>(&serialized)
         .unwrap();

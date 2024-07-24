@@ -16,7 +16,8 @@ use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
-use massa_deferred_calls::DeferredCall;
+use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
+use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -60,6 +61,9 @@ pub struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: AsyncPoolChanges,
+
+    /// speculative deferred calls changes
+    pub deferred_calls_changes: DeferredRegistryChanges,
 
     /// the associated message infos for the speculative async pool
     pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
@@ -263,6 +267,7 @@ impl ExecutionContext {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
             async_pool_changes,
+            deferred_calls_changes: self.speculative_deferred_calls.get_snapshot(),
             message_infos,
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
@@ -290,6 +295,8 @@ impl ExecutionContext {
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
             .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
+        self.speculative_deferred_calls
+            .reset_to_snapshot(snapshot.deferred_calls_changes);
         self.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
@@ -1130,6 +1137,23 @@ impl ExecutionContext {
 
     pub fn deferred_calls_get_slot_booked_gas(&self, slot: &Slot) -> u64 {
         self.speculative_deferred_calls.get_slot_gas(slot)
+    }
+
+    pub fn deferred_calls_get_slot_base_fee(&mut self, slot: &Slot) -> Amount {
+        self.speculative_deferred_calls.get_slot_base_fee(slot)
+    }
+
+    pub fn deferred_calls_advance_slot(
+        &mut self,
+        current_slot: Slot,
+        async_call_max_booking_slots: u64,
+        thread_count: u8,
+    ) -> DeferredSlotCalls {
+        self.speculative_deferred_calls.advance_slot(
+            current_slot,
+            async_call_max_booking_slots,
+            thread_count,
+        )
     }
 
     /// Get the price it would cost to reserve "gas" at target slot "slot".
