@@ -186,6 +186,7 @@ impl<'de> ::serde::Deserialize<'de> for DeferredCallId {
 impl DeferredCallId {
     pub fn get_slot(&self) -> Slot {
         // retrieve the slot from the id
+        // TODO implement this
         todo!()
         // let slot_serializer = SlotDeserializer::new();
         // let (_, slot) = slot_serializer.deserialize(self.as_bytes()).unwrap();

@@ -339,7 +339,7 @@ pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 /// Maximum size of deferred call pool changes
-// todo define this value
+// TODO define this value
 pub const DEFERRED_CALL_MAX_POOL_CHANGES: u64 = 100_000;
 /// Maximum size of deferred call future slots (1 week)
 pub const DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = 1209600;

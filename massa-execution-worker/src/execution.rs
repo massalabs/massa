@@ -1235,8 +1235,6 @@ impl ExecutionState {
 
         let snapshot = context.get_snapshot();
 
-        // todo call the function
-
         // prepare the current slot context for executing the operation
         let bytecode;
         {
@@ -1275,7 +1273,7 @@ impl ExecutionState {
                 ));
 
                 context.reset_to_snapshot(snapshot, err.clone());
-                // todo cancel the deferred call
+                // TODO cancel the deferred call
                 // context.cancel_async_message(&message);
                 return Err(err);
             }
@@ -1336,7 +1334,7 @@ impl ExecutionState {
                 };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                // todo cancel the deferred call
+                // TODO cancel the deferred call
                 // context.cancel_async_message(&message);
                 Err(err)
             }
@@ -1363,6 +1361,7 @@ impl ExecutionState {
             slot: *slot,
             operation_call_stacks: PreHashMap::default(),
             asc_call_stacks: vec![],
+            deferred_call_stacks: vec![],
         };
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
@@ -1388,18 +1387,6 @@ impl ExecutionState {
             self.config.thread_count,
         );
 
-        for (id, call) in calls.slot_calls {
-            match self.execute_deferred_call(call) {
-                Ok(exec) => {
-                    info!("executed deferred call: {:?}", id);
-                }
-                Err(err) => {
-                    let msg = format!("failed executing deferred call: {}", err);
-                    debug!(msg);
-                }
-            }
-        }
-
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(
             self.config.max_async_gas,
@@ -1408,6 +1395,38 @@ impl ExecutionState {
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
+
+        for (id, call) in calls.slot_calls {
+            if call.cancelled {
+                // Skip cancelled calls
+                continue;
+            }
+            match self.execute_deferred_call(call) {
+                Ok(_exec) => {
+                    info!("executed deferred call: {:?}", id);
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
+                            exec_info.deferred_calls_messages.push(Ok(_exec));
+                        }
+                    }
+                }
+                Err(err) => {
+                    let msg = format!("failed executing deferred call: {}", err);
+                    #[cfg(feature = "execution-info")]
+                    exec_info.deferred_calls_messages.push(Err(msg.clone()));
+                    debug!(msg);
+                }
+            }
+            // TODO remove D from the db
+        }
+
+        // TODO execute async messages as long as there is remaining gas in the slot (counting both unused max_async_gas and max_block_gas, and the latter can be used in full in case of block miss)
+
+        // max_async_gas - calls.slot_gas is the remaining gas for the slot
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.

@@ -135,7 +135,7 @@ impl SpeculativeDeferredCallRegistry {
         }
 
         // check in final state
-        // todo check if that is correct
+        // TODO check if that is correct
         return self
             .final_state
             .read()
@@ -418,7 +418,7 @@ impl SpeculativeDeferredCallRegistry {
         // A fee that linearly depends on the total load over `deferred_call_max_future_slots` slots but only when the average load is above `target_async_gas` to not penalize normal use. Booking all the gas from all slots within the booking period requires using the whole initial coin supply.
 
         // Global overbooking fee
-        // todo check if this is correct
+        // TODO check if this is correct
         let global_occupancy = self
             .deferred_calls_changes
             .get_total_gas()

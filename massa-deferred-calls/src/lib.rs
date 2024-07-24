@@ -51,7 +51,7 @@ impl DeferredCallRegistry {
         [DEFERRED_CALLS_SLOT_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> AsyncCall.x // call data
     */
 
-    // todo pass args
+    // TODO pass args
     pub fn new(db: ShareableMassaDBController) -> Self {
         Self {
             db,
@@ -59,7 +59,7 @@ impl DeferredCallRegistry {
             call_id_serializer: DeferredCallIdSerializer::new(),
             call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
-            // todo args
+            // TODO args
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
                 THREAD_COUNT,
                 100_000,
@@ -393,7 +393,7 @@ impl DeferredCallRegistry {
 //     Delete,
 // }
 
-// todo put SetOrDelete dans models
+// TODO put SetOrDelete dans models
 pub type DeferredRegistryCallChange = SetOrDelete<DeferredCall>;
 pub type DeferredRegistryGasChange<V> = SetOrKeep<V>;
 pub type DeferredRegistryBaseFeeChange = SetOrKeep<Amount>;
