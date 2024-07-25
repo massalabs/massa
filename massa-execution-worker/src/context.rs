@@ -1139,10 +1139,6 @@ impl ExecutionContext {
         self.speculative_deferred_calls.get_slot_gas(slot)
     }
 
-    pub fn deferred_calls_get_slot_base_fee(&mut self, slot: &Slot) -> Amount {
-        self.speculative_deferred_calls.get_slot_base_fee(slot)
-    }
-
     pub fn deferred_calls_advance_slot(
         &mut self,
         current_slot: Slot,

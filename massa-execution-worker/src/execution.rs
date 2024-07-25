@@ -1426,13 +1426,26 @@ impl ExecutionState {
             context.deferred_call_delete(&id, slot.clone());
         }
 
-        // TODO execute async messages as long as there is remaining gas in the slot (counting both unused max_async_gas and max_block_gas, and the latter can be used in full in case of block miss)
+        // execute async messages as long as there is remaining gas in the slot (counting both unused max_async_gas and max_block_gas, and the latter can be used in full in case of block miss)
 
-        // max_async_gas - calls.slot_gas is the remaining gas for the slot
+        let mut remaining_async_slot_gas = self.config.max_async_gas.saturating_sub(calls.slot_gas);
+        let mut remaining_block_gas = self.config.max_gas_per_block.saturating_sub(calls.slot_gas);
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
         for (opt_bytecode, message) in messages {
+            // TODO verify here
+            if remaining_async_slot_gas == 0 || remaining_block_gas == 0 {
+                // break if there is no gas left
+                break;
+            }
+            if message.max_gas > remaining_async_slot_gas || message.max_gas > remaining_block_gas {
+                // Skip message if there is not enough gas left for it
+                continue;
+            }
+
+            remaining_async_slot_gas = remaining_async_slot_gas.saturating_sub(message.max_gas);
+            remaining_block_gas = remaining_block_gas.saturating_sub(message.max_gas);
             match self.execute_async_message(message, opt_bytecode) {
                 Ok(_message_return) => {
                     cfg_if::cfg_if! {

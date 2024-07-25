@@ -1396,7 +1396,7 @@ impl Interface for InterfaceImpl {
         //    let effective_gas = CONST_ASYNC_GAS + max_gas;
         //    let fee = get_price(target_slot, effective_gas)?;
 
-        //    // TODO: make sender pay `coins + fee`
+        //    // make sender pay `coins + fee`
 
         //    let call = /* ... */;
         //    let id = /* ... */ ;

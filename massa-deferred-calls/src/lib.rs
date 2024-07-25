@@ -25,7 +25,7 @@ pub use call::DeferredCall;
 use massa_ledger_exports::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
-    config::THREAD_COUNT,
+    config::{DEFERRED_CALL_MAX_POOL_CHANGES, MAX_ASYNC_GAS, THREAD_COUNT},
     deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
@@ -62,8 +62,8 @@ impl DeferredCallRegistry {
             // TODO args
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
                 THREAD_COUNT,
-                100_000,
-                100_000,
+                MAX_ASYNC_GAS,
+                DEFERRED_CALL_MAX_POOL_CHANGES,
             ),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
         }
