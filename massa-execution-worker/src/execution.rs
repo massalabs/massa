@@ -1273,8 +1273,7 @@ impl ExecutionState {
                 ));
 
                 context.reset_to_snapshot(snapshot, err.clone());
-                // TODO cancel the deferred call
-                // context.cancel_async_message(&message);
+                context.deferred_call_fail_exec(&call);
                 return Err(err);
             }
 
@@ -1334,8 +1333,7 @@ impl ExecutionState {
                 };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                // TODO cancel the deferred call
-                // context.cancel_async_message(&message);
+                context.deferred_call_fail_exec(&call);
                 Err(err)
             }
         }

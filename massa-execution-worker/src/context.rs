@@ -1190,6 +1190,33 @@ impl ExecutionContext {
         self.speculative_deferred_calls.get_call(call_id).is_some()
     }
 
+    /// when a deferred call execution fail we need to refund the coins to the caller
+    pub fn deferred_call_fail_exec(
+        &mut self,
+        call: &DeferredCall,
+    ) -> Option<(Address, Result<Amount, String>)> {
+        #[allow(unused_assignments, unused_mut)]
+        let mut result = None;
+
+        let transfer_result =
+            self.transfer_coins(None, Some(call.sender_address), call.coins, false);
+        if let Err(e) = transfer_result.as_ref() {
+            debug!(
+                "deferred call cancel: reimbursement of {} failed: {}",
+                call.sender_address, e
+            );
+        }
+
+        #[cfg(feature = "execution-info")]
+        if let Err(e) = transfer_result {
+            result = Some((call.sender_address, Err(e.to_string())))
+        } else {
+            result = Some((call.sender_address, Ok(call.coins)));
+        }
+
+        result
+    }
+
     pub fn deferred_call_delete(&mut self, call_id: &DeferredCallId, slot: Slot) {
         self.speculative_deferred_calls.delete_call(call_id, slot);
     }
