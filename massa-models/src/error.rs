@@ -62,6 +62,8 @@ pub enum ModelsError {
     OutdatedBootstrapCursor,
     /// Error raised {0}
     ErrorRaised(String),
+    /// deferred call id parsing error
+    DeferredCallIdParseError,
 }
 
 impl From<nom::Err<nom::error::Error<&[u8]>>> for ModelsError {

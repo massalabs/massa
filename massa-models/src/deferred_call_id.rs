@@ -1,7 +1,8 @@
-use std::str::FromStr;
+use std::{ops::Bound, str::FromStr};
 
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
+    U64VarIntSerializer,
 };
 use nom::{
     error::{ContextError, ParseError},
@@ -9,7 +10,10 @@ use nom::{
 };
 use transition::Versioned;
 
+// use std::collections::Bound;
+
 use crate::{
+    config::THREAD_COUNT,
     error::ModelsError,
     serialization::{VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotDeserializer, SlotSerializer},
@@ -184,13 +188,25 @@ impl<'de> ::serde::Deserialize<'de> for DeferredCallId {
 }
 
 impl DeferredCallId {
-    pub fn get_slot(&self) -> Slot {
-        // retrieve the slot from the id
-        // TODO implement this
-        todo!()
-        // let slot_serializer = SlotDeserializer::new();
-        // let (_, slot) = slot_serializer.deserialize(self.as_bytes()).unwrap();
-        // slot
+    /// Return the slot of the `DeferredCallId`
+    pub fn get_slot(&self) -> Result<Slot, ModelsError> {
+        let version_deserializer = U64VarIntDeserializer::new(
+            std::ops::Bound::Included(0),
+            std::ops::Bound::Included(u64::MAX),
+        );
+
+        let slot_deser = SlotDeserializer::new(
+            (Bound::Included(0), Bound::Included(u64::MAX)),
+            (Bound::Included(0), Bound::Excluded(THREAD_COUNT)),
+        );
+
+        let (rest, version) = version_deserializer
+            .deserialize::<DeserializeError>(self.as_bytes())
+            .map_err(|_e| ModelsError::DeferredCallIdParseError)?;
+        let (_rest, slot) = slot_deser
+            .deserialize::<DeserializeError>(rest)
+            .map_err(|_e| ModelsError::DeferredCallIdParseError)?;
+        Ok(slot)
     }
 
     /// Create a new `DeferredCallId`
@@ -296,5 +312,14 @@ mod tests {
         let id_str = id.to_string();
         let deserialized_id = DeferredCallId::from_str(&id_str).unwrap();
         assert_eq!(deserialized_id, id);
+    }
+
+    #[test]
+    fn test_get_slot() {
+        let slot = Slot::new(1, 2);
+        let index = 3;
+        let trail_hash = [4, 5, 6];
+        let id = DeferredCallId::new(0, slot, index, &trail_hash).unwrap();
+        assert_eq!(id.get_slot().unwrap(), slot);
     }
 }

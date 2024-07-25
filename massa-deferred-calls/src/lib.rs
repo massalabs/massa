@@ -59,7 +59,6 @@ impl DeferredCallRegistry {
             call_id_serializer: DeferredCallIdSerializer::new(),
             call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
-            // TODO args
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
                 THREAD_COUNT,
                 MAX_ASYNC_GAS,

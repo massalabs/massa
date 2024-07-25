@@ -246,7 +246,10 @@ impl SpeculativeDeferredCallRegistry {
     }
 
     pub fn get_call(&self, id: &DeferredCallId) -> Option<DeferredCall> {
-        let slot: Slot = id.get_slot();
+        let slot = match id.get_slot() {
+            Ok(slot) => slot,
+            Err(_) => return None,
+        };
 
         // check from latest to earliest changes
 
