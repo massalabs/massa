@@ -1030,7 +1030,7 @@ fn deferred_calls() {
             }
 
             println!("changes: {:?}", changes.deferred_call_changes.slots_change);
-            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
             finalized_waitpoint_trigger_handle.trigger();
         });
 
@@ -1042,21 +1042,18 @@ fn deferred_calls() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            // match changes.ledger_changes.0.get(&destination).unwrap() {
-            //     // sc has received the coins (0.0000001)
-            //     SetUpdateOrDelete::Update(change_sc_update) => {
-            //         assert_eq!(
-            //             change_sc_update.balance,
-            //             SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
-            //         );
-            //     }
-            //     _ => panic!("wrong change type"),
-            // }
-
-            dbg!(&changes.ledger_changes);
+            match changes.ledger_changes.0.get(&destination).unwrap() {
+                // sc has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
 
             assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
-
             let (_slot, slot_change) = changes
                 .deferred_call_changes
                 .slots_change
@@ -1064,6 +1061,7 @@ fn deferred_calls() {
                 .unwrap();
 
             let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            // call was executed and then deleted
             assert_eq!(set_delete, &SetOrDelete::Delete);
 
             finalized_waitpoint_trigger_handle2.trigger();
