@@ -51,7 +51,7 @@ impl DeferredCall {
         fee: Amount,
         cancelled: bool,
     ) -> Self {
-        Self {
+        DeferredCall {
             sender_address,
             target_slot,
             target_address,
@@ -104,9 +104,9 @@ impl Serializer<DeferredCall> for DeferredCallSerializer {
         self.vec_u8_serializer
             .serialize(&value.parameters, buffer)?;
         self.amount_serializer.serialize(&value.coins, buffer)?;
-        self.amount_serializer.serialize(&value.fee, buffer)?;
         self.u64_var_int_serializer
             .serialize(&value.max_gas, buffer)?;
+        self.amount_serializer.serialize(&value.fee, buffer)?;
         self.bool_serializer.serialize(&value.cancelled, buffer)?;
         Ok(())
     }
@@ -180,11 +180,11 @@ impl Deserializer<DeferredCall> for DeferredCallDeserializer {
                 context("Failed coins deserialization", |input| {
                     self.amount_deserializer.deserialize(input)
                 }),
-                context("Failed fee deserialization", |input| {
-                    self.amount_deserializer.deserialize(input)
-                }),
                 context("Failed max_gas deserialization", |input| {
                     self.u64_var_int_deserializer.deserialize(input)
+                }),
+                context("Failed fee deserialization", |input| {
+                    self.amount_deserializer.deserialize(input)
                 }),
                 context("Failed cancelled deserialization", |input| {
                     self.bool_deserializer.deserialize(input)
@@ -199,8 +199,8 @@ impl Deserializer<DeferredCall> for DeferredCallDeserializer {
                 target_function,
                 parameters,
                 coins,
-                fee,
                 max_gas,
+                fee,
                 cancelled,
             )| {
                 DeferredCall::new(
@@ -236,9 +236,9 @@ mod tests {
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
             "function".to_string(),
             vec![0, 1, 2, 3],
-            Amount::from_raw(42),
-            42,
-            Amount::from_raw(42),
+            Amount::from_raw(100),
+            500000,
+            Amount::from_raw(25),
             false,
         );
         let serializer = DeferredCallSerializer::new();

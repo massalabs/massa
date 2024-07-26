@@ -27,9 +27,9 @@ use std::ops::Bound::Included;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredRegistrySlotChanges {
-    pub(crate) calls: BTreeMap<DeferredCallId, DeferredRegistryCallChange>,
-    pub(crate) gas: DeferredRegistryGasChange<u64>,
-    pub(crate) base_fee: DeferredRegistryBaseFeeChange,
+    pub calls: BTreeMap<DeferredCallId, DeferredRegistryCallChange>,
+    pub gas: DeferredRegistryGasChange<u64>,
+    pub base_fee: DeferredRegistryBaseFeeChange,
 }
 
 impl DeferredRegistrySlotChanges {
