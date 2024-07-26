@@ -2,6 +2,9 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
+use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
+use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
+use massa_deferred_calls::{DeferredCall, DeferredCallRegistry, DeferredRegistryCallChange};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
@@ -11,12 +14,13 @@ use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
 use massa_ledger_exports::{
-    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
+    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
+use massa_models::deferred_call_id::DeferredCallId;
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
@@ -67,6 +71,7 @@ fn final_state_boilerplate(
     saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
     custom_async_pool: Option<AsyncPool>,
     custom_pos_state: Option<PoSFinalState>,
+    custom_deferred_call_registry: Option<DeferredCallRegistry>,
 ) {
     mock_final_state
         .write()
@@ -140,6 +145,14 @@ fn final_state_boilerplate(
             },
             db.clone(),
         ));
+
+    let deferred_call_registry =
+        custom_deferred_call_registry.unwrap_or_else(|| DeferredCallRegistry::new(db.clone()));
+
+    mock_final_state
+        .write()
+        .expect_get_deferred_call_registry()
+        .return_const(deferred_call_registry);
 }
 
 fn expect_finalize_deploy_and_call_blocks(
@@ -207,6 +220,7 @@ fn test_execution_shutdown() {
         None,
         None,
         None,
+        None,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
 }
@@ -220,6 +234,7 @@ fn test_sending_command() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -265,6 +280,7 @@ fn test_readonly_execution() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -396,6 +412,7 @@ fn test_nested_call_gas_usage() {
         Some(saved_bytecode),
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -490,6 +507,7 @@ fn test_get_call_coins() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -727,6 +745,7 @@ fn send_and_receive_async_message() {
         Some(saved_bytecode),
         Some(async_pool),
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
@@ -775,6 +794,7 @@ fn cancel_async_message() {
                     ))
                 });
         });
+
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
@@ -887,6 +907,7 @@ fn cancel_async_message() {
         Some(saved_bytecode),
         Some(async_pool),
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
@@ -917,6 +938,203 @@ fn cancel_async_message() {
             ..Default::default()
         });
     assert!(events[0].data.contains(" is not a smart contract address"));
+}
+
+#[test]
+fn deferred_calls() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    let destination = match *CHAINID {
+        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77658366 => {
+            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+        }
+        77658377 => {
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap()
+        }
+        _ => panic!("CHAINID not supported"),
+    };
+
+    let target_slot = Slot {
+        period: 1,
+        thread: 1,
+    };
+
+    let call = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot: target_slot.clone(),
+        target_address: destination,
+        target_function: "receive".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 300000000,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call_id = DeferredCallId::new(
+        0,
+        target_slot.clone(),
+        0,
+        "trail_hash".to_string().as_bytes(),
+    )
+    .unwrap();
+
+    let call_cloned = call.clone();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                let mut saved_bytecode = saved_bytecode_edit.write();
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
+
+            println!("changes: {:?}", changes.deferred_call_changes.slots_change);
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            // match changes.ledger_changes.0.get(&destination).unwrap() {
+            //     // sc has received the coins (0.0000001)
+            //     SetUpdateOrDelete::Update(change_sc_update) => {
+            //         assert_eq!(
+            //             change_sc_update.balance,
+            //             SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+            //         );
+            //     }
+            //     _ => panic!("wrong change type"),
+            // }
+
+            dbg!(&changes.ledger_changes);
+
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+
+            let (_slot, slot_change) = changes
+                .deferred_call_changes
+                .slots_change
+                .first_key_value()
+                .unwrap();
+
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            assert_eq!(set_delete, &SetOrDelete::Delete);
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredRegistryChanges {
+            slots_change: slot_changes,
+            total_gas: SetOrKeep::Keep,
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(registry),
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+    finalized_waitpoint.wait();
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
 }
 
 /// Context
@@ -954,6 +1172,7 @@ fn local_execution() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1034,6 +1253,7 @@ fn sc_deployment() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -1117,6 +1337,7 @@ fn send_and_receive_async_message_with_trigger() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1234,6 +1455,7 @@ fn send_and_receive_transaction() {
         None,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -1310,6 +1532,7 @@ fn roll_buy() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1413,6 +1636,7 @@ fn roll_sell() {
         None,
         None,
         Some(pos_final_state),
+        None,
     );
     foreign_controllers
         .final_state
@@ -1572,6 +1796,7 @@ fn auto_sell_on_missed_blocks() {
         None,
         None,
         Some(pos_final_state.clone()),
+        None,
     );
 
     foreign_controllers
@@ -1686,6 +1911,7 @@ fn roll_slash() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1807,6 +2033,7 @@ fn roll_slash_2() {
         None,
         None,
         None,
+        None,
     );
 
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -1870,6 +2097,7 @@ fn sc_execution_error() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecode
@@ -1928,6 +2156,7 @@ fn sc_datastore() {
         Some(saved_bytecode),
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecode
@@ -1980,6 +2209,7 @@ fn set_bytecode_error() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -2058,6 +2288,7 @@ fn datastore_manipulations() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2240,6 +2471,7 @@ fn events_from_switching_blockclique() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -2288,6 +2520,7 @@ fn not_enough_instance_gas() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2357,6 +2590,7 @@ fn sc_builtins() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     universe.deploy_bytecode_block(
@@ -2401,6 +2635,7 @@ fn validate_address() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2452,6 +2687,7 @@ fn test_rewards() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2607,6 +2843,7 @@ fn chain_id() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
