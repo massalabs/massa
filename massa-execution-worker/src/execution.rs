@@ -1231,13 +1231,12 @@ impl ExecutionState {
     ) -> Result<DeferredCallExecutionResult, ExecutionError> {
         let mut result = DeferredCallExecutionResult::new(&call);
 
-        let mut context = context_guard!(self);
-
-        let snapshot = context.get_snapshot();
-
+        let snapshot;
         // prepare the current slot context for executing the operation
         let bytecode;
         {
+            let mut context = context_guard!(self);
+            snapshot = context.get_snapshot();
             // acquire write access to the context
             // let mut context = context_guard!(self);
 
@@ -1384,6 +1383,8 @@ impl ExecutionState {
             DEFERRED_CALL_MAX_FUTURE_SLOTS,
             self.config.thread_count,
         );
+
+        dbg!(&calls);
 
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(
