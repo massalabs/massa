@@ -1375,18 +1375,19 @@ impl Interface for InterfaceImpl {
     /// * target_func: string representation of the target function
     /// * params: byte array of the parameters
     /// * coins: the amount of coins to send
+    /// * fee: the amount of fee to send
     /// * max_gas: the gas limit for the call
     ///
     /// # Returns
     /// The id of the call
     fn deferred_call_register(
         &self,
-        target_slot: (u64, u8),
         target_addr: &str,
         target_func: &str,
-        params: &[u8],
-        coins: u64,
+        target_slot: (u64, u8),
         max_gas: u64,
+        coins: u64,
+        params: &[u8],
     ) -> Result<Vec<u8>> {
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
 

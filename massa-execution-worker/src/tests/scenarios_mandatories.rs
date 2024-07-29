@@ -3,7 +3,7 @@
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
-use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
+use massa_deferred_calls::slot_changes::{self, DeferredRegistrySlotChanges};
 use massa_deferred_calls::{DeferredCall, DeferredCallRegistry, DeferredRegistryCallChange};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
@@ -1016,7 +1016,6 @@ fn deferred_calls() {
     )
     .unwrap();
 
-    let call_cloned = call.clone();
     foreign_controllers
         .final_state
         .write()
@@ -1104,6 +1103,7 @@ fn deferred_calls() {
         None,
         Some(registry),
     );
+
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
 
     // load bytecodes
@@ -1133,6 +1133,125 @@ fn deferred_calls() {
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
+}
+
+#[test]
+fn deferred_call_register() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let saved_bytecode = Arc::new(RwLock::new(None));
+
+    let db_lock = foreign_controllers.db.clone();
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+        });
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                // manually write the deferred call to the db
+                // then in the next slot (1,1) we will find and execute it
+                let reg = DeferredCallRegistry::new(db_lock.clone());
+                let mut batch = DBBatch::default();
+                reg.apply_changes_to_batch(changes.deferred_call_changes.clone(), &mut batch);
+                db_lock
+                    .write()
+                    .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
+            }
+            let slot_changes = changes
+                .deferred_call_changes
+                .slots_change
+                .get(&Slot::new(1, 1))
+                .unwrap();
+            let _call = slot_changes.calls.first_key_value().unwrap().1;
+
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            let (_slot, slot_change) = changes
+                .deferred_call_changes
+                .slots_change
+                .first_key_value()
+                .unwrap();
+
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            // call was executed and then deleted
+            assert_eq!(set_delete, &SetOrDelete::Delete);
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(DeferredCallRegistry::new(foreign_controllers.db.clone())),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // abi call to register a deferred call
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/deferred_call.wasm"),
+        //unused
+        include_bytes!("./wasm/use_builtins.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+
+    assert_eq!(events[0].data, "Deferred call registered");
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+    // match the events
+    finalized_waitpoint.wait();
 }
 
 /// Context
