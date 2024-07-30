@@ -1211,7 +1211,12 @@ fn deferred_call_register() {
                 .first_key_value()
                 .unwrap();
 
-            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            let (id, set_delete) = slot_change.calls.first_key_value().unwrap();
+
+            assert_eq!(
+                id.to_string().as_str(),
+                "D17MpSPsmYL3eDjTq4jSLemHycnQs7yGqTLY4v481cmz8SZuF1MuPQr6hL95E1Zv"
+            );
             // call was executed and then deleted
             assert_eq!(set_delete, &SetOrDelete::Delete);
             finalized_waitpoint_trigger_handle2.trigger();
@@ -1245,6 +1250,21 @@ fn deferred_call_register() {
 
     assert_eq!(events[0].data, "Deferred call registered");
 
+    // call id in the register event
+    let vec: Vec<u8> = events[1]
+        .data
+        .split(',')
+        .map(|s| s.parse::<u8>().unwrap())
+        .collect();
+
+    let call_id = DeferredCallId::from_bytes(&vec).unwrap();
+    assert_eq!(
+        call_id,
+        DeferredCallId::from_str(
+            "D17MpSPsmYL3eDjTq4jSLemHycnQs7yGqTLY4v481cmz8SZuF1MuPQr6hL95E1Zv"
+        )
+        .unwrap()
+    );
     let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
