@@ -229,11 +229,14 @@ impl SpeculativeDeferredCallRegistry {
             .set_slot_base_fee(new_slot, new_slot_base_fee);
 
         // subtract the current slot gas from the total gas
-        self.deferred_calls_changes.set_total_gas(
-            slot_calls
-                .total_gas
-                .saturating_sub(slot_calls.slot_gas.into()),
-        );
+
+        let total_gas = slot_calls
+            .total_gas
+            .saturating_sub(slot_calls.slot_gas.into());
+        if !total_gas.eq(&self.get_total_gas()) {
+            self.deferred_calls_changes.set_total_gas(total_gas);
+        }
+
         // delete the current slot
         for (id, _call) in &slot_calls.slot_calls {
             self.deferred_calls_changes.delete_call(current_slot, id);
@@ -399,6 +402,8 @@ impl SpeculativeDeferredCallRegistry {
                 "Target slot is too far in the future.".into(),
             ));
         }
+
+        // TODO FIX async_gas_target = slot_occupancy ??
 
         // Check that the gas is not too high for the target slot
         let slot_occupancy = self.get_slot_gas(&target_slot);
