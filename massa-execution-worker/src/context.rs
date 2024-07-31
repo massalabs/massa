@@ -804,12 +804,17 @@ impl ExecutionContext {
             })?
             .saturating_sub(slashed_coins_from_rolls);
 
+        let mut total_slashed_coins = slashed_coins_from_rolls;
+
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
             let slashed_coins_in_deferred_credits = self
                 .speculative_roll_state
                 .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+
+            total_slashed_coins =
+                total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
 
             let amount_remaining_to_slash_2 =
                 amount_remaining_to_slash.saturating_sub(slashed_coins_in_deferred_credits);
@@ -822,7 +827,7 @@ impl ExecutionContext {
             }
         }
 
-        Ok(slashed_coins)
+        Ok(total_slashed_coins)
     }
 
     /// Update production statistics of an address.
