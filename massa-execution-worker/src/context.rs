@@ -813,7 +813,7 @@ impl ExecutionContext {
 
             slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
             let amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+                amount_remaining_to_slash.saturating_sub(slashed_coins_in_deferred_credits);
             if amount_remaining_to_slash_2 > Amount::zero() {
                 // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
                 warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
