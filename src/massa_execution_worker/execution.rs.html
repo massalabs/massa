@@ -2290,6 +2290,17 @@
 <a href="#2290" id="2290">2290</a>
 <a href="#2291" id="2291">2291</a>
 <a href="#2292" id="2292">2292</a>
+<a href="#2293" id="2293">2293</a>
+<a href="#2294" id="2294">2294</a>
+<a href="#2295" id="2295">2295</a>
+<a href="#2296" id="2296">2296</a>
+<a href="#2297" id="2297">2297</a>
+<a href="#2298" id="2298">2298</a>
+<a href="#2299" id="2299">2299</a>
+<a href="#2300" id="2300">2300</a>
+<a href="#2301" id="2301">2301</a>
+<a href="#2302" id="2302">2302</a>
+<a href="#2303" id="2303">2303</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3415,7 +3426,7 @@
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: message.coins,
+                    coins: Default::default(),
                     owned_addresses: <span class="macro">vec!</span>[message.sender],
                     operation_datastore: <span class="prelude-val">None</span>,
                 },
@@ -3467,10 +3478,19 @@
 
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span>module = <span class="self">self
+        </span><span class="kw">let </span><span class="prelude-val">Ok</span>(module) = <span class="self">self
             </span>.module_cache
             .write()
-            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
+            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)
+        <span class="kw">else </span>{
+            <span class="kw">let </span>err =
+                ExecutionError::RuntimeError(<span class="string">&quot;could not load module for async execution&quot;</span>.into());
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(context_snapshot, err.clone());
+            context.cancel_async_message(<span class="kw-2">&amp;</span>message);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
+        };
+
         <span class="kw">let </span>response = massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
@@ -3563,7 +3583,9 @@
 
         <span class="comment">// Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        </span><span class="kw">for </span>(opt_bytecode, message) <span class="kw">in </span>messages {
+        </span><span class="kw">for </span>(_message_id, message) <span class="kw">in </span>messages {
+            <span class="kw">let </span>opt_bytecode = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_bytecode(<span class="kw-2">&amp;</span>message.destination);
+
             <span class="kw">match </span><span class="self">self</span>.execute_async_message(message, opt_bytecode) {
                 <span class="prelude-val">Ok</span>(_message_return) =&gt; {
                     <span class="macro">cfg_if::cfg_if! </span>{
