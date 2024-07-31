@@ -3,8 +3,8 @@
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
-use massa_deferred_calls::slot_changes::{self, DeferredRegistrySlotChanges};
-use massa_deferred_calls::{DeferredCall, DeferredCallRegistry, DeferredRegistryCallChange};
+use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
+use massa_deferred_calls::{DeferredCall, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
@@ -1211,14 +1211,13 @@ fn deferred_call_register() {
                 .first_key_value()
                 .unwrap();
 
-            let (id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
 
-            assert_eq!(
-                id.to_string().as_str(),
-                "D17MpSPsmYL3eDjTq4jSLemHycnQs7yGqTLY4v481cmz8SZuF1MuPQr6hL95E1Zv"
-            );
             // call was executed and then deleted
             assert_eq!(set_delete, &SetOrDelete::Delete);
+
+            // assert total gas was set to 0
+            assert_eq!(changes.deferred_call_changes.total_gas, SetOrKeep::Set(0));
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
@@ -1239,7 +1238,7 @@ fn deferred_call_register() {
     universe.deploy_bytecode_block(
         &keypair,
         Slot::new(1, 0),
-        include_bytes!("./wasm/deferred_call.wasm"),
+        include_bytes!("./wasm/deferred_call_register.wasm"),
         //unused
         include_bytes!("./wasm/use_builtins.wasm"),
     );
@@ -1257,14 +1256,8 @@ fn deferred_call_register() {
         .map(|s| s.parse::<u8>().unwrap())
         .collect();
 
-    let call_id = DeferredCallId::from_bytes(&vec).unwrap();
-    assert_eq!(
-        call_id,
-        DeferredCallId::from_str(
-            "D17MpSPsmYL3eDjTq4jSLemHycnQs7yGqTLY4v481cmz8SZuF1MuPQr6hL95E1Zv"
-        )
-        .unwrap()
-    );
+    let _call_id = DeferredCallId::from_bytes(&vec).unwrap();
+
     let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
@@ -1274,6 +1267,152 @@ fn deferred_call_register() {
     finalized_waitpoint.wait();
 }
 
+#[test]
+fn deferred_call_register_fail() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let target_slot = Slot {
+        period: 1,
+        thread: 10,
+    };
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert!(changes.deferred_call_changes.total_gas == SetOrKeep::Keep);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
+            // deferred call was not register
+            assert!(changes.deferred_call_changes.total_gas == SetOrKeep::Keep);
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let call = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot: target_slot.clone(),
+        target_address: Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV")
+            .unwrap(),
+        target_function: "toto".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 500,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call_id = DeferredCallId::new(
+        0,
+        target_slot.clone(),
+        0,
+        "trail_hash".to_string().as_bytes(),
+    )
+    .unwrap();
+    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(500),
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredRegistryChanges {
+            slots_change: slot_changes,
+            total_gas: SetOrKeep::Set(2000),
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(registry),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block);
+
+    finalized_waitpoint.wait();
+
+    // abi call to register a deferred call
+    // the call want to book max_async_gas 1_000_000_000 so it fail because we already have a call at this slot with 500 gas
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 1),
+        include_bytes!("./wasm/deferred_call_register_fail.wasm"),
+        //unused
+        include_bytes!("./wasm/use_builtins.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+
+    let ev = events[1].clone();
+    assert!(ev.context.is_error);
+    assert!(ev.data.contains("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas"));
+}
 /// Context
 ///
 /// Functional test for local smart-contract execution

@@ -1351,6 +1351,8 @@ impl Interface for InterfaceImpl {
 
         let gas_booked_slot = context.deferred_calls_get_slot_booked_gas(&target_slot);
 
+        // TODO fix gas_booked_slot = async_gas_target ??
+
         match context.deferred_calls_compute_call_fee(
             target_slot,
             gas_limit,
