@@ -2794,7 +2794,6 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-
             let block_credits = exec_cfg.block_reward;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
