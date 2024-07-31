@@ -189,7 +189,7 @@ fn selector_boilerplate(mock_selector: &mut MockSelectorControllerWrapper) {
             .expect_get_producer()
             .returning(move |_| {
                 Ok(Address::from_public_key(
-                    &KeyPair::from_str(TEST_SK_3).unwrap().get_public_key(),
+                    &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
                 ))
             });
     });
