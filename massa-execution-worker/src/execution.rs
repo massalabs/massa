@@ -1259,7 +1259,11 @@ impl ExecutionState {
 
             // Ensure that the target address is an SC address
             // Ensure that the target address exists
-            context.check_target_sc_address(call.target_address)?;
+            if let Err(err) = context.check_target_sc_address(call.target_address) {
+                context.reset_to_snapshot(snapshot, err.clone());
+                context.deferred_call_fail_exec(&call);
+                return Err(err);
+            }
 
             // credit coins to the target address
             if let Err(err) =

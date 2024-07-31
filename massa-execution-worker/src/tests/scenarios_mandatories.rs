@@ -14,7 +14,8 @@ use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
 use massa_ledger_exports::{
-    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
+    LedgerChanges, LedgerController, LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete,
+    SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -22,6 +23,7 @@ use massa_models::config::{
 };
 use massa_models::deferred_call_id::DeferredCallId;
 use massa_models::prehash::PreHashMap;
+use massa_models::slot;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
@@ -1146,6 +1148,11 @@ fn deferred_call_register() {
 
     let db_lock = foreign_controllers.db.clone();
 
+    let sender_addr =
+        Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
+
+    let sender_addr_clone = sender_addr.clone();
+
     selector_boilerplate(&mut foreign_controllers.selector_controller);
 
     foreign_controllers
@@ -1176,6 +1183,17 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
+            // assert sender was debited ( -10 coins)
+            match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("91.02").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            };
+
             {
                 // manually write the deferred call to the db
                 // then in the next slot (1,1) we will find and execute it
@@ -1186,12 +1204,20 @@ fn deferred_call_register() {
                     .write()
                     .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
             }
+
             let slot_changes = changes
                 .deferred_call_changes
                 .slots_change
                 .get(&Slot::new(1, 1))
                 .unwrap();
             let _call = slot_changes.calls.first_key_value().unwrap().1;
+            // assert total gas was set to 300000
+            assert_eq!(
+                changes.deferred_call_changes.total_gas,
+                SetOrKeep::Set(300000)
+            );
+
+            assert_eq!(slot_changes.get_gas().unwrap(), 300000);
 
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -1204,6 +1230,26 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
+            // the deferred call was register and executed but the asc call will fail (sc doesn"t exist)
+            // so the user should be refunded
+            match changes
+                .ledger_changes
+                .0
+                .get(
+                    &Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+                        .unwrap(),
+                )
+                .unwrap()
+            {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("110").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
             assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
             let (_slot, slot_change) = changes
                 .deferred_call_changes
