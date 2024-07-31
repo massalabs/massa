@@ -58,6 +58,7 @@ use std::io::Cursor;
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
+const BLOCK_CREDIT_PART_COUNT: u64 = 3 * (1 + ENDORSEMENT_COUNT as u64);
 
 fn final_state_boilerplate(
     mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
@@ -1520,14 +1521,13 @@ fn send_and_receive_transaction() {
             let total_rewards = exec_cfg
                 .block_reward
                 .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -1604,14 +1604,13 @@ fn roll_buy() {
             // address has 100 coins before buying roll
             // -> (100 (balance) - 100 (roll price)) + 1.02 / 17 * 3 (block reward)
             let total_rewards = exec_cfg.block_reward;
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -1714,14 +1713,13 @@ fn roll_sell() {
                 .unwrap();
             // block rewards computation
             let total_rewards = exec_cfg.block_reward;
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -1975,14 +1973,13 @@ fn roll_slash() {
             let total_rewards = exec_cfg
                 .block_reward
                 .saturating_add(Amount::from_str("150").unwrap()); //reward of the 3 slash (50%)
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -2105,14 +2102,13 @@ fn roll_slash_2() {
             let total_rewards = exec_cfg
                 .block_reward
                 .saturating_add(Amount::from_str("200").unwrap()); //reward of the 4 slash (50%)
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -2408,14 +2404,13 @@ fn datastore_manipulations() {
             let total_rewards = exec_cfg
                 .block_reward
                 .saturating_add(Amount::from_str("10").unwrap()); // 10 MAS for fees
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
@@ -2799,15 +2794,13 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            dbg!(&changes);
 
             let block_credits = exec_cfg.block_reward;
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let block_credit_part = block_credits
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
             let remainder = block_credits
-                .checked_rem_u64(block_credit_part_count)
+                .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_rem factor is 0");
 
             let first_block_reward_for_block_creator = block_credit_part
@@ -2849,12 +2842,11 @@ fn test_rewards() {
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
             let block_credits = exec_cfg.block_reward;
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let block_credit_part = block_credits
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
             let remainder = block_credits
-                .checked_rem_u64(block_credit_part_count)
+                .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_rem factor is 0");
 
             let second_block_reward_for_block_creator = block_credit_part
@@ -2907,7 +2899,6 @@ fn test_rewards() {
         endorsements,
         vec![],
     );
-    dbg!(&block);
     universe.send_and_finalize(&keypair, block, Some(GENESIS_KEY.clone()));
     finalized_waitpoint.wait();
 
@@ -3239,14 +3230,13 @@ fn test_dump_block() {
             let total_rewards = exec_cfg
                 .block_reward
                 .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
-            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let rewards_for_block_creator = total_rewards
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
                 .saturating_mul_u64(3)
                 .saturating_add(
                     total_rewards
-                        .checked_rem_u64(block_credit_part_count)
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
             assert_eq!(
