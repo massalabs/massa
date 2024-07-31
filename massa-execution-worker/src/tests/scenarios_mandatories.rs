@@ -15,7 +15,7 @@ use massa_ledger_exports::{
 };
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+    CHAINID, ENDORSEMENT_COUNT, GENESIS_KEY, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
@@ -189,7 +189,7 @@ fn selector_boilerplate(mock_selector: &mut MockSelectorControllerWrapper) {
             .expect_get_producer()
             .returning(move |_| {
                 Ok(Address::from_public_key(
-                    &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    &KeyPair::from_str(TEST_SK_3).unwrap().get_public_key(),
                 ))
             });
     });
@@ -743,7 +743,7 @@ fn send_and_receive_async_message() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
 
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
@@ -1087,7 +1087,7 @@ fn cancel_async_message() {
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
                     balance: massa_ledger_exports::SetOrKeep::Set(
-                        Amount::from_str("100.670399899").unwrap()
+                        Amount::from_str("90.298635211").unwrap()
                     ),
                     bytecode: massa_ledger_exports::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
@@ -1170,7 +1170,7 @@ fn cancel_async_message() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
 
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 
     // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
@@ -1422,7 +1422,7 @@ fn send_and_receive_async_message_with_trigger() {
         vec![],
     );
     universe.storage.store_block(block.clone());
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
@@ -1516,7 +1516,20 @@ fn send_and_receive_transaction() {
                     .get_balance_or_else(&recipient_address, || None),
                 Some(Amount::from_str("190").unwrap())
             );
-            // 1.02 for the block rewards
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 changes.ledger_changes.get_balance_or_else(
                     &Address::from_public_key(
@@ -1524,11 +1537,7 @@ fn send_and_receive_transaction() {
                     ),
                     || None
                 ),
-                Some(
-                    exec_cfg
-                        .block_reward
-                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
-                )
+                Some(rewards_for_block_creator)
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -1558,7 +1567,7 @@ fn send_and_receive_transaction() {
         vec![],
     );
     // store the block in storage
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1593,11 +1602,22 @@ fn roll_buy() {
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
 
             // address has 100 coins before buying roll
-            // -> (100 (balance) - 100 (roll price)) + 1.02 (block reward)
+            // -> (100 (balance) - 100 (roll price)) + 1.02 / 17 * 3 (block reward)
+            let total_rewards = exec_cfg.block_reward;
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 changes.ledger_changes.0.get(&address).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(exec_cfg.block_reward),
+                    balance: massa_ledger_exports::SetOrKeep::Set(rewards_for_block_creator),
                     bytecode: massa_ledger_exports::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
@@ -1628,7 +1648,7 @@ fn roll_buy() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1692,6 +1712,18 @@ fn roll_sell() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
+            // block rewards computation
+            let total_rewards = exec_cfg.block_reward;
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 amount,
                 // 100 from the boilerplate
@@ -1700,7 +1732,7 @@ fn roll_sell() {
                     // + deferred credits set above
                     .saturating_add(initial_deferred_credits)
                     // + block rewards
-                    .saturating_add(exec_cfg.block_reward)
+                    .saturating_add(rewards_for_block_creator)
             );
             let deferred_credits = changes
                 .pos_changes
@@ -1757,7 +1789,7 @@ fn roll_sell() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1873,10 +1905,10 @@ fn auto_sell_on_missed_blocks() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1938,13 +1970,26 @@ fn roll_slash() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
-            // 100 base + reward of the 3 slash (50%) + block reward
+
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("150").unwrap()); //reward of the 3 slash (50%)
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 balance,
                 Amount::from_mantissa_scale(100, 0)
                     .unwrap()
-                    .saturating_add(exec_cfg.block_reward)
-                    .saturating_add(Amount::from_mantissa_scale(150, 0).unwrap())
+                    .saturating_add(rewards_for_block_creator)
             );
             waitpoint_trigger_handle.trigger()
         });
@@ -1994,7 +2039,7 @@ fn roll_slash() {
         vec![],
         vec![denunciation, denunciation_2],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     waitpoint.wait();
 }
 
@@ -2056,13 +2101,25 @@ fn roll_slash_2() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
-            // 100 base + reward of the 4 slash (50%) + block reward
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("200").unwrap()); //reward of the 4 slash (50%)
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 balance,
                 Amount::from_mantissa_scale(100, 0)
                     .unwrap()
-                    .saturating_add(exec_cfg.block_reward)
-                    .saturating_add(Amount::from_mantissa_scale(200, 0).unwrap())
+                    .saturating_add(rewards_for_block_creator)
             );
             waitpoint_trigger_handle.trigger()
         });
@@ -2112,7 +2169,7 @@ fn roll_slash_2() {
         vec![],
         vec![denunciation, denunciation_2],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     waitpoint.wait();
 }
 
@@ -2154,7 +2211,7 @@ fn sc_execution_error() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -2213,7 +2270,7 @@ fn sc_datastore() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -2269,7 +2326,7 @@ fn set_bytecode_error() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -2347,15 +2404,27 @@ fn datastore_manipulations() {
                 .ledger_changes
                 .get_balance_or_else(&addr, || None)
                 .unwrap();
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("10").unwrap()); // 10 MAS for fees
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 amount,
                 // Base from the boilerplate
                 Amount::from_str("100")
                     .unwrap()
                     .saturating_sub(Amount::const_init(10, 0))
-                    .saturating_add(exec_cfg.block_reward)
-                    // Gas fee
-                    .saturating_add(Amount::from_str("10").unwrap())
+                    .saturating_add(rewards_for_block_creator)
                     // Storage cost base
                     .saturating_sub(
                         exec_cfg
@@ -2401,7 +2470,7 @@ fn datastore_manipulations() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 
     let events = universe
@@ -2591,7 +2660,7 @@ fn not_enough_instance_gas() {
     );
     // store the block in storage
     universe.storage.store_block(block.clone());
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // assert events
     let events = universe
@@ -2730,6 +2799,8 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
+            dbg!(&changes);
+
             let block_credits = exec_cfg.block_reward;
             let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
             let block_credit_part = block_credits
@@ -2742,8 +2813,7 @@ fn test_rewards() {
             let first_block_reward_for_block_creator = block_credit_part
                 .saturating_mul_u64(3)
                 .saturating_add(remainder) // base reward
-                .saturating_add(block_credit_part.saturating_mul_u64(2)) // 2 endorsements included
-                .saturating_add(block_credit_part.saturating_mul_u64(2)); // 2 endorsed blocks ( ? )
+                .saturating_add(block_credit_part.saturating_mul_u64(2)); // 2 endorsements included
             let first_block_reward_for_endorsement_producer_address =
                 block_credit_part.saturating_mul_u64(2); // produced 2 endorsements that were included in the block
 
@@ -2828,11 +2898,6 @@ fn test_rewards() {
                 &endorsement_producer,
                 Slot::new(1, 0),
             ));
-        } else {
-            /*endorsements.push(ExecutionTestUniverse::create_endorsement(
-                &keypair,
-                Slot::new(1, 0),
-            ));*/
         }
     }
     let block = ExecutionTestUniverse::create_block(
@@ -2842,7 +2907,8 @@ fn test_rewards() {
         endorsements,
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    dbg!(&block);
+    universe.send_and_finalize(&keypair, block, Some(GENESIS_KEY.clone()));
     finalized_waitpoint.wait();
 
     // Second block
@@ -2856,7 +2922,7 @@ fn test_rewards() {
         ],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -3170,6 +3236,19 @@ fn test_dump_block() {
                 Some(Amount::from_str("190").unwrap())
             );
             // 1.02 for the block rewards
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 changes.ledger_changes.get_balance_or_else(
                     &Address::from_public_key(
@@ -3177,11 +3256,7 @@ fn test_dump_block() {
                     ),
                     || None
                 ),
-                Some(
-                    exec_cfg
-                        .block_reward
-                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
-                )
+                Some(rewards_for_block_creator)
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -3212,7 +3287,7 @@ fn test_dump_block() {
         vec![],
     );
     // store the block in storage
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
 
     std::thread::sleep(Duration::from_secs(1));

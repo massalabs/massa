@@ -18,7 +18,7 @@ use massa_execution_exports::{
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_metrics::MassaMetrics;
-use massa_models::config::CHAINID;
+use massa_models::config::{CHAINID, GENESIS_KEY};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -248,10 +248,15 @@ impl ExecutionTestUniverse {
             ExecutionTestUniverse::create_block(keypair, slot, vec![operation], vec![], vec![]);
 
         // set our block as a final block so the message is sent
-        self.send_and_finalize(keypair, block);
+        self.send_and_finalize(keypair, block, None);
     }
 
-    pub fn send_and_finalize(&mut self, keypair: &KeyPair, block: SecureShareBlock) {
+    pub fn send_and_finalize(
+        &mut self,
+        keypair: &KeyPair,
+        block: SecureShareBlock,
+        same_thread_parent_creator_keypair: Option<KeyPair>,
+    ) {
         // store the block in storage
         self.storage.store_block(block.clone());
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
@@ -261,7 +266,9 @@ impl ExecutionTestUniverse {
             block.id,
             ExecutionBlockMetadata {
                 same_thread_parent_creator: Some(Address::from_public_key(
-                    &keypair.get_public_key(),
+                    &same_thread_parent_creator_keypair
+                        .unwrap_or_else(|| keypair.clone())
+                        .get_public_key(),
                 )),
                 storage: Some(self.storage.clone()),
             },
@@ -324,7 +331,7 @@ fn init_execution_worker(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
 ) {
-    let genesis_keypair = KeyPair::generate(0).unwrap();
+    let genesis_keypair: KeyPair = GENESIS_KEY.clone();
     let genesis_addr = Address::from_public_key(&genesis_keypair.get_public_key());
     let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = PreHashMap::default();
