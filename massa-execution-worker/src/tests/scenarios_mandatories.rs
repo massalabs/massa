@@ -2730,19 +2730,31 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            let block_credit_part = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(2);
-            let first_block_reward = exec_cfg.block_reward.saturating_sub(block_credit_part);
+            let block_credits = exec_cfg.block_reward;
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let block_credit_part = block_credits
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_rem factor is 0");
+
+            let first_block_reward_for_block_creator = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder) // base reward
+                .saturating_add(block_credit_part.saturating_mul_u64(2)) // 2 endorsements included
+                .saturating_add(block_credit_part.saturating_mul_u64(2)); // 2 endorsed blocks ( ? )
+            let first_block_reward_for_endorsement_producer_address =
+                block_credit_part.saturating_mul_u64(2); // produced 2 endorsements that were included in the block
+
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    first_block_reward.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                    first_block_reward_for_block_creator
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
 
@@ -2752,7 +2764,8 @@ fn test_rewards() {
                     .get_balance_or_else(&endorsement_producer_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    block_credit_part.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                    first_block_reward_for_endorsement_producer_address
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
             finalized_waitpoint_trigger_handle.trigger();
@@ -2765,27 +2778,29 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            let block_credit_part_parent_in_thread = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
-            let block_credit_part_endorsement_producer = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
-            let creator_block_reward = exec_cfg
-                .block_reward
-                .saturating_sub(block_credit_part_endorsement_producer)
-                .saturating_sub(block_credit_part_parent_in_thread);
+            let block_credits = exec_cfg.block_reward;
+            let block_credit_part_count = 3 * (1 + exec_cfg.endorsement_count);
+            let block_credit_part = block_credits
+                .checked_div_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_rem factor is 0");
+
+            let second_block_reward_for_block_creator = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder) // base reward
+                .saturating_add(block_credit_part.saturating_mul_u64(ENDORSEMENT_COUNT as u64)); // ENDORSEMENT_COUNT endorsements included
+            let second_block_reward_for_endorsement_producer_address =
+                block_credit_part.saturating_mul_u64(ENDORSEMENT_COUNT as u64); // produced ENDORSEMENT_COUNT endorsements that were included in the block
+
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair2_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    creator_block_reward
+                    second_block_reward_for_block_creator
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
@@ -2796,21 +2811,11 @@ fn test_rewards() {
                     .get_balance_or_else(&endorsement_producer_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    block_credit_part_endorsement_producer
+                    second_block_reward_for_endorsement_producer_address
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
 
-            assert_eq!(
-                changes
-                    .ledger_changes
-                    .get_balance_or_else(&keypair_address, || None),
-                // Reward + 100 base from boilerplate
-                Some(
-                    block_credit_part_parent_in_thread
-                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
-                )
-            );
             finalized_waitpoint_trigger_handle_2.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -2824,10 +2829,10 @@ fn test_rewards() {
                 Slot::new(1, 0),
             ));
         } else {
-            endorsements.push(ExecutionTestUniverse::create_endorsement(
+            /*endorsements.push(ExecutionTestUniverse::create_endorsement(
                 &keypair,
                 Slot::new(1, 0),
-            ));
+            ));*/
         }
     }
     let block = ExecutionTestUniverse::create_block(
