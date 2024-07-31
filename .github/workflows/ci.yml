@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main, 'testnet_*']
+    branches: [main, 'mainnet_*']
     types:
     - opened
     - reopened
@@ -205,7 +205,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-nextest
+          args: cargo-nextest --locked
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
