@@ -434,7 +434,7 @@ impl SpeculativeDeferredCallRegistry {
             .unwrap_or_default();
         let global_overbooking_fee = Self::overbooking_fee(
             (max_async_gas as u128).saturating_mul(async_call_max_booking_slots as u128),
-            async_call_max_booking_slots.saturating_mul(max_async_gas.saturating_div(2)) as u128,
+            (async_call_max_booking_slots as u128).saturating_mul(TARGET_BOOKING) as u128,
             global_occupancy,
             max_gas as u128,
             global_overbooking_penalty, // total_supply
@@ -444,7 +444,7 @@ impl SpeculativeDeferredCallRegistry {
         // Slot overbooking fee
         let slot_overbooking_fee = Self::overbooking_fee(
             max_async_gas as u128,
-            max_async_gas.saturating_div(2) as u128,
+            TARGET_BOOKING,
             slot_occupancy as u128,
             max_gas as u128,
             slot_overbooking_penalty, //   total_initial_coin_supply/10000
@@ -456,6 +456,11 @@ impl SpeculativeDeferredCallRegistry {
             .saturating_add(slot_overbooking_fee))
     }
 
+    /// Register a new call
+    /// Returns the call id
+    /// # Arguments
+    /// * `call` - The call to register
+    /// * `trail_hash` - The hash of the execution trail hash
     pub fn register_call(
         &mut self,
         call: DeferredCall,
@@ -490,7 +495,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // set slot gas
         self.deferred_calls_changes
-            .set_slot_gas(call.target_slot, current_gas + call.max_gas);
+            .set_slot_gas(call.target_slot, current_gas.saturating_add(call.max_gas));
 
         // set total gas
         self.deferred_calls_changes

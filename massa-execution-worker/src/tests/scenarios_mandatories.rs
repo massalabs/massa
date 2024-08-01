@@ -14,8 +14,7 @@ use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
 use massa_ledger_exports::{
-    LedgerChanges, LedgerController, LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete,
-    SetOrKeep, SetUpdateOrDelete,
+    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
 };
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -23,7 +22,6 @@ use massa_models::config::{
 };
 use massa_models::deferred_call_id::DeferredCallId;
 use massa_models::prehash::PreHashMap;
-use massa_models::slot;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{

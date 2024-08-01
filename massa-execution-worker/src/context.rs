@@ -1184,8 +1184,14 @@ impl ExecutionContext {
             .register_call(call, self.execution_trail_hash)
     }
 
+    /// Check if a deferred call exists
+    /// If it exists, check if it has been cancelled
+    /// If it has been cancelled, return false
     pub fn deferred_call_exist(&self, call_id: &DeferredCallId) -> bool {
-        self.speculative_deferred_calls.get_call(call_id).is_some()
+        if let Some(call) = self.speculative_deferred_calls.get_call(call_id) {
+            return call.cancelled;
+        }
+        false
     }
 
     /// when a deferred call execution fail we need to refund the coins to the caller
