@@ -1181,12 +1181,12 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // assert sender was debited ( -10 coins)
+            // assert sender was debited ( -10 coins) and -1.50 for fees
             match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("91.02").unwrap())
+                        SetOrKeep::Set(Amount::from_str("89.52").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -1265,6 +1265,39 @@ fn deferred_call_register() {
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
+    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_base_fee(Amount::from_str("0.000005").unwrap());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(
+        Slot {
+            period: 1,
+            thread: 1,
+        },
+        defer_reg_slot_changes,
+    );
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredRegistryChanges {
+            slots_change: slot_changes,
+            total_gas: SetOrKeep::Keep,
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
