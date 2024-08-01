@@ -73,10 +73,8 @@ impl SpeculativeExecutedDenunciations {
             HistorySearchResult::Present(_) => {
                 return true;
             }
-            HistorySearchResult::Absent => {
-                return false;
-            }
             HistorySearchResult::NoInfo => {}
+            HistorySearchResult::Absent => unreachable!(), // fetch_executed_denunciation does not return Absent
         }
 
         // check in the final state
