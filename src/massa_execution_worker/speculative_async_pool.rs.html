@@ -437,7 +437,6 @@
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
 <a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -624,7 +623,6 @@
             </span>}
         });
 
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_execution_component_version(<span class="kw-2">&amp;</span>slot);
         <span class="kw">let </span><span class="kw-2">mut </span>eliminated_new_messages = Vec::new();
         <span class="self">self</span>.pool_changes.<span class="number">0</span>.retain(|k, v| <span class="kw">match </span>v {
             SetUpdateOrDelete::Set(message) =&gt; {
