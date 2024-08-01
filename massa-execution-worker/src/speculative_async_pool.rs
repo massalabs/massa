@@ -126,7 +126,11 @@ impl SpeculativeAsyncPool {
             // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
             //       so to be consistent here, use >= & <= checks
             if available_gas >= corrected_max_gas
-                && Self::is_message_ready_to_execute(&slot, &message_info.validity_start, &message_info.validity_end)
+                && Self::is_message_ready_to_execute(
+                    &slot,
+                    &message_info.validity_start,
+                    &message_info.validity_end,
+                )
                 && message_info.can_be_executed
             {
                 available_gas -= corrected_max_gas;
@@ -164,7 +168,6 @@ impl SpeculativeAsyncPool {
 
         let mut eliminated_infos = Vec::new();
         self.message_infos.retain(|id, info| {
-
             if Self::is_message_expired(slot, &info.validity_end) {
                 eliminated_infos.push((*id, info.clone()));
                 false
@@ -324,11 +327,14 @@ impl SpeculativeAsyncPool {
 
     /// Return true if a message (given its validity_start & validity end) is ready to execute
     /// Must be consistent with is_message_expired
-    fn is_message_ready_to_execute(slot: &Slot, message_validity_start: &Slot, message_validity_end: &Slot) -> bool {
+    fn is_message_ready_to_execute(
+        slot: &Slot,
+        message_validity_start: &Slot,
+        message_validity_end: &Slot,
+    ) -> bool {
         // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
-        slot >= message_validity_start
-            && slot <= message_validity_end
+        slot >= message_validity_start && slot <= message_validity_end
     }
 }
 
@@ -341,24 +347,52 @@ fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) ->
 mod tests {
     use super::*;
 
-    // Test if is_message_expired & is_message_ready_to_execute are consistent 
+    // Test if is_message_expired & is_message_ready_to_execute are consistent
     #[test]
     fn test_validity() {
         let slot1 = Slot::new(6, 0);
         let slot2 = Slot::new(9, 0);
         let slot_validity_start = Slot::new(4, 0);
         let slot_validity_end = Slot::new(8, 0);
-        
-        assert!(!SpeculativeAsyncPool::is_message_expired(&slot1, &slot_validity_end));
-        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(&slot1, &slot_validity_start, &slot_validity_end));
-        
-        assert!(!SpeculativeAsyncPool::is_message_expired(&slot_validity_start, &slot_validity_end));
-        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(&slot_validity_start, &slot_validity_start, &slot_validity_end));
-        
-        assert!(!SpeculativeAsyncPool::is_message_expired(&slot_validity_end, &slot_validity_end));
-        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(&slot_validity_end, &slot_validity_start, &slot_validity_end));
-        
-        assert!(SpeculativeAsyncPool::is_message_expired(&slot2, &slot_validity_end));
-        assert!(!SpeculativeAsyncPool::is_message_ready_to_execute(&slot2, &slot_validity_start, &slot_validity_end));
+
+        assert!(!SpeculativeAsyncPool::is_message_expired(
+            &slot1,
+            &slot_validity_end
+        ));
+        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
+            &slot1,
+            &slot_validity_start,
+            &slot_validity_end
+        ));
+
+        assert!(!SpeculativeAsyncPool::is_message_expired(
+            &slot_validity_start,
+            &slot_validity_end
+        ));
+        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
+            &slot_validity_start,
+            &slot_validity_start,
+            &slot_validity_end
+        ));
+
+        assert!(!SpeculativeAsyncPool::is_message_expired(
+            &slot_validity_end,
+            &slot_validity_end
+        ));
+        assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
+            &slot_validity_end,
+            &slot_validity_start,
+            &slot_validity_end
+        ));
+
+        assert!(SpeculativeAsyncPool::is_message_expired(
+            &slot2,
+            &slot_validity_end
+        ));
+        assert!(!SpeculativeAsyncPool::is_message_ready_to_execute(
+            &slot2,
+            &slot_validity_start,
+            &slot_validity_end
+        ));
     }
 }
