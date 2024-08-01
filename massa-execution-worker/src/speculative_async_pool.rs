@@ -184,7 +184,6 @@ impl SpeculativeAsyncPool {
             }
         });
 
-        let execution_component_version = self.get_execution_component_version(&slot);
         let mut eliminated_new_messages = Vec::new();
         self.pool_changes.0.retain(|k, v| match v {
             SetUpdateOrDelete::Set(message) => {
