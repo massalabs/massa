@@ -125,7 +125,12 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * batch: the batch to apply the changes to
-    pub fn apply_changes_to_batch(&self, changes: LedgerChanges, batch: &mut DBBatch) {
+    pub fn apply_changes_to_batch(
+        &self,
+        changes: LedgerChanges,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -143,7 +148,7 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, batch);
+                    self.delete_entry(&addr, batch, final_state_component_version);
                 }
             }
         }
@@ -432,7 +437,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
+    fn delete_entry(
+        &self,
+        addr: &Address,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         let db = self.db.read();
 
         // version
@@ -464,7 +474,10 @@ impl LedgerDB {
                 STATE_CF,
                 MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
+            .take_while(|(key, _)| match final_state_component_version {
+                0 => key <= &end_prefix(&key_prefix).unwrap(),
+                _ => key < &end_prefix(&key_prefix).unwrap(),
+            })
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
@@ -658,7 +671,7 @@ mod tests {
 
         // delete entry
         let mut batch = DBBatch::new();
-        ledger_db.delete_entry(&addr, &mut batch);
+        ledger_db.delete_entry(&addr, &mut batch, 1);
         ledger_db
             .db
             .write()

@@ -25,7 +25,7 @@ use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_pos_exports::{PoSFinalState, SelectorController};
-use massa_versioning::versioning::MipStore;
+use massa_versioning::versioning::{MipComponent, MipStore};
 use tracing::{debug, info, warn};
 
 /// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -428,7 +428,17 @@ impl FinalState {
         // check slot consistency
         let next_slot = cur_slot.get_next_slot(self.config.thread_count)?;
 
-        // .expect("overflow in execution state slot");
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            slot,
+        )
+        .unwrap();
+
+        let final_state_component_version = self
+            .get_mip_store()
+            .get_latest_component_version_at(&MipComponent::FinalState, ts);
 
         if slot != next_slot {
             return Err(anyhow!(
@@ -449,8 +459,11 @@ impl FinalState {
 
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-        self.ledger
-            .apply_changes_to_batch(changes.ledger_changes, &mut db_batch);
+        self.ledger.apply_changes_to_batch(
+            changes.ledger_changes,
+            &mut db_batch,
+            final_state_component_version,
+        );
         self.executed_ops
             .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
 
