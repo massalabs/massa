@@ -464,7 +464,7 @@ impl LedgerDB {
                 STATE_CF,
                 MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
+            .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
