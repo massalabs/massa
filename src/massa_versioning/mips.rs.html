@@ -58,6 +58,9 @@
 <a href="#58" id="58">58</a>
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
 </pre></div><pre class="rust"><code><span class="attr">#[allow(unused_imports)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
 
@@ -74,7 +77,10 @@
             MipInfo {
                 name: <span class="string">&quot;MIP-0001-Execution-BugFix&quot;</span>.to_string(),
                 version: <span class="number">1</span>,
-                components: BTreeMap::from([(MipComponent::Execution, <span class="number">1</span>)]),
+                components: BTreeMap::from([
+                    (MipComponent::Execution, <span class="number">1</span>),
+                    (MipComponent::FinalState, <span class="number">1</span>),
+                ]),
                 start: MassaTime::from_millis(<span class="number">0</span>), <span class="comment">// TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
                 </span>timeout: MassaTime::from_millis(<span class="number">0</span>), <span class="comment">// TODO: set when known
                 </span>activation_delay: MassaTime::from_millis(<span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// TODO: set when known, 3 days as an example
@@ -100,7 +106,7 @@
     <span class="kw">let </span>mip_info_1 = MipInfo {
         name: <span class="string">&quot;MIP-0001-Execution-BugFix&quot;</span>.to_string(),
         version: <span class="number">1</span>,
-        components: BTreeMap::from([(MipComponent::Execution, <span class="number">1</span>)]),
+        components: BTreeMap::from([(MipComponent::Execution, <span class="number">1</span>), (MipComponent::FinalState, <span class="number">1</span>)]),
         start: MassaTime::from_millis(<span class="number">2</span>), <span class="comment">// TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
         </span>timeout: MassaTime::from_millis(<span class="number">10</span>), <span class="comment">// TODO: set when known
         </span>activation_delay: MassaTime::from_millis(<span class="number">2</span>), <span class="comment">// TODO: set when known, 3 days as an example
