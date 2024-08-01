@@ -200,7 +200,7 @@ impl DeferredCallId {
             (Bound::Included(0), Bound::Excluded(THREAD_COUNT)),
         );
 
-        let (rest, version) = version_deserializer
+        let (rest, _version) = version_deserializer
             .deserialize::<DeserializeError>(self.as_bytes())
             .map_err(|_e| ModelsError::DeferredCallIdParseError)?;
         let (_rest, slot) = slot_deser

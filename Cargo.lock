@@ -2570,6 +2570,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=116dd8a32819c8def8a5aa014f805ee2cab9f384#116dd8a32819c8def8a5aa014f805ee2cab9f384"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2696,6 +2697,7 @@ dependencies = [
  "massa_consensus_exports",
  "massa_db_exports",
  "massa_db_worker",
+ "massa_deferred_calls",
  "massa_executed_ops",
  "massa_final_state",
  "massa_hash",
@@ -2836,11 +2838,14 @@ name = "massa_deferred_calls"
 version = "2.2.0"
 dependencies = [
  "massa_db_exports",
+ "massa_db_worker",
  "massa_ledger_exports",
  "massa_models",
  "massa_serialization",
  "nom",
+ "parking_lot",
  "serde",
+ "tempfile",
 ]
 
 [[package]]

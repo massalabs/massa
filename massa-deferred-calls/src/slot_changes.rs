@@ -37,7 +37,7 @@ impl DeferredRegistrySlotChanges {
         self.calls.len()
     }
 
-    pub fn merge(&mut self, other: DeferredRegistrySlotChanges) {
+    pub fn merge(&mut self, _other: DeferredRegistrySlotChanges) {
         unimplemented!("DeferredRegistrySlotChanges::merge")
         // for (id, change) in other.calls {
         //     match self.calls.entry(id) {

@@ -1319,7 +1319,6 @@ fn deferred_call_register_fail() {
     let exec_cfg = ExecutionConfig::default();
     let finalized_waitpoint = WaitPoint::new();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
-    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
     let saved_bytecode = Arc::new(RwLock::new(None));
     let target_slot = Slot {
         period: 1,

@@ -379,7 +379,6 @@ impl SpeculativeDeferredCallRegistry {
         thread_count: u8,
         async_call_max_booking_slots: u64,
         max_async_gas: u64,
-        async_gas_target: u64,
         global_overbooking_penalty: Amount,
         slot_overbooking_penalty: Amount,
         current_slot: Slot,
@@ -402,8 +401,6 @@ impl SpeculativeDeferredCallRegistry {
                 "Target slot is too far in the future.".into(),
             ));
         }
-
-        // TODO FIX async_gas_target = slot_occupancy ??
 
         // Check that the gas is not too high for the target slot
         let slot_occupancy = self.get_slot_gas(&target_slot);
@@ -437,7 +434,7 @@ impl SpeculativeDeferredCallRegistry {
             .unwrap_or_default();
         let global_overbooking_fee = Self::overbooking_fee(
             (max_async_gas as u128).saturating_mul(async_call_max_booking_slots as u128),
-            (async_gas_target as u128).saturating_mul(async_call_max_booking_slots as u128),
+            async_call_max_booking_slots.saturating_mul(max_async_gas.saturating_div(2)) as u128,
             global_occupancy,
             max_gas as u128,
             global_overbooking_penalty, // total_supply
@@ -447,7 +444,7 @@ impl SpeculativeDeferredCallRegistry {
         // Slot overbooking fee
         let slot_overbooking_fee = Self::overbooking_fee(
             max_async_gas as u128,
-            async_gas_target as u128,
+            max_async_gas.saturating_div(2) as u128,
             slot_occupancy as u128,
             max_gas as u128,
             slot_overbooking_penalty, //   total_initial_coin_supply/10000

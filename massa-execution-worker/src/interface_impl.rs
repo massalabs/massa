@@ -1349,17 +1349,12 @@ impl Interface for InterfaceImpl {
 
         let target_slot = Slot::new(target_slot.0, target_slot.1);
 
-        let gas_booked_slot = context.deferred_calls_get_slot_booked_gas(&target_slot);
-
-        // TODO fix gas_booked_slot = async_gas_target ??
-
         match context.deferred_calls_compute_call_fee(
             target_slot,
             gas_limit,
             self.config.thread_count,
             self.config.max_deferred_call_future_slots,
             self.config.max_async_gas,
-            gas_booked_slot,
             Amount::from_raw(1_000_000_000),
             Amount::from_raw(1_000_000_000 / 10_000),
             current_slot,
