@@ -1540,87 +1540,171 @@ impl ExecutionState {
             // Update speculative rolls state production stats
             context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
-            // Divide the total block credits into parts + remainder
-            let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
-            let block_credit_part = block_credits
-                .checked_div_u64(block_credit_part_count)
-                .expect("critical: block_credits checked_div factor is 0");
-            let remainder = block_credits
-                .checked_rem_u64(block_credit_part_count)
-                .expect("critical: block_credits checked_rem factor is 0");
+            match execution_version {
+                0 => {
+                    // Credit endorsement producers and endorsed block producers
+                    let mut remaining_credit = block_credits;
+                    let block_credit_part = block_credits
+                        .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
+                        .expect("critical: block_credits checked_div factor is 0");
 
-            // Give 3 parts + remainder to the block producer to stimulate block production
-            // even in the absence of endorsements.
-            let mut block_producer_credit = block_credit_part
-                .saturating_mul_u64(3)
-                .saturating_add(remainder);
+                    for endorsement_creator in endorsement_creators {
+                        // credit creator of the endorsement with coins
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                remaining_credit =
+                                    remaining_credit.saturating_sub(block_credit_part);
 
-            for endorsement_creator in endorsement_creators {
-                // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                // and dissuade from emitting the block too early (before the endorsements have propageted).
-                block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
+                                #[cfg(feature = "execution-info")]
+                                exec_info
+                                    .endorsement_creator_rewards
+                                    .insert(endorsement_creator, block_credit_part);
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
+                                    block_credit_part, endorsement_creator, err
+                                )
+                            }
+                        }
 
-                // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
-                // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
-                // and to not publish too late (will not be included in the block).
-                match context.transfer_coins(
-                    None,
-                    Some(endorsement_creator),
-                    block_credit_part,
-                    false,
-                ) {
-                    Ok(_) => {
-                        #[cfg(feature = "execution-info")]
-                        exec_info
-                            .endorsement_creator_rewards
-                            .insert(endorsement_creator, block_credit_part);
-                    }
-                    Err(err) => {
-                        debug!(
-                            "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
-                            block_credit_part, endorsement_creator, err
-                        )
-                    }
-                }
-
-                // Credit the creator of the endorsed block with 1 part.
-                // This is done to incentivize block producers to be endorsed,
-                // typically by not publishing their blocks too late.
-                match context.transfer_coins(
-                    None,
-                    Some(endorsement_target_creator),
-                    block_credit_part,
-                    false,
-                ) {
-                    Ok(_) => {
-                        #[cfg(feature = "execution-info")]
-                        {
-                            exec_info.endorsement_target_reward =
-                                Some((endorsement_target_creator, block_credit_part));
+                        // credit creator of the endorsed block with coins
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_target_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                remaining_credit =
+                                    remaining_credit.saturating_sub(block_credit_part);
+                                #[cfg(feature = "execution-info")]
+                                {
+                                    exec_info.endorsement_target_reward =
+                                        Some((endorsement_target_creator, block_credit_part));
+                                }
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
+                                    block_credit_part, endorsement_target_creator, err
+                                )
+                            }
                         }
                     }
-                    Err(err) => {
+
+                    // Credit block creator with remaining_credit
+                    if let Err(err) = context.transfer_coins(
+                        None,
+                        Some(block_creator_addr),
+                        remaining_credit,
+                        false,
+                    ) {
                         debug!(
-                            "failed to credit {} coins to endorsement target creator {} on block execution: {}",
-                            block_credit_part, endorsement_target_creator, err
+                            "failed to credit {} coins to block creator {} on block execution: {}",
+                            remaining_credit, block_creator_addr, err
                         )
+                    } else {
+                        #[cfg(feature = "execution-info")]
+                        {
+                            exec_info.block_producer_reward =
+                                Some((block_creator_addr, remaining_credit));
+                        }
                     }
                 }
-            }
+                _ => {
+                    // Divide the total block credits into parts + remainder
+                    let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
+                    let block_credit_part = block_credits
+                        .checked_div_u64(block_credit_part_count)
+                        .expect("critical: block_credits checked_div factor is 0");
+                    let remainder = block_credits
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: block_credits checked_rem factor is 0");
 
-            // Credit block producer
-            if let Err(err) =
-                context.transfer_coins(None, Some(block_creator_addr), block_producer_credit, false)
-            {
-                debug!(
-                    "failed to credit {} coins to block creator {} on block execution: {}",
-                    block_producer_credit, block_creator_addr, err
-                )
-            } else {
-                #[cfg(feature = "execution-info")]
-                {
-                    exec_info.block_producer_reward =
-                        Some((block_creator_addr, block_producer_credit));
+                    // Give 3 parts + remainder to the block producer to stimulate block production
+                    // even in the absence of endorsements.
+                    let mut block_producer_credit = block_credit_part
+                        .saturating_mul_u64(3)
+                        .saturating_add(remainder);
+
+                    for endorsement_creator in endorsement_creators {
+                        // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
+                        // and dissuade from emitting the block too early (before the endorsements have propageted).
+                        block_producer_credit =
+                            block_producer_credit.saturating_add(block_credit_part);
+
+                        // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
+                        // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
+                        // and to not publish too late (will not be included in the block).
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                #[cfg(feature = "execution-info")]
+                                exec_info
+                                    .endorsement_creator_rewards
+                                    .insert(endorsement_creator, block_credit_part);
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
+                                    block_credit_part, endorsement_creator, err
+                                )
+                            }
+                        }
+
+                        // Credit the creator of the endorsed block with 1 part.
+                        // This is done to incentivize block producers to be endorsed,
+                        // typically by not publishing their blocks too late.
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_target_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                #[cfg(feature = "execution-info")]
+                                {
+                                    exec_info.endorsement_target_reward =
+                                        Some((endorsement_target_creator, block_credit_part));
+                                }
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
+                                    block_credit_part, endorsement_target_creator, err
+                                )
+                            }
+                        }
+                    }
+
+                    // Credit block producer
+                    if let Err(err) = context.transfer_coins(
+                        None,
+                        Some(block_creator_addr),
+                        block_producer_credit,
+                        false,
+                    ) {
+                        debug!(
+                            "failed to credit {} coins to block creator {} on block execution: {}",
+                            block_producer_credit, block_creator_addr, err
+                        )
+                    } else {
+                        #[cfg(feature = "execution-info")]
+                        {
+                            exec_info.block_producer_reward =
+                                Some((block_creator_addr, block_producer_credit));
+                        }
+                    }
                 }
             }
         } else {
