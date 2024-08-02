@@ -1158,6 +1158,10 @@
 <a href="#1158" id="1158">1158</a>
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
+<a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1940,7 +1944,7 @@
             .try_slash_rolls(denounced_addr, roll_count);
 
         <span class="comment">// convert slashed rolls to coins (as deferred credits =&gt; coins)
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slashed_coins = <span class="self">self
+        </span><span class="kw">let </span>slashed_coins_from_rolls = <span class="self">self
             </span>.config
             .roll_price
             .checked_mul_u64(slashed_rolls.unwrap_or_default())
@@ -1962,7 +1966,9 @@
                     roll_count
                 ))
             })<span class="question-mark">?
-            </span>.saturating_sub(slashed_coins);
+            </span>.saturating_sub(slashed_coins_from_rolls);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>total_slashed_coins = slashed_coins_from_rolls;
 
         <span class="kw">if </span>amount_remaining_to_slash &gt; Amount::zero() {
             <span class="comment">// There is still an amount to slash for this denunciation so we need to slash
@@ -1971,19 +1977,21 @@
                 </span>.speculative_roll_state
                 .try_slash_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>.slot, denounced_addr, <span class="kw-2">&amp;</span>amount_remaining_to_slash);
 
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+            total_slashed_coins =
+                total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+
             <span class="kw">let </span>amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+                amount_remaining_to_slash.saturating_sub(slashed_coins_in_deferred_credits);
             <span class="kw">if </span>amount_remaining_to_slash_2 &gt; Amount::zero() {
                 <span class="comment">// Use saturating_mul_u64 to avoid an error (for just a warn!(..))
                 </span><span class="macro">warn!</span>(<span class="string">&quot;Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins&quot;</span>,
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
+                    slashed_coins_from_rolls, slashed_coins_in_deferred_credits, denounced_addr,
                     <span class="self">self</span>.config.roll_price.saturating_mul_u64(roll_count)
                 );
             }
         }
 
-        <span class="prelude-val">Ok</span>(slashed_coins)
+        <span class="prelude-val">Ok</span>(total_slashed_coins)
     }
 
     <span class="doccomment">/// Update production statistics of an address.
