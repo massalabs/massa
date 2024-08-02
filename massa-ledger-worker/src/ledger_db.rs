@@ -16,6 +16,7 @@ use massa_models::{
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -468,7 +469,7 @@ impl LedgerDB {
 // Note: This function takes a lock on the DB to avoid multiple reads.
 fn delete_datastore_entries(
     addr: &Address,
-    db: &parking_lot::lock_api::RwLockReadGuard<parking_lot::RawRwLock, Box<dyn MassaDBController>>,
+    db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
     batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
 ) {
     // datastore
