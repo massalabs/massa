@@ -1147,7 +1147,7 @@
                 STATE_CF,
                 MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, <span class="kw">_</span>)| key &lt; <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
+            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
