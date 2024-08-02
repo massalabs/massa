@@ -284,6 +284,9 @@ impl LedgerDB {
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
+        // Ensures any potential previous entry is fully deleted.
+        self.delete_entry(addr, batch);
+
         let db = self.db.read();
 
         // Version
