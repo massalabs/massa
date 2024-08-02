@@ -5,9 +5,9 @@ Slots should be consecutive, oldest at the beginning and latest at the back.</p>
 <p>Returns a <code>HistorySearchResult</code>.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.fetch_message" class="method"><a class="src rightside" href="../../src/massa_execution_worker/active_history.rs.html#68-94">source</a><h4 class="code-header">pub fn <a href="#method.fetch_message" class="fn">fetch_message</a>(
     &amp;self,
-    message_id: &amp;AsyncMessageId,
-    current_updates: AsyncMessageUpdate
-) -&gt; <a class="enum" href="enum.HistorySearchResult.html" title="enum massa_execution_worker::active_history::HistorySearchResult">HistorySearchResult</a>&lt;SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt;</h4></section></summary><div class="docblock"><p>Lazily query (from end to beginning) a message based on its id</p>
+    message_id: &amp;<a class="type" href="../../massa_async_pool/message/type.AsyncMessageId.html" title="type massa_async_pool::message::AsyncMessageId">AsyncMessageId</a>,
+    current_updates: <a class="struct" href="../../massa_async_pool/message/struct.AsyncMessageUpdate.html" title="struct massa_async_pool::message::AsyncMessageUpdate">AsyncMessageUpdate</a>
+) -&gt; <a class="enum" href="enum.HistorySearchResult.html" title="enum massa_execution_worker::active_history::HistorySearchResult">HistorySearchResult</a>&lt;SetUpdateOrDelete&lt;<a class="struct" href="../../massa_async_pool/message/struct.AsyncMessage.html" title="struct massa_async_pool::message::AsyncMessage">AsyncMessage</a>, <a class="struct" href="../../massa_async_pool/message/struct.AsyncMessageUpdate.html" title="struct massa_async_pool::message::AsyncMessageUpdate">AsyncMessageUpdate</a>&gt;&gt;</h4></section></summary><div class="docblock"><p>Lazily query (from end to beginning) a message based on its id</p>
 <p>Returns a <code>HistorySearchResult</code>.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.fetch_executed_denunciation" class="method"><a class="src rightside" href="../../src/massa_execution_worker/active_history.rs.html#99-113">source</a><h4 class="code-header">pub fn <a href="#method.fetch_executed_denunciation" class="fn">fetch_executed_denunciation</a>(
     &amp;self,

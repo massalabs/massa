@@ -681,6 +681,9 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -967,6 +970,9 @@
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
     </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+        <span class="comment">// Ensures any potential previous entry is fully deleted.
+        </span><span class="self">self</span>.delete_entry(addr, batch);
+
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// Version
@@ -1147,7 +1153,7 @@
                 STATE_CF,
                 MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
+            .take_while(|(key, <span class="kw">_</span>)| key &lt; <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
         {
             db.delete_key(batch, serialized_key.to_vec());
         }
