@@ -3,8 +3,8 @@
 //! Module to interact with the disk ledger
 
 use massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
-    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
@@ -284,10 +284,10 @@ impl LedgerDB {
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
-        // Ensures any potential previous entry is fully deleted.
-        self.delete_entry(addr, batch);
-
         let db = self.db.read();
+
+        // Ensures any potential previous entry is fully deleted.
+        delete_datastore_entries(addr, &db, batch);
 
         // Version
         //TODO: Get version number from parameters
@@ -459,18 +459,26 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        // datastore
-        let key_prefix = datastore_prefix_from_address(addr, &[]);
+        delete_datastore_entries(addr, &db, batch);
+    }
+}
 
-        for (serialized_key, _) in db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
-        {
-            db.delete_key(batch, serialized_key.to_vec());
-        }
+fn delete_datastore_entries(
+    addr: &Address,
+    db: &parking_lot::lock_api::RwLockReadGuard<parking_lot::RawRwLock, Box<dyn MassaDBController>>,
+    batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+) {
+    // datastore
+    let key_prefix = datastore_prefix_from_address(addr, &[]);
+
+    for (serialized_key, _) in db
+        .iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
+    {
+        db.delete_key(batch, serialized_key.to_vec());
     }
 }
 
