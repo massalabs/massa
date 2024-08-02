@@ -463,6 +463,9 @@ impl LedgerDB {
     }
 }
 
+// Helper function to delete all datastore entries for a given address
+// Needs to be called in put entry and delete entry
+// Note: This function takes a lock on the DB to avoid multiple reads.
 fn delete_datastore_entries(
     addr: &Address,
     db: &parking_lot::lock_api::RwLockReadGuard<parking_lot::RawRwLock, Box<dyn MassaDBController>>,
