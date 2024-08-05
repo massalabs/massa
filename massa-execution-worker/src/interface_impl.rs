@@ -305,8 +305,6 @@ impl Interface for InterfaceImpl {
             operation_datastore: None,
         });
 
-        context.recursion_counter += 1;
-
         // return the target bytecode
         Ok(bytecode.0)
     }
@@ -319,8 +317,6 @@ impl Interface for InterfaceImpl {
         if context.stack.pop().is_none() {
             bail!("call stack out of bounds")
         }
-
-        context.recursion_counter -= 1;
 
         Ok(())
     }
@@ -1418,8 +1414,6 @@ impl Interface for InterfaceImpl {
             owned_addresses: vec![to_address],
             operation_datastore: None,
         });
-
-        context.recursion_counter += 1;
 
         // return the target bytecode
         Ok(bytecode.0)
