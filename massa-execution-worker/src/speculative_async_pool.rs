@@ -3,7 +3,10 @@
 //! The speculative asynchronous pool represents the state of
 //! the pool at an arbitrary execution slot.
 
-use crate::active_history::{ActiveHistory, HistorySearchResult::{self, Present}};
+use crate::active_history::{
+    ActiveHistory,
+    HistorySearchResult::{self, Present},
+};
 use massa_async_pool::{
     AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
     AsyncPoolChanges,
@@ -204,7 +207,7 @@ impl SpeculativeAsyncPool {
         // Activate the messages that can be activated (triggered)
         let mut triggered_info = Vec::new();
         let mut message_infos = self.message_infos.clone();
-        
+
         for (id, message_info) in message_infos.iter_mut() {
             if let Some(filter) = &message_info.trigger {
                 if self.is_triggered(filter, ledger_changes) {
@@ -313,36 +316,32 @@ impl SpeculativeAsyncPool {
 
         msgs
     }
-    
+
     /// Check in the ledger changes if a message trigger has been triggered
     fn is_triggered(&self, filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) -> bool {
-
         let addr = filter.address;
         let key = filter.datastore_key.clone();
 
         match key {
             Some(key) => {
-                let final_val = self.final_state.read().get_ledger().get_data_entry(&addr, &key);
-                let activ_val = self.active_history.read().fetch_active_history_data_entry(&addr, &key);
+                let activ_val = self
+                    .active_history
+                    .read()
+                    .fetch_active_history_data_entry(&addr, &key);
 
                 let latest_val = match activ_val {
-                    HistorySearchResult::Present(val) => {
-                        Some(val)
-                    },
-                    HistorySearchResult::Absent => {
-                        None
-                    },
-                    HistorySearchResult::NoInfo => {
-                        final_val
-                    },
+                    HistorySearchResult::Present(val) => Some(val),
+                    HistorySearchResult::Absent => None,
+                    HistorySearchResult::NoInfo => self
+                        .final_state
+                        .read()
+                        .get_ledger()
+                        .get_data_entry(&addr, &key),
                 };
 
                 ledger_changes.has_changes(&addr, Some(key), latest_val)
             }
-            None => {
-                ledger_changes.has_changes(&addr, None, None)
-            }
+            None => ledger_changes.has_changes(&addr, None, None),
         }
     }
-
 }

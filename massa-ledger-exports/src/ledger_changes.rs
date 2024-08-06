@@ -844,7 +844,12 @@ impl LedgerChanges {
     ///
     /// # Returns
     /// * true if the address and, optionally the datastore key, exists in the ledger changes
-    pub fn has_changes(&self, addr: &Address, key: Option<Vec<u8>>, prev_val: Option<Vec<u8>>) -> bool {
+    pub fn has_changes(
+        &self,
+        addr: &Address,
+        key: Option<Vec<u8>>,
+        prev_val: Option<Vec<u8>>,
+    ) -> bool {
         // Get the current changes being applied to the ledger entry associated to that address
         match self.0.get(addr) {
             // This ledger entry is being replaced by a new one
@@ -861,19 +866,16 @@ impl LedgerChanges {
                     // If the key is not present, the address has changed
                     None => true,
                 }
-
             }
             // This ledger entry is being updated
             Some(SetUpdateOrDelete::Update(LedgerEntryUpdate { datastore, .. })) => {
                 // Check if the update being applied to that datastore entry, and compare to the previous value
                 key.map_or(true, |k| match datastore.get(&k) {
-                    Some(val) => {
-                        match (val, prev_val) {
-                            (SetOrDelete::Set(_), None) => true,
-                            (SetOrDelete::Set(v), Some(pv)) => *v != pv,
-                            (SetOrDelete::Delete, None) => false,
-                            (SetOrDelete::Delete, Some(_)) => true,
-                        }
+                    Some(val) => match (val, prev_val) {
+                        (SetOrDelete::Set(_), None) => true,
+                        (SetOrDelete::Set(v), Some(pv)) => *v != pv,
+                        (SetOrDelete::Delete, None) => false,
+                        (SetOrDelete::Delete, Some(_)) => true,
                     },
                     None => false,
                 })
@@ -883,12 +885,8 @@ impl LedgerChanges {
             Some(SetUpdateOrDelete::Delete) => {
                 // If the key is set and it has no previous value, it has not changed
                 // All other cases should return true
-                if key.is_some() && prev_val.is_none() {
-                    false
-                } else {
-                    true
-                }	
-            },
+                !(key.is_some() && prev_val.is_none())
+            }
 
             // This ledger entry is not being changed.
             None => false,
