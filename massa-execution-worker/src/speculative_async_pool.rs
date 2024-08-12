@@ -309,5 +309,5 @@ impl SpeculativeAsyncPool {
 
 /// Check in the ledger changes if a message trigger has been triggered
 fn is_triggered(filter: &AsyncMessageTrigger, ledger_changes: &LedgerChanges) -> bool {
-    ledger_changes.has_changes(&filter.address, filter.datastore_key.clone())
+    ledger_changes.has_writes(&filter.address, filter.datastore_key.clone())
 }

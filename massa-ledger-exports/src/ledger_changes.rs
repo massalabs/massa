@@ -835,8 +835,10 @@ impl LedgerChanges {
         }
     }
 
-    /// Tries to return whether there is a change on a given address in the ledger changes
-    /// and optionally if a datastore key modification also exists in the address's datastore.
+    /// Tries to return whether the ledger changes contain a write for the given address
+    /// and optionally if a datastore key write also exists in the address's datastore.
+    /// Note: A ledger entry could be written to without any changes on the values associated,
+    /// for example if the value was changed multiple times in the same slot.
     ///
     /// # Arguments
     /// * `addr`: target address
@@ -844,7 +846,7 @@ impl LedgerChanges {
     ///
     /// # Returns
     /// * true if the address and, optionally the datastore key, exists in the ledger changes
-    pub fn has_changes(&self, addr: &Address, key: Option<Vec<u8>>) -> bool {
+    pub fn has_writes(&self, addr: &Address, key: Option<Vec<u8>>) -> bool {
         // Get the current changes being applied to the ledger entry associated to that address
         match self.0.get(addr) {
             // This ledger entry is being replaced by a new one:
