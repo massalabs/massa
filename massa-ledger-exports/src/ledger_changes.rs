@@ -837,7 +837,7 @@ impl LedgerChanges {
 
     /// Tries to return whether the ledger changes contain a write for the given address
     /// and optionally if a datastore key write also exists in the address's datastore.
-    /// Notes: 
+    /// Notes:
     /// - A ledger entry could be written to without any changes on the values associated,
     /// for example if the value was changed multiple times in the same slot.
     /// - This code assumes Delete cannot be shadowed by Set operations in the same slot, which may not be the case
