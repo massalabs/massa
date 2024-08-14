@@ -16,4 +16,6 @@ pub struct ModuleCacheConfig {
     pub snip_amount: usize,
     /// Maximum length of a module
     pub max_module_length: u64,
+    /// Maximum number of exports in a module
+    pub max_runtime_module_exports: usize,
 }

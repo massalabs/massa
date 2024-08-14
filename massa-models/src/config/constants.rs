@@ -201,6 +201,9 @@ pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
+/// Maximum number of exports for a smart contract module
+pub const MAX_RUNTIME_MODULE_EXPORTS: u32 = 500; // TODO: Calibrate
+
 // ***********************
 // Bootstrap constants
 //

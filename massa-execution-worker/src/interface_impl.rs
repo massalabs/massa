@@ -130,6 +130,7 @@ impl InterfaceImpl {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            max_runtime_module_exports: config.max_runtime_module_exports,
         })));
 
         // create an empty default store
