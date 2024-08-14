@@ -971,7 +971,7 @@ impl ExecutionState {
             module,
             *max_gas,
             self.config.gas_costs.clone(),
-            self.config.max_runtime_module_exports,
+            Some(self.config.max_runtime_module_exports),
         )
         .map_err(|error| ExecutionError::VMError {
             context: "ExecuteSC".to_string(),
@@ -1072,7 +1072,7 @@ impl ExecutionState {
             param,
             max_gas,
             self.config.gas_costs.clone(),
-            self.config.max_runtime_module_exports,
+            Some(self.config.max_runtime_module_exports),
         );
         match response {
             Ok(Response { init_gas_cost, .. })
@@ -1198,7 +1198,7 @@ impl ExecutionState {
             &message.function_params,
             message.max_gas,
             self.config.gas_costs.clone(),
-            self.config.max_runtime_module_exports,
+            Some(self.config.max_runtime_module_exports),
         );
         match response {
             Ok(res) => {
@@ -1828,7 +1828,7 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    self.config.max_runtime_module_exports,
+                    Some(self.config.max_runtime_module_exports),
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
@@ -1883,7 +1883,7 @@ impl ExecutionState {
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    self.config.max_runtime_module_exports,
+                    Some(self.config.max_runtime_module_exports),
                 );
 
                 match response {

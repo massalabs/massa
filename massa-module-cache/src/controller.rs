@@ -45,7 +45,7 @@ impl ModuleCache {
             bytecode,
             self.cfg.gas_costs.clone(),
             Compiler::CL,
-            self.cfg.max_runtime_module_exports,
+            Some(self.cfg.max_runtime_module_exports),
         ) {
             Ok(module) => {
                 debug!("compilation of module {} succeeded", hash);
@@ -65,7 +65,7 @@ impl ModuleCache {
         if let Some(hd_module_info) = self.hd_cache.get(
             hash,
             self.cfg.gas_costs.clone(),
-            self.cfg.max_runtime_module_exports,
+            Some(self.cfg.max_runtime_module_exports),
         ) {
             debug!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
@@ -122,7 +122,7 @@ impl ModuleCache {
         } else if let Some(hd_module_info) = self.hd_cache.get(
             hash,
             self.cfg.gas_costs.clone(),
-            self.cfg.max_runtime_module_exports,
+            Some(self.cfg.max_runtime_module_exports),
         ) {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
@@ -198,7 +198,7 @@ impl ModuleCache {
             bytecode,
             self.cfg.gas_costs.clone(),
             Compiler::SP,
-            self.cfg.max_runtime_module_exports,
+            Some(self.cfg.max_runtime_module_exports),
         )?;
         Ok(module)
     }
