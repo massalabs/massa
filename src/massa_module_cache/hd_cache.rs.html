@@ -314,6 +314,15 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
@@ -453,7 +462,12 @@
     }
 
     <span class="doccomment">/// Retrieve a module
-    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: Hash, gas_costs: GasCosts) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
+    </span><span class="kw">pub fn </span>get(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        hash: Hash,
+        gas_costs: GasCosts,
+        max_exports: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>iterator = <span class="self">self
             </span>.db
             .iterator(IteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">module_key!</span>(hash), Direction::Forward));
@@ -469,9 +483,13 @@
                 <span class="kw">if let </span>ModuleMetadata::Invalid(err_msg) = metadata {
                     <span class="kw">return </span><span class="prelude-val">Some</span>(ModuleInfo::Invalid(err_msg));
                 }
-                <span class="kw">let </span>module =
-                    RuntimeModule::deserialize(<span class="kw-2">&amp;</span>ser_module, gas_costs.max_instance_cost, gas_costs)
-                        .expect(MOD_DESER_ERROR);
+                <span class="kw">let </span>module = RuntimeModule::deserialize(
+                    <span class="kw-2">&amp;</span>ser_module,
+                    gas_costs.max_instance_cost,
+                    gas_costs,
+                    max_exports,
+                )
+                .expect(MOD_DESER_ERROR);
                 <span class="kw">let </span>result = <span class="kw">match </span>metadata {
                     ModuleMetadata::Invalid(err_msg) =&gt; ModuleInfo::Invalid(err_msg),
                     ModuleMetadata::NotExecuted =&gt; ModuleInfo::Module(module),
@@ -549,7 +567,7 @@
             <span class="number">0x70</span>, <span class="number">0x30</span>,
         ];
         ModuleInfo::Module(
-            RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, GasCosts::default(), Compiler::CL).unwrap(),
+            RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, GasCosts::default(), Compiler::CL, <span class="prelude-val">None</span>).unwrap(),
         )
     }
 
@@ -569,16 +587,16 @@
         <span class="kw">let </span>gas_costs = GasCosts::default();
 
         cache.insert(hash, module);
-        <span class="kw">let </span>cached_module_v1 = cache.get(hash, gas_costs.clone()).unwrap();
+        <span class="kw">let </span>cached_module_v1 = cache.get(hash, gas_costs.clone(), <span class="prelude-val">None</span>).unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v1, ModuleInfo::Module(<span class="kw">_</span>)));
 
         cache.set_init_cost(hash, init_cost);
-        <span class="kw">let </span>cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
+        <span class="kw">let </span>cached_module_v2 = cache.get(hash, gas_costs.clone(), <span class="prelude-val">None</span>).unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v2, ModuleInfo::ModuleAndDelta(<span class="kw">_</span>)));
 
         <span class="kw">let </span>err_msg = <span class="string">&quot;test_error&quot;</span>.to_string();
         cache.set_invalid(hash, err_msg.clone());
-        <span class="kw">let </span>cached_module_v3 = cache.get(hash, gas_costs).unwrap();
+        <span class="kw">let </span>cached_module_v3 = cache.get(hash, gas_costs, <span class="prelude-val">None</span>).unwrap();
         <span class="kw">let </span>ModuleInfo::Invalid(res_err) = cached_module_v3 <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;expected ModuleInfo::Invalid&quot;</span>);
         };
@@ -625,7 +643,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>rbytes = [<span class="number">0u8</span>; <span class="number">16</span>];
             thread_rng().fill_bytes(<span class="kw-2">&amp;mut </span>rbytes);
             <span class="kw">let </span>get_key = Hash::compute_from(<span class="kw-2">&amp;</span>rbytes);
-            <span class="kw">let </span>cached_module = cache.get(get_key, gas_costs.clone());
+            <span class="kw">let </span>cached_module = cache.get(get_key, gas_costs.clone(), <span class="prelude-val">None</span>);
             <span class="macro">assert!</span>(cached_module.is_none());
         }
     }

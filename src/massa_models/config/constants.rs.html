@@ -346,6 +346,9 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -549,7 +552,10 @@
 </span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
 <span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
 </span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
-<span class="comment">// ***********************
+<span class="doccomment">/// Maximum number of exports for a smart contract module
+</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS: usize = <span class="number">500</span>; <span class="comment">// TODO: Calibrate
+
+// ***********************
 // Bootstrap constants
 //
 
