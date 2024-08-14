@@ -69,7 +69,7 @@ impl DeferredCallIdDeserializer {
         Self {
             bytes_deserializer: VecU8Deserializer::new(
                 std::ops::Bound::Included(0),
-                std::ops::Bound::Included(u64::MAX),
+                std::ops::Bound::Included(128),
             ),
         }
     }
