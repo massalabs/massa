@@ -29,7 +29,7 @@ pub const LEDGER_PREFIX: &str = "ledger/";
 pub const MIP_STORE_PREFIX: &str = "versioning/";
 pub const MIP_STORE_STATS_PREFIX: &str = "versioning_stats/";
 pub const EXECUTION_TRAIL_HASH_PREFIX: &str = "execution_trail_hash/";
-pub const DEFERRED_CALLS_SLOT_PREFIX: &str = "deferred_calls/";
+pub const DEFERRED_CALLS_PREFIX: &str = "deferred_calls/";
 
 // Async Pool
 pub const MESSAGE_DESER_ERROR: &str = "critical: message deserialization failed";

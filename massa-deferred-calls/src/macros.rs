@@ -1,5 +1,3 @@
-use massa_db_exports::DEFERRED_CALLS_SLOT_PREFIX;
-
 pub(crate) const DEFERRED_CALL_TOTAL_GAS: &str = "deferred_call_total_gas";
 
 pub(crate) const CALLS_TAG: u8 = 0u8;
@@ -22,7 +20,7 @@ pub(crate) const CALL_FIELD_CANCELED: u8 = 9u8;
 macro_rules! deferred_call_slot_total_gas_key {
     ($slot:expr) => {
         [
-            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
+            DEFERRED_CALLS_PREFIX.as_bytes(),
             &$slot[..],
             &[$crate::macros::SLOT_TOTAL_GAS],
         ]
@@ -34,7 +32,7 @@ macro_rules! deferred_call_slot_total_gas_key {
 macro_rules! deferred_call_slot_base_fee_key {
     ($slot:expr) => {
         [
-            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
+            DEFERRED_CALLS_PREFIX.as_bytes(),
             &$slot[..],
             &[$crate::macros::SLOT_BASE_FEE],
         ]
@@ -46,7 +44,7 @@ macro_rules! deferred_call_slot_base_fee_key {
 macro_rules! deferred_slot_call_prefix_key {
     ($slot:expr) => {
         [
-            DEFERRED_CALLS_SLOT_PREFIX.as_bytes(),
+            DEFERRED_CALLS_PREFIX.as_bytes(),
             &$slot[..],
             &[$crate::macros::CALLS_TAG],
         ]
@@ -143,7 +141,7 @@ macro_rules! cancelled_key {
 
 #[cfg(test)]
 mod tests {
-    use massa_db_exports::DEFERRED_CALLS_SLOT_PREFIX;
+    use massa_db_exports::DEFERRED_CALLS_PREFIX;
     use massa_models::{
         deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
         slot::Slot,

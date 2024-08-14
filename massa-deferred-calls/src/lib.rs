@@ -1,7 +1,7 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
 use macros::DEFERRED_CALL_TOTAL_GAS;
 use massa_db_exports::{
-    DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_SLOT_PREFIX, KEY_DESER_ERROR,
+    DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX, KEY_DESER_ERROR,
     MESSAGE_DESER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
@@ -46,9 +46,9 @@ impl DeferredCallRegistry {
     /*
      DB layout:
         [DEFERRED_CALL_TOTAL_GAS] -> u64 // total currently booked gas
-        [DEFERRED_CALLS_SLOT_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
-        [DEFERRED_CALLS_SLOT_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
-        [DEFERRED_CALLS_SLOT_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> AsyncCall.x // call data
+        [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
+        [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
+        [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> AsyncCall.x // call data
     */
 
     // TODO pass args
