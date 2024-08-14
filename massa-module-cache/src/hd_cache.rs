@@ -137,7 +137,12 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, gas_costs: GasCosts, max_exports: Option<usize>) -> Option<ModuleInfo> {
+    pub fn get(
+        &self,
+        hash: Hash,
+        gas_costs: GasCosts,
+        max_exports: Option<usize>,
+    ) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
