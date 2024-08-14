@@ -341,7 +341,7 @@ impl Slot {
             .ok_or(ModelsError::PeriodOverflowError)?;
         let mut res_thread = (self.thread as u64)
             .checked_add(n % (thread_count as u64))
-            .ok_or(ModelsError::PeriodOverflowError)?;
+            .ok_or(ModelsError::ThreadOverflowError)?;
 
         if res_thread >= thread_count as u64 {
             res_period = res_period

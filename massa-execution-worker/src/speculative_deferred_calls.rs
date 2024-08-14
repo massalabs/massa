@@ -241,9 +241,6 @@ impl SpeculativeDeferredCallRegistry {
         for (id, _call) in &slot_calls.slot_calls {
             self.deferred_calls_changes.delete_call(current_slot, id);
         }
-        // self.deferred_calls_changes.set_slot_gas(current_slot, 0);
-        // self.deferred_calls_changes
-        //     .set_slot_base_fee(current_slot, Amount::zero());
 
         slot_calls
     }
