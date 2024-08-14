@@ -1435,10 +1435,7 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         // get caller address
-        let sender_address = match context.stack.last() {
-            Some(addr) => addr.address,
-            _ => bail!("failed to read call stack sender address"),
-        };
+        let sender_address = context.get_current_address()?;
 
         // make sender pay coins + fee
         // coins + cost for booking the deferred call

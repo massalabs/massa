@@ -57,3 +57,7 @@ pub const EXECUTED_DENUNCIATIONS_INDEX_SER_ERROR: &str =
 pub const KEY_DESER_ERROR: &str = "critical: key deserialization failed";
 pub const KEY_SER_ERROR: &str = "critical: key serialization failed";
 pub const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
+
+// deferred calls
+pub const DEFERRED_CALL_DESER_ERROR: &str = "critical: message deserialization failed";
+pub const DEFERRED_CALL_SER_ERROR: &str = "critical: message serialization failed";
