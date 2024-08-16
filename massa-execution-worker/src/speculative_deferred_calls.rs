@@ -312,7 +312,7 @@ impl SpeculativeDeferredCallRegistry {
         call.cancelled = true;
 
         // we need to reimburse coins to the sender
-        let res = (call.sender_address, call.coins);
+        let res: (Address, Amount) = (call.sender_address, call.coins);
 
         // Add a cancellation to the current changes
         self.deferred_calls_changes
@@ -322,7 +322,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // set slot gas
         self.deferred_calls_changes
-            .set_slot_gas(call.target_slot, current_gas - call.max_gas);
+            .set_slot_gas(call.target_slot, current_gas.saturating_sub(call.max_gas));
 
         // set total gas
         self.deferred_calls_changes
@@ -344,13 +344,14 @@ impl SpeculativeDeferredCallRegistry {
     ) -> Result<Amount, ExecutionError> {
         // linear part of the occupancy before booking the requested amount
         let relu_occupancy_before =
-            std::cmp::max(current_occupancy, target_occupancy) - target_occupancy;
+            std::cmp::max(current_occupancy, target_occupancy).saturating_sub(target_occupancy);
 
         // linear part of the occupancy after booking the requested amount
         let relu_occupancy_after = std::cmp::max(
             current_occupancy.saturating_add(resource_request),
             target_occupancy,
-        ) - target_occupancy;
+        )
+        .saturating_sub(target_occupancy);
 
         // denominator for the linear fee
         let denominator = resource_supply.checked_sub(target_occupancy).ok_or(

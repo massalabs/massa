@@ -1135,10 +1135,6 @@ impl ExecutionContext {
         }
     }
 
-    pub fn deferred_calls_get_slot_booked_gas(&self, slot: &Slot) -> u64 {
-        self.speculative_deferred_calls.get_slot_gas(slot)
-    }
-
     pub fn deferred_calls_advance_slot(
         &mut self,
         current_slot: Slot,
