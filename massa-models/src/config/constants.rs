@@ -349,6 +349,10 @@ pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 8;
 pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
 /// deferred call max gas cost (10 nanomassa)
 pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
+/// deferred call global overbooking penalty
+pub const DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000);
+/// deferred call slot overbooking penalty
+pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000 / 10_000);
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
