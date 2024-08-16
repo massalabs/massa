@@ -1390,7 +1390,7 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         let messages = execution_context.take_async_batch(
-            self.config.max_async_gas,
+            self.config.max_async_gas.saturating_sub(calls.slot_gas),
             self.config.async_msg_cst_gas_cost,
         );
 
