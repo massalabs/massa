@@ -341,7 +341,7 @@ impl SpeculativeDeferredCallRegistry {
         current_occupancy: u128,
         resource_request: u128,
         max_penalty: Amount,
-    ) -> Amount {
+    ) -> Result<Amount, ExecutionError> {
         // linear part of the occupancy before booking the requested amount
         let relu_occupancy_before =
             std::cmp::max(current_occupancy, target_occupancy) - target_occupancy;
@@ -353,7 +353,18 @@ impl SpeculativeDeferredCallRegistry {
         ) - target_occupancy;
 
         // denominator for the linear fee
-        let denominator = resource_supply - target_occupancy;
+        let denominator = resource_supply.checked_sub(target_occupancy).ok_or(
+            ExecutionError::DeferredCallsError("Error with denominator on overbooking fee".into()),
+        )?;
+
+        if denominator.eq(&0) {
+            // TODO : check if this is correct
+            return Err(ExecutionError::DeferredCallsError(
+                "Denominator is zero on overbooking fee".into(),
+            ));
+            // OR
+            //   return Ok(Amount::from_raw(0));
+        }
 
         // compute using the raw fee and u128 to avoid u64 overflows
         let raw_max_penalty = max_penalty.to_raw() as u128;
@@ -365,7 +376,9 @@ impl SpeculativeDeferredCallRegistry {
                     / denominator,
             );
 
-        Amount::from_raw(std::cmp::min(raw_fee, u64::MAX as u128) as u64)
+        Ok(Amount::from_raw(
+            std::cmp::min(raw_fee, u64::MAX as u128) as u64
+        ))
     }
 
     /// Compute call fee
@@ -435,7 +448,7 @@ impl SpeculativeDeferredCallRegistry {
             global_occupancy,
             max_gas as u128,
             global_overbooking_penalty, // total_supply
-        );
+        )?;
 
         // Finally, a per-slot proportional fee is also added to prevent attackers from denying significant ranges of consecutive slots within the long booking period.
         // Slot overbooking fee
@@ -445,7 +458,7 @@ impl SpeculativeDeferredCallRegistry {
             slot_occupancy as u128,
             max_gas as u128,
             slot_overbooking_penalty, //   total_initial_coin_supply/10000
-        );
+        )?;
 
         // return the fee
         Ok(integral_fee
