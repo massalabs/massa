@@ -33,7 +33,8 @@ use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+    CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
+    StorageCostsConstants,
 };
 use massa_execution_worker::start_execution_worker;
 #[cfg(all(
@@ -87,7 +88,8 @@ use massa_models::config::constants::{
 use massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS,
+    MAX_RUNTIME_MODULE_SIGNATURE_LEN, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
@@ -461,6 +463,13 @@ async fn launch(
     )
     .expect("Failed to load gas costs");
 
+    // To disable the limits, use CondomLimits::default()
+    let condom_limits = CondomLimits {
+        max_exports: Some(MAX_RUNTIME_MODULE_EXPORTS),
+        max_functions: Some(MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS),
+        max_signature_len: Some(MAX_RUNTIME_MODULE_SIGNATURE_LEN),
+    };
+
     let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     if !block_dump_folder_path.exists() {
         info!("Current folder: {:?}", std::env::current_dir().unwrap());
@@ -518,7 +527,7 @@ async fn launch(
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
-        max_runtime_module_exports: MAX_RUNTIME_MODULE_EXPORTS,
+        condom_limits,
     };
 
     let execution_channels = ExecutionChannels {

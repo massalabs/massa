@@ -179,7 +179,7 @@ impl ExecutionState {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
-            max_runtime_module_exports: config.max_runtime_module_exports,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
@@ -971,7 +971,7 @@ impl ExecutionState {
             module,
             *max_gas,
             self.config.gas_costs.clone(),
-            Some(self.config.max_runtime_module_exports),
+            self.config.condom_limits.clone(),
         )
         .map_err(|error| ExecutionError::VMError {
             context: "ExecuteSC".to_string(),
@@ -1072,7 +1072,7 @@ impl ExecutionState {
             param,
             max_gas,
             self.config.gas_costs.clone(),
-            Some(self.config.max_runtime_module_exports),
+            self.config.condom_limits.clone(),
         );
         match response {
             Ok(Response { init_gas_cost, .. })
@@ -1198,7 +1198,7 @@ impl ExecutionState {
             &message.function_params,
             message.max_gas,
             self.config.gas_costs.clone(),
-            Some(self.config.max_runtime_module_exports),
+            self.config.condom_limits.clone(),
         );
         match response {
             Ok(res) => {
@@ -1828,7 +1828,7 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    Some(self.config.max_runtime_module_exports),
+                    self.config.condom_limits.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
@@ -1883,7 +1883,7 @@ impl ExecutionState {
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    Some(self.config.max_runtime_module_exports),
+                    self.config.condom_limits.clone(),
                 );
 
                 match response {

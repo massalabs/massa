@@ -4,7 +4,7 @@
 
 use crate::{ExecutionConfig, StorageCostsConstants};
 use massa_models::config::*;
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
 use tempfile::TempDir;
 
@@ -81,7 +81,11 @@ impl Default for ExecutionConfig {
             broadcast_slot_execution_traces_channel_capacity: 5000,
             max_execution_traces_slot_limit: 320,
             block_dump_folder_path,
-            max_runtime_module_exports: 100,
+            condom_limits: CondomLimits {
+                max_exports: Some(100),
+                max_functions: Some(100),
+                max_signature_len: Some(100),
+            },
         }
     }
 }

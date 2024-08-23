@@ -2670,7 +2670,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_condom#c9dc70c8edc81fd77d7a69d5b4a757e3d0e4d078"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_condom#84dda77eac5978e83d1322030982d1e3874ca79f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",

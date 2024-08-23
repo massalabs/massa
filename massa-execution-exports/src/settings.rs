@@ -3,7 +3,7 @@
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
 use massa_models::amount::Amount;
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::path::PathBuf;
@@ -102,6 +102,6 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
-    /// Max runtime module exports
-    pub max_runtime_module_exports: usize,
+    /// Runtime condom middleware limits
+    pub condom_limits: CondomLimits,
 }

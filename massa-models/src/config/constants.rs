@@ -203,6 +203,10 @@ pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
 /// Maximum number of exports for a smart contract module
 pub const MAX_RUNTIME_MODULE_EXPORTS: usize = 500; // TODO: Calibrate
+/// Maximum number of functions for a smart contract module
+pub const MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS: usize = 500; // TODO: Calibrate
+/// Maximum signature length (total number of arguments and return values) for a smart contract module
+pub const MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize = 500; // TODO: Calibrate
 
 // ***********************
 // Bootstrap constants
