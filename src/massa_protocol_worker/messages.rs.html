@@ -272,14 +272,6 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_channel::sender::MassaSender;
 <span class="kw">use </span>massa_protocol_exports::PeerId;
 <span class="kw">use </span>massa_serialization::{
@@ -419,15 +411,7 @@
     <span class="doccomment">/// Serialize the message
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>Message, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; PeerNetResult&lt;()&gt; {
         <span class="self">self</span>.id_serializer
-            .serialize(
-                <span class="kw-2">&amp;</span>MessageTypeId::from(message).try_into().map_err(|<span class="kw">_</span>| {
-                    PeerNetError::HandlerError.error(
-                        <span class="string">&quot;MessagesSerializer&quot;</span>,
-                        <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Failed to serialize id&quot;</span>)),
-                    )
-                })<span class="question-mark">?</span>,
-                buffer,
-            )
+            .serialize(<span class="kw-2">&amp;</span>MessageTypeId::from(message).into(), buffer)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     <span class="string">&quot;MessagesHandler&quot;</span>,

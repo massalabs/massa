@@ -787,7 +787,7 @@
                 ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) =&gt; {
                     <span class="kw">let </span>(speculative_v, _final_v) = execution_lock
                         .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-                        .get(<span class="number">0</span>)
+                        .first()
                         .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
                         .expect(<span class="string">&quot;expected one return value&quot;</span>);
                     <span class="kw">match </span>speculative_v {
@@ -805,7 +805,7 @@
                 ExecutionQueryRequestItem::OpExecutionStatusFinal(id) =&gt; {
                     <span class="kw">let </span>(_speculative_v, final_v) = execution_lock
                         .get_ops_exec_status(<span class="kw-2">&amp;</span>[id])
-                        .get(<span class="number">0</span>)
+                        .first()
                         .map(|(s_v, f_v)| (<span class="kw-2">*</span>s_v, <span class="kw-2">*</span>f_v))
                         .expect(<span class="string">&quot;expected one return value&quot;</span>);
                     <span class="kw">match </span>final_v {

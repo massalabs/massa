@@ -2323,7 +2323,7 @@
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
                                 client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await
                             </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                                <span class="kw">match </span>addresses_info.first() {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
                                         <span class="kw">if </span>info.candidate_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
@@ -2368,7 +2368,7 @@
 
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee
                                     || roll_count &gt; info.candidate_roll_count
@@ -2405,7 +2405,7 @@
 
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee {
                                     <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
@@ -2451,7 +2451,7 @@
                 <span class="kw">let </span>fee = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee.saturating_add(max_coins) {
                                     <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
@@ -2509,7 +2509,7 @@
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
                                 client.public.get_addresses(<span class="macro">vec!</span>[target_addr]).<span class="kw">await
                             </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                                <span class="kw">match </span>addresses_info.first() {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
                                         <span class="kw">if </span>info.candidate_balance &lt; total {
                                             <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
