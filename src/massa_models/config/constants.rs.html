@@ -349,6 +349,10 @@
 <a href="#349" id="349">349</a>
 <a href="#350" id="350">350</a>
 <a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -554,6 +558,10 @@
 </span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
 <span class="doccomment">/// Maximum number of exports for a smart contract module
 </span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS: usize = <span class="number">500</span>; <span class="comment">// TODO: Calibrate
+</span><span class="doccomment">/// Maximum number of functions for a smart contract module
+</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS: usize = <span class="number">500</span>; <span class="comment">// TODO: Calibrate
+</span><span class="doccomment">/// Maximum signature length (total number of arguments and return values) for a smart contract module
+</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize = <span class="number">500</span>; <span class="comment">// TODO: Calibrate
 
 // ***********************
 // Bootstrap constants

@@ -250,7 +250,7 @@
             bytecode,
             <span class="self">self</span>.cfg.gas_costs.clone(),
             Compiler::CL,
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.cfg.max_runtime_module_exports),
+            <span class="self">self</span>.cfg.condom_limits.clone(),
         ) {
             <span class="prelude-val">Ok</span>(module) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;compilation of module {} succeeded&quot;</span>, hash);
@@ -270,7 +270,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(hd_module_info) = <span class="self">self</span>.hd_cache.get(
             hash,
             <span class="self">self</span>.cfg.gas_costs.clone(),
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.cfg.max_runtime_module_exports),
+            <span class="self">self</span>.cfg.condom_limits.clone(),
         ) {
             <span class="macro">debug!</span>(<span class="string">&quot;save_module: {} present in hd&quot;</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info);
@@ -327,7 +327,7 @@
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hd_module_info) = <span class="self">self</span>.hd_cache.get(
             hash,
             <span class="self">self</span>.cfg.gas_costs.clone(),
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.cfg.max_runtime_module_exports),
+            <span class="self">self</span>.cfg.condom_limits.clone(),
         ) {
             <span class="macro">debug!</span>(<span class="string">&quot;load_module: {} missing in lru but present in hd&quot;</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info.clone());
@@ -403,7 +403,7 @@
             bytecode,
             <span class="self">self</span>.cfg.gas_costs.clone(),
             Compiler::SP,
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.cfg.max_runtime_module_exports),
+            <span class="self">self</span>.cfg.condom_limits.clone(),
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(module)
     }

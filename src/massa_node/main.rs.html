@@ -1505,6 +1505,15 @@
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
@@ -1540,7 +1549,8 @@
 <span class="kw">use </span>massa_db_worker::MassaDB;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+    CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
+    StorageCostsConstants,
 };
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="attr">#[cfg(all(
@@ -1594,7 +1604,8 @@
 <span class="kw">use </span>massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS,
+    MAX_RUNTIME_MODULE_SIGNATURE_LEN, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -1968,6 +1979,13 @@
     )
     .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>);
 
+    <span class="comment">// To disable the limits, use CondomLimits::default()
+    </span><span class="kw">let </span>condom_limits = CondomLimits {
+        max_exports: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_EXPORTS),
+        max_functions: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS),
+        max_signature_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_SIGNATURE_LEN),
+    };
+
     <span class="kw">let </span>block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     <span class="kw">if </span>!block_dump_folder_path.exists() {
         <span class="macro">info!</span>(<span class="string">&quot;Current folder: {:?}&quot;</span>, std::env::current_dir().unwrap());
@@ -2025,7 +2043,7 @@
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
-        max_runtime_module_exports: MAX_RUNTIME_MODULE_EXPORTS,
+        condom_limits,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {

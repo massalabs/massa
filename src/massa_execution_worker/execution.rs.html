@@ -2488,7 +2488,7 @@
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
-            max_runtime_module_exports: config.max_runtime_module_exports,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
@@ -3280,7 +3280,7 @@
             module,
             <span class="kw-2">*</span>max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.config.max_runtime_module_exports),
+            <span class="self">self</span>.config.condom_limits.clone(),
         )
         .map_err(|error| ExecutionError::VMError {
             context: <span class="string">&quot;ExecuteSC&quot;</span>.to_string(),
@@ -3381,7 +3381,7 @@
             param,
             max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.config.max_runtime_module_exports),
+            <span class="self">self</span>.config.condom_limits.clone(),
         );
         <span class="kw">match </span>response {
             <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. })
@@ -3507,7 +3507,7 @@
             <span class="kw-2">&amp;</span>message.function_params,
             message.max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="prelude-val">Some</span>(<span class="self">self</span>.config.max_runtime_module_exports),
+            <span class="self">self</span>.config.condom_limits.clone(),
         );
         <span class="kw">match </span>response {
             <span class="prelude-val">Ok</span>(res) =&gt; {
@@ -4137,7 +4137,7 @@
                     module,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                    <span class="prelude-val">Some</span>(<span class="self">self</span>.config.max_runtime_module_exports),
+                    <span class="self">self</span>.config.condom_limits.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: <span class="string">&quot;ReadOnlyExecutionTarget::BytecodeExecution&quot;</span>.to_string(),
@@ -4192,7 +4192,7 @@
                     <span class="kw-2">&amp;</span>parameter,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                    <span class="prelude-val">Some</span>(<span class="self">self</span>.config.max_runtime_module_exports),
+                    <span class="self">self</span>.config.condom_limits.clone(),
                 );
 
                 <span class="kw">match </span>response {
