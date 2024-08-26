@@ -1190,7 +1190,7 @@ impl ExecutionContext {
         false
     }
 
-    /// when a deferred call execution fail we need to refund the coins to the caller
+    /// when a deferred call execution fails we need to refund the coins to the caller
     pub fn deferred_call_fail_exec(
         &mut self,
         call: &DeferredCall,
