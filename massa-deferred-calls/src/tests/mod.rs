@@ -6,7 +6,7 @@ use massa_models::{
     address::Address,
     amount::Amount,
     config::THREAD_COUNT,
-    deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
+    deferred_calls::{DeferredCallId, DeferredCallIdSerializer},
     slot::Slot,
 };
 use parking_lot::RwLock;

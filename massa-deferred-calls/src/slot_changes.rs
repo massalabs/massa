@@ -11,7 +11,7 @@ use massa_ledger_exports::{
 };
 use massa_models::{
     amount::{Amount, AmountDeserializer, AmountSerializer},
-    deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
+    deferred_calls::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -213,7 +213,7 @@ mod tests {
     use std::str::FromStr;
 
     use massa_models::{
-        address::Address, amount::Amount, deferred_call_id::DeferredCallId, slot::Slot,
+        address::Address, amount::Amount, deferred_calls::DeferredCallId, slot::Slot,
     };
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 

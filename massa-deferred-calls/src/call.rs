@@ -78,7 +78,7 @@ pub struct DeferredCallSerializer {
 }
 
 impl DeferredCallSerializer {
-    /// Serializes an `AsyncCall` into a `Vec<u8>`
+    /// Serializes an `DeferredCall` into a `Vec<u8>`
     pub fn new() -> Self {
         Self {
             slot_serializer: SlotSerializer::new(),

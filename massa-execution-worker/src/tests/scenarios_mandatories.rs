@@ -20,7 +20,7 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
-use massa_models::deferred_call_id::DeferredCallId;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::{address::Address, amount::Amount, slot::Slot};

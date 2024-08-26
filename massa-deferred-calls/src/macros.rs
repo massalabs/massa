@@ -143,7 +143,7 @@ macro_rules! cancelled_key {
 mod tests {
     use massa_db_exports::DEFERRED_CALLS_PREFIX;
     use massa_models::{
-        deferred_call_id::{DeferredCallId, DeferredCallIdSerializer},
+        deferred_calls::{DeferredCallId, DeferredCallIdSerializer},
         slot::Slot,
     };
     use massa_serialization::Serializer;

@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, ops::Bound};
 use massa_ledger_exports::{SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::{
     amount::Amount,
-    deferred_call_id::DeferredCallId,
+    deferred_calls::DeferredCallId,
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
 use massa_serialization::{
@@ -208,7 +208,7 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
 mod tests {
     use std::str::FromStr;
 
-    use massa_models::{address::Address, amount::Amount, deferred_call_id::DeferredCallId};
+    use massa_models::{address::Address, amount::Amount, deferred_calls::DeferredCallId};
     use massa_serialization::DeserializeError;
 
     use crate::{

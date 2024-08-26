@@ -29,7 +29,7 @@ use massa_ledger_exports::{LedgerChanges, SetOrKeep};
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
-use massa_models::deferred_call_id::DeferredCallId;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::{
@@ -1183,7 +1183,7 @@ impl ExecutionContext {
     /// Check if a deferred call exists
     /// If it exists, check if it has been cancelled
     /// If it has been cancelled, return false
-    pub fn deferred_call_exist(&self, call_id: &DeferredCallId) -> bool {
+    pub fn deferred_call_exists(&self, call_id: &DeferredCallId) -> bool {
         if let Some(call) = self.speculative_deferred_calls.get_call(call_id) {
             return call.cancelled;
         }
@@ -1193,6 +1193,7 @@ impl ExecutionContext {
     /// when a deferred call execution fails we need to refund the coins to the caller
     pub fn deferred_call_fail_exec(
         &mut self,
+        id: &DeferredCallId,
         call: &DeferredCall,
     ) -> Option<(Address, Result<Amount, String>)> {
         #[allow(unused_assignments, unused_mut)]
@@ -1207,6 +1208,9 @@ impl ExecutionContext {
             );
         }
 
+        let event = self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
+        self.event_emit(event);
+
         #[cfg(feature = "execution-info")]
         if let Err(e) = transfer_result {
             result = Some((call.sender_address, Err(e.to_string())))
@@ -1217,11 +1221,7 @@ impl ExecutionContext {
         result
     }
 
-    /// not used for now
-    pub fn deferred_call_delete(&mut self, call_id: &DeferredCallId, slot: Slot) {
-        self.speculative_deferred_calls.delete_call(call_id, slot);
-    }
-
+    /// when a deferred call is cancelled we need to refund the coins to the caller
     pub fn deferred_call_cancel(
         &mut self,
         call_id: &DeferredCallId,

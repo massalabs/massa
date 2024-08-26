@@ -30,6 +30,7 @@ use massa_models::bytecode::Bytecode;
 
 use massa_models::config::DEFERRED_CALL_MAX_FUTURE_SLOTS;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
@@ -1227,6 +1228,7 @@ impl ExecutionState {
 
     fn execute_deferred_call(
         &self,
+        id: &DeferredCallId,
         call: DeferredCall,
     ) -> Result<DeferredCallExecutionResult, ExecutionError> {
         let mut result = DeferredCallExecutionResult::new(&call);
@@ -1261,7 +1263,7 @@ impl ExecutionState {
             // Ensure that the target address exists
             if let Err(err) = context.check_target_sc_address(call.target_address) {
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(&call);
+                context.deferred_call_fail_exec(id, &call);
                 return Err(err);
             }
 
@@ -1276,7 +1278,7 @@ impl ExecutionState {
                 ));
 
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(&call);
+                context.deferred_call_fail_exec(id, &call);
                 return Err(err);
             }
 
@@ -1336,7 +1338,7 @@ impl ExecutionState {
                 };
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(&call);
+                context.deferred_call_fail_exec(id, &call);
                 Err(err)
             }
         }
@@ -1388,12 +1390,6 @@ impl ExecutionState {
             self.config.thread_count,
         );
 
-        // Get asynchronous messages to execute
-        let messages = execution_context.take_async_batch(
-            self.config.max_async_gas.saturating_sub(calls.slot_gas),
-            self.config.async_msg_cst_gas_cost,
-        );
-
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
@@ -1402,7 +1398,7 @@ impl ExecutionState {
                 // Skip cancelled calls
                 continue;
             }
-            match self.execute_deferred_call(call) {
+            match self.execute_deferred_call(&id, call) {
                 Ok(_exec) => {
                     info!("executed deferred call: {:?}", id);
                     cfg_if::cfg_if! {
@@ -1424,31 +1420,9 @@ impl ExecutionState {
             }
         }
 
-        // Try executing asynchronous messages.
-        // Effects are cancelled on failure and the sender is reimbursed.
-        for (opt_bytecode, message) in messages {
-            match self.execute_async_message(message, opt_bytecode) {
-                Ok(_message_return) => {
-                    cfg_if::cfg_if! {
-                        if #[cfg(feature = "execution-trace")] {
-                            // Safe to unwrap
-                            slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                        } else if #[cfg(feature = "execution-info")] {
-                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                            exec_info.async_messages.push(Ok(_message_return));
-                        }
-                    }
-                }
-                Err(err) => {
-                    let msg = format!("failed executing async message: {}", err);
-                    #[cfg(feature = "execution-info")]
-                    exec_info.async_messages.push(Err(msg.clone()));
-                    debug!(msg);
-                }
-            }
-        }
-
         let mut block_info: Option<ExecutedBlockInfo> = None;
+        // Set block gas (max_gas_per_block - gas used by deferred calls)
+        let mut remaining_block_gas = self.config.max_gas_per_block;
 
         // Check if there is a block at this slot
         if let Some((block_id, block_metadata)) = exec_target {
@@ -1499,9 +1473,6 @@ impl ExecutionState {
             let endorsement_target_creator = block_metadata
                 .same_thread_parent_creator
                 .expect("same thread parent creator missing");
-
-            // Set remaining block gas
-            let mut remaining_block_gas = self.config.max_gas_per_block;
 
             // Set block credits
             let mut block_credits = self.config.block_reward;
@@ -1702,6 +1673,37 @@ impl ExecutionState {
                 .get_producer(*slot)
                 .expect("couldn't get the expected block producer for a missed slot");
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
+        }
+
+        // Get asynchronous messages to execute
+        // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+        let async_msg_gas_available =
+            self.config.max_async_gas.saturating_sub(calls.slot_gas) + remaining_block_gas;
+        let messages = context_guard!(self)
+            .take_async_batch(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+
+        // Try executing asynchronous messages.
+        // Effects are cancelled on failure and the sender is reimbursed.
+        for (opt_bytecode, message) in messages {
+            match self.execute_async_message(message, opt_bytecode) {
+                Ok(_message_return) => {
+                    cfg_if::cfg_if! {
+                        if #[cfg(feature = "execution-trace")] {
+                            // Safe to unwrap
+                            slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                        } else if #[cfg(feature = "execution-info")] {
+                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                            exec_info.async_messages.push(Ok(_message_return));
+                        }
+                    }
+                }
+                Err(err) => {
+                    let msg = format!("failed executing async message: {}", err);
+                    #[cfg(feature = "execution-info")]
+                    exec_info.async_messages.push(Err(msg.clone()));
+                    debug!(msg);
+                }
+            }
         }
 
         #[cfg(feature = "execution-trace")]

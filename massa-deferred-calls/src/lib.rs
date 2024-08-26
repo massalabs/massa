@@ -27,7 +27,7 @@ use massa_ledger_exports::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
     config::{DEFERRED_CALL_MAX_POOL_CHANGES, MAX_ASYNC_GAS, THREAD_COUNT},
-    deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
+    deferred_calls::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
 use std::collections::{BTreeMap, HashSet};
@@ -49,7 +49,7 @@ impl DeferredCallRegistry {
         [DEFERRED_CALL_TOTAL_GAS] -> u64 // total currently booked gas
         [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
         [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
-        [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> AsyncCall.x // call data
+        [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> DeferredCalls.x // call data
     */
 
     // TODO pass args
@@ -205,89 +205,105 @@ impl DeferredCallRegistry {
 
         let db = self.db.read();
 
-        // sender address
-        let mut temp_buffer = Vec::new();
-        self.call_serializer
-            .address_serializer
-            .serialize(&call.sender_address, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(
-            batch,
-            sender_address_key!(buffer_id, slot_bytes),
-            &temp_buffer,
-        );
-        temp_buffer.clear();
+        {
+            // sender address
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .address_serializer
+                .serialize(&call.sender_address, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(
+                batch,
+                sender_address_key!(buffer_id, slot_bytes),
+                &buffer,
+            );
+        }
 
-        // target slot
-        self.call_serializer
-            .slot_serializer
-            .serialize(&call.target_slot, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, target_slot_key!(buffer_id, slot_bytes), &temp_buffer);
-        temp_buffer.clear();
+        {
+            // target slot
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .slot_serializer
+                .serialize(&call.target_slot, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(batch, target_slot_key!(buffer_id, slot_bytes), &buffer);
+        }
 
-        // target address
-        self.call_serializer
-            .address_serializer
-            .serialize(&call.target_address, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(
-            batch,
-            target_address_key!(buffer_id, slot_bytes),
-            &temp_buffer,
-        );
-        temp_buffer.clear();
+        {
+            // target address
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .address_serializer
+                .serialize(&call.target_address, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(
+                batch,
+                target_address_key!(buffer_id, slot_bytes),
+                &buffer,
+            );
+        }
 
-        // target function
-        self.call_serializer
-            .string_serializer
-            .serialize(&call.target_function, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(
-            batch,
-            target_function_key!(buffer_id, slot_bytes),
-            &temp_buffer,
-        );
-        temp_buffer.clear();
+        {
+            // target function
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .string_serializer
+                .serialize(&call.target_function, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(
+                batch,
+                target_function_key!(buffer_id, slot_bytes),
+                &buffer,
+            );
+        }
 
-        // parameters
-        self.call_serializer
-            .vec_u8_serializer
-            .serialize(&call.parameters, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, parameters_key!(buffer_id, slot_bytes), &temp_buffer);
-        temp_buffer.clear();
+        {
+            // parameters
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .vec_u8_serializer
+                .serialize(&call.parameters, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(batch, parameters_key!(buffer_id, slot_bytes), &buffer);
+        }
 
-        // coins
-        self.call_serializer
-            .amount_serializer
-            .serialize(&call.coins, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, coins_key!(buffer_id, slot_bytes), &temp_buffer);
-        temp_buffer.clear();
+        {
+            // coins
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .amount_serializer
+                .serialize(&call.coins, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(batch, coins_key!(buffer_id, slot_bytes), &buffer);
+        }
 
-        // max gas
-        self.call_serializer
-            .u64_var_int_serializer
-            .serialize(&call.max_gas, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, max_gas_key!(buffer_id, slot_bytes), &temp_buffer);
-        temp_buffer.clear();
+        {
+            // max gas
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .u64_var_int_serializer
+                .serialize(&call.max_gas, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(batch, max_gas_key!(buffer_id, slot_bytes), &buffer);
+        }
 
-        // fee
-        self.call_serializer
-            .amount_serializer
-            .serialize(&call.fee, &mut temp_buffer)
-            .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, fee_key!(buffer_id, slot_bytes), &temp_buffer);
-        temp_buffer.clear();
+        {
+            // fee
+            let mut buffer = Vec::new();
+            self.call_serializer
+                .amount_serializer
+                .serialize(&call.fee, &mut buffer)
+                .expect(DEFERRED_CALL_SER_ERROR);
+            db.put_or_update_entry_value(batch, fee_key!(buffer_id, slot_bytes), &buffer);
+        }
 
         // cancelled
+        let mut buffer = Vec::new();
         self.call_serializer
             .bool_serializer
-            .serialize(&call.cancelled, &mut temp_buffer)
+            .serialize(&call.cancelled, &mut buffer)
             .expect(DEFERRED_CALL_SER_ERROR);
-        db.put_or_update_entry_value(batch, cancelled_key!(buffer_id, slot_bytes), &temp_buffer);
+        db.put_or_update_entry_value(batch, cancelled_key!(buffer_id, slot_bytes), &buffer);
     }
 
     fn delete_entry(&self, id: &DeferredCallId, slot: &Slot, batch: &mut DBBatch) {
@@ -389,49 +405,10 @@ impl DeferredCallRegistry {
     }
 }
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub enum DeferredRegistryCallChange {
-//     Set(DeferredCall),
-//     Delete,
-// }
-
 // TODO put SetOrDelete dans models
 pub type DeferredRegistryCallChange = SetOrDelete<DeferredCall>;
 pub type DeferredRegistryGasChange<V> = SetOrKeep<V>;
 pub type DeferredRegistryBaseFeeChange = SetOrKeep<Amount>;
-
-// impl DeferredRegistryCallChange {
-//     pub fn merge(&mut self, other: DeferredRegistryCallChange) {
-//         *self = other;
-//     }
-
-//     pub fn delete_call(&mut self) {
-//         *self = DeferredRegistryCallChange::Delete;
-//     }
-
-//     pub fn set_call(&mut self, call: DeferredCall) {
-//         *self = DeferredRegistryCallChange::Set(call);
-//     }
-
-//     pub fn get_call(&self) -> Option<&DeferredCall> {
-//         match self {
-//             DeferredRegistryCallChange::Set(v) => Some(v),
-//             DeferredRegistryCallChange::Delete => None,
-//         }
-//     }
-// }
-
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub enum DeferredRegistryGasChange<V> {
-//     Set(V),
-//     Keep,
-// }
-
-// impl<V> Default for DeferredRegistryGasChange<V> {
-//     fn default() -> Self {
-//         DeferredRegistryGasChange::Keep
-//     }
-// }
 
 /// A structure that lists slot calls for a given slot,
 /// as well as global gas usage statistics.

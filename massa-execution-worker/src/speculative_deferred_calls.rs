@@ -13,7 +13,7 @@ use massa_models::{
         DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_MAX_FUTURE_SLOTS,
         DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT, MAX_ASYNC_GAS,
     },
-    deferred_call_id::DeferredCallId,
+    deferred_calls::DeferredCallId,
     slot::Slot,
 };
 use parking_lot::RwLock;

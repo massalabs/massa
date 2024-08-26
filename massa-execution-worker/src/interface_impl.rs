@@ -16,7 +16,7 @@ use massa_models::config::{
     DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
 };
 use massa_models::datastore::get_prefix_bounds;
-use massa_models::deferred_call_id::DeferredCallId;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -1472,7 +1472,7 @@ impl Interface for InterfaceImpl {
         // write-lock context
         let call_id = DeferredCallId::from_bytes(id)?;
         let context = context_guard!(self);
-        Ok(context.deferred_call_exist(&call_id))
+        Ok(context.deferred_call_exists(&call_id))
     }
 
     /// Cancel a deferred call
