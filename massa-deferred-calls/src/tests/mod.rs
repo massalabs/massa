@@ -1,5 +1,5 @@
 use super::*;
-use crate::{DeferredCall, DeferredCallRegistry, DeferredRegistryChanges};
+use crate::{DeferredCall, DeferredCallRegistry, DeferredCallRegistryChanges};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
 use massa_models::{
@@ -31,7 +31,7 @@ fn call_registry_apply_changes() {
 
     let registry = DeferredCallRegistry::new(db);
 
-    let mut changes = DeferredRegistryChanges::default();
+    let mut changes = DeferredCallRegistryChanges::default();
 
     let target_slot = Slot {
         thread: 5,
@@ -83,7 +83,7 @@ fn call_registry_get_slot_calls() {
 
     let registry = DeferredCallRegistry::new(db);
 
-    let mut changes = DeferredRegistryChanges::default();
+    let mut changes = DeferredCallRegistryChanges::default();
 
     let target_slot = Slot {
         thread: 5,

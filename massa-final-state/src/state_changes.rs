@@ -6,7 +6,8 @@ use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
 use massa_deferred_calls::registry_changes::{
-    DeferredRegistryChanges, DeferredRegistryChangesDeserializer, DeferredRegistryChangesSerializer,
+    DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
+    DeferredRegistryChangesSerializer,
 };
 use massa_executed_ops::{
     ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,
@@ -35,7 +36,7 @@ pub struct StateChanges {
     /// asynchronous pool changes
     pub async_pool_changes: AsyncPoolChanges,
     /// deferred call changes
-    pub deferred_call_changes: DeferredRegistryChanges,
+    pub deferred_call_changes: DeferredCallRegistryChanges,
     /// roll state changes
     pub pos_changes: PoSChanges,
     /// executed operations changes

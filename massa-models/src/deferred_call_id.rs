@@ -24,7 +24,7 @@ const DEFERRED_CALL_ID_PREFIX: &str = "D";
 /// block id
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DeferredCallId(Vec<u8>);
 
 /// Serializer for `DeferredCallId`

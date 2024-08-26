@@ -2,7 +2,7 @@
 
 use crate::active_history::ActiveHistory;
 use massa_deferred_calls::{
-    registry_changes::DeferredRegistryChanges, DeferredCall, DeferredSlotCalls,
+    registry_changes::DeferredCallRegistryChanges, DeferredCall, DeferredSlotCalls,
 };
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
@@ -25,7 +25,7 @@ pub(crate) struct SpeculativeDeferredCallRegistry {
     final_state: Arc<RwLock<dyn FinalStateController>>,
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative registry changes
-    deferred_calls_changes: DeferredRegistryChanges,
+    deferred_calls_changes: DeferredCallRegistryChanges,
 }
 
 impl SpeculativeDeferredCallRegistry {
@@ -44,12 +44,12 @@ impl SpeculativeDeferredCallRegistry {
     }
 
     /// Takes a snapshot (clone) of the message states
-    pub fn get_snapshot(&self) -> DeferredRegistryChanges {
+    pub fn get_snapshot(&self) -> DeferredCallRegistryChanges {
         self.deferred_calls_changes.clone()
     }
 
     /// Resets the `SpeculativeDeferredCallRegistry` to a snapshot (see `get_snapshot` method)
-    pub fn reset_to_snapshot(&mut self, snapshot: DeferredRegistryChanges) {
+    pub fn reset_to_snapshot(&mut self, snapshot: DeferredCallRegistryChanges) {
         self.deferred_calls_changes = snapshot;
     }
 
@@ -516,7 +516,7 @@ impl SpeculativeDeferredCallRegistry {
     }
 
     /// Take the deferred registry slot changes
-    pub(crate) fn take(&mut self) -> DeferredRegistryChanges {
+    pub(crate) fn take(&mut self) -> DeferredCallRegistryChanges {
         std::mem::take(&mut self.deferred_calls_changes)
     }
 }

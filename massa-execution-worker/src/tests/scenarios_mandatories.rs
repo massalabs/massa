@@ -2,7 +2,7 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
-use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
+use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
 use massa_deferred_calls::{DeferredCall, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
@@ -1082,7 +1082,7 @@ fn deferred_calls() {
     let mut db_batch = DBBatch::default();
 
     registry.apply_changes_to_batch(
-        DeferredRegistryChanges {
+        DeferredCallRegistryChanges {
             slots_change: slot_changes,
             total_gas: SetOrKeep::Keep,
         },
@@ -1181,6 +1181,7 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
+            dbg!(&changes.deferred_call_changes);
             // assert sender was debited ( -10 coins) and -1.50 for fees
             match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
@@ -1287,7 +1288,7 @@ fn deferred_call_register() {
     let mut db_batch = DBBatch::default();
 
     registry.apply_changes_to_batch(
-        DeferredRegistryChanges {
+        DeferredCallRegistryChanges {
             slots_change: slot_changes,
             total_gas: SetOrKeep::Keep,
         },
@@ -1434,7 +1435,7 @@ fn deferred_call_register_fail() {
     let mut db_batch = DBBatch::default();
 
     registry.apply_changes_to_batch(
-        DeferredRegistryChanges {
+        DeferredCallRegistryChanges {
             slots_change: slot_changes,
             total_gas: SetOrKeep::Set(2000),
         },
@@ -1488,6 +1489,47 @@ fn deferred_call_register_fail() {
     let ev = events[1].clone();
     assert!(ev.context.is_error);
     assert!(ev.data.contains("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas"));
+
+    // // update base fee at slot 1,10
+    // defer_reg_slot_changes.set_base_fee(Amount::from_str("0.0005").unwrap());
+
+    // slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+
+    // let mut db_batch = DBBatch::default();
+
+    // // reset total slot gas
+    // registry.apply_changes_to_batch(
+    //     DeferredRegistryChanges {
+    //         slots_change: slot_changes,
+    //         total_gas: SetOrKeep::Set(0),
+    //     },
+    //     &mut db_batch,
+    // );
+
+    // foreign_controllers
+    //     .db
+    //     .write()
+    //     .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 1)));
+
+    // universe.deploy_bytecode_block(
+    //     &keypair,
+    //     Slot::new(1, 2),
+    //     include_bytes!("./wasm/deferred_call_register_fail.wasm"),
+    //     //unused
+    //     include_bytes!("./wasm/use_builtins.wasm"),
+    // );
+
+    // let events = universe
+    //     .module_controller
+    //     .get_filtered_sc_output_event(EventFilter {
+    //         start: Some(Slot::new(1, 1)),
+    //         end: Some(Slot::new(20, 1)),
+    //         ..Default::default()
+    //     });
+
+    // dbg!(&events);
+
+    // let ev = events[1].clone();
 }
 /// Context
 ///

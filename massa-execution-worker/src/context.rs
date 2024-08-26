@@ -16,7 +16,7 @@ use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
-use massa_deferred_calls::registry_changes::DeferredRegistryChanges;
+use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
@@ -63,7 +63,7 @@ pub struct ExecutionContextSnapshot {
     pub async_pool_changes: AsyncPoolChanges,
 
     /// speculative deferred calls changes
-    pub deferred_calls_changes: DeferredRegistryChanges,
+    pub deferred_calls_changes: DeferredCallRegistryChanges,
 
     /// the associated message infos for the speculative async pool
     pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,

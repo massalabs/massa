@@ -37,28 +37,6 @@ impl DeferredRegistrySlotChanges {
         self.calls.len()
     }
 
-    pub fn merge(&mut self, _other: DeferredRegistrySlotChanges) {
-        unimplemented!("DeferredRegistrySlotChanges::merge")
-        // for (id, change) in other.calls {
-        //     match self.calls.entry(id) {
-        //         std::collections::btree_map::Entry::Occupied(mut entry) => {
-        //             entry.get_mut().merge(change);
-        //         }
-        //         std::collections::btree_map::Entry::Vacant(entry) => {
-        //             entry.insert(change);
-        //         }
-        //     }
-        // }
-        // match other.gas {
-        //     DeferredRegistryGasChange::Set(v) => self.gas = DeferredRegistryGasChange::Set(v),
-        //     DeferredRegistryGasChange::Keep => {}
-        // }
-        // match other.base_fee {
-        //     DeferredRegistryGasChange::Set(v) => self.base_fee = DeferredRegistryGasChange::Set(v),
-        //     DeferredRegistryGasChange::Keep => {}
-        // }
-    }
-
     /// add Delete changes will delete the call from the db registry when the slot is finalized
     pub fn delete_call(&mut self, id: &DeferredCallId) {
         match self.calls.entry(id.clone()) {

@@ -28,29 +28,12 @@ use crate::{
 use std::ops::Bound::Included;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct DeferredRegistryChanges {
+pub struct DeferredCallRegistryChanges {
     pub slots_change: BTreeMap<Slot, DeferredRegistrySlotChanges>,
     pub total_gas: DeferredRegistryGasChange<u128>,
 }
 
-impl DeferredRegistryChanges {
-    pub fn merge(&mut self, other: DeferredRegistryChanges) {
-        for (slot, changes) in other.slots_change {
-            match self.slots_change.entry(slot) {
-                std::collections::btree_map::Entry::Occupied(mut entry) => {
-                    entry.get_mut().merge(changes);
-                }
-                std::collections::btree_map::Entry::Vacant(entry) => {
-                    entry.insert(changes);
-                }
-            }
-        }
-        match other.total_gas {
-            DeferredRegistryGasChange::Set(v) => self.total_gas = DeferredRegistryGasChange::Set(v),
-            DeferredRegistryGasChange::Keep => {}
-        }
-    }
-
+impl DeferredCallRegistryChanges {
     pub fn delete_call(&mut self, target_slot: Slot, id: &DeferredCallId) {
         self.slots_change
             .entry(target_slot)
@@ -127,10 +110,10 @@ impl DeferredRegistryChangesSerializer {
     }
 }
 
-impl Serializer<DeferredRegistryChanges> for DeferredRegistryChangesSerializer {
+impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializer {
     fn serialize(
         &self,
-        value: &DeferredRegistryChanges,
+        value: &DeferredCallRegistryChanges,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         self.slots_length.serialize(
@@ -184,11 +167,11 @@ impl DeferredRegistryChangesDeserializer {
     }
 }
 
-impl Deserializer<DeferredRegistryChanges> for DeferredRegistryChangesDeserializer {
+impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
         buffer: &'a [u8],
-    ) -> IResult<&'a [u8], DeferredRegistryChanges, E> {
+    ) -> IResult<&'a [u8], DeferredCallRegistryChanges, E> {
         context(
             "Failed DeferredRegistryChanges deserialization",
             tuple((
@@ -213,7 +196,7 @@ impl Deserializer<DeferredRegistryChanges> for DeferredRegistryChangesDeserializ
                 }),
             )),
         )
-        .map(|(changes, total_gas)| DeferredRegistryChanges {
+        .map(|(changes, total_gas)| DeferredCallRegistryChanges {
             slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
             total_gas,
         })
@@ -238,12 +221,12 @@ mod tests {
 
     #[test]
     fn test_deferred_registry_ser_deser() {
-        use crate::DeferredRegistryChanges;
+        use crate::DeferredCallRegistryChanges;
         use massa_models::slot::Slot;
         use massa_serialization::{Deserializer, Serializer};
         use std::collections::BTreeMap;
 
-        let mut changes = DeferredRegistryChanges {
+        let mut changes = DeferredCallRegistryChanges {
             slots_change: BTreeMap::new(),
             total_gas: Default::default(),
         };

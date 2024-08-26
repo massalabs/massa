@@ -6,7 +6,8 @@ use massa_db_exports::{
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use registry_changes::{
-    DeferredRegistryChanges, DeferredRegistryChangesDeserializer, DeferredRegistryChangesSerializer,
+    DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
+    DeferredRegistryChangesSerializer,
 };
 
 /// This module implements a new version of the Autonomous Smart Contracts. (ASC)
@@ -29,7 +30,7 @@ use massa_models::{
     deferred_call_id::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 // #[derive(Debug)]
 pub struct DeferredCallRegistry {
@@ -68,12 +69,12 @@ impl DeferredCallRegistry {
         }
     }
 
+    /// Returns the DeferredSlotCalls for a given slot
     pub fn get_slot_calls(&self, slot: Slot) -> DeferredSlotCalls {
         let mut to_return = DeferredSlotCalls::new(slot);
         let key = deferred_slot_call_prefix_key!(slot.to_bytes_key());
 
-        // cache the call ids to avoid duplicates iteration
-        let mut temp = Vec::new();
+        let mut temp = HashSet::new();
 
         for (serialized_key, _serialized_value) in self.db.read().prefix_iterator_cf(STATE_CF, &key)
         {
@@ -88,11 +89,9 @@ impl DeferredCallRegistry {
                 .deserialize::<DeserializeError>(&rest_key)
                 .expect(KEY_DESER_ERROR);
 
-            if temp.contains(&call_id) {
+            if !temp.insert(call_id.clone()) {
                 continue;
             }
-
-            temp.push(call_id.clone());
 
             if let Some(call) = self.get_call(&slot, &call_id) {
                 to_return.slot_calls.insert(call_id, call);
@@ -312,7 +311,11 @@ impl DeferredCallRegistry {
         db.delete_key(batch, cancelled_key!(buffer_id, slot_bytes));
     }
 
-    pub fn apply_changes_to_batch(&self, changes: DeferredRegistryChanges, batch: &mut DBBatch) {
+    pub fn apply_changes_to_batch(
+        &self,
+        changes: DeferredCallRegistryChanges,
+        batch: &mut DBBatch,
+    ) {
         //Note: if a slot gas is zet to 0, delete the slot gas entry
         // same for base fee
 
@@ -452,7 +455,7 @@ impl DeferredSlotCalls {
         }
     }
 
-    pub fn apply_changes(&mut self, changes: &DeferredRegistryChanges) {
+    pub fn apply_changes(&mut self, changes: &DeferredCallRegistryChanges) {
         let Some(slot_changes) = changes.slots_change.get(&self.slot) else {
             return;
         };
