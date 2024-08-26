@@ -5,9 +5,12 @@
 use massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
-use massa_deferred_calls::registry_changes::{
-    DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
-    DeferredRegistryChangesSerializer,
+use massa_deferred_calls::{
+    config::DeferredCallsConfig,
+    registry_changes::{
+        DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
+        DeferredRegistryChangesSerializer,
+    },
 };
 use massa_executed_ops::{
     ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,
@@ -129,7 +132,7 @@ impl StateChangesDeserializer {
         max_ops_changes_length: u64,
         endorsement_count: u32,
         max_de_changes_length: u64,
-        max_deferred_call_pool_changes: u64,
+        deferred_calls_config: DeferredCallsConfig,
     ) -> Self {
         Self {
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -147,9 +150,7 @@ impl StateChangesDeserializer {
             ),
             // todo max gas
             deferred_call_changes_deserializer: DeferredRegistryChangesDeserializer::new(
-                thread_count,
-                u64::MAX,
-                max_deferred_call_pool_changes,
+                deferred_calls_config,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,
@@ -251,6 +252,7 @@ mod test {
     use std::str::FromStr;
 
     use massa_async_pool::AsyncMessage;
+    use massa_deferred_calls::config::DeferredCallsConfig;
     use massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
     use massa_models::amount::Amount;
     use massa_models::bytecode::Bytecode;
@@ -340,7 +342,7 @@ mod test {
             MAX_EXECUTED_OPS_CHANGES_LENGTH,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,
-            DEFERRED_CALL_MAX_POOL_CHANGES,
+            DeferredCallsConfig::default(),
         )
         .deserialize::<DeserializeError>(&serialized)
         .unwrap();

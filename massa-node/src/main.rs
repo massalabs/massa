@@ -31,6 +31,7 @@ use massa_consensus_exports::{
 use massa_consensus_worker::start_consensus_worker;
 use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
     ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
@@ -190,9 +191,18 @@ async fn launch(
         endorsement_count: ENDORSEMENT_COUNT,
         keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
+    let deferred_calls_config = DeferredCallsConfig {
+        thread_count: THREAD_COUNT,
+        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
+        max_parameter_size: MAX_PARAMETERS_SIZE,
+        // TODO: set to a reasonable value
+        max_deferred_calls_pool_changes: 1000000,
+        max_gas: MAX_ASYNC_GAS,
+    };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
+        deferred_calls_config,
         pos_config,
         executed_ops_config,
         executed_denunciations_config,

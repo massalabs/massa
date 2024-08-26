@@ -109,7 +109,8 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
-        let deferred_call_registry = DeferredCallRegistry::new(db.clone());
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), config.deferred_calls_config.clone());
 
         let mut final_state = FinalState {
             ledger,
@@ -939,6 +940,7 @@ mod test {
     use std::str::FromStr;
     use std::sync::Arc;
 
+    use massa_deferred_calls::config::DeferredCallsConfig;
     use num::rational::Ratio;
     use parking_lot::RwLock;
     use tempfile::tempdir;
@@ -1008,9 +1010,11 @@ mod test {
             keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         };
 
+        let deferred_calls_config = DeferredCallsConfig::default();
         let final_state_config = FinalStateConfig {
             ledger_config: ledger_config.clone(),
             async_pool_config,
+            deferred_calls_config,
             pos_config,
             executed_ops_config,
             executed_denunciations_config,

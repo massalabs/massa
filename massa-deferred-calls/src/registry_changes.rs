@@ -19,6 +19,7 @@ use nom::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    config::DeferredCallsConfig,
     slot_changes::{
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
         DeferredRegistrySlotChangesSerializer,
@@ -144,20 +145,16 @@ pub struct DeferredRegistryChangesDeserializer {
 }
 
 impl DeferredRegistryChangesDeserializer {
-    pub fn new(thread_count: u8, max_gas: u64, max_deferred_calls_pool_changes: u64) -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             slots_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(max_deferred_calls_pool_changes),
+                Included(config.max_deferred_calls_pool_changes),
             ),
-            slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(
-                thread_count,
-                max_gas,
-                max_deferred_calls_pool_changes,
-            ),
+            slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(config.clone()),
             slot_deserializer: SlotDeserializer::new(
                 (Bound::Included(0), Bound::Included(u64::MAX)),
-                (Bound::Included(0), Bound::Excluded(thread_count)),
+                (Bound::Included(0), Bound::Excluded(config.thread_count)),
             ),
             total_gas_deserializer: SetOrKeepDeserializer::new(U128VarIntDeserializer::new(
                 Included(u128::MIN),
@@ -212,6 +209,7 @@ mod tests {
     use massa_serialization::DeserializeError;
 
     use crate::{
+        config::DeferredCallsConfig,
         registry_changes::{
             DeferredRegistryChangesDeserializer, DeferredRegistryChangesSerializer,
         },
@@ -272,7 +270,7 @@ mod tests {
         let serializer = DeferredRegistryChangesSerializer::new();
         serializer.serialize(&changes, &mut buffer).unwrap();
 
-        let deserializer = DeferredRegistryChangesDeserializer::new(32, 300_000, 10_000);
+        let deserializer = DeferredRegistryChangesDeserializer::new(DeferredCallsConfig::default());
         let (rest, deserialized) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();

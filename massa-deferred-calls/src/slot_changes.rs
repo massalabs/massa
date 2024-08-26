@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     call::{DeferredCallDeserializer, DeferredCallSerializer},
+    config::DeferredCallsConfig,
     DeferredCall, DeferredRegistryBaseFeeChange, DeferredRegistryCallChange,
     DeferredRegistryGasChange,
 };
@@ -140,19 +141,19 @@ pub struct DeferredRegistrySlotChangesDeserializer {
 }
 
 impl DeferredRegistrySlotChangesDeserializer {
-    pub fn new(thread_count: u8, max_gas: u64, max_deferred_calls_pool_changes: u64) -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             deferred_registry_slot_changes_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(max_deferred_calls_pool_changes),
+                Included(config.max_deferred_calls_pool_changes),
             ),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             calls_set_or_delete_deserializer: SetOrDeleteDeserializer::new(
-                DeferredCallDeserializer::new(thread_count),
+                DeferredCallDeserializer::new(config.clone()),
             ),
             gas_deserializer: SetOrKeepDeserializer::new(U64VarIntDeserializer::new(
                 Included(0),
-                Included(max_gas),
+                Included(config.max_gas),
             )),
             base_fee_deserializer: SetOrKeepDeserializer::new(AmountDeserializer::new(
                 Included(Amount::MIN),
@@ -217,7 +218,7 @@ mod tests {
     };
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
-    use crate::DeferredCall;
+    use crate::{config::DeferredCallsConfig, DeferredCall};
 
     use super::{
         DeferredRegistrySlotChanges, DeferredRegistrySlotChangesDeserializer,
@@ -264,7 +265,8 @@ mod tests {
             .serialize(&registry_slot_changes, &mut buffer)
             .unwrap();
 
-        let deserializer = DeferredRegistrySlotChangesDeserializer::new(32, 3000000, 100_000);
+        let deserializer =
+            DeferredRegistrySlotChangesDeserializer::new(DeferredCallsConfig::default());
         let (rest, changes_deser) = deserializer
             .deserialize::<DeserializeError>(&buffer)
             .unwrap();

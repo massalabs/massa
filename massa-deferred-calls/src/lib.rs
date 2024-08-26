@@ -1,4 +1,5 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
+use config::DeferredCallsConfig;
 use macros::DEFERRED_CALL_TOTAL_GAS;
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
@@ -13,6 +14,7 @@ use registry_changes::{
 /// This module implements a new version of the Autonomous Smart Contracts. (ASC)
 /// This new version allow asynchronous calls to be registered for a specific slot and ensure his execution.
 mod call;
+pub mod config;
 pub mod registry_changes;
 pub mod slot_changes;
 
@@ -26,7 +28,6 @@ pub use call::DeferredCall;
 use massa_ledger_exports::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
-    config::{DEFERRED_CALL_MAX_POOL_CHANGES, MAX_ASYNC_GAS, THREAD_COUNT},
     deferred_calls::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},
     slot::Slot,
 };
@@ -53,18 +54,14 @@ impl DeferredCallRegistry {
     */
 
     // TODO pass args
-    pub fn new(db: ShareableMassaDBController) -> Self {
+    pub fn new(db: ShareableMassaDBController, config: DeferredCallsConfig) -> Self {
         Self {
             db,
             call_serializer: DeferredCallSerializer::new(),
             call_id_serializer: DeferredCallIdSerializer::new(),
-            call_deserializer: DeferredCallDeserializer::new(THREAD_COUNT),
+            call_deserializer: DeferredCallDeserializer::new(config.clone()),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
-            registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(
-                THREAD_COUNT,
-                MAX_ASYNC_GAS,
-                DEFERRED_CALL_MAX_POOL_CHANGES,
-            ),
+            registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
         }
     }

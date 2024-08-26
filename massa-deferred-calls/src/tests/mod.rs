@@ -29,7 +29,7 @@ fn call_registry_apply_changes() {
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
 
-    let registry = DeferredCallRegistry::new(db);
+    let registry = DeferredCallRegistry::new(db, DeferredCallsConfig::default());
 
     let mut changes = DeferredCallRegistryChanges::default();
 
@@ -81,7 +81,7 @@ fn call_registry_get_slot_calls() {
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
     ));
 
-    let registry = DeferredCallRegistry::new(db);
+    let registry = DeferredCallRegistry::new(db, DeferredCallsConfig::default());
 
     let mut changes = DeferredCallRegistryChanges::default();
 

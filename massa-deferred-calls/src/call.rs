@@ -16,6 +16,8 @@ use nom::{
 use serde::{Deserialize, Serialize};
 use std::ops::Bound;
 
+use crate::config::DeferredCallsConfig;
+
 /// Definition of a call in the future
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeferredCall {
@@ -126,20 +128,20 @@ pub struct DeferredCallDeserializer {
 
 impl DeferredCallDeserializer {
     /// Deserializes a `Vec<u8>` into an `AsyncCall`
-    pub fn new(thread_count: u8) -> Self {
+    pub fn new(config: DeferredCallsConfig) -> Self {
         Self {
             slot_deserializer: SlotDeserializer::new(
                 (Bound::Included(0), Bound::Included(u64::MAX)),
-                (Bound::Included(0), Bound::Excluded(thread_count)),
+                (Bound::Included(0), Bound::Excluded(config.thread_count)),
             ),
             address_deserializer: AddressDeserializer::new(),
             string_deserializer: StringDeserializer::new(U16VarIntDeserializer::new(
                 Bound::Included(0),
-                Bound::Included(u16::MAX),
+                Bound::Included(config.max_function_name_length),
             )),
             vec_u8_deserializer: VecU8Deserializer::new(
                 std::ops::Bound::Included(0),
-                std::ops::Bound::Included(u16::MAX as u64),
+                std::ops::Bound::Included(config.max_parameter_size as u64),
             ),
             amount_deserializer: AmountDeserializer::new(
                 Bound::Included(Amount::MIN),
@@ -224,6 +226,7 @@ impl Deserializer<DeferredCall> for DeferredCallDeserializer {
 mod tests {
     use std::str::FromStr;
 
+    use massa_models::config::{MAX_PARAMETERS_SIZE, THREAD_COUNT};
     use massa_serialization::DeserializeError;
 
     use super::*;
@@ -242,7 +245,8 @@ mod tests {
             false,
         );
         let serializer = DeferredCallSerializer::new();
-        let deserializer = DeferredCallDeserializer::new(1);
+
+        let deserializer = DeferredCallDeserializer::new(DeferredCallsConfig::default());
         let mut buffer = Vec::new();
         serializer.serialize(&call, &mut buffer).unwrap();
         let (rest, deserialized_call) = deserializer
