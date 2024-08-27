@@ -149,7 +149,7 @@ impl DeferredRegistryChangesDeserializer {
         Self {
             slots_length: U64VarIntDeserializer::new(
                 Included(u64::MIN),
-                Included(config.max_deferred_calls_pool_changes),
+                Included(config.max_pool_changes),
             ),
             slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(config.clone()),
             slot_deserializer: SlotDeserializer::new(

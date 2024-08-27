@@ -227,6 +227,7 @@ impl ExecutionContext {
             speculative_deferred_calls: SpeculativeDeferredCallRegistry::new(
                 final_state.clone(),
                 active_history.clone(),
+                config.deferred_calls_config.clone(),
             ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
@@ -1135,41 +1136,19 @@ impl ExecutionContext {
         }
     }
 
-    pub fn deferred_calls_advance_slot(
-        &mut self,
-        current_slot: Slot,
-        async_call_max_booking_slots: u64,
-        thread_count: u8,
-    ) -> DeferredSlotCalls {
-        self.speculative_deferred_calls.advance_slot(
-            current_slot,
-            async_call_max_booking_slots,
-            thread_count,
-        )
+    pub fn deferred_calls_advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
+        self.speculative_deferred_calls.advance_slot(current_slot)
     }
 
     /// Get the price it would cost to reserve "gas" at target slot "slot".
     pub fn deferred_calls_compute_call_fee(
         &self,
         target_slot: Slot,
-        max_gas: u64,
-        thread_count: u8,
-        async_call_max_booking_slots: u64,
-        max_async_gas: u64,
-        global_overbooking_penalty: Amount,
-        slot_overbooking_penalty: Amount,
+        max_gas_request: u64,
         current_slot: Slot,
     ) -> Result<Amount, ExecutionError> {
-        self.speculative_deferred_calls.compute_call_fee(
-            target_slot,
-            max_gas,
-            thread_count,
-            async_call_max_booking_slots,
-            max_async_gas,
-            global_overbooking_penalty,
-            slot_overbooking_penalty,
-            current_slot,
-        )
+        self.speculative_deferred_calls
+            .compute_call_fee(target_slot, max_gas_request, current_slot)
     }
 
     pub fn deferred_call_register(

@@ -86,7 +86,10 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
+    DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
+    DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT,
+    DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
     MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
@@ -195,14 +198,19 @@ async fn launch(
         thread_count: THREAD_COUNT,
         max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_size: MAX_PARAMETERS_SIZE,
-        // TODO: set to a reasonable value
-        max_deferred_calls_pool_changes: 1000000,
-        max_gas: MAX_ASYNC_GAS,
+        max_pool_changes: DEFERRED_CALL_MAX_POOL_CHANGES,
+        max_gas: DEFERRED_CALL_MAX_ASYNC_GAS,
+        max_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
+        base_fee_max_max_change_denominator: DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
+        min_gas_increment: DEFERRED_CALL_MIN_GAS_INCREMENT,
+        min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
+        global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
+        slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
-        deferred_calls_config,
+        deferred_calls_config: deferred_calls_config.clone(),
         pos_config,
         executed_ops_config,
         executed_denunciations_config,
@@ -528,7 +536,7 @@ async fn launch(
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
-        max_deferred_call_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
+        deferred_calls_config: deferred_calls_config.clone(),
     };
 
     let execution_channels = ExecutionChannels {

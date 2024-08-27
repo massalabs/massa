@@ -226,7 +226,6 @@ impl Deserializer<DeferredCall> for DeferredCallDeserializer {
 mod tests {
     use std::str::FromStr;
 
-    use massa_models::config::{MAX_PARAMETERS_SIZE, THREAD_COUNT};
     use massa_serialization::DeserializeError;
 
     use super::*;

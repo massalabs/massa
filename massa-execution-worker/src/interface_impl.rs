@@ -12,9 +12,6 @@ use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
-use massa_models::config::{
-    DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-};
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::{
@@ -1352,16 +1349,7 @@ impl Interface for InterfaceImpl {
 
         let target_slot = Slot::new(target_slot.0, target_slot.1);
 
-        match context.deferred_calls_compute_call_fee(
-            target_slot,
-            gas_limit,
-            self.config.thread_count,
-            self.config.max_deferred_call_future_slots,
-            self.config.max_async_gas,
-            DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-            DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-            current_slot,
-        ) {
+        match context.deferred_calls_compute_call_fee(target_slot, gas_limit, current_slot) {
             Ok(fee) => Ok((true, fee.to_raw())),
             Err(_) => Ok((false, 0)),
         }

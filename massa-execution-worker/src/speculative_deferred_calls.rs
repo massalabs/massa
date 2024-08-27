@@ -2,18 +2,13 @@
 
 use crate::active_history::ActiveHistory;
 use massa_deferred_calls::{
-    registry_changes::DeferredCallRegistryChanges, DeferredCall, DeferredSlotCalls,
+    config::DeferredCallsConfig, registry_changes::DeferredCallRegistryChanges, DeferredCall,
+    DeferredSlotCalls,
 };
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::{
-    address::Address,
-    amount::Amount,
-    config::{
-        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_MAX_FUTURE_SLOTS,
-        DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT, MAX_ASYNC_GAS,
-    },
-    deferred_calls::DeferredCallId,
+    address::Address, amount::Amount, config::MAX_ASYNC_GAS, deferred_calls::DeferredCallId,
     slot::Slot,
 };
 use parking_lot::RwLock;
@@ -26,6 +21,7 @@ pub(crate) struct SpeculativeDeferredCallRegistry {
     active_history: Arc<RwLock<ActiveHistory>>,
     // current speculative registry changes
     deferred_calls_changes: DeferredCallRegistryChanges,
+    config: DeferredCallsConfig,
 }
 
 impl SpeculativeDeferredCallRegistry {
@@ -35,11 +31,13 @@ impl SpeculativeDeferredCallRegistry {
     pub fn new(
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        config: DeferredCallsConfig,
     ) -> Self {
         SpeculativeDeferredCallRegistry {
             final_state,
             active_history,
             deferred_calls_changes: Default::default(),
+            config,
         }
     }
 
@@ -135,7 +133,6 @@ impl SpeculativeDeferredCallRegistry {
         }
 
         // check in final state
-        // TODO check if that is correct
         return self
             .final_state
             .read()
@@ -145,12 +142,7 @@ impl SpeculativeDeferredCallRegistry {
 
     /// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
-    pub fn advance_slot(
-        &mut self,
-        current_slot: Slot,
-        async_call_max_booking_slots: u64,
-        thread_count: u8,
-    ) -> DeferredSlotCalls {
+    pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
         // get the state of the current slot
         let mut slot_calls: DeferredSlotCalls = self
             .final_state
@@ -162,35 +154,15 @@ impl SpeculativeDeferredCallRegistry {
         }
         slot_calls.apply_changes(&self.deferred_calls_changes);
 
-        // const BASE_FEE_MAX_CHANGE_DENOMINATOR = 8;
-        // const MIN_GAS_INCREMENT = 1 nano-massa;
-        // const MIN_GAS_COST = 10 nano-massa
-
-        // let TARGET_BOOKING = MAX_ASYNC_GAS/2;
-        // let total_booked_gas = get_current_total_booked_async_gas();
-        // let avg_booked_gas = total_booked_gas/ASYNC_BOOKING_SLOT_COUNT;
-
-        // if (avg_booked_gas == TARGET_BOOKING) {
-        //     S.base_fee_per_gas = (S-1).base_async_gas_cost;
-        // } else if (avg_booked_gas > TARGET_BOOKING) {
-        //     gas_used_delta = avg_booked_gas - TARGET_BOOKING;
-        //     S.base_fee_per_gas = (S-1).base_async_gas_cost + ((S-1).base_async_gas_cost * gas_used_delta / TARGET_BOOKING / BASE_FEE_MAX_CHANGE_DENOMINATOR, MIN_GAS_INCREMENT)
-        // } else {
-        //     gas_used_delta = TARGET_BOOKING - total_booked_gas
-        //     S.base_fee_per_gas = max((S-1).base_async_gas_cost - (S-1).base_async_gas_cost * gas_used_delta / TARGET_BOOKING / BASE_FEE_MAX_CHANGE_DENOMINATOR, MIN_GAS_COST)
-        // }
-
         let total_booked_gas = self.get_total_gas();
-        let avg_booked_gas =
-            total_booked_gas.saturating_div(DEFERRED_CALL_MAX_FUTURE_SLOTS as u128);
-
+        let avg_booked_gas = total_booked_gas.saturating_div(self.config.max_future_slots as u128);
         // select the slot that is newly made available and set its base fee
         let new_slot = current_slot
-            .skip(async_call_max_booking_slots, thread_count)
+            .skip(self.config.max_future_slots, self.config.thread_count)
             .expect("could not skip enough slots");
 
         let prev_slot = new_slot
-            .get_prev_slot(thread_count)
+            .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
         let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
@@ -202,12 +174,12 @@ impl SpeculativeDeferredCallRegistry {
 
                 let factor = gas_used_delta as u64
                     / TARGET_BOOKING as u64
-                    / DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR as u64;
+                    / self.config.base_fee_max_max_change_denominator as u64;
 
                 max(
                     prev_slot_base_fee
                         .saturating_add(prev_slot_base_fee.saturating_mul_u64(factor)),
-                    Amount::from_raw(DEFERRED_CALL_MIN_GAS_INCREMENT),
+                    Amount::from_raw(self.config.min_gas_increment),
                 )
             }
             std::cmp::Ordering::Less => {
@@ -215,12 +187,12 @@ impl SpeculativeDeferredCallRegistry {
 
                 let factor = gas_used_delta as u64
                     / TARGET_BOOKING as u64
-                    / DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR as u64;
+                    / self.config.base_fee_max_max_change_denominator as u64;
 
                 max(
                     prev_slot_base_fee
                         .saturating_sub(prev_slot_base_fee.saturating_mul_u64(factor)),
-                    Amount::from_raw(DEFERRED_CALL_MIN_GAS_COST),
+                    Amount::from_raw(self.config.min_gas_cost),
                 )
             }
         };
@@ -386,12 +358,7 @@ impl SpeculativeDeferredCallRegistry {
     pub fn compute_call_fee(
         &self,
         target_slot: Slot,
-        max_gas: u64,
-        thread_count: u8,
-        async_call_max_booking_slots: u64,
-        max_async_gas: u64,
-        global_overbooking_penalty: Amount,
-        slot_overbooking_penalty: Amount,
+        max_gas_request: u64,
         current_slot: Slot,
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
@@ -403,9 +370,9 @@ impl SpeculativeDeferredCallRegistry {
 
         // Check that the slot is not in the future
         if target_slot
-            .slots_since(&current_slot, thread_count)
+            .slots_since(&current_slot, self.config.thread_count)
             .unwrap_or(u64::MAX)
-            > async_call_max_booking_slots
+            > self.config.max_future_slots
         {
             // note: the current slot is not counted
             return Err(ExecutionError::DeferredCallsError(
@@ -415,7 +382,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // Check that the gas is not too high for the target slot
         let slot_occupancy = self.get_slot_gas(&target_slot);
-        if slot_occupancy.saturating_add(max_gas) > max_async_gas {
+        if slot_occupancy.saturating_add(max_gas_request) > self.config.max_gas {
             return Err(ExecutionError::DeferredCallsError(
                 "Not enough gas available in the target slot.".into(),
             ));
@@ -431,7 +398,7 @@ impl SpeculativeDeferredCallRegistry {
         // Integral fee
         let integral_fee = self
             .get_slot_base_fee(&target_slot)
-            .saturating_mul_u64(max_gas);
+            .saturating_mul_u64(max_gas_request);
 
         // The integral fee is not enough to respond to quick demand surges within the long booking period `deferred_call_max_future_slots`. Proportional regulation is also necessary.
 
@@ -444,21 +411,21 @@ impl SpeculativeDeferredCallRegistry {
             .get_total_gas()
             .unwrap_or_default();
         let global_overbooking_fee = Self::overbooking_fee(
-            (max_async_gas as u128).saturating_mul(async_call_max_booking_slots as u128),
-            (async_call_max_booking_slots as u128).saturating_mul(TARGET_BOOKING) as u128,
+            (self.config.max_gas as u128).saturating_mul(self.config.max_future_slots as u128),
+            (self.config.max_future_slots as u128).saturating_mul(TARGET_BOOKING),
             global_occupancy,
-            max_gas as u128,
-            global_overbooking_penalty, // total_supply
+            max_gas_request as u128,
+            self.config.global_overbooking_penalty, // total_supply
         )?;
 
         // Finally, a per-slot proportional fee is also added to prevent attackers from denying significant ranges of consecutive slots within the long booking period.
         // Slot overbooking fee
         let slot_overbooking_fee = Self::overbooking_fee(
-            max_async_gas as u128,
+            self.config.max_gas as u128,
             TARGET_BOOKING,
             slot_occupancy as u128,
-            max_gas as u128,
-            slot_overbooking_penalty, //   total_initial_coin_supply/10000
+            max_gas_request as u128,
+            self.config.slot_overbooking_penalty, //   total_initial_coin_supply/10000
         )?;
 
         // return the fee

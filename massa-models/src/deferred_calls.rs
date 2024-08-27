@@ -10,8 +10,6 @@ use nom::{
 };
 use transition::Versioned;
 
-// use std::collections::Bound;
-
 use crate::{
     config::THREAD_COUNT,
     error::ModelsError,
@@ -25,6 +23,7 @@ const DEFERRED_CALL_ID_PREFIX: &str = "D";
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[allow(unused_macros)]
 pub struct DeferredCallId(Vec<u8>);
 
 /// Serializer for `DeferredCallId`

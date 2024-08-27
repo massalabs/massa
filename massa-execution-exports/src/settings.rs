@@ -2,6 +2,7 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::amount::Amount;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
@@ -102,6 +103,6 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
-    /// Max deferred call future slot
-    pub max_deferred_call_future_slots: u64,
+    /// deferred calls config
+    pub deferred_calls_config: DeferredCallsConfig,
 }

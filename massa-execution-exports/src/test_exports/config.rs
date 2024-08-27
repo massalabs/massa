@@ -3,6 +3,7 @@
 //! This file defines testing tools related to the configuration
 
 use crate::{ExecutionConfig, StorageCostsConstants};
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::config::*;
 use massa_sc_runtime::GasCosts;
 use massa_time::MassaTime;
@@ -81,7 +82,7 @@ impl Default for ExecutionConfig {
             broadcast_slot_execution_traces_channel_capacity: 5000,
             max_execution_traces_slot_limit: 320,
             block_dump_folder_path,
-            max_deferred_call_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
+            deferred_calls_config: DeferredCallsConfig::default(),
         }
     }
 }

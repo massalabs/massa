@@ -254,10 +254,10 @@ mod test {
     use massa_async_pool::AsyncMessage;
     use massa_deferred_calls::config::DeferredCallsConfig;
     use massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
+    use massa_models::address::Address;
     use massa_models::amount::Amount;
     use massa_models::bytecode::Bytecode;
     use massa_models::slot::Slot;
-    use massa_models::{address::Address, config::DEFERRED_CALL_MAX_POOL_CHANGES};
     use massa_serialization::DeserializeError;
 
     use massa_models::config::{

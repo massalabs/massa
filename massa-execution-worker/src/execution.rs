@@ -28,7 +28,6 @@ use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 
-use massa_models::config::DEFERRED_CALL_MAX_FUTURE_SLOTS;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -1384,11 +1383,7 @@ impl ExecutionState {
         );
 
         // Deferred calls
-        let calls = execution_context.deferred_calls_advance_slot(
-            slot.clone(),
-            DEFERRED_CALL_MAX_FUTURE_SLOTS,
-            self.config.thread_count,
-        );
+        let calls = execution_context.deferred_calls_advance_slot(slot.clone());
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
