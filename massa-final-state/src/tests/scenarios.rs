@@ -8,6 +8,7 @@ use crate::{
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::{
     LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
@@ -94,6 +95,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         ledger_backup_periods_interval: 10,
+        deferred_calls_config: DeferredCallsConfig::default(),
     };
 
     // setup selector local config

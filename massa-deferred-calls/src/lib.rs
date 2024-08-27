@@ -53,13 +53,12 @@ impl DeferredCallRegistry {
         [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> DeferredCalls.x // call data
     */
 
-    // TODO pass args
     pub fn new(db: ShareableMassaDBController, config: DeferredCallsConfig) -> Self {
         Self {
             db,
             call_serializer: DeferredCallSerializer::new(),
             call_id_serializer: DeferredCallIdSerializer::new(),
-            call_deserializer: DeferredCallDeserializer::new(config.clone()),
+            call_deserializer: DeferredCallDeserializer::new(config),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
@@ -83,7 +82,7 @@ impl DeferredCallRegistry {
 
             let (_rest, call_id) = self
                 .call_id_deserializer
-                .deserialize::<DeserializeError>(&rest_key)
+                .deserialize::<DeserializeError>(rest_key)
                 .expect(KEY_DESER_ERROR);
 
             if !temp.insert(call_id.clone()) {

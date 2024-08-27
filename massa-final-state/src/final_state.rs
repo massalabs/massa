@@ -110,7 +110,7 @@ impl FinalState {
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
         let deferred_call_registry =
-            DeferredCallRegistry::new(db.clone(), config.deferred_calls_config.clone());
+            DeferredCallRegistry::new(db.clone(), config.deferred_calls_config);
 
         let mut final_state = FinalState {
             ledger,

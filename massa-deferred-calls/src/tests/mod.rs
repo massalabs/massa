@@ -40,7 +40,7 @@ fn call_registry_apply_changes() {
 
     let call = DeferredCall::new(
         Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-        target_slot.clone(),
+        target_slot,
         Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
         "receive".to_string(),
         vec![42, 42, 42, 42],
@@ -49,7 +49,7 @@ fn call_registry_apply_changes() {
         Amount::from_raw(1),
         false,
     );
-    let id = DeferredCallId::new(0, target_slot.clone(), 1, &[]).unwrap();
+    let id = DeferredCallId::new(0, target_slot, 1, &[]).unwrap();
     let mut buf_id = Vec::new();
     call_id_serializer.serialize(&id, &mut buf_id).unwrap();
 
@@ -92,7 +92,7 @@ fn call_registry_get_slot_calls() {
 
     let call = DeferredCall::new(
         Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-        target_slot.clone(),
+        target_slot,
         Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
         "receive".to_string(),
         vec![42, 42, 42, 42],
@@ -101,9 +101,9 @@ fn call_registry_get_slot_calls() {
         Amount::from_raw(1),
         false,
     );
-    let id = DeferredCallId::new(0, target_slot.clone(), 1, &[]).unwrap();
+    let id = DeferredCallId::new(0, target_slot, 1, &[]).unwrap();
 
-    let id2 = DeferredCallId::new(0, target_slot.clone(), 1, &[123]).unwrap();
+    let id2 = DeferredCallId::new(0, target_slot, 1, &[123]).unwrap();
 
     let mut buf_id = Vec::new();
     call_id_serializer.serialize(&id, &mut buf_id).unwrap();
@@ -111,9 +111,9 @@ fn call_registry_get_slot_calls() {
     changes.set_call(id.clone(), call.clone());
     changes.set_call(id2.clone(), call.clone());
     changes.set_total_gas(100);
-    changes.set_slot_gas(target_slot.clone(), 100_000);
+    changes.set_slot_gas(target_slot, 100_000);
 
-    changes.set_slot_base_fee(target_slot.clone(), Amount::from_raw(10000000));
+    changes.set_slot_base_fee(target_slot, Amount::from_raw(10000000));
 
     let mut batch = DBBatch::new();
     // 2 calls
@@ -121,7 +121,7 @@ fn call_registry_get_slot_calls() {
 
     registry.db.write().write_batch(batch, DBBatch::new(), None);
 
-    let result = registry.get_slot_calls(target_slot.clone());
+    let result = registry.get_slot_calls(target_slot);
 
     assert!(result.slot_calls.len() == 2);
     assert!(result.slot_calls.contains_key(&id));

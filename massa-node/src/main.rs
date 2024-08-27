@@ -210,7 +210,7 @@ async fn launch(
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
-        deferred_calls_config: deferred_calls_config.clone(),
+        deferred_calls_config,
         pos_config,
         executed_ops_config,
         executed_denunciations_config,
@@ -536,7 +536,7 @@ async fn launch(
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
-        deferred_calls_config: deferred_calls_config.clone(),
+        deferred_calls_config,
     };
 
     let execution_channels = ExecutionChannels {

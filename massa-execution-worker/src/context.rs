@@ -227,7 +227,7 @@ impl ExecutionContext {
             speculative_deferred_calls: SpeculativeDeferredCallRegistry::new(
                 final_state.clone(),
                 active_history.clone(),
-                config.deferred_calls_config.clone(),
+                config.deferred_calls_config,
             ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),

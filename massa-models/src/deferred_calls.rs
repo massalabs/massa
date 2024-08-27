@@ -23,7 +23,6 @@ const DEFERRED_CALL_ID_PREFIX: &str = "D";
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[allow(unused_macros)]
 pub struct DeferredCallId(Vec<u8>);
 
 /// Serializer for `DeferredCallId`
@@ -71,6 +70,12 @@ impl DeferredCallIdDeserializer {
                 std::ops::Bound::Included(128),
             ),
         }
+    }
+}
+
+impl Default for DeferredCallIdDeserializer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -127,7 +132,7 @@ impl ::serde::Serialize for DeferredCallId {
         if serializer.is_human_readable() {
             serializer.collect_str(&self.to_string())
         } else {
-            serializer.serialize_bytes(&self.as_bytes())
+            serializer.serialize_bytes(self.as_bytes())
         }
     }
 }
@@ -226,12 +231,10 @@ impl DeferredCallId {
                 id.extend(trail_hash);
                 Ok(DeferredCallId::DeferredCallIdV0(DeferredCallIdV0(id)))
             }
-            _ => {
-                return Err(ModelsError::InvalidVersionError(format!(
-                    "Invalid version to create an DeferredCallId: {}",
-                    version
-                )))
-            }
+            _ => Err(ModelsError::InvalidVersionError(format!(
+                "Invalid version to create an DeferredCallId: {}",
+                version
+            ))),
         }
     }
 

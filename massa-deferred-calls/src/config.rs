@@ -9,7 +9,7 @@ use massa_models::{
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct DeferredCallsConfig {
     /// thread count
     pub thread_count: u8,

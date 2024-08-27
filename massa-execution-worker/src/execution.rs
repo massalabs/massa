@@ -1383,7 +1383,7 @@ impl ExecutionState {
         );
 
         // Deferred calls
-        let calls = execution_context.deferred_calls_advance_slot(slot.clone());
+        let calls = execution_context.deferred_calls_advance_slot(*slot);
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;

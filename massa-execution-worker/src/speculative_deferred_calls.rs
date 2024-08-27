@@ -210,8 +210,8 @@ impl SpeculativeDeferredCallRegistry {
         }
 
         // delete the current slot
-        for (id, _call) in &slot_calls.slot_calls {
-            self.deferred_calls_changes.delete_call(current_slot, id);
+        for id in slot_calls.slot_calls.keys() {
+            self.delete_call(id, current_slot);
         }
 
         slot_calls
@@ -466,8 +466,7 @@ impl SpeculativeDeferredCallRegistry {
 
         let id = DeferredCallId::new(0, call.target_slot, index as u64, trail_hash.to_bytes())?;
 
-        self.deferred_calls_changes
-            .set_call(id.clone(), call.clone());
+        self.push_new_call(id.clone(), call.clone());
 
         let current_gas = self.get_slot_gas(&call.target_slot);
 

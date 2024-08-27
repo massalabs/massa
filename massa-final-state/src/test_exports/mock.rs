@@ -14,7 +14,7 @@ use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
 };
-use massa_deferred_calls::DeferredCallRegistry;
+use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
@@ -204,6 +204,7 @@ pub fn get_sample_state(
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         ledger_backup_periods_interval: 10,
+        deferred_calls_config: DeferredCallsConfig::default(),
     };
 
     let mut final_state = if last_start_period > 0 {

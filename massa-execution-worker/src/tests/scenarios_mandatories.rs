@@ -2,6 +2,7 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
 use massa_deferred_calls::{DeferredCall, DeferredCallRegistry};
@@ -63,6 +64,7 @@ const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
 
+#[allow(clippy::too_many_arguments)]
 fn final_state_boilerplate(
     mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
     db: ShareableMassaDBController,
@@ -146,8 +148,8 @@ fn final_state_boilerplate(
             db.clone(),
         ));
 
-    let deferred_call_registry =
-        custom_deferred_call_registry.unwrap_or_else(|| DeferredCallRegistry::new(db.clone()));
+    let deferred_call_registry = custom_deferred_call_registry
+        .unwrap_or_else(|| DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default()));
 
     mock_final_state
         .write()
@@ -998,7 +1000,7 @@ fn deferred_calls() {
     let call = DeferredCall {
         sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
             .unwrap(),
-        target_slot: target_slot.clone(),
+        target_slot,
         target_address: destination,
         target_function: "receive".to_string(),
         parameters: vec![42, 42, 42, 42],
@@ -1008,13 +1010,8 @@ fn deferred_calls() {
         cancelled: false,
     };
 
-    let call_id = DeferredCallId::new(
-        0,
-        target_slot.clone(),
-        0,
-        "trail_hash".to_string().as_bytes(),
-    )
-    .unwrap();
+    let call_id =
+        DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
 
     foreign_controllers
         .final_state
@@ -1066,7 +1063,10 @@ fn deferred_calls() {
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
-    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
@@ -1077,7 +1077,7 @@ fn deferred_calls() {
     defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
 
     let mut slot_changes = BTreeMap::default();
-    slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+    slot_changes.insert(target_slot, defer_reg_slot_changes);
 
     let mut db_batch = DBBatch::default();
 
@@ -1149,7 +1149,7 @@ fn deferred_call_register() {
     let sender_addr =
         Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
 
-    let sender_addr_clone = sender_addr.clone();
+    let sender_addr_clone = sender_addr;
 
     selector_boilerplate(&mut foreign_controllers.selector_controller);
 
@@ -1196,7 +1196,8 @@ fn deferred_call_register() {
             {
                 // manually write the deferred call to the db
                 // then in the next slot (1,1) we will find and execute it
-                let reg = DeferredCallRegistry::new(db_lock.clone());
+                let reg =
+                    DeferredCallRegistry::new(db_lock.clone(), DeferredCallsConfig::default());
                 let mut batch = DBBatch::default();
                 reg.apply_changes_to_batch(changes.deferred_call_changes.clone(), &mut batch);
                 db_lock
@@ -1266,7 +1267,10 @@ fn deferred_call_register() {
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
-    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
@@ -1307,7 +1311,10 @@ fn deferred_call_register() {
         Some(saved_bytecode),
         None,
         None,
-        Some(DeferredCallRegistry::new(foreign_controllers.db.clone())),
+        Some(DeferredCallRegistry::new(
+            foreign_controllers.db.clone(),
+            DeferredCallsConfig::default(),
+        )),
     );
 
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -1401,7 +1408,7 @@ fn deferred_call_register_fail() {
     let call = DeferredCall {
         sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
             .unwrap(),
-        target_slot: target_slot.clone(),
+        target_slot,
         target_address: Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV")
             .unwrap(),
         target_function: "toto".to_string(),
@@ -1412,14 +1419,12 @@ fn deferred_call_register_fail() {
         cancelled: false,
     };
 
-    let call_id = DeferredCallId::new(
-        0,
-        target_slot.clone(),
-        0,
-        "trail_hash".to_string().as_bytes(),
-    )
-    .unwrap();
-    let registry = DeferredCallRegistry::new(foreign_controllers.db.clone());
+    let call_id =
+        DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
@@ -1430,7 +1435,7 @@ fn deferred_call_register_fail() {
     defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
 
     let mut slot_changes = BTreeMap::default();
-    slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+    slot_changes.insert(target_slot, defer_reg_slot_changes);
 
     let mut db_batch = DBBatch::default();
 
@@ -1493,7 +1498,7 @@ fn deferred_call_register_fail() {
     // // update base fee at slot 1,10
     // defer_reg_slot_changes.set_base_fee(Amount::from_str("0.0005").unwrap());
 
-    // slot_changes.insert(target_slot.clone(), defer_reg_slot_changes);
+    // slot_changes.insert(target_slot, defer_reg_slot_changes);
 
     // let mut db_batch = DBBatch::default();
 

@@ -42,6 +42,7 @@ pub struct DeferredCall {
 }
 
 impl DeferredCall {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         sender_address: Address,
         target_slot: Slot,

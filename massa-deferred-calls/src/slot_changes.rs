@@ -106,6 +106,12 @@ impl DeferredRegistrySlotChangesSerializer {
     }
 }
 
+impl Default for DeferredRegistrySlotChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesSerializer {
     fn serialize(
         &self,
@@ -149,7 +155,7 @@ impl DeferredRegistrySlotChangesDeserializer {
             ),
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             calls_set_or_delete_deserializer: SetOrDeleteDeserializer::new(
-                DeferredCallDeserializer::new(config.clone()),
+                DeferredCallDeserializer::new(config),
             ),
             gas_deserializer: SetOrKeepDeserializer::new(U64VarIntDeserializer::new(
                 Included(0),
@@ -237,7 +243,7 @@ mod tests {
 
         let call = DeferredCall::new(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            target_slot.clone(),
+            target_slot,
             Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
             "receive".to_string(),
             vec![42, 42, 42, 42],

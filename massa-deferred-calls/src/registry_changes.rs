@@ -44,7 +44,7 @@ impl DeferredCallRegistryChanges {
 
     pub fn set_call(&mut self, id: DeferredCallId, call: DeferredCall) {
         self.slots_change
-            .entry(call.target_slot.clone())
+            .entry(call.target_slot)
             .or_default()
             .set_call(id, call);
     }
@@ -111,6 +111,12 @@ impl DeferredRegistryChangesSerializer {
     }
 }
 
+impl Default for DeferredRegistryChangesSerializer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializer {
     fn serialize(
         &self,
@@ -151,7 +157,7 @@ impl DeferredRegistryChangesDeserializer {
                 Included(u64::MIN),
                 Included(config.max_pool_changes),
             ),
-            slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(config.clone()),
+            slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer::new(config),
             slot_deserializer: SlotDeserializer::new(
                 (Bound::Included(0), Bound::Included(u64::MAX)),
                 (Bound::Included(0), Bound::Excluded(config.thread_count)),
@@ -239,7 +245,7 @@ mod tests {
 
         let call = DeferredCall::new(
             Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
-            target_slot.clone(),
+            target_slot,
             Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap(),
             "receive".to_string(),
             vec![42, 42, 42, 42],
@@ -262,7 +268,7 @@ mod tests {
 
         changes
             .slots_change
-            .insert(target_slot.clone(), registry_slot_changes);
+            .insert(target_slot, registry_slot_changes);
 
         changes.set_total_gas(100_000);
 
