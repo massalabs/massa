@@ -1,3 +1,5 @@
+#![allow(unused_macros)]
+
 use std::{ops::Bound, str::FromStr};
 
 use massa_serialization::{
@@ -19,7 +21,6 @@ use crate::{
 
 const DEFERRED_CALL_ID_PREFIX: &str = "D";
 
-/// block id
 #[allow(missing_docs)]
 #[transition::versioned(versions("0"))]
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
