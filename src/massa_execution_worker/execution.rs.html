@@ -3703,7 +3703,7 @@
                     context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(call.target_address), call.coins, <span class="bool-val">false</span>)
                 {
                     <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::DeferredCallsError(<span class="macro">format!</span>(
                         <span class="string">&quot;could not credit coins to target of deferred call execution: {}&quot;</span>,
                         err
                     )));
@@ -3711,7 +3711,7 @@
 
                 <span class="comment">// quit if there is no function to be called
                 </span><span class="kw">if </span>call.target_function.is_empty() {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::DeferredCallsError(
                         <span class="string">&quot;no function to call in the deferred call&quot;</span>.to_string(),
                     ));
                 }
