@@ -1233,114 +1233,121 @@ impl ExecutionState {
         let mut result = DeferredCallExecutionResult::new(&call);
 
         let snapshot;
-        // prepare the current slot context for executing the operation
-        let bytecode;
+
         {
-            let mut context = context_guard!(self);
+            let context = context_guard!(self);
             snapshot = context.get_snapshot();
-            // acquire write access to the context
-            // let mut context = context_guard!(self);
-
-            // Set the call stack
-            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
-            context.stack = vec![
-                ExecutionStackElement {
-                    address: call.sender_address,
-                    coins: call.coins,
-                    owned_addresses: vec![call.sender_address],
-                    operation_datastore: None,
-                },
-                ExecutionStackElement {
-                    address: call.target_address,
-                    coins: call.coins,
-                    owned_addresses: vec![call.target_address],
-                    operation_datastore: None,
-                },
-            ];
-
-            // Ensure that the target address is an SC address
-            // Ensure that the target address exists
-            if let Err(err) = context.check_target_sc_address(call.target_address) {
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call);
-                return Err(err);
-            }
-
-            // credit coins to the target address
-            if let Err(err) =
-                context.transfer_coins(None, Some(call.target_address), call.coins, false)
-            {
-                // coin crediting failed: reset context to snapshot and reimburse sender
-                let err = ExecutionError::RuntimeError(format!(
-                    "could not credit coins to target of deferred call execution: {}",
-                    err
-                ));
-
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call);
-                return Err(err);
-            }
-
-            // quit if there is no function to be called
-            if call.target_function.is_empty() {
-                return Err(ExecutionError::RuntimeError(
-                    "no function to call in the deferred call".to_string(),
-                ));
-            }
-
-            // Load bytecode. Assume empty bytecode if not found.
-            bytecode = context
-                .get_bytecode(&call.target_address)
-                .unwrap_or_default()
-                .0;
         }
 
-        let module = self
-            .module_cache
-            .write()
-            .load_module(&bytecode, call.max_gas)?;
-        let response = massa_sc_runtime::run_function(
-            &*self.execution_interface,
-            module,
-            &call.target_function,
-            &call.parameters,
-            call.max_gas,
-            self.config.gas_costs.clone(),
-        );
+        let deferred_call_execution = || {
+            let bytecode = {
+                // acquire write access to the context
+                let mut context = context_guard!(self);
 
-        match response {
-            Ok(res) => {
-                self.module_cache
-                    .write()
-                    .set_init_cost(&bytecode, res.init_gas_cost);
-                #[cfg(feature = "execution-trace")]
+                // Set the call stack
+                // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+                context.stack = vec![
+                    ExecutionStackElement {
+                        address: call.sender_address,
+                        coins: call.coins,
+                        owned_addresses: vec![call.sender_address],
+                        operation_datastore: None,
+                    },
+                    ExecutionStackElement {
+                        address: call.target_address,
+                        coins: call.coins,
+                        owned_addresses: vec![call.target_address],
+                        operation_datastore: None,
+                    },
+                ];
+
+                // Ensure that the target address is an SC address
+                // Ensure that the target address exists
+                context.check_target_sc_address(call.target_address)?;
+
+                // credit coins to the target address
+                if let Err(err) =
+                    context.transfer_coins(None, Some(call.target_address), call.coins, false)
                 {
-                    result.traces = Some((res.trace.into_iter().map(|t| t.into()).collect(), true));
+                    // coin crediting failed: reset context to snapshot and reimburse sender
+                    return Err(ExecutionError::RuntimeError(format!(
+                        "could not credit coins to target of deferred call execution: {}",
+                        err
+                    )));
                 }
-                // #[cfg(feature = "execution-info")]
-                // {
-                // result.success = true;
-                // }
-                result.success = true;
-                Ok(result)
-            }
-            Err(error) => {
-                if let VMError::ExecutionError { init_gas_cost, .. } = error {
+
+                // quit if there is no function to be called
+                if call.target_function.is_empty() {
+                    return Err(ExecutionError::RuntimeError(
+                        "no function to call in the deferred call".to_string(),
+                    ));
+                }
+
+                // Load bytecode. Assume empty bytecode if not found.
+                context
+                    .get_bytecode(&call.target_address)
+                    .ok_or(ExecutionError::DeferredCallsError(
+                        "no bytecode found".to_string(),
+                    ))?
+                    .0
+            };
+
+            let module = self
+                .module_cache
+                .write()
+                .load_module(&bytecode, call.max_gas)?;
+            let response = massa_sc_runtime::run_function(
+                &*self.execution_interface,
+                module,
+                &call.target_function,
+                &call.parameters,
+                call.max_gas,
+                self.config.gas_costs.clone(),
+            );
+
+            match response {
+                Ok(res) => {
                     self.module_cache
                         .write()
-                        .set_init_cost(&bytecode, init_gas_cost);
+                        .set_init_cost(&bytecode, res.init_gas_cost);
+                    #[cfg(feature = "execution-trace")]
+                    {
+                        result.traces =
+                            Some((res.trace.into_iter().map(|t| t.into()).collect(), true));
+                    }
+                    // #[cfg(feature = "execution-info")]
+                    // {
+                    // result.success = true;
+                    // }
+                    result.success = true;
+                    Ok(result)
                 }
-                // execution failed: reset context to snapshot and reimburse sender
-                let err = ExecutionError::VMError {
-                    context: "Deferred Call".to_string(),
-                    error,
-                };
-                let mut context = context_guard!(self);
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call);
-                Err(err)
+                Err(error) => {
+                    if let VMError::ExecutionError { init_gas_cost, .. } = error {
+                        self.module_cache
+                            .write()
+                            .set_init_cost(&bytecode, init_gas_cost);
+                    }
+                    // execution failed: reset context to snapshot and reimburse sender
+                    Err(ExecutionError::VMError {
+                        context: "Deferred Call".to_string(),
+                        error,
+                    })
+                }
             }
+        };
+
+        // execute the deferred call
+        let execution_result = deferred_call_execution();
+
+        // if the execution failed, reset the context to the snapshot
+        if let Err(err) = &execution_result {
+            let mut context = context_guard!(self);
+            context.reset_to_snapshot(snapshot, err.clone());
+            context.deferred_call_fail_exec(id, &call);
         }
+
+        execution_result
     }
     /// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.

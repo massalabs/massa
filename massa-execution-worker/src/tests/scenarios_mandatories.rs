@@ -1005,7 +1005,7 @@ fn deferred_calls() {
         target_function: "receive".to_string(),
         parameters: vec![42, 42, 42, 42],
         coins: Amount::from_raw(100),
-        max_gas: 300000000,
+        max_gas: 2_300_000,
         fee: Amount::from_raw(1),
         cancelled: false,
     };
