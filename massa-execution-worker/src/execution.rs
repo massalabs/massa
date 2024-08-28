@@ -1270,7 +1270,7 @@ impl ExecutionState {
                     context.transfer_coins(None, Some(call.target_address), call.coins, false)
                 {
                     // coin crediting failed: reset context to snapshot and reimburse sender
-                    return Err(ExecutionError::RuntimeError(format!(
+                    return Err(ExecutionError::DeferredCallsError(format!(
                         "could not credit coins to target of deferred call execution: {}",
                         err
                     )));
@@ -1278,7 +1278,7 @@ impl ExecutionState {
 
                 // quit if there is no function to be called
                 if call.target_function.is_empty() {
-                    return Err(ExecutionError::RuntimeError(
+                    return Err(ExecutionError::DeferredCallsError(
                         "no function to call in the deferred call".to_string(),
                     ));
                 }
