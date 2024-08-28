@@ -2424,6 +2424,13 @@
 <a href="#2424" id="2424">2424</a>
 <a href="#2425" id="2425">2425</a>
 <a href="#2426" id="2426">2426</a>
+<a href="#2427" id="2427">2427</a>
+<a href="#2428" id="2428">2428</a>
+<a href="#2429" id="2429">2429</a>
+<a href="#2430" id="2430">2430</a>
+<a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3659,114 +3666,121 @@
         <span class="kw">let </span><span class="kw-2">mut </span>result = DeferredCallExecutionResult::new(<span class="kw-2">&amp;</span>call);
 
         <span class="kw">let </span>snapshot;
-        <span class="comment">// prepare the current slot context for executing the operation
-        </span><span class="kw">let </span>bytecode;
+
         {
-            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
             snapshot = context.get_snapshot();
-            <span class="comment">// acquire write access to the context
-            // let mut context = context_guard!(self);
-
-            // Set the call stack
-            // This needs to be defined before anything can fail, so that the emitted event contains the right stack
-            </span>context.stack = <span class="macro">vec!</span>[
-                ExecutionStackElement {
-                    address: call.sender_address,
-                    coins: call.coins,
-                    owned_addresses: <span class="macro">vec!</span>[call.sender_address],
-                    operation_datastore: <span class="prelude-val">None</span>,
-                },
-                ExecutionStackElement {
-                    address: call.target_address,
-                    coins: call.coins,
-                    owned_addresses: <span class="macro">vec!</span>[call.target_address],
-                    operation_datastore: <span class="prelude-val">None</span>,
-                },
-            ];
-
-            <span class="comment">// Ensure that the target address is an SC address
-            // Ensure that the target address exists
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.check_target_sc_address(call.target_address) {
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
-            }
-
-            <span class="comment">// credit coins to the target address
-            </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(call.target_address), call.coins, <span class="bool-val">false</span>)
-            {
-                <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender
-                </span><span class="kw">let </span>err = ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;could not credit coins to target of deferred call execution: {}&quot;</span>,
-                    err
-                ));
-
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
-                <span class="kw">return </span><span class="prelude-val">Err</span>(err);
-            }
-
-            <span class="comment">// quit if there is no function to be called
-            </span><span class="kw">if </span>call.target_function.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
-                    <span class="string">&quot;no function to call in the deferred call&quot;</span>.to_string(),
-                ));
-            }
-
-            <span class="comment">// Load bytecode. Assume empty bytecode if not found.
-            </span>bytecode = context
-                .get_bytecode(<span class="kw-2">&amp;</span>call.target_address)
-                .unwrap_or_default()
-                .<span class="number">0</span>;
         }
 
-        <span class="kw">let </span>module = <span class="self">self
-            </span>.module_cache
-            .write()
-            .load_module(<span class="kw-2">&amp;</span>bytecode, call.max_gas)<span class="question-mark">?</span>;
-        <span class="kw">let </span>response = massa_sc_runtime::run_function(
-            <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
-            module,
-            <span class="kw-2">&amp;</span>call.target_function,
-            <span class="kw-2">&amp;</span>call.parameters,
-            call.max_gas,
-            <span class="self">self</span>.config.gas_costs.clone(),
-        );
+        <span class="kw">let </span>deferred_call_execution = || {
+            <span class="kw">let </span>bytecode = {
+                <span class="comment">// acquire write access to the context
+                </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-        <span class="kw">match </span>response {
-            <span class="prelude-val">Ok</span>(res) =&gt; {
-                <span class="self">self</span>.module_cache
-                    .write()
-                    .set_init_cost(<span class="kw-2">&amp;</span>bytecode, res.init_gas_cost);
-                <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
-                </span>{
-                    result.traces = <span class="prelude-val">Some</span>((res.trace.into_iter().map(|t| t.into()).collect(), <span class="bool-val">true</span>));
+                <span class="comment">// Set the call stack
+                // This needs to be defined before anything can fail, so that the emitted event contains the right stack
+                </span>context.stack = <span class="macro">vec!</span>[
+                    ExecutionStackElement {
+                        address: call.sender_address,
+                        coins: call.coins,
+                        owned_addresses: <span class="macro">vec!</span>[call.sender_address],
+                        operation_datastore: <span class="prelude-val">None</span>,
+                    },
+                    ExecutionStackElement {
+                        address: call.target_address,
+                        coins: call.coins,
+                        owned_addresses: <span class="macro">vec!</span>[call.target_address],
+                        operation_datastore: <span class="prelude-val">None</span>,
+                    },
+                ];
+
+                <span class="comment">// Ensure that the target address is an SC address
+                // Ensure that the target address exists
+                </span>context.check_target_sc_address(call.target_address)<span class="question-mark">?</span>;
+
+                <span class="comment">// credit coins to the target address
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+                    context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(call.target_address), call.coins, <span class="bool-val">false</span>)
+                {
+                    <span class="comment">// coin crediting failed: reset context to snapshot and reimburse sender
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">&quot;could not credit coins to target of deferred call execution: {}&quot;</span>,
+                        err
+                    )));
                 }
-                <span class="comment">// #[cfg(feature = &quot;execution-info&quot;)]
-                // {
-                // result.success = true;
-                // }
-                </span>result.success = <span class="bool-val">true</span>;
-                <span class="prelude-val">Ok</span>(result)
-            }
-            <span class="prelude-val">Err</span>(error) =&gt; {
-                <span class="kw">if let </span>VMError::ExecutionError { init_gas_cost, .. } = error {
+
+                <span class="comment">// quit if there is no function to be called
+                </span><span class="kw">if </span>call.target_function.is_empty() {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
+                        <span class="string">&quot;no function to call in the deferred call&quot;</span>.to_string(),
+                    ));
+                }
+
+                <span class="comment">// Load bytecode. Assume empty bytecode if not found.
+                </span>context
+                    .get_bytecode(<span class="kw-2">&amp;</span>call.target_address)
+                    .ok_or(ExecutionError::DeferredCallsError(
+                        <span class="string">&quot;no bytecode found&quot;</span>.to_string(),
+                    ))<span class="question-mark">?
+                    </span>.<span class="number">0
+            </span>};
+
+            <span class="kw">let </span>module = <span class="self">self
+                </span>.module_cache
+                .write()
+                .load_module(<span class="kw-2">&amp;</span>bytecode, call.max_gas)<span class="question-mark">?</span>;
+            <span class="kw">let </span>response = massa_sc_runtime::run_function(
+                <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
+                module,
+                <span class="kw-2">&amp;</span>call.target_function,
+                <span class="kw-2">&amp;</span>call.parameters,
+                call.max_gas,
+                <span class="self">self</span>.config.gas_costs.clone(),
+            );
+
+            <span class="kw">match </span>response {
+                <span class="prelude-val">Ok</span>(res) =&gt; {
                     <span class="self">self</span>.module_cache
                         .write()
-                        .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
+                        .set_init_cost(<span class="kw-2">&amp;</span>bytecode, res.init_gas_cost);
+                    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+                    </span>{
+                        result.traces =
+                            <span class="prelude-val">Some</span>((res.trace.into_iter().map(|t| t.into()).collect(), <span class="bool-val">true</span>));
+                    }
+                    <span class="comment">// #[cfg(feature = &quot;execution-info&quot;)]
+                    // {
+                    // result.success = true;
+                    // }
+                    </span>result.success = <span class="bool-val">true</span>;
+                    <span class="prelude-val">Ok</span>(result)
                 }
-                <span class="comment">// execution failed: reset context to snapshot and reimburse sender
-                </span><span class="kw">let </span>err = ExecutionError::VMError {
-                    context: <span class="string">&quot;Deferred Call&quot;</span>.to_string(),
-                    error,
-                };
-                <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-                context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
-                <span class="prelude-val">Err</span>(err)
+                <span class="prelude-val">Err</span>(error) =&gt; {
+                    <span class="kw">if let </span>VMError::ExecutionError { init_gas_cost, .. } = error {
+                        <span class="self">self</span>.module_cache
+                            .write()
+                            .set_init_cost(<span class="kw-2">&amp;</span>bytecode, init_gas_cost);
+                    }
+                    <span class="comment">// execution failed: reset context to snapshot and reimburse sender
+                    </span><span class="prelude-val">Err</span>(ExecutionError::VMError {
+                        context: <span class="string">&quot;Deferred Call&quot;</span>.to_string(),
+                        error,
+                    })
+                }
             }
+        };
+
+        <span class="comment">// execute the deferred call
+        </span><span class="kw">let </span>execution_result = deferred_call_execution();
+
+        <span class="comment">// if the execution failed, reset the context to the snapshot
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="kw-2">&amp;</span>execution_result {
+            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+            context.reset_to_snapshot(snapshot, err.clone());
+            context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
         }
+
+        execution_result
     }
     <span class="doccomment">/// Executes a full slot (with or without a block inside) without causing any changes to the state,
     /// just yielding the execution output.
