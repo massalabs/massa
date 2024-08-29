@@ -1,6 +1,6 @@
 #![allow(unused_macros)]
 
-use std::{ops::Bound, str::FromStr};
+use std::{fmt::Debug, ops::Bound, str::FromStr};
 
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,

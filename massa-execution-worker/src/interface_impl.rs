@@ -1375,7 +1375,7 @@ impl Interface for InterfaceImpl {
         max_gas: u64,
         params: &[u8],
         coins: u64,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<String> {
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
 
         //    let total_booked_gas = get_current_total_booked_async_gas();
@@ -1444,8 +1444,7 @@ impl Interface for InterfaceImpl {
         );
 
         let call_id = context.deferred_call_register(call)?;
-
-        Ok(call_id.as_bytes().to_vec())
+        Ok(call_id.to_string())
     }
 
     /// Check if an deferred call exists
@@ -1455,9 +1454,9 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// true if the call exists, false otherwise
-    fn deferred_call_exists(&self, id: &[u8]) -> Result<bool> {
+    fn deferred_call_exists(&self, id: &str) -> Result<bool> {
         // write-lock context
-        let call_id = DeferredCallId::from_bytes(id)?;
+        let call_id = DeferredCallId::from_str(id)?;
         let context = context_guard!(self);
         Ok(context.deferred_call_exists(&call_id))
     }
@@ -1466,7 +1465,7 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments
     /// * id: the id of the call
-    fn deferred_call_cancel(&self, id: &[u8]) -> Result<()> {
+    fn deferred_call_cancel(&self, id: &str) -> Result<()> {
         // Reimburses coins to the sender but not the deferred call fee to avoid spam. Cancelled items are not removed from storage to avoid manipulation, just ignored when it is their turn to be executed.
 
         let mut context = context_guard!(self);
@@ -1474,7 +1473,7 @@ impl Interface for InterfaceImpl {
         // Can only be called by the creator of the deferred call.
         let caller = context.get_current_address()?;
 
-        let call_id = DeferredCallId::from_bytes(id)?;
+        let call_id = DeferredCallId::from_str(id)?;
 
         context.deferred_call_cancel(&call_id, caller)?;
         Ok(())

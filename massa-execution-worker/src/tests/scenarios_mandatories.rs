@@ -1335,13 +1335,9 @@ fn deferred_call_register() {
     assert_eq!(events[0].data, "Deferred call registered");
 
     // call id in the register event
-    let vec: Vec<u8> = events[1]
-        .data
-        .split(',')
-        .map(|s| s.parse::<u8>().unwrap())
-        .collect();
+    let callid_event: String = events[1].data.clone();
 
-    let _call_id = DeferredCallId::from_bytes(&vec).unwrap();
+    let _call_id = DeferredCallId::from_str(&callid_event).unwrap();
 
     let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
     let block =
