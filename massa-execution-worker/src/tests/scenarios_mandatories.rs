@@ -1060,6 +1060,8 @@ fn deferred_calls() {
             // call was executed and then deleted
             assert_eq!(set_delete, &SetOrDelete::Delete);
 
+            // total gas was set to 0
+            assert_eq!(changes.deferred_call_changes.total_gas, SetOrKeep::Set(0));
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
@@ -1070,7 +1072,7 @@ fn deferred_calls() {
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
-        gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
+        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas.into()),
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
 
@@ -1084,7 +1086,7 @@ fn deferred_calls() {
     registry.apply_changes_to_batch(
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
-            total_gas: SetOrKeep::Keep,
+            total_gas: SetOrKeep::Set(call.max_gas.into()),
         },
         &mut db_batch,
     );
