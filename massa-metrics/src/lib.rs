@@ -173,6 +173,11 @@ pub struct MassaMetrics {
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 
     pub tick_delay: Duration,
+
+    // deferred calls metrics
+    deferred_calls_executed: IntCounter,
+    deferred_calls_failed: IntCounter,
+    deferred_calls_total_gas: IntGauge,
 }
 
 impl MassaMetrics {
@@ -406,6 +411,18 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let deferred_calls_executed = IntCounter::new(
+            "deferred_calls_executed",
+            "number of deferred calls executed",
+        )
+        .unwrap();
+
+        let deferred_calls_failed =
+            IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
+
+        let deferred_calls_total_gas =
+            IntGauge::new("deferred_total_gas", "total gas used by deferred calls").unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -458,6 +475,9 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_period.clone()));
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_total_gas.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -514,6 +534,9 @@ impl MassaMetrics {
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 tick_delay,
+                deferred_calls_executed,
+                deferred_calls_failed,
+                deferred_calls_total_gas,
             },
             stopper,
         )
@@ -700,6 +723,18 @@ impl MassaMetrics {
 
     pub fn set_block_slot_delay(&self, delay: f64) {
         self.block_slot_delay.observe(delay);
+    }
+
+    pub fn inc_deferred_calls_executed(&self) {
+        self.deferred_calls_executed.inc();
+    }
+
+    pub fn inc_deferred_calls_failed(&self) {
+        self.deferred_calls_failed.inc();
+    }
+
+    pub fn set_deferred_calls_total_gas(&self, gas: u128) {
+        self.deferred_calls_total_gas.set(gas as i64);
     }
 
     /// Update the bandwidth metrics for all peers

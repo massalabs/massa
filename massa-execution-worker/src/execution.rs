@@ -1392,6 +1392,9 @@ impl ExecutionState {
         // Deferred calls
         let calls = execution_context.deferred_calls_advance_slot(*slot);
 
+        self.massa_metrics
+            .set_deferred_calls_total_gas(calls.total_gas);
+
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
 
@@ -1403,6 +1406,7 @@ impl ExecutionState {
             match self.execute_deferred_call(&id, call) {
                 Ok(_exec) => {
                     info!("executed deferred call: {:?}", id);
+                    self.massa_metrics.inc_deferred_calls_executed();
                     cfg_if::cfg_if! {
                         if #[cfg(feature = "execution-trace")] {
                             // Safe to unwrap
@@ -1415,6 +1419,7 @@ impl ExecutionState {
                 }
                 Err(err) => {
                     let msg = format!("failed executing deferred call: {}", err);
+                    self.massa_metrics.inc_deferred_calls_failed();
                     #[cfg(feature = "execution-info")]
                     exec_info.deferred_calls_messages.push(Err(msg.clone()));
                     debug!(msg);
