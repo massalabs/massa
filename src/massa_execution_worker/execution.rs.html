@@ -2431,6 +2431,11 @@
 <a href="#2431" id="2431">2431</a>
 <a href="#2432" id="2432">2432</a>
 <a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
+<a href="#2438" id="2438">2438</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3825,6 +3830,9 @@
         <span class="comment">// Deferred calls
         </span><span class="kw">let </span>calls = execution_context.deferred_calls_advance_slot(<span class="kw-2">*</span>slot);
 
+        <span class="self">self</span>.massa_metrics
+            .set_deferred_calls_total_gas(calls.total_gas);
+
         <span class="comment">// Apply the created execution context for slot execution
         </span><span class="kw-2">*</span><span class="macro">context_guard!</span>(<span class="self">self</span>) = execution_context;
 
@@ -3836,6 +3844,7 @@
             <span class="kw">match </span><span class="self">self</span>.execute_deferred_call(<span class="kw-2">&amp;</span>id, call) {
                 <span class="prelude-val">Ok</span>(_exec) =&gt; {
                     <span class="macro">info!</span>(<span class="string">&quot;executed deferred call: {:?}&quot;</span>, id);
+                    <span class="self">self</span>.massa_metrics.inc_deferred_calls_executed();
                     <span class="macro">cfg_if::cfg_if! </span>{
                         <span class="kw">if </span><span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)] </span>{
                             <span class="comment">// Safe to unwrap
@@ -3848,6 +3857,7 @@
                 }
                 <span class="prelude-val">Err</span>(err) =&gt; {
                     <span class="kw">let </span>msg = <span class="macro">format!</span>(<span class="string">&quot;failed executing deferred call: {}&quot;</span>, err);
+                    <span class="self">self</span>.massa_metrics.inc_deferred_calls_failed();
                     <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
                     </span>exec_info.deferred_calls_messages.push(<span class="prelude-val">Err</span>(msg.clone()));
                     <span class="macro">debug!</span>(msg);
