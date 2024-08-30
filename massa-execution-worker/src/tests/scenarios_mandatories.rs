@@ -1010,6 +1010,22 @@ fn deferred_calls() {
         cancelled: false,
     };
 
+    let call2 = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot: Slot {
+            period: 8,
+            thread: 1,
+        },
+        target_address: destination,
+        target_function: "tata".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 700_000,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
     let call_id =
         DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
 
@@ -1060,8 +1076,11 @@ fn deferred_calls() {
             // call was executed and then deleted
             assert_eq!(set_delete, &SetOrDelete::Delete);
 
-            // total gas was set to 0
-            assert_eq!(changes.deferred_call_changes.total_gas, SetOrKeep::Set(0));
+            // // total gas was set to 700_000 (call2.max_gas)
+            assert_eq!(
+                changes.deferred_call_changes.total_gas,
+                SetOrKeep::Set(700_000)
+            );
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
@@ -1075,18 +1094,40 @@ fn deferred_calls() {
         gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas.into()),
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
-
     defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let call_id2 = DeferredCallId::new(
+        0,
+        Slot {
+            period: 8,
+            thread: 1,
+        },
+        0,
+        "trail_hash".to_string().as_bytes(),
+    )
+    .unwrap();
+
+    let mut defer_reg_slot_changes2 = defer_reg_slot_changes.clone();
+    defer_reg_slot_changes2.set_gas(call2.max_gas.into());
+    defer_reg_slot_changes2.set_call(call_id2, call2.clone());
 
     let mut slot_changes = BTreeMap::default();
     slot_changes.insert(target_slot, defer_reg_slot_changes);
+
+    slot_changes.insert(
+        Slot {
+            period: 8,
+            thread: 1,
+        },
+        defer_reg_slot_changes2,
+    );
 
     let mut db_batch = DBBatch::default();
 
     registry.apply_changes_to_batch(
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
-            total_gas: SetOrKeep::Set(call.max_gas.into()),
+            total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
         },
         &mut db_batch,
     );
