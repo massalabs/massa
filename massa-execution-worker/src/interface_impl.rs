@@ -93,8 +93,9 @@ impl InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
         use massa_final_state::test_exports::get_sample_state;
-        use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_ledger_exports::LedgerEntry;
         use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        use massa_models::types::SetUpdateOrDelete;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
         use massa_pos_worker::start_selector_worker;

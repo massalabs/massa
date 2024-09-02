@@ -14,9 +14,7 @@ use massa_execution_exports::{
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::{
-    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
+use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
@@ -24,6 +22,7 @@ use massa_models::config::{
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
+use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     denunciation::Denunciation,
@@ -314,8 +313,8 @@ fn test_readonly_execution() {
     assert_eq!(
         res.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
         &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("60").unwrap()),
-            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            balance: massa_models::types::SetOrKeep::Set(Amount::from_str("60").unwrap()),
+            bytecode: massa_models::types::SetOrKeep::Keep,
             datastore: BTreeMap::new()
         })
     );
@@ -360,8 +359,8 @@ fn test_readonly_execution() {
     assert_eq!(
         res2.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
         &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("50").unwrap()),
-            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            balance: massa_models::types::SetOrKeep::Set(Amount::from_str("50").unwrap()),
+            bytecode: massa_models::types::SetOrKeep::Keep,
             datastore: BTreeMap::new()
         })
     );
@@ -682,7 +681,7 @@ fn send_and_receive_async_message() {
             println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
-                &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
+                &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
             );
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().0,
@@ -731,7 +730,7 @@ fn send_and_receive_async_message() {
             },
             0,
         ),
-        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+        massa_models::types::SetUpdateOrDelete::Set(message),
     );
     let mut db_batch = DBBatch::default();
     async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
@@ -841,10 +840,10 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(
+                    balance: massa_models::types::SetOrKeep::Set(
                         Amount::from_str("100.670399899").unwrap()
                     ),
-                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
             );
@@ -893,7 +892,7 @@ fn cancel_async_message() {
             },
             0,
         ),
-        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+        massa_models::types::SetUpdateOrDelete::Set(message),
     );
     let mut db_batch = DBBatch::default();
     async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
@@ -1091,7 +1090,7 @@ fn deferred_calls() {
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
-        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas.into()),
+        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas),
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
     defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
@@ -1108,7 +1107,7 @@ fn deferred_calls() {
     .unwrap();
 
     let mut defer_reg_slot_changes2 = defer_reg_slot_changes.clone();
-    defer_reg_slot_changes2.set_gas(call2.max_gas.into());
+    defer_reg_slot_changes2.set_gas(call2.max_gas);
     defer_reg_slot_changes2.set_call(call_id2, call2.clone());
 
     let mut slot_changes = BTreeMap::default();
@@ -1991,8 +1990,8 @@ fn roll_buy() {
             assert_eq!(
                 changes.ledger_changes.0.get(&address).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(exec_cfg.block_reward),
-                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    balance: massa_models::types::SetOrKeep::Set(exec_cfg.block_reward),
+                    bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
             );

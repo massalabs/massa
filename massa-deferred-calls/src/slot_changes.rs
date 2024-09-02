@@ -6,7 +6,7 @@ use crate::{
     DeferredCall, DeferredRegistryBaseFeeChange, DeferredRegistryCallChange,
     DeferredRegistryGasChange,
 };
-use massa_ledger_exports::{
+use massa_models::types::{
     SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeepDeserializer,
     SetOrKeepSerializer,
 };

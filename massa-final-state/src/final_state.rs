@@ -21,10 +21,10 @@ use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
-use massa_ledger_exports::SetOrKeep;
 use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::types::SetOrKeep;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
@@ -950,11 +950,12 @@ mod test {
     use massa_db_worker::MassaDB;
     use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
     use massa_hash::Hash;
-    use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetUpdateOrDelete};
+    use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
     use massa_ledger_worker::FinalLedger;
     use massa_models::address::Address;
     use massa_models::amount::Amount;
     use massa_models::bytecode::Bytecode;
+    use massa_models::types::SetUpdateOrDelete;
 
     use massa_models::config::{
         DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,

@@ -23,10 +23,10 @@ use massa_execution_exports::{
     ReadOnlyExecutionTarget, SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
-use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
+use massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;

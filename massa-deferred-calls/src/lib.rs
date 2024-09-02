@@ -25,7 +25,7 @@ mod tests;
 mod macros;
 
 pub use call::DeferredCall;
-use massa_ledger_exports::{SetOrDelete, SetOrKeep};
+use massa_models::types::{SetOrDelete, SetOrKeep};
 use massa_models::{
     amount::Amount,
     deferred_calls::{DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer},

@@ -25,13 +25,14 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, SetOrKeep};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::types::SetOrKeep;
 use massa_models::{
     address::Address,
     amount::Amount,

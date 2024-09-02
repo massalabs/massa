@@ -64,6 +64,8 @@ pub mod stats;
 pub mod streaming_step;
 /// management of the relation between time and slots
 pub mod timeslots;
+/// types
+pub mod types;
 /// versions
 pub mod version;
 

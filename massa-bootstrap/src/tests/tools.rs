@@ -18,7 +18,7 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -38,6 +38,7 @@ use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_models::streaming_step::StreamingStep;
+use massa_models::types::SetUpdateOrDelete;
 use massa_models::version::Version;
 use massa_models::{
     address::Address,

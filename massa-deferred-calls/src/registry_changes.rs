@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, ops::Bound};
 
-use massa_ledger_exports::{SetOrKeepDeserializer, SetOrKeepSerializer};
+use massa_models::types::{SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::{
     amount::Amount,
     deferred_calls::DeferredCallId,
