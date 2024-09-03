@@ -396,7 +396,6 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -417,10 +416,8 @@
     ExecutedOpsChangesSerializer,
 };
 <span class="kw">use </span>massa_hash::{HashDeserializer, HashSerializer};
-<span class="kw">use </span>massa_ledger_exports::{
-    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, SetOrKeep,
-    SetOrKeepDeserializer, SetOrKeepSerializer,
-};
+<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+<span class="kw">use </span>massa_models::types::{SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 <span class="kw">use </span>massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{
@@ -634,7 +631,7 @@
 <span class="kw">impl </span>StateChanges {
     <span class="doccomment">/// extends the current `StateChanges` with another one
     </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
-        <span class="kw">use </span>massa_ledger_exports::Applicable;
+        <span class="kw">use </span>massa_models::types::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
@@ -652,11 +649,12 @@
 
     <span class="kw">use </span>massa_async_pool::AsyncMessage;
     <span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
-    <span class="kw">use </span>massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
+    <span class="kw">use </span>massa_ledger_exports::LedgerEntryUpdate;
     <span class="kw">use </span>massa_models::address::Address;
     <span class="kw">use </span>massa_models::amount::Amount;
     <span class="kw">use </span>massa_models::bytecode::Bytecode;
     <span class="kw">use </span>massa_models::slot::Slot;
+    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
     <span class="kw">use </span>massa_serialization::DeserializeError;
 
     <span class="kw">use </span>massa_models::config::{
@@ -778,7 +776,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>datastore = BTreeMap::new();
         datastore.insert(
             <span class="string">b&quot;hello&quot;</span>.to_vec(),
-            massa_ledger_exports::SetOrDelete::Set(<span class="string">b&quot;world&quot;</span>.to_vec()),
+            massa_models::types::SetOrDelete::Set(<span class="string">b&quot;world&quot;</span>.to_vec()),
         );
         <span class="kw">let </span>ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),

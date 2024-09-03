@@ -1340,6 +1340,7 @@
 <a href="#1340" id="1340">1340</a>
 <a href="#1341" id="1341">1341</a>
 <a href="#1342" id="1342">1342</a>
+<a href="#1343" id="1343">1343</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1363,10 +1364,10 @@
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
-<span class="kw">use </span>massa_ledger_exports::SetOrKeep;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::types::SetOrKeep;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
@@ -2292,11 +2293,12 @@
     <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
     <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetUpdateOrDelete};
+    <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
     <span class="kw">use </span>massa_ledger_worker::FinalLedger;
     <span class="kw">use </span>massa_models::address::Address;
     <span class="kw">use </span>massa_models::amount::Amount;
     <span class="kw">use </span>massa_models::bytecode::Bytecode;
+    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
 
     <span class="kw">use </span>massa_models::config::{
         DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,

@@ -2221,6 +2221,7 @@
 <a href="#2221" id="2221">2221</a>
 <a href="#2222" id="2222">2222</a>
 <a href="#2223" id="2223">2223</a>
+<a href="#2224" id="2224">2224</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2316,8 +2317,9 @@
         <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
         <span class="kw">use </span>massa_db_worker::MassaDB;
         <span class="kw">use </span>massa_final_state::test_exports::get_sample_state;
-        <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        <span class="kw">use </span>massa_ledger_exports::LedgerEntry;
         <span class="kw">use </span>massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
         <span class="kw">use </span>massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         <span class="kw">use </span>massa_pos_exports::SelectorConfig;
         <span class="kw">use </span>massa_pos_worker::start_selector_worker;

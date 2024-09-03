@@ -1280,6 +1280,7 @@
 <a href="#1280" id="1280">1280</a>
 <a href="#1281" id="1281">1281</a>
 <a href="#1282" id="1282">1282</a>
+<a href="#1283" id="1283">1283</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1307,13 +1308,14 @@
 };
 <span class="kw">use </span>massa_final_state::{FinalStateController, StateChanges};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::types::SetOrKeep;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
