@@ -401,7 +401,6 @@ impl DeferredCallRegistry {
     }
 }
 
-// TODO put SetOrDelete dans models
 pub type DeferredRegistryCallChange = SetOrDelete<DeferredCall>;
 pub type DeferredRegistryGasChange<V> = SetOrKeep<V>;
 pub type DeferredRegistryBaseFeeChange = SetOrKeep<Amount>;
