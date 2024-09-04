@@ -110,8 +110,8 @@ fn call_registry_get_slot_calls() {
 
     changes.set_call(id.clone(), call.clone());
     changes.set_call(id2.clone(), call.clone());
-    changes.set_total_gas(100);
-    changes.set_slot_gas(target_slot, 100_000);
+    changes.set_effective_total_gas(100);
+    changes.set_effective_slot_gas(target_slot, 100_000);
 
     changes.set_slot_base_fee(target_slot, Amount::from_raw(10000000));
 
@@ -126,7 +126,7 @@ fn call_registry_get_slot_calls() {
     assert!(result.slot_calls.len() == 2);
     assert!(result.slot_calls.contains_key(&id));
     assert!(result.slot_calls.contains_key(&id2));
-    assert_eq!(result.total_gas, 100);
+    assert_eq!(result.effective_total_gas, 100);
     assert_eq!(result.slot_base_fee, Amount::from_raw(10000000));
-    assert_eq!(result.slot_gas, 100_000);
+    assert_eq!(result.effective_slot_gas, 100_000);
 }

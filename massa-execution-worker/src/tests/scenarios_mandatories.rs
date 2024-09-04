@@ -1077,7 +1077,7 @@ fn deferred_calls() {
 
             // // total gas was set to 700_000 (call2.max_gas)
             assert_eq!(
-                changes.deferred_call_changes.total_gas,
+                changes.deferred_call_changes.effective_total_gas,
                 SetOrKeep::Set(700_000)
             );
             finalized_waitpoint_trigger_handle2.trigger();
@@ -1090,7 +1090,7 @@ fn deferred_calls() {
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
-        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas),
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
     defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
@@ -1107,7 +1107,7 @@ fn deferred_calls() {
     .unwrap();
 
     let mut defer_reg_slot_changes2 = defer_reg_slot_changes.clone();
-    defer_reg_slot_changes2.set_gas(call2.max_gas);
+    defer_reg_slot_changes2.set_effective_slot_gas(call2.max_gas);
     defer_reg_slot_changes2.set_call(call_id2, call2.clone());
 
     let mut slot_changes = BTreeMap::default();
@@ -1126,7 +1126,7 @@ fn deferred_calls() {
     registry.apply_changes_to_batch(
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
-            total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
+            effective_total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
         },
         &mut db_batch,
     );
@@ -1223,13 +1223,12 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            dbg!(&changes.deferred_call_changes);
-            // assert sender was debited ( -10 coins) and -1.50 for fees
+            // assert sender was debited ( -10 coins) and -5.25 for fees
             match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("89.52").unwrap())
+                        SetOrKeep::Set(Amount::from_str("85.77").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -1253,13 +1252,15 @@ fn deferred_call_register() {
                 .get(&Slot::new(1, 1))
                 .unwrap();
             let _call = slot_changes.calls.first_key_value().unwrap().1;
-            // assert total gas was set to 300000
+
+            // assert total gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
             assert_eq!(
-                changes.deferred_call_changes.total_gas,
-                SetOrKeep::Set(300000)
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(1050000)
             );
 
-            assert_eq!(slot_changes.get_gas().unwrap(), 300000);
+            //gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
+            assert_eq!(slot_changes.get_effective_slot_gas().unwrap(), 1050000);
 
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -1272,8 +1273,6 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            // the deferred call was register and executed but the asc call will fail (sc doesn"t exist)
-            // so the user should be refunded
             match changes
                 .ledger_changes
                 .0
@@ -1305,7 +1304,10 @@ fn deferred_call_register() {
             assert_eq!(set_delete, &SetOrDelete::Delete);
 
             // assert total gas was set to 0
-            assert_eq!(changes.deferred_call_changes.total_gas, SetOrKeep::Set(0));
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(0)
+            );
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
@@ -1316,7 +1318,7 @@ fn deferred_call_register() {
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
-        gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
 
@@ -1336,7 +1338,7 @@ fn deferred_call_register() {
     registry.apply_changes_to_batch(
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
-            total_gas: SetOrKeep::Keep,
+            effective_total_gas: SetOrKeep::Keep,
         },
         &mut db_batch,
     );
@@ -1424,7 +1426,7 @@ fn deferred_call_register_fail() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            assert!(changes.deferred_call_changes.total_gas == SetOrKeep::Keep);
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
             finalized_waitpoint_trigger_handle.trigger();
         });
 
@@ -1438,7 +1440,7 @@ fn deferred_call_register_fail() {
         .returning(move |_, changes| {
             assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
             // deferred call was not register
-            assert!(changes.deferred_call_changes.total_gas == SetOrKeep::Keep);
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
 
             finalized_waitpoint_trigger_handle2.trigger();
         });
@@ -1466,7 +1468,7 @@ fn deferred_call_register_fail() {
 
     let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
         calls: BTreeMap::new(),
-        gas: massa_deferred_calls::DeferredRegistryGasChange::Set(500),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Set(500),
         base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
     };
 
@@ -1480,7 +1482,7 @@ fn deferred_call_register_fail() {
     registry.apply_changes_to_batch(
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
-            total_gas: SetOrKeep::Set(2000),
+            effective_total_gas: SetOrKeep::Set(2000),
         },
         &mut db_batch,
     );

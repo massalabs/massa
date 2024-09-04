@@ -1,9 +1,9 @@
 use massa_models::{
     amount::Amount,
     config::{
-        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-        DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_FUTURE_SLOTS,
-        DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
+        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
+        DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
+        DEFERRED_CALL_MAX_FUTURE_SLOTS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
         DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
         MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     },
@@ -23,6 +23,8 @@ pub struct DeferredCallsConfig {
     pub min_gas_increment: u64,
     /// min gas cost (10 nanomassa)
     pub min_gas_cost: u64,
+    /// call gas cost
+    pub call_cst_gas_cost: u64,
     /// global overbooking penalty
     pub global_overbooking_penalty: Amount,
     /// slot overbooking penalty
@@ -50,6 +52,7 @@ impl Default for DeferredCallsConfig {
             min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
             global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
             slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
+            call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
         }
     }
 }

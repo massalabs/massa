@@ -1350,7 +1350,10 @@ impl Interface for InterfaceImpl {
 
         let target_slot = Slot::new(target_slot.0, target_slot.1);
 
-        match context.deferred_calls_compute_call_fee(target_slot, gas_limit, current_slot) {
+        let gas_request =
+            gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
+
+        match context.deferred_calls_compute_call_fee(target_slot, gas_request, current_slot) {
             Ok(fee) => Ok((true, fee.to_raw())),
             Err(_) => Ok((false, 0)),
         }
@@ -1378,26 +1381,6 @@ impl Interface for InterfaceImpl {
         coins: u64,
     ) -> Result<String> {
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
-
-        //    let total_booked_gas = get_current_total_booked_async_gas();
-
-        //    const CONST_ASYNC_GAS: u64 = XXXXX; // TODO calibrate: const_gas is the gas used even when gas=0 in order to process the item
-        //    let effective_gas = CONST_ASYNC_GAS + max_gas;
-        //    let fee = get_price(target_slot, effective_gas)?;
-
-        //    // make sender pay `coins + fee`
-
-        //    let call = /* ... */;
-        //    let id = /* ... */ ;
-
-        //    target_slot.booked_calls.push(callID, call);
-        //    target_slot.async_gas_booked += effective_gas;
-
-        //    set_current_total_booked_async_gas(total_booked_gas + effective_gas)
-
-        const CONST_DEFERRED_CALL_GAS: u64 = 0; // TODO calibrate: const_gas is the gas used even when gas=0 in order to process the item
-
-        let max_gas = CONST_DEFERRED_CALL_GAS + max_gas;
 
         let target_addr = Address::from_str(target_addr)?;
 

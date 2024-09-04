@@ -356,6 +356,8 @@ pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
 pub const DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000);
 /// deferred call slot overbooking penalty
 pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000 / 10_000);
+/// deferred call call gas cost
+pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

@@ -29,7 +29,7 @@ use std::ops::Bound::Included;
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredRegistrySlotChanges {
     pub calls: BTreeMap<DeferredCallId, DeferredRegistryCallChange>,
-    pub gas: DeferredRegistryGasChange<u64>,
+    pub effective_slot_gas: DeferredRegistryGasChange<u64>,
     pub base_fee: DeferredRegistryBaseFeeChange,
 }
 
@@ -61,12 +61,12 @@ impl DeferredRegistrySlotChanges {
         }
     }
 
-    pub fn set_gas(&mut self, gas: u64) {
-        self.gas = DeferredRegistryGasChange::Set(gas);
+    pub fn set_effective_slot_gas(&mut self, gas: u64) {
+        self.effective_slot_gas = DeferredRegistryGasChange::Set(gas);
     }
 
-    pub fn get_gas(&self) -> Option<u64> {
-        match self.gas {
+    pub fn get_effective_slot_gas(&self) -> Option<u64> {
+        match self.effective_slot_gas {
             DeferredRegistryGasChange::Set(v) => Some(v),
             DeferredRegistryGasChange::Keep => None,
         }
@@ -129,7 +129,8 @@ impl Serializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesSeri
             self.calls_set_or_delete_serializer
                 .serialize(call, buffer)?;
         }
-        self.gas_serializer.serialize(&value.gas, buffer)?;
+        self.gas_serializer
+            .serialize(&value.effective_slot_gas, buffer)?;
         self.base_fee_serializer
             .serialize(&value.base_fee, buffer)?;
 
@@ -207,7 +208,7 @@ impl Deserializer<DeferredRegistrySlotChanges> for DeferredRegistrySlotChangesDe
 
             DeferredRegistrySlotChanges {
                 calls,
-                gas,
+                effective_slot_gas: gas,
                 base_fee,
             }
         })
@@ -235,7 +236,7 @@ mod tests {
     fn test_slot_changes_ser_deser() {
         let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
         registry_slot_changes.set_base_fee(Amount::from_str("100").unwrap());
-        registry_slot_changes.set_gas(100_000);
+        registry_slot_changes.set_effective_slot_gas(100_000);
         let target_slot = Slot {
             thread: 5,
             period: 1,

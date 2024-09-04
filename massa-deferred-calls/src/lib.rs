@@ -95,8 +95,8 @@ impl DeferredCallRegistry {
         }
 
         to_return.slot_base_fee = self.get_slot_base_fee(&slot);
-        to_return.slot_gas = self.get_slot_gas(&slot);
-        to_return.total_gas = self.get_total_gas();
+        to_return.effective_slot_gas = self.get_slot_gas(&slot);
+        to_return.effective_total_gas = self.get_total_gas();
 
         to_return
     }
@@ -128,7 +128,7 @@ impl DeferredCallRegistry {
         }
     }
 
-    /// Returns the total amount of gas booked for a slot
+    /// Returns the total effective amount of gas booked for a slot
     pub fn get_slot_gas(&self, slot: &Slot) -> u64 {
         // By default, if it is absent, it is 0
         let key = deferred_call_slot_total_gas_key!(slot.to_bytes_key());
@@ -172,7 +172,7 @@ impl DeferredCallRegistry {
             Some(v) => {
                 let result = self
                     .registry_changes_deserializer
-                    .total_gas_deserializer
+                    .effective_total_gas_deserializer
                     .deserialize::<DeserializeError>(&v)
                     .expect(DEFERRED_CALL_DESER_ERROR)
                     .1;
@@ -344,7 +344,7 @@ impl DeferredCallRegistry {
                     }
                 }
             }
-            match slot_changes.gas {
+            match slot_changes.effective_slot_gas {
                 DeferredRegistryGasChange::Set(v) => {
                     let key = deferred_call_slot_total_gas_key!(slot.to_bytes_key());
                     //Note: if a slot gas is zet to 0, delete the slot gas entry
@@ -384,12 +384,12 @@ impl DeferredCallRegistry {
             }
         }
 
-        match changes.total_gas {
+        match changes.effective_total_gas {
             DeferredRegistryGasChange::Set(v) => {
                 let key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
                 let mut value_ser = Vec::new();
                 self.registry_changes_serializer
-                    .total_gas_serializer
+                    .effective_total_gas_serializer
                     .serialize(&DeferredRegistryGasChange::Set(v), &mut value_ser)
                     .expect(DEFERRED_CALL_SER_ERROR);
                 self.db
@@ -411,9 +411,16 @@ pub type DeferredRegistryBaseFeeChange = SetOrKeep<Amount>;
 pub struct DeferredSlotCalls {
     pub slot: Slot,
     pub slot_calls: BTreeMap<DeferredCallId, DeferredCall>,
-    pub slot_gas: u64,
+
+    // calls gas + gas_alloc_cost
+    // effective_slot_gas doesn't include gas of cancelled calls
+    pub effective_slot_gas: u64,
+
     pub slot_base_fee: Amount,
-    pub total_gas: u128,
+
+    // total gas booked + gas_alloc_cost
+    // effective_total_gas doesn't include gas of cancelled calls
+    pub effective_total_gas: u128,
 }
 
 impl DeferredSlotCalls {
@@ -421,9 +428,9 @@ impl DeferredSlotCalls {
         Self {
             slot,
             slot_calls: BTreeMap::new(),
-            slot_gas: 0,
+            effective_slot_gas: 0,
             slot_base_fee: Amount::zero(),
-            total_gas: 0,
+            effective_total_gas: 0,
         }
     }
 
@@ -441,16 +448,16 @@ impl DeferredSlotCalls {
                 }
             }
         }
-        match slot_changes.gas {
-            DeferredRegistryGasChange::Set(v) => self.slot_gas = v,
+        match slot_changes.effective_slot_gas {
+            DeferredRegistryGasChange::Set(v) => self.effective_slot_gas = v,
             DeferredRegistryGasChange::Keep => {}
         }
         match slot_changes.base_fee {
             DeferredRegistryGasChange::Set(v) => self.slot_base_fee = v,
             DeferredRegistryGasChange::Keep => {}
         }
-        match changes.total_gas {
-            DeferredRegistryGasChange::Set(v) => self.total_gas = v,
+        match changes.effective_total_gas {
+            DeferredRegistryGasChange::Set(v) => self.effective_total_gas = v,
             DeferredRegistryGasChange::Keep => {}
         }
     }

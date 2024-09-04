@@ -31,7 +31,7 @@ use std::ops::Bound::Included;
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredCallRegistryChanges {
     pub slots_change: BTreeMap<Slot, DeferredRegistrySlotChanges>,
-    pub total_gas: DeferredRegistryGasChange<u128>,
+    pub effective_total_gas: DeferredRegistryGasChange<u128>,
 }
 
 impl DeferredCallRegistryChanges {
@@ -55,17 +55,17 @@ impl DeferredCallRegistryChanges {
             .and_then(|slot_changes| slot_changes.get_call(id))
     }
 
-    pub fn get_slot_gas(&self, target_slot: &Slot) -> Option<u64> {
+    pub fn get_effective_slot_gas(&self, target_slot: &Slot) -> Option<u64> {
         self.slots_change
             .get(target_slot)
-            .and_then(|slot_changes| slot_changes.get_gas())
+            .and_then(|slot_changes| slot_changes.get_effective_slot_gas())
     }
 
-    pub fn set_slot_gas(&mut self, target_slot: Slot, gas: u64) {
+    pub fn set_effective_slot_gas(&mut self, target_slot: Slot, gas: u64) {
         self.slots_change
             .entry(target_slot)
             .or_default()
-            .set_gas(gas);
+            .set_effective_slot_gas(gas);
     }
 
     pub fn set_slot_base_fee(&mut self, target_slot: Slot, base_fee: Amount) {
@@ -81,12 +81,12 @@ impl DeferredCallRegistryChanges {
             .and_then(|slot_changes| slot_changes.get_base_fee())
     }
 
-    pub fn set_total_gas(&mut self, gas: u128) {
-        self.total_gas = DeferredRegistryGasChange::Set(gas);
+    pub fn set_effective_total_gas(&mut self, gas: u128) {
+        self.effective_total_gas = DeferredRegistryGasChange::Set(gas);
     }
 
-    pub fn get_total_gas(&self) -> Option<u128> {
-        match self.total_gas {
+    pub fn get_effective_total_gas(&self) -> Option<u128> {
+        match self.effective_total_gas {
             DeferredRegistryGasChange::Set(v) => Some(v),
             DeferredRegistryGasChange::Keep => None,
         }
@@ -97,7 +97,7 @@ pub struct DeferredRegistryChangesSerializer {
     slots_length: U64VarIntSerializer,
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
-    pub(crate) total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
+    pub(crate) effective_total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
 }
 
 impl DeferredRegistryChangesSerializer {
@@ -106,7 +106,7 @@ impl DeferredRegistryChangesSerializer {
             slots_length: U64VarIntSerializer::new(),
             slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
+            effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
         }
     }
 }
@@ -135,8 +135,8 @@ impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializ
             self.slot_changes_serializer.serialize(changes, buffer)?;
         }
 
-        self.total_gas_serializer
-            .serialize(&value.total_gas, buffer)?;
+        self.effective_total_gas_serializer
+            .serialize(&value.effective_total_gas, buffer)?;
 
         Ok(())
     }
@@ -146,8 +146,8 @@ pub struct DeferredRegistryChangesDeserializer {
     slots_length: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
     slot_deserializer: SlotDeserializer,
-    // total gas deserializer should be a u128 or SetOrKeep ?
-    pub(crate) total_gas_deserializer: SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
+    pub(crate) effective_total_gas_deserializer:
+        SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
 }
 
 impl DeferredRegistryChangesDeserializer {
@@ -162,10 +162,9 @@ impl DeferredRegistryChangesDeserializer {
                 (Bound::Included(0), Bound::Included(u64::MAX)),
                 (Bound::Included(0), Bound::Excluded(config.thread_count)),
             ),
-            total_gas_deserializer: SetOrKeepDeserializer::new(U128VarIntDeserializer::new(
-                Included(u128::MIN),
-                Included(u128::MAX),
-            )),
+            effective_total_gas_deserializer: SetOrKeepDeserializer::new(
+                U128VarIntDeserializer::new(Included(u128::MIN), Included(u128::MAX)),
+            ),
         }
     }
 }
@@ -195,13 +194,13 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                     },
                 ),
                 context("Failed total_gas deserialization", |input| {
-                    self.total_gas_deserializer.deserialize(input)
+                    self.effective_total_gas_deserializer.deserialize(input)
                 }),
             )),
         )
         .map(|(changes, total_gas)| DeferredCallRegistryChanges {
             slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
-            total_gas,
+            effective_total_gas: total_gas,
         })
         .parse(buffer)
     }
@@ -232,12 +231,12 @@ mod tests {
 
         let mut changes = DeferredCallRegistryChanges {
             slots_change: BTreeMap::new(),
-            total_gas: Default::default(),
+            effective_total_gas: Default::default(),
         };
 
         let mut registry_slot_changes = DeferredRegistrySlotChanges::default();
         registry_slot_changes.set_base_fee(Amount::from_str("100").unwrap());
-        registry_slot_changes.set_gas(100_000);
+        registry_slot_changes.set_effective_slot_gas(100_000);
         let target_slot = Slot {
             thread: 5,
             period: 1,
@@ -270,7 +269,7 @@ mod tests {
             .slots_change
             .insert(target_slot, registry_slot_changes);
 
-        changes.set_total_gas(100_000);
+        changes.set_effective_total_gas(100_000);
 
         let mut buffer = Vec::new();
         let serializer = DeferredRegistryChangesSerializer::new();
@@ -285,6 +284,9 @@ mod tests {
         let base = changes.slots_change.get(&target_slot).unwrap();
         let slot_changes_deser = deserialized.slots_change.get(&target_slot).unwrap();
         assert_eq!(base.calls, slot_changes_deser.calls);
-        assert_eq!(changes.total_gas, deserialized.total_gas);
+        assert_eq!(
+            changes.effective_total_gas,
+            deserialized.effective_total_gas
+        );
     }
 }

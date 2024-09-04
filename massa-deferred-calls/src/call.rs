@@ -33,7 +33,8 @@ pub struct DeferredCall {
     pub parameters: Vec<u8>,
     // The amount of coins to send to the contract
     pub coins: Amount,
-    // The maximum amount of gas usable
+    // The maximum amount of gas usable for the call (excluding the vm allocation cost)
+    // to get the effective gas, use get_effective_gas(&self)
     pub max_gas: u64,
     // The fee to pay for the reservation of the space for the call
     pub fee: Amount,
@@ -65,6 +66,12 @@ impl DeferredCall {
             fee,
             cancelled,
         }
+    }
+
+    /// Get the effective gas of a call
+    /// This is the maximum gas of the call + vm allocation cost
+    pub fn get_effective_gas(&self, alloc_gas_cost: u64) -> u64 {
+        self.max_gas.saturating_add(alloc_gas_cost)
     }
 }
 

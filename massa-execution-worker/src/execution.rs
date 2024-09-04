@@ -1292,16 +1292,16 @@ impl ExecutionState {
                     .0
             };
 
-            let module = self
-                .module_cache
-                .write()
-                .load_module(&bytecode, call.max_gas)?;
+            let module = self.module_cache.write().load_module(
+                &bytecode,
+                call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost),
+            )?;
             let response = massa_sc_runtime::run_function(
                 &*self.execution_interface,
                 module,
                 &call.target_function,
                 &call.parameters,
-                call.max_gas,
+                call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost),
                 self.config.gas_costs.clone(),
             );
 
@@ -1393,7 +1393,7 @@ impl ExecutionState {
         let calls = execution_context.deferred_calls_advance_slot(*slot);
 
         self.massa_metrics
-            .set_deferred_calls_total_gas(calls.total_gas);
+            .set_deferred_calls_total_gas(calls.effective_total_gas);
 
         // Apply the created execution context for slot execution
         *context_guard!(self) = execution_context;
@@ -1684,8 +1684,11 @@ impl ExecutionState {
 
         // Get asynchronous messages to execute
         // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
-        let async_msg_gas_available =
-            self.config.max_async_gas.saturating_sub(calls.slot_gas) + remaining_block_gas;
+        let async_msg_gas_available = self
+            .config
+            .max_async_gas
+            .saturating_sub(calls.effective_slot_gas)
+            .saturating_add(remaining_block_gas);
         let messages = context_guard!(self)
             .take_async_batch(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
 
