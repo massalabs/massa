@@ -53,12 +53,15 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     amount::Amount,
     config::{
-        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-        DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_FUTURE_SLOTS,
-        DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
+        DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
+        DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
+        DEFERRED_CALL_MAX_FUTURE_SLOTS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
         DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
         MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     },
@@ -78,6 +81,8 @@
     </span><span class="kw">pub </span>min_gas_increment: u64,
     <span class="doccomment">/// min gas cost (10 nanomassa)
     </span><span class="kw">pub </span>min_gas_cost: u64,
+    <span class="doccomment">/// call gas cost
+    </span><span class="kw">pub </span>call_cst_gas_cost: u64,
     <span class="doccomment">/// global overbooking penalty
     </span><span class="kw">pub </span>global_overbooking_penalty: Amount,
     <span class="doccomment">/// slot overbooking penalty
@@ -105,6 +110,7 @@
             min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
             global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
             slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
+            call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
         }
     }
 }

@@ -256,6 +256,13 @@
 <a href="#256" id="256">256</a>
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{
     address::{Address, AddressDeserializer, AddressSerializer},
     amount::{Amount, AmountDeserializer, AmountSerializer},
@@ -291,7 +298,8 @@
     </span><span class="kw">pub </span>parameters: Vec&lt;u8&gt;,
     <span class="comment">// The amount of coins to send to the contract
     </span><span class="kw">pub </span>coins: Amount,
-    <span class="comment">// The maximum amount of gas usable
+    <span class="comment">// The maximum amount of gas usable for the call (excluding the vm allocation cost)
+    // to get the effective gas, use get_effective_gas(&amp;self)
     </span><span class="kw">pub </span>max_gas: u64,
     <span class="comment">// The fee to pay for the reservation of the space for the call
     </span><span class="kw">pub </span>fee: Amount,
@@ -323,6 +331,12 @@
             fee,
             cancelled,
         }
+    }
+
+    <span class="doccomment">/// Get the effective gas of a call
+    /// This is the maximum gas of the call + vm allocation cost
+    </span><span class="kw">pub fn </span>get_effective_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, alloc_gas_cost: u64) -&gt; u64 {
+        <span class="self">self</span>.max_gas.saturating_add(alloc_gas_cost)
     }
 }
 

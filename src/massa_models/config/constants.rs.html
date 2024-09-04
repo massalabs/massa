@@ -364,6 +364,8 @@
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
 <a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -722,6 +724,8 @@
 </span><span class="kw">pub const </span>DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000</span>);
 <span class="doccomment">/// deferred call slot overbooking penalty
 </span><span class="kw">pub const </span>DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000 </span>/ <span class="number">10_000</span>);
+<span class="doccomment">/// deferred call call gas cost
+</span><span class="kw">pub const </span>DEFERRED_CALL_CST_GAS_COST: u64 = <span class="number">750_000</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]

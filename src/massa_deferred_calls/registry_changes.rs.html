@@ -288,6 +288,8 @@
 <a href="#288" id="288">288</a>
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::types::{SetOrKeepDeserializer, SetOrKeepSerializer};
@@ -321,7 +323,7 @@
 <span class="attr">#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>DeferredCallRegistryChanges {
     <span class="kw">pub </span>slots_change: BTreeMap&lt;Slot, DeferredRegistrySlotChanges&gt;,
-    <span class="kw">pub </span>total_gas: DeferredRegistryGasChange&lt;u128&gt;,
+    <span class="kw">pub </span>effective_total_gas: DeferredRegistryGasChange&lt;u128&gt;,
 }
 
 <span class="kw">impl </span>DeferredCallRegistryChanges {
@@ -345,17 +347,17 @@
             .and_then(|slot_changes| slot_changes.get_call(id))
     }
 
-    <span class="kw">pub fn </span>get_slot_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, target_slot: <span class="kw-2">&amp;</span>Slot) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+    <span class="kw">pub fn </span>get_effective_slot_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, target_slot: <span class="kw-2">&amp;</span>Slot) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
         <span class="self">self</span>.slots_change
             .get(target_slot)
-            .and_then(|slot_changes| slot_changes.get_gas())
+            .and_then(|slot_changes| slot_changes.get_effective_slot_gas())
     }
 
-    <span class="kw">pub fn </span>set_slot_gas(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target_slot: Slot, gas: u64) {
+    <span class="kw">pub fn </span>set_effective_slot_gas(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target_slot: Slot, gas: u64) {
         <span class="self">self</span>.slots_change
             .entry(target_slot)
             .or_default()
-            .set_gas(gas);
+            .set_effective_slot_gas(gas);
     }
 
     <span class="kw">pub fn </span>set_slot_base_fee(<span class="kw-2">&amp;mut </span><span class="self">self</span>, target_slot: Slot, base_fee: Amount) {
@@ -371,12 +373,12 @@
             .and_then(|slot_changes| slot_changes.get_base_fee())
     }
 
-    <span class="kw">pub fn </span>set_total_gas(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gas: u128) {
-        <span class="self">self</span>.total_gas = DeferredRegistryGasChange::Set(gas);
+    <span class="kw">pub fn </span>set_effective_total_gas(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gas: u128) {
+        <span class="self">self</span>.effective_total_gas = DeferredRegistryGasChange::Set(gas);
     }
 
-    <span class="kw">pub fn </span>get_total_gas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
-        <span class="kw">match </span><span class="self">self</span>.total_gas {
+    <span class="kw">pub fn </span>get_effective_total_gas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u128&gt; {
+        <span class="kw">match </span><span class="self">self</span>.effective_total_gas {
             DeferredRegistryGasChange::Set(v) =&gt; <span class="prelude-val">Some</span>(v),
             DeferredRegistryGasChange::Keep =&gt; <span class="prelude-val">None</span>,
         }
@@ -387,7 +389,7 @@
     slots_length: U64VarIntSerializer,
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) total_gas_serializer: SetOrKeepSerializer&lt;u128, U128VarIntSerializer&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) effective_total_gas_serializer: SetOrKeepSerializer&lt;u128, U128VarIntSerializer&gt;,
 }
 
 <span class="kw">impl </span>DeferredRegistryChangesSerializer {
@@ -396,7 +398,7 @@
             slots_length: U64VarIntSerializer::new(),
             slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
+            effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
         }
     }
 }
@@ -425,8 +427,8 @@
             <span class="self">self</span>.slot_changes_serializer.serialize(changes, buffer)<span class="question-mark">?</span>;
         }
 
-        <span class="self">self</span>.total_gas_serializer
-            .serialize(<span class="kw-2">&amp;</span>value.total_gas, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.effective_total_gas_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.effective_total_gas, buffer)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -436,8 +438,8 @@
     slots_length: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
     slot_deserializer: SlotDeserializer,
-    <span class="comment">// total gas deserializer should be a u128 or SetOrKeep ?
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) total_gas_deserializer: SetOrKeepDeserializer&lt;u128, U128VarIntDeserializer&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) effective_total_gas_deserializer:
+        SetOrKeepDeserializer&lt;u128, U128VarIntDeserializer&gt;,
 }
 
 <span class="kw">impl </span>DeferredRegistryChangesDeserializer {
@@ -452,10 +454,9 @@
                 (Bound::Included(<span class="number">0</span>), Bound::Included(u64::MAX)),
                 (Bound::Included(<span class="number">0</span>), Bound::Excluded(config.thread_count)),
             ),
-            total_gas_deserializer: SetOrKeepDeserializer::new(U128VarIntDeserializer::new(
-                Included(u128::MIN),
-                Included(u128::MAX),
-            )),
+            effective_total_gas_deserializer: SetOrKeepDeserializer::new(
+                U128VarIntDeserializer::new(Included(u128::MIN), Included(u128::MAX)),
+            ),
         }
     }
 }
@@ -485,13 +486,13 @@
                     },
                 ),
                 context(<span class="string">&quot;Failed total_gas deserialization&quot;</span>, |input| {
-                    <span class="self">self</span>.total_gas_deserializer.deserialize(input)
+                    <span class="self">self</span>.effective_total_gas_deserializer.deserialize(input)
                 }),
             )),
         )
         .map(|(changes, total_gas)| DeferredCallRegistryChanges {
             slots_change: changes.into_iter().collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
-            total_gas,
+            effective_total_gas: total_gas,
         })
         .parse(buffer)
     }
@@ -522,12 +523,12 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>changes = DeferredCallRegistryChanges {
             slots_change: BTreeMap::new(),
-            total_gas: Default::default(),
+            effective_total_gas: Default::default(),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>registry_slot_changes = DeferredRegistrySlotChanges::default();
         registry_slot_changes.set_base_fee(Amount::from_str(<span class="string">&quot;100&quot;</span>).unwrap());
-        registry_slot_changes.set_gas(<span class="number">100_000</span>);
+        registry_slot_changes.set_effective_slot_gas(<span class="number">100_000</span>);
         <span class="kw">let </span>target_slot = Slot {
             thread: <span class="number">5</span>,
             period: <span class="number">1</span>,
@@ -560,7 +561,7 @@
             .slots_change
             .insert(target_slot, registry_slot_changes);
 
-        changes.set_total_gas(<span class="number">100_000</span>);
+        changes.set_effective_total_gas(<span class="number">100_000</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         <span class="kw">let </span>serializer = DeferredRegistryChangesSerializer::new();
@@ -575,7 +576,10 @@
         <span class="kw">let </span>base = changes.slots_change.get(<span class="kw-2">&amp;</span>target_slot).unwrap();
         <span class="kw">let </span>slot_changes_deser = deserialized.slots_change.get(<span class="kw-2">&amp;</span>target_slot).unwrap();
         <span class="macro">assert_eq!</span>(base.calls, slot_changes_deser.calls);
-        <span class="macro">assert_eq!</span>(changes.total_gas, deserialized.total_gas);
+        <span class="macro">assert_eq!</span>(
+            changes.effective_total_gas,
+            deserialized.effective_total_gas
+        );
     }
 }
 </code></pre></div></section></main></body></html>
