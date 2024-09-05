@@ -321,8 +321,7 @@ impl SpeculativeDeferredCallRegistry {
         max_penalty: Amount,
     ) -> Result<Amount, ExecutionError> {
         // linear part of the occupancy before booking the requested amount
-        let relu_occupancy_before =
-            std::cmp::max(current_occupancy, target_occupancy).saturating_sub(target_occupancy);
+        let relu_occupancy_before = current_occupancy.saturating_sub(target_occupancy);
 
         // linear part of the occupancy after booking the requested amount
         let relu_occupancy_after = std::cmp::max(
