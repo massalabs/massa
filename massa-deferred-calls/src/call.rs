@@ -93,8 +93,8 @@ impl DeferredCallSerializer {
         Self {
             slot_serializer: SlotSerializer::new(),
             address_serializer: AddressSerializer::new(),
-            string_serializer: StringSerializer::new(U16VarIntSerializer::new()), // TODO: use max function name length
-            vec_u8_serializer: VecU8Serializer::new(), // TODO: use max parameters length
+            string_serializer: StringSerializer::new(U16VarIntSerializer::new()),
+            vec_u8_serializer: VecU8Serializer::new(),
             amount_serializer: AmountSerializer::new(),
             u64_var_int_serializer: U64VarIntSerializer::new(),
             bool_serializer: BoolSerializer::new(),
