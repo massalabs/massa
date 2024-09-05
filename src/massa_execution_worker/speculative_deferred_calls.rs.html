@@ -502,7 +502,6 @@
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Speculative async call registry.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -826,8 +825,7 @@
         max_penalty: Amount,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
         <span class="comment">// linear part of the occupancy before booking the requested amount
-        </span><span class="kw">let </span>relu_occupancy_before =
-            std::cmp::max(current_occupancy, target_occupancy).saturating_sub(target_occupancy);
+        </span><span class="kw">let </span>relu_occupancy_before = current_occupancy.saturating_sub(target_occupancy);
 
         <span class="comment">// linear part of the occupancy after booking the requested amount
         </span><span class="kw">let </span>relu_occupancy_after = std::cmp::max(
