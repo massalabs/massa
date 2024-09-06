@@ -502,6 +502,8 @@
 <a href="#502" id="502">502</a>
 <a href="#503" id="503">503</a>
 <a href="#504" id="504">504</a>
+<a href="#505" id="505">505</a>
+<a href="#506" id="506">506</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Speculative async call registry.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -647,6 +649,8 @@
     <span class="doccomment">/// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
     </span><span class="kw">pub fn </span>advance_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, current_slot: Slot) -&gt; DeferredSlotCalls {
+        <span class="kw">let </span>total_booked_gas_before = <span class="self">self</span>.get_effective_total_gas();
+
         <span class="comment">// get the state of the current slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot_calls: DeferredSlotCalls = <span class="self">self
             </span>.final_state
@@ -658,8 +662,8 @@
         }
         slot_calls.apply_changes(<span class="kw-2">&amp;</span><span class="self">self</span>.deferred_calls_changes);
 
-        <span class="kw">let </span>total_booked_gas = <span class="self">self</span>.get_effective_total_gas();
-        <span class="kw">let </span>avg_booked_gas = total_booked_gas.saturating_div(<span class="self">self</span>.config.max_future_slots <span class="kw">as </span>u128);
+        <span class="kw">let </span>avg_booked_gas =
+            total_booked_gas_before.saturating_div(<span class="self">self</span>.config.max_future_slots <span class="kw">as </span>u128);
         <span class="comment">// select the slot that is newly made available and set its base fee
         </span><span class="kw">let </span>new_slot = current_slot
             .skip(<span class="self">self</span>.config.max_future_slots, <span class="self">self</span>.config.thread_count)
@@ -687,7 +691,7 @@
                 )
             }
             std::cmp::Ordering::Less =&gt; {
-                <span class="kw">let </span>gas_used_delta = TARGET_BOOKING.saturating_sub(total_booked_gas);
+                <span class="kw">let </span>gas_used_delta = TARGET_BOOKING.saturating_sub(total_booked_gas_before);
 
                 <span class="kw">let </span>factor = gas_used_delta <span class="kw">as </span>u64
                     / TARGET_BOOKING <span class="kw">as </span>u64
@@ -705,14 +709,14 @@
             .set_slot_base_fee(new_slot, new_slot_base_fee);
 
         <span class="comment">// subtract the current slot gas from the total gas
-
-        </span><span class="kw">let </span>total_gas = slot_calls
-            .effective_total_gas
-            .saturating_sub(slot_calls.effective_slot_gas.into());
-        <span class="kw">if </span>!total_gas.eq(<span class="kw-2">&amp;</span><span class="self">self</span>.get_effective_total_gas()) {
+        </span><span class="kw">let </span>total_gas_after =
+            total_booked_gas_before.saturating_sub(slot_calls.effective_slot_gas.into());
+        <span class="kw">if </span>!total_gas_after.eq(<span class="kw-2">&amp;</span>total_booked_gas_before) {
             <span class="self">self</span>.deferred_calls_changes
-                .set_effective_total_gas(total_gas);
+                .set_effective_total_gas(total_gas_after);
         }
+
+        slot_calls.effective_total_gas = total_gas_after;
 
         <span class="comment">// delete the current slot
         </span><span class="kw">for </span>id <span class="kw">in </span>slot_calls.slot_calls.keys() {
@@ -987,10 +991,10 @@
         );
 
         <span class="comment">// set total effective gas
-        </span><span class="self">self</span>.deferred_calls_changes.set_effective_total_gas(
-            <span class="self">self</span>.get_effective_total_gas()
-                .saturating_add(call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost) <span class="kw">as </span>u128),
-        );
+        </span><span class="kw">let </span>effective_total_gas = <span class="self">self</span>.get_effective_total_gas();
+        <span class="kw">let </span>call_effective_gas = call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost) <span class="kw">as </span>u128;
+        <span class="self">self</span>.deferred_calls_changes
+            .set_effective_total_gas(effective_total_gas.saturating_add(call_effective_gas));
 
         <span class="prelude-val">Ok</span>(id)
     }

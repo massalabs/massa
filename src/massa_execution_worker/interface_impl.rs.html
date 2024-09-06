@@ -3607,7 +3607,7 @@
         <span class="comment">// check fee, slot, gas
         </span><span class="kw">let </span>(available, fee_raw) = <span class="self">self</span>.deferred_call_quote(target_slot, max_gas)<span class="question-mark">?</span>;
         <span class="kw">if </span>!available {
-            <span class="macro">bail!</span>(<span class="string">&quot;The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">&quot;The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.&quot;</span>);
         }
         <span class="kw">let </span>fee = Amount::from_raw(fee_raw);
         <span class="kw">let </span>coins = Amount::from_raw(coins);
