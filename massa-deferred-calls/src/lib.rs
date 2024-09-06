@@ -161,7 +161,7 @@ impl DeferredCallRegistry {
         }
     }
 
-    /// Returns the total amount of gas booked
+    /// Returns the total amount of effective gas booked
     pub fn get_total_gas(&self) -> u128 {
         match self
             .db
@@ -176,10 +176,8 @@ impl DeferredCallRegistry {
                     .deserialize::<DeserializeError>(&v)
                     .expect(DEFERRED_CALL_DESER_ERROR)
                     .1;
-                match result {
-                    SetOrKeep::Set(v) => v,
-                    SetOrKeep::Keep => 0,
-                }
+
+                result
             }
             None => 0,
         }
@@ -390,7 +388,7 @@ impl DeferredCallRegistry {
                 let mut value_ser = Vec::new();
                 self.registry_changes_serializer
                     .effective_total_gas_serializer
-                    .serialize(&DeferredRegistryGasChange::Set(v), &mut value_ser)
+                    .serialize(&v, &mut value_ser)
                     .expect(DEFERRED_CALL_SER_ERROR);
                 self.db
                     .read()

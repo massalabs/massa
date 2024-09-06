@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, ops::Bound};
 
-use massa_models::types::{SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::{
     amount::Amount,
     deferred_calls::DeferredCallId,
@@ -28,10 +27,19 @@ use crate::{
 };
 use std::ops::Bound::Included;
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeferredCallRegistryChanges {
     pub slots_change: BTreeMap<Slot, DeferredRegistrySlotChanges>,
     pub effective_total_gas: DeferredRegistryGasChange<u128>,
+}
+
+impl Default for DeferredCallRegistryChanges {
+    fn default() -> Self {
+        Self {
+            slots_change: Default::default(),
+            effective_total_gas: DeferredRegistryGasChange::Keep,
+        }
+    }
 }
 
 impl DeferredCallRegistryChanges {
@@ -97,7 +105,7 @@ pub struct DeferredRegistryChangesSerializer {
     slots_length: U64VarIntSerializer,
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
-    pub(crate) effective_total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
+    pub(crate) effective_total_gas_serializer: U128VarIntSerializer,
 }
 
 impl DeferredRegistryChangesSerializer {
@@ -106,7 +114,7 @@ impl DeferredRegistryChangesSerializer {
             slots_length: U64VarIntSerializer::new(),
             slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
             slot_serializer: SlotSerializer::new(),
-            effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
+            effective_total_gas_serializer: U128VarIntSerializer::new(),
         }
     }
 }
@@ -135,8 +143,12 @@ impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializ
             self.slot_changes_serializer.serialize(changes, buffer)?;
         }
 
-        self.effective_total_gas_serializer
-            .serialize(&value.effective_total_gas, buffer)?;
+        match &value.effective_total_gas {
+            DeferredRegistryGasChange::Set(v) => {
+                self.effective_total_gas_serializer.serialize(v, buffer)?;
+            }
+            DeferredRegistryGasChange::Keep => {}
+        }
 
         Ok(())
     }
@@ -146,8 +158,7 @@ pub struct DeferredRegistryChangesDeserializer {
     slots_length: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
     slot_deserializer: SlotDeserializer,
-    pub(crate) effective_total_gas_deserializer:
-        SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
+    pub(crate) effective_total_gas_deserializer: U128VarIntDeserializer,
 }
 
 impl DeferredRegistryChangesDeserializer {
@@ -162,8 +173,9 @@ impl DeferredRegistryChangesDeserializer {
                 (Bound::Included(0), Bound::Included(u64::MAX)),
                 (Bound::Included(0), Bound::Excluded(config.thread_count)),
             ),
-            effective_total_gas_deserializer: SetOrKeepDeserializer::new(
-                U128VarIntDeserializer::new(Included(u128::MIN), Included(u128::MAX)),
+            effective_total_gas_deserializer: U128VarIntDeserializer::new(
+                Included(u128::MIN),
+                Included(u128::MAX),
             ),
         }
     }
@@ -200,7 +212,7 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
         )
         .map(|(changes, total_gas)| DeferredCallRegistryChanges {
             slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
-            effective_total_gas: total_gas,
+            effective_total_gas: massa_models::types::SetOrKeep::Set(total_gas),
         })
         .parse(buffer)
     }

@@ -1400,7 +1400,7 @@ impl Interface for InterfaceImpl {
         // check fee, slot, gas
         let (available, fee_raw) = self.deferred_call_quote(target_slot, max_gas)?;
         if !available {
-            bail!("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
+            bail!("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
         }
         let fee = Amount::from_raw(fee_raw);
         let coins = Amount::from_raw(coins);
