@@ -233,6 +233,7 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
 impl StateChanges {
     /// extends the current `StateChanges` with another one
     pub fn apply(&mut self, changes: StateChanges) {
+        // TODO deferred_call_changes ?
         use massa_models::types::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.apply(changes.async_pool_changes);

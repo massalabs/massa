@@ -1127,6 +1127,7 @@ fn deferred_calls() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
+            total_calls_registered: SetOrKeep::Set(2),
         },
         &mut db_batch,
     );
@@ -1339,6 +1340,7 @@ fn deferred_call_register() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Keep,
+            total_calls_registered: SetOrKeep::Set(0),
         },
         &mut db_batch,
     );
@@ -1483,6 +1485,7 @@ fn deferred_call_register_fail() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Set(2000),
+            total_calls_registered: SetOrKeep::Set(1),
         },
         &mut db_batch,
     );
@@ -1533,7 +1536,7 @@ fn deferred_call_register_fail() {
 
     let ev = events[1].clone();
     assert!(ev.context.is_error);
-    assert!(ev.data.contains("The ASC call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas"));
+    assert!(ev.data.contains("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas"));
 
     // // update base fee at slot 1,10
     // defer_reg_slot_changes.set_base_fee(Amount::from_str("0.0005").unwrap());

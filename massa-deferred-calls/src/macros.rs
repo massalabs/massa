@@ -1,5 +1,7 @@
 pub(crate) const DEFERRED_CALL_TOTAL_GAS: &str = "deferred_call_total_gas";
 
+pub(crate) const DEFERRED_CALL_TOTAL_REGISTERED: &str = "deferred_call_total_registered";
+
 pub(crate) const CALLS_TAG: u8 = 0u8;
 // slot fields
 pub(crate) const SLOT_TOTAL_GAS: u8 = 1u8;

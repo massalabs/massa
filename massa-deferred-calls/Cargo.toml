@@ -15,6 +15,8 @@ massa_db_exports = { workspace = true }
 massa_ledger_exports = { workspace = true }
 massa_models = { workspace = true }
 massa_serialization = { workspace = true }
+serde_with = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

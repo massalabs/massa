@@ -1,6 +1,6 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
 use config::DeferredCallsConfig;
-use macros::DEFERRED_CALL_TOTAL_GAS;
+use macros::{DEFERRED_CALL_TOTAL_GAS, DEFERRED_CALL_TOTAL_REGISTERED};
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
     DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, KEY_DESER_ERROR, STATE_CF,
@@ -47,7 +47,8 @@ pub struct DeferredCallRegistry {
 impl DeferredCallRegistry {
     /*
      DB layout:
-        [DEFERRED_CALL_TOTAL_GAS] -> u64 // total currently booked gas
+        [DEFERRED_CALL_TOTAL_GAS] -> u128 // total currently booked gas
+        [DEFERRED_CALL_TOTAL_REGISTERED] -> u64 // total call registered
         [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
         [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
         [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> DeferredCalls.x // call data
@@ -62,6 +63,24 @@ impl DeferredCallRegistry {
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
+        }
+    }
+
+    pub fn get_nb_call_registered(&self) -> u64 {
+        match self
+            .db
+            .read()
+            .get_cf(STATE_CF, DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec())
+            .expect(CRUD_ERROR)
+        {
+            Some(v) => {
+                self.registry_changes_deserializer
+                    .u64_deserializer
+                    .deserialize::<DeserializeError>(&v)
+                    .expect(DEFERRED_CALL_DESER_ERROR)
+                    .1
+            }
+            None => 0,
         }
     }
 
@@ -177,7 +196,10 @@ impl DeferredCallRegistry {
                     .expect(DEFERRED_CALL_DESER_ERROR)
                     .1;
 
-                result
+                match result {
+                    DeferredRegistryGasChange::Set(v) => v,
+                    DeferredRegistryGasChange::Keep => 0,
+                }
             }
             None => 0,
         }
@@ -383,12 +405,27 @@ impl DeferredCallRegistry {
         }
 
         match changes.effective_total_gas {
-            DeferredRegistryGasChange::Set(v) => {
+            DeferredRegistryGasChange::Set(_) => {
                 let key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
                 let mut value_ser = Vec::new();
                 self.registry_changes_serializer
                     .effective_total_gas_serializer
-                    .serialize(&v, &mut value_ser)
+                    .serialize(&changes.effective_total_gas, &mut value_ser)
+                    .expect(DEFERRED_CALL_SER_ERROR);
+                self.db
+                    .read()
+                    .put_or_update_entry_value(batch, key, &value_ser);
+            }
+            DeferredRegistryGasChange::Keep => {}
+        }
+
+        match changes.total_calls_registered {
+            DeferredRegistryGasChange::Set(_) => {
+                let key = DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec();
+                let mut value_ser = Vec::new();
+                self.registry_changes_serializer
+                    .total_calls_registered_serializer
+                    .serialize(&changes.total_calls_registered, &mut value_ser)
                     .expect(DEFERRED_CALL_SER_ERROR);
                 self.db
                     .read()

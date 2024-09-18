@@ -1232,12 +1232,10 @@ impl ExecutionState {
     ) -> Result<DeferredCallExecutionResult, ExecutionError> {
         let mut result = DeferredCallExecutionResult::new(&call);
 
-        let snapshot;
-
-        {
+        let snapshot = {
             let context = context_guard!(self);
-            snapshot = context.get_snapshot();
-        }
+            context.get_snapshot()
+        };
 
         let deferred_call_execution = || {
             let bytecode = {
@@ -1345,6 +1343,9 @@ impl ExecutionState {
             let mut context = context_guard!(self);
             context.reset_to_snapshot(snapshot, err.clone());
             context.deferred_call_fail_exec(id, &call);
+            self.massa_metrics.inc_deferred_calls_failed();
+        } else {
+            self.massa_metrics.inc_deferred_calls_executed();
         }
 
         execution_result
@@ -1406,7 +1407,6 @@ impl ExecutionState {
             match self.execute_deferred_call(&id, call) {
                 Ok(_exec) => {
                     info!("executed deferred call: {:?}", id);
-                    self.massa_metrics.inc_deferred_calls_executed();
                     cfg_if::cfg_if! {
                         if #[cfg(feature = "execution-trace")] {
                             // Safe to unwrap
@@ -1419,10 +1419,9 @@ impl ExecutionState {
                 }
                 Err(err) => {
                     let msg = format!("failed executing deferred call: {}", err);
-                    self.massa_metrics.inc_deferred_calls_failed();
                     #[cfg(feature = "execution-info")]
                     exec_info.deferred_calls_messages.push(Err(msg.clone()));
-                    debug!(msg);
+                    dbg!(msg);
                 }
             }
         }

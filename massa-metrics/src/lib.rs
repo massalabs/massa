@@ -30,6 +30,26 @@ lazy_static! {
         register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge =
         register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
+
+        static ref DEFERRED_CALL_REGISTERED: IntGauge = register_int_gauge!(
+        "deferred_calls_registered", "number of deferred calls registered" ).unwrap();
+
+}
+
+pub fn dec_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.dec();
+}
+
+pub fn inc_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_deferred_calls_registered(val: usize) {
+    DEFERRED_CALL_REGISTERED.set(val as i64);
+}
+
+pub fn get_deferred_calls_registered() -> i64 {
+    DEFERRED_CALL_REGISTERED.get()
 }
 
 pub fn set_blocks_counter(val: usize) {
@@ -203,6 +223,8 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
+        set_deferred_calls_registered(0);
 
         // set available processors
         let process_available_processors =

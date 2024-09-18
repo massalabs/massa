@@ -2571,7 +2571,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=48d42c58c3d46ba68426de0be5143fc3a17f5cc8#48d42c58c3d46ba68426de0be5143fc3a17f5cc8"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=b582bcd83120cfe980211ea7bcdaf994a784c714#b582bcd83120cfe980211ea7bcdaf994a784c714"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -2846,6 +2846,8 @@ dependencies = [
  "nom",
  "parking_lot",
  "serde",
+ "serde_json",
+ "serde_with",
  "tempfile",
 ]
 

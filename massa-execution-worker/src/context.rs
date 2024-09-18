@@ -1165,7 +1165,7 @@ impl ExecutionContext {
     /// If it has been cancelled, return false
     pub fn deferred_call_exists(&self, call_id: &DeferredCallId) -> bool {
         if let Some(call) = self.speculative_deferred_calls.get_call(call_id) {
-            return call.cancelled;
+            return !call.cancelled;
         }
         false
     }
