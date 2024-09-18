@@ -396,6 +396,7 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -631,7 +632,8 @@
 <span class="kw">impl </span>StateChanges {
     <span class="doccomment">/// extends the current `StateChanges` with another one
     </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
-        <span class="kw">use </span>massa_models::types::Applicable;
+        <span class="comment">// TODO deferred_call_changes ?
+        </span><span class="kw">use </span>massa_models::types::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);

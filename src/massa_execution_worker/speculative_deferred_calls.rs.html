@@ -504,6 +504,56 @@
 <a href="#504" id="504">504</a>
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
+<a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Speculative async call registry.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -560,6 +610,31 @@
     <span class="doccomment">/// Add a new call to the list of changes of this `SpeculativeDeferredCallRegistry`
     </span><span class="kw">pub fn </span>push_new_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: DeferredCallId, call: DeferredCall) {
         <span class="self">self</span>.deferred_calls_changes.set_call(id, call);
+    }
+
+    <span class="kw">pub fn </span>get_total_calls_registered(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.deferred_calls_changes.get_total_calls_registered() {
+            <span class="kw">return </span>v;
+        }
+
+        {
+            <span class="kw">let </span>history = <span class="self">self</span>.active_history.read();
+            <span class="kw">for </span>history_item <span class="kw">in </span>history.<span class="number">0</span>.iter().rev() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = history_item
+                    .state_changes
+                    .deferred_call_changes
+                    .get_total_calls_registered()
+                {
+                    <span class="kw">return </span>v;
+                }
+            }
+        }
+
+        <span class="kw">return </span><span class="self">self
+            </span>.final_state
+            .read()
+            .get_deferred_call_registry()
+            .get_nb_call_registered();
     }
 
     <span class="kw">pub fn </span>get_effective_total_gas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u128 {
@@ -649,8 +724,6 @@
     <span class="doccomment">/// Consumes and deletes the current slot, prepares a new slot in the future
     /// and returns the calls that need to be executed in the current slot
     </span><span class="kw">pub fn </span>advance_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, current_slot: Slot) -&gt; DeferredSlotCalls {
-        <span class="kw">let </span>total_booked_gas_before = <span class="self">self</span>.get_effective_total_gas();
-
         <span class="comment">// get the state of the current slot
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot_calls: DeferredSlotCalls = <span class="self">self
             </span>.final_state
@@ -661,6 +734,7 @@
             slot_calls.apply_changes(<span class="kw-2">&amp;</span>hist_item.state_changes.deferred_call_changes);
         }
         slot_calls.apply_changes(<span class="kw-2">&amp;</span><span class="self">self</span>.deferred_calls_changes);
+        <span class="kw">let </span>total_booked_gas_before = <span class="self">self</span>.get_effective_total_gas();
 
         <span class="kw">let </span>avg_booked_gas =
             total_booked_gas_before.saturating_div(<span class="self">self</span>.config.max_future_slots <span class="kw">as </span>u128);
@@ -709,6 +783,7 @@
             .set_slot_base_fee(new_slot, new_slot_base_fee);
 
         <span class="comment">// subtract the current slot gas from the total gas
+        // cancelled call gas is already decremented from the effective slot gas
         </span><span class="kw">let </span>total_gas_after =
             total_booked_gas_before.saturating_sub(slot_calls.effective_slot_gas.into());
         <span class="kw">if </span>!total_gas_after.eq(<span class="kw-2">&amp;</span>total_booked_gas_before) {
@@ -718,9 +793,20 @@
 
         slot_calls.effective_total_gas = total_gas_after;
 
-        <span class="comment">// delete the current slot
-        </span><span class="kw">for </span>id <span class="kw">in </span>slot_calls.slot_calls.keys() {
+        <span class="comment">// delete call in the current slot
+        </span><span class="kw">let </span><span class="kw-2">mut </span>nb_call_to_execute = <span class="number">0</span>;
+        <span class="kw">for </span>(id, call) <span class="kw">in </span><span class="kw-2">&amp;</span>slot_calls.slot_calls {
+            <span class="comment">// cancelled call is already decremented from the total calls registered
+            </span><span class="kw">if </span>!call.cancelled {
+                nb_call_to_execute += <span class="number">1</span>;
+            }
             <span class="self">self</span>.delete_call(id, current_slot);
+        }
+
+        <span class="kw">if </span>nb_call_to_execute &gt; <span class="number">0 </span>{
+            <span class="kw">let </span>total_calls_registered = <span class="self">self</span>.get_total_calls_registered();
+            <span class="kw">let </span>new_call_registered = total_calls_registered.saturating_sub(nb_call_to_execute);
+            <span class="self">self</span>.set_total_calls_registered(new_call_registered);
         }
 
         slot_calls
@@ -808,11 +894,15 @@
             current_gas.saturating_sub(call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost)),
         );
 
+        <span class="kw">let </span>effective_gas_call = call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost) <span class="kw">as </span>u128;
         <span class="comment">// set total gas
         </span><span class="self">self</span>.deferred_calls_changes.set_effective_total_gas(
             <span class="self">self</span>.get_effective_total_gas()
-                .saturating_sub(call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost) <span class="kw">as </span>u128),
+                .saturating_sub(effective_gas_call),
         );
+
+        <span class="kw">let </span>new_total_calls_registered = <span class="self">self</span>.get_total_calls_registered().saturating_sub(<span class="number">1</span>);
+        <span class="self">self</span>.set_total_calls_registered(new_total_calls_registered);
 
         <span class="prelude-val">Ok</span>(res)
     }
@@ -996,12 +1086,22 @@
         <span class="self">self</span>.deferred_calls_changes
             .set_effective_total_gas(effective_total_gas.saturating_add(call_effective_gas));
 
+        <span class="comment">// increment total calls registered
+        </span><span class="kw">let </span>new_total_calls_registered = <span class="self">self</span>.get_total_calls_registered().saturating_add(<span class="number">1</span>);
+        <span class="self">self</span>.set_total_calls_registered(new_total_calls_registered);
+
         <span class="prelude-val">Ok</span>(id)
     }
 
     <span class="doccomment">/// Take the deferred registry slot changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; DeferredCallRegistryChanges {
         std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.deferred_calls_changes)
+    }
+
+    <span class="kw">fn </span>set_total_calls_registered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, nb_calls: u64) {
+        massa_metrics::set_deferred_calls_registered(nb_calls <span class="kw">as </span>usize);
+        <span class="self">self</span>.deferred_calls_changes
+            .set_total_calls_registered(nb_calls);
     }
 }
 

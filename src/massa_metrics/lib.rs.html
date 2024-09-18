@@ -796,6 +796,28 @@
 <a href="#796" id="796">796</a>
 <a href="#797" id="797">797</a>
 <a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -828,6 +850,26 @@
         <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_storage_counter&quot;</span>, <span class="string">&quot;blocks storage counter len&quot;</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>ENDORSEMENTS_COUNTER: IntGauge =
         <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_storage_counter&quot;</span>, <span class="string">&quot;endorsements storage counter len&quot;</span>).unwrap();
+
+        <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_REGISTERED: IntGauge = <span class="macro">register_int_gauge!</span>(
+        <span class="string">&quot;deferred_calls_registered&quot;</span>, <span class="string">&quot;number of deferred calls registered&quot; </span>).unwrap();
+
+}
+
+<span class="kw">pub fn </span>dec_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.dec();
+}
+
+<span class="kw">pub fn </span>inc_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.inc();
+}
+
+<span class="kw">pub fn </span>set_deferred_calls_registered(val: usize) {
+    DEFERRED_CALL_REGISTERED.set(val <span class="kw">as </span>i64);
+}
+
+<span class="kw">pub fn </span>get_deferred_calls_registered() -&gt; i64 {
+    DEFERRED_CALL_REGISTERED.get()
 }
 
 <span class="kw">pub fn </span>set_blocks_counter(val: usize) {
@@ -1001,6 +1043,8 @@
 
             consensus_vec.push(gauge);
         }
+
+        set_deferred_calls_registered(<span class="number">0</span>);
 
         <span class="comment">// set available processors
         </span><span class="kw">let </span>process_available_processors =
