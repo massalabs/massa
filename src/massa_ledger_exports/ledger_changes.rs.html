@@ -1022,16 +1022,16 @@
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
+<span class="kw">use </span><span class="kw">crate</span>::types::{
+    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
+};
 <span class="kw">use </span>massa_models::address::{Address, AddressDeserializer, AddressSerializer};
 <span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 <span class="kw">use </span>massa_models::prehash::PreHashMap;
 <span class="kw">use </span>massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
-<span class="kw">use </span>massa_models::types::{
-    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
-    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
-};
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
