@@ -515,11 +515,11 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    <span class="doccomment">/// channels with informations broadcasted by the consensus
+    <span class="doccomment">/// channels with information broadcasted by the consensus
     </span><span class="kw">pub </span>consensus_broadcasts: ConsensusBroadcasts,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-    <span class="doccomment">/// channels with informations broadcasted by the pool
+    <span class="doccomment">/// channels with information broadcasted by the pool
     </span><span class="kw">pub </span>pool_broadcasts: PoolBroadcasts,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,

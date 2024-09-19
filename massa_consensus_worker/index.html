@@ -2,9 +2,9 @@
 <p>The consensus worker launches a persistent thread that will run in the background.
 This thread has a <code>run</code> function that triggers the consensus algorithm each slot. It can be interrupted by commands
 that are managed on the fly. The consensus worker share a state with a controller. This controller can be called by the others modules.
-It avoid sending message to the thread just for getting informations on the consensus.</p>
+It avoids sending message to the thread just for getting information on the consensus.</p>
 <p>Communications with execution is blocking. Communications with protocol blocks on sending information to protocol but not blocking
-when protocol sends informations to this module.</p>
+when protocol sends information to this module.</p>
 <p>This module doesn’t use asynchronous code.</p>
 <h3 id="workflow-description"><a href="#workflow-description">Workflow description</a></h3>
 <p>The consensus worker is launched and initializes a shared state that contains caches, counters and other info.

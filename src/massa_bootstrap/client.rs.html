@@ -681,6 +681,10 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_db_exports::DBBatch;
 <span class="kw">use </span>massa_final_state::{FinalStateController, FinalStateError};
@@ -1085,7 +1089,7 @@
     genesis_timestamp: MassaTime,
     end_timestamp: <span class="prelude-ty">Option</span>&lt;MassaTime&gt;,
     restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
-    interupted: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
+    interrupted: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
     massa_metrics: MassaMetrics,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
     <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
@@ -1173,8 +1177,12 @@
 
     <span class="kw">let </span>limit = bootstrap_config.rate_limit;
     <span class="kw">loop </span>{
-        <span class="comment">// check for interuption
-        </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
+        <span class="comment">// check for interruption
+        </span><span class="kw">if </span><span class="kw-2">*</span>interrupted
+            .<span class="number">0
+            </span>.lock()
+            .expect(<span class="string">&quot;double-lock on interrupt-mutex&quot;</span>)
+        {
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
                 <span class="string">&quot;Sig INT received while getting state&quot;</span>.to_string(),
             ));
@@ -1230,11 +1238,11 @@
 
             <span class="comment">// Before, we would use a simple sleep(...), and that was fine
             // in a cancellable async context: the runtime could
-            // catch the interupt signal, and just cancel this thread:
+            // catch the interrupt signal, and just cancel this thread:
             //
             // let state = tokio::select!{
-            //    /* detect interupt */ =&gt; /* return, cancelling the async get_state */
-            //    get_state(...) =&gt; well, we got the state, and it didn&#39;t have to worry about interupts
+            //    /* detect interrupt */ =&gt; /* return, cancelling the async get_state */
+            //    get_state(...) =&gt; well, we got the state, and it didn&#39;t have to worry about interrupts
             // };
             //
             // Without an external system to preempt this context, we use a condvar to manage the sleep.
@@ -1245,14 +1253,14 @@
             // The _magic_ happens when, somewhere else, a clone of the Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;\
             // calls Condvar::notify_[one | all], which prompts this thread to wake up. Assuming that
             // the mutex-wrapped variable has been set appropriately before the notify, this thread
-            </span><span class="kw">let </span>int_sig = interupted
+            </span><span class="kw">let </span>int_sig = interrupted
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
-            <span class="kw">let </span>wake = interupted
+                .expect(<span class="string">&quot;double-lock() on interrupted signal mutex&quot;</span>);
+            <span class="kw">let </span>wake = interrupted
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
-                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
+                .expect(<span class="string">&quot;interrupt signal mutex poisoned&quot;</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
                     <span class="string">&quot;Sig INT during bootstrap retry-wait&quot;</span>.to_string(),

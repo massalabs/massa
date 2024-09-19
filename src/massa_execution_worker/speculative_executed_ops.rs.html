@@ -151,7 +151,7 @@
 
     <span class="doccomment">/// Checks if an operation was executed previously
     </span><span class="kw">pub fn </span>is_op_executed(<span class="kw-2">&amp;</span><span class="self">self</span>, op_id: <span class="kw-2">&amp;</span>OperationId) -&gt; bool {
-        <span class="comment">// check in the curent changes
+        <span class="comment">// check in the current changes
         </span><span class="kw">if </span><span class="self">self</span>.executed_ops.contains_key(op_id) {
             <span class="kw">return </span><span class="bool-val">true</span>;
         }
