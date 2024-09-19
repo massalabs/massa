@@ -1401,7 +1401,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         *sig_int_toggled_clone
             .0
             .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+            .expect("double-lock on interrupt bool in ctrl-c handler") = true;
         sig_int_toggled_clone.1.notify_all();
     })
     .expect("Error setting Ctrl-C handler");
@@ -1453,11 +1453,11 @@ async fn run(args: Args) -> anyhow::Result<()> {
             let int_sig = sig_int_toggled
                 .0
                 .lock()
-                .expect("double-lock() on interupted signal mutex");
+                .expect("double-lock() on interrupted signal mutex");
             let wake = sig_int_toggled
                 .1
                 .wait_timeout(int_sig, Duration::from_millis(100))
-                .expect("interupt signal mutex poisoned");
+                .expect("interrupt signal mutex poisoned");
             if *wake.0 {
                 info!("interrupt signal received");
                 break false;

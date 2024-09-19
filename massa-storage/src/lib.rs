@@ -130,7 +130,7 @@ impl Storage {
 
     /// Efficiently extends the current Storage by consuming the refs of another storage.
     pub fn extend(&mut self, mut other: Storage) {
-        // Take ownership ot `other`'s references.
+        // Take ownership of `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
         other
             .local_used_ops

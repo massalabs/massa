@@ -377,7 +377,7 @@ impl SpeculativeRollState {
         if let Some(v) = self
             .active_history
             .read()
-            .get_adress_deferred_credit_for(addr, slot)
+            .get_address_deferred_credit_for(addr, slot)
         {
             return Some(v);
         }

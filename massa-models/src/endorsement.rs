@@ -242,7 +242,7 @@ impl SecureShareEndorsement {
             return Err(e.into());
         }
         if self.content.slot.thread >= crate::config::THREAD_COUNT {
-            Err("Endorsement slot on non-existant thread".into())
+            Err("Endorsement slot on non-existent thread".into())
         } else if self.content.index >= crate::config::ENDORSEMENT_COUNT {
             Err("Endorsement index out of range".into())
         } else {
@@ -660,7 +660,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_endorsement_id_errors() {
-        let actual_error = EndorsementId::from_str("SomeUnvalidEndorsementId")
+        let actual_error = EndorsementId::from_str("SomeInvalidEndorsementId")
             .unwrap_err()
             .to_string();
         let expected_error = "endorsement id parsing error".to_string();

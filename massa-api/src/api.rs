@@ -151,7 +151,7 @@ impl MassaApiServer for API<ApiV2> {
     }
 }
 
-// Brodcast the stream(sender) content via a WebSocket
+// Broadcast the stream(sender) content via a WebSocket
 async fn broadcast_via_ws<T: Serialize + Send + Clone + 'static>(
     sender: tokio::sync::broadcast::Sender<T>,
     pending: PendingSubscriptionSink,
