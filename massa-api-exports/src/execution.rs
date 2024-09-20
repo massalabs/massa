@@ -121,3 +121,25 @@ pub struct Transfer {
     /// Context
     pub context: TransferContext,
 }
+
+/// request for deferred call quote
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeferredCallQuoteRequest {
+    /// The slot at which the deferred call is to be executed.
+    pub target_slot: Slot,
+    /// The maximum gas requested.
+    pub max_gas_request: u64,
+}
+
+/// The response to a request for a deferred call quote.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeferredCallQuoteResponse {
+    /// The slot at which the deferred call is to be executed.
+    pub target_slot: Slot,
+    /// The maximum gas requested.
+    pub max_gas_request: u64,
+    /// if the slot is bookable
+    pub available: bool,
+    /// the cost for booking the call
+    pub price: u64,
+}

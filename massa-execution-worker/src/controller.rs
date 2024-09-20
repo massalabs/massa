@@ -331,6 +331,16 @@ impl ExecutionController for ExecutionControllerImpl {
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
+                ExecutionQueryRequestItem::DeferredCallQuote(slot, max_request_gas) => {
+                    let (target_slot, gas_request, available, price) =
+                        execution_lock.deferred_call_quote(slot, max_request_gas);
+                    Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                        target_slot,
+                        gas_request,
+                        available,
+                        price,
+                    ))
+                }
             };
             resp.responses.push(resp_item);
         }

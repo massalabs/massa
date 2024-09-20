@@ -11,7 +11,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::middleware::HostFilterLayer;
 use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
-use massa_api_exports::execution::Transfer;
+use massa_api_exports::execution::{DeferredCallQuoteRequest, DeferredCallQuoteResponse, Transfer};
 use massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
@@ -400,6 +400,13 @@ pub trait MassaRpc {
     /// Get OpenRPC specification.
     #[method(name = "rpc.discover")]
     async fn get_openrpc_spec(&self) -> RpcResult<Value>;
+
+    /// DeferredCall quote
+    #[method(name = "get_deferred_call_quote")]
+    async fn get_deferred_call_quote(
+        &self,
+        arg: Vec<DeferredCallQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallQuoteResponse>>;
 }
 
 fn wrong_api<T>() -> RpcResult<T> {

@@ -13,7 +13,8 @@ use massa_api_exports::{
     endorsement::EndorsementInfo,
     error::ApiError,
     execution::{
-        ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
+        DeferredCallQuoteRequest, DeferredCallQuoteResponse, ExecuteReadOnlyResponse,
+        ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
     },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
@@ -1155,6 +1156,53 @@ impl MassaRpcServer for API<Public> {
             .collect();
 
         Ok(res?)
+    }
+
+    async fn get_deferred_call_quote(
+        &self,
+        req: Vec<DeferredCallQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallQuoteResponse>> {
+        let queries: Vec<ExecutionQueryRequestItem> = req
+            .into_iter()
+            .map(|call| {
+                // add the gas cost of vm allocation
+                let effective_gas_request = call
+                    .max_gas_request
+                    .saturating_add(self.0.api_settings.deferred_calls_config.call_cst_gas_cost);
+                ExecutionQueryRequestItem::DeferredCallQuote(
+                    call.target_slot,
+                    effective_gas_request,
+                )
+            })
+            .collect();
+
+        let result = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests: queries })
+            .responses
+            .into_iter()
+            .map(|response| match response {
+                Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                    target_slot,
+                    max_gas_request,
+                    available,
+                    price,
+                )) => Ok(DeferredCallQuoteResponse {
+                    target_slot,
+                    max_gas_request,
+                    available,
+                    price,
+                }),
+
+                Ok(_) => Err(ApiError::InternalServerError(
+                    "unexpected response type".to_string(),
+                )),
+                Err(err) => Err(ApiError::InternalServerError(err.to_string())),
+            })
+            .collect::<Result<Vec<DeferredCallQuoteResponse>, ApiError>>()?;
+
+        Ok(result)
     }
 
     /// send operations

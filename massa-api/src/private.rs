@@ -11,7 +11,10 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
+    execution::{
+        DeferredCallQuoteRequest, DeferredCallQuoteResponse, ExecuteReadOnlyResponse,
+        ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -349,6 +352,13 @@ impl MassaRpcServer for API<Private> {
             ListType::Blacklist,
             ScrudOperation::Delete,
         )
+    }
+
+    async fn get_deferred_call_quote(
+        &self,
+        _req: Vec<DeferredCallQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallQuoteResponse>> {
+        crate::wrong_api::<Vec<DeferredCallQuoteResponse>>()
     }
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {

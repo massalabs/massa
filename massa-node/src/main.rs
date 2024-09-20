@@ -900,6 +900,7 @@ async fn launch(
         chain_id: *CHAINID,
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
+        deferred_calls_config,
     };
 
     // spawn Massa API

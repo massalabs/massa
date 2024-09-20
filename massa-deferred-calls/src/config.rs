@@ -8,8 +8,9 @@ use massa_models::{
         MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     },
 };
+use serde::Deserialize;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub struct DeferredCallsConfig {
     /// thread count
     pub thread_count: u8,

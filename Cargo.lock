@@ -2648,6 +2648,7 @@ version = "2.2.0"
 dependencies = [
  "displaydoc",
  "jsonrpsee",
+ "massa_deferred_calls",
  "massa_final_state",
  "massa_hash",
  "massa_models",

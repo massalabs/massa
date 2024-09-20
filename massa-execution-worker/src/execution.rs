@@ -2437,4 +2437,19 @@ impl ExecutionState {
                 .map(|i| (i.current_version, i.announced_version)),
         );
     }
+
+    pub fn deferred_call_quote(
+        &self,
+        target_slot: Slot,
+        max_request_gas: u64,
+    ) -> (Slot, u64, bool, u64) {
+        let gas_request =
+            max_request_gas.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
+        let context = context_guard!(self);
+
+        match context.deferred_calls_compute_call_fee(target_slot, gas_request, context.slot) {
+            Ok(fee) => (target_slot, gas_request, true, fee.to_raw()),
+            Err(_) => (target_slot, gas_request, false, 0),
+        }
+    }
 }

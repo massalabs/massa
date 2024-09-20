@@ -265,6 +265,7 @@ fn to_execution_query_result(
                 },
             )
         }
+        ExecutionQueryResponseItem::DeferredCallQuote(_, _, _, _) => todo!(),
     };
 
     grpc_api::ExecutionQueryResponseItem {

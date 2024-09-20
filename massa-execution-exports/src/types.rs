@@ -99,6 +99,10 @@ pub enum ExecutionQueryRequestItem {
     OpExecutionStatusCandidate(OperationId),
     /// gets the execution status (final) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     OpExecutionStatusFinal(OperationId),
+
+    /// gets the deferred call quote (candidate) for a slot, returns ExecutionQueryResponseItem::DeferredCallQuote(available, price)
+    DeferredCallQuote(Slot, u64),
+
     /// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     DenunciationExecutionStatusCandidate(DenunciationIndex),
     /// gets the execution status (final) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
@@ -139,6 +143,8 @@ pub enum ExecutionQueryResponseItem {
     DatastoreValue(Vec<u8>),
     /// list of keys
     KeyList(BTreeSet<Vec<u8>>),
+    /// deferred call quote (target_slot, gas_request, available, price)
+    DeferredCallQuote(Slot, u64, bool, u64),
     /// deferred credits value
     DeferredCredits(BTreeMap<Slot, Amount>),
     /// execution status value
