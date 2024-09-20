@@ -85,6 +85,18 @@ impl Default for ExecutionConfig {
                 max_exports: Some(100),
                 max_functions: Some(100),
                 max_signature_len: Some(100),
+                max_name_len: Some(100),
+                max_imports_len: Some(100),
+                max_table_initializers_len: Some(100),
+                max_passive_elements_len: Some(100),
+                max_passive_data_len: Some(100),
+                max_global_initializers_len: Some(100),
+                max_function_names_len: Some(100),
+                max_tables_count: Some(16),
+                max_memories_len: Some(1),
+                max_globals_len: Some(100),
+                max_custom_sections_len: Some(100),
+                max_custom_sections_data_len: Some(1_000_000),
             },
         }
     }

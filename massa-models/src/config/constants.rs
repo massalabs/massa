@@ -201,12 +201,54 @@ pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
-/// Maximum number of exports for a smart contract module
-pub const MAX_RUNTIME_MODULE_EXPORTS: usize = 500; // TODO: Calibrate
-/// Maximum number of functions for a smart contract module
-pub const MAX_RUNTIME_MODULE_EXPORTS_FUNCTIONS: usize = 500; // TODO: Calibrate
-/// Maximum signature length (total number of arguments and return values) for a smart contract module
-pub const MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize = 500; // TODO: Calibrate
+
+/// CondomMiddleware limits
+/// see test_condom_middleware_calibrate in massa-sc-runtime for origin of
+/// values.
+/// Maximum number of function defined in a smart contract
+const MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS: usize = 512;
+/// Maximum number of function used by a smart contract
+pub const MAX_RUNTIME_MODULE_FUNCTIONS: usize =
+    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_FUNCTION_IMPORTS;
+/// Maximum number of arguments to a function
+const MAX_RUNTIME_MODULE_FUNCTION_ARGS: usize = 64;
+/// Maximum number of value a function can return
+const MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES: usize = 8;
+/// Maximum signature length (total number of arguments and return values) for a
+/// function of a smart contract module
+pub const MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize =
+    MAX_RUNTIME_MODULE_FUNCTION_ARGS + MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES;
+/// Maximum length for the name of a function defined in a smart contract
+pub const MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = 256;
+/// Maximum length for the name of a smart contract
+pub const MAX_RUNTIME_MODULE_NAME_LEN: usize = 256;
+/// Maximum number of custom section data
+pub const MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN: usize = 1;
+/// Maximum length for the custom section data
+pub const MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN: usize = 1_000_000;
+/// Maximum number of functions a module can import
+const MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = 256;
+/// Maximum number of memory a module can import
+const MAX_RUNTIME_MODULE_MEMORY_IMPORTS: usize = 1;
+/// Maximum number of elements a module can import
+pub const MAX_RUNTIME_MODULE_IMPORTS: usize =
+    MAX_RUNTIME_MODULE_FUNCTION_IMPORTS + MAX_RUNTIME_MODULE_MEMORY_IMPORTS;
+/// Maximum number of table initializer in a smart contract
+pub const MAX_RUNTIME_MODULE_TABLE_INITIALIZER: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+/// Maximum number of passive element in a smart contract
+pub const MAX_RUNTIME_MODULE_PASSIVE_ELEMENT: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+/// Maximum number of passive data in a smart contract
+pub const MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = 512;
+/// Maximum number of global initializer in a smart contract
+pub const MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = 512;
+/// Maximum number of table in a smart contract
+pub const MAX_RUNTIME_MODULE_TABLE: usize = 16;
+/// Maximum number of memories in a smart contract
+/// - only 1 supported so far (cf specification)
+pub const MAX_RUNTIME_MODULE_MEMORIES: usize = 1;
+/// Maximum number of exports for a smart contract module (function and globals)
+pub const MAX_RUNTIME_MODULE_EXPORTS: usize =
+    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER;
 
 // ***********************
 // Bootstrap constants
