@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><title>final_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_final_state" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><title>final_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_final_state" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1323,24 +1323,6 @@
 <a href="#1323" id="1323">1323</a>
 <a href="#1324" id="1324">1324</a>
 <a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1359,15 +1341,14 @@
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
-<span class="kw">use </span>massa_deferred_calls::DeferredCallRegistry;
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_executed_ops::ExecutedOps;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
+<span class="kw">use </span>massa_ledger_exports::SetOrKeep;
 <span class="kw">use </span>massa_models::operation::OperationId;
 <span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
-<span class="kw">use </span>massa_models::types::SetOrKeep;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
 <span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
@@ -1380,8 +1361,6 @@
     </span><span class="kw">pub </span>ledger: Box&lt;<span class="kw">dyn </span>LedgerController&gt;,
     <span class="doccomment">/// asynchronous pool containing messages sorted by priority and their data
     </span><span class="kw">pub </span>async_pool: AsyncPool,
-    <span class="doccomment">/// deferred calls
-    </span><span class="kw">pub </span>deferred_call_registry: DeferredCallRegistry,
     <span class="doccomment">/// proof of stake state containing cycle history and deferred credits
     </span><span class="kw">pub </span>pos_state: PoSFinalState,
     <span class="doccomment">/// executed operations
@@ -1452,13 +1431,9 @@
         </span><span class="kw">let </span>executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
-        <span class="kw">let </span>deferred_call_registry =
-            DeferredCallRegistry::new(db.clone(), config.deferred_calls_config);
-
         <span class="kw">let </span><span class="kw-2">mut </span>final_state = FinalState {
             ledger,
             async_pool,
-            deferred_call_registry,
             pos_state,
             config,
             executed_ops,
@@ -1803,9 +1778,6 @@
             .apply_changes_to_batch(changes.ledger_changes, <span class="kw-2">&amp;mut </span>db_batch);
         <span class="self">self</span>.executed_ops
             .apply_changes_to_batch(changes.executed_ops_changes, slot, <span class="kw-2">&amp;mut </span>db_batch);
-
-        <span class="self">self</span>.deferred_call_registry
-            .apply_changes_to_batch(changes.deferred_call_changes, <span class="kw-2">&amp;mut </span>db_batch);
 
         <span class="self">self</span>.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes,
@@ -2270,10 +2242,6 @@
     <span class="kw">fn </span>get_mip_store(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>MipStore {
         <span class="kw-2">&amp;</span><span class="self">self</span>.mip_store
     }
-
-    <span class="kw">fn </span>get_deferred_call_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DeferredCallRegistry {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.deferred_call_registry
-    }
 }
 
 <span class="attr">#[cfg(test)]
@@ -2283,7 +2251,6 @@
     <span class="kw">use </span>std::str::FromStr;
     <span class="kw">use </span>std::sync::Arc;
 
-    <span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
     <span class="kw">use </span>num::rational::Ratio;
     <span class="kw">use </span>parking_lot::RwLock;
     <span class="kw">use </span>tempfile::tempdir;
@@ -2293,12 +2260,11 @@
     <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
     <span class="kw">use </span>massa_hash::Hash;
-    <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
+    <span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetUpdateOrDelete};
     <span class="kw">use </span>massa_ledger_worker::FinalLedger;
     <span class="kw">use </span>massa_models::address::Address;
     <span class="kw">use </span>massa_models::amount::Amount;
     <span class="kw">use </span>massa_models::bytecode::Bytecode;
-    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
 
     <span class="kw">use </span>massa_models::config::{
         DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
@@ -2354,11 +2320,9 @@
             keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         };
 
-        <span class="kw">let </span>deferred_calls_config = DeferredCallsConfig::default();
         <span class="kw">let </span>final_state_config = FinalStateConfig {
             ledger_config: ledger_config.clone(),
             async_pool_config,
-            deferred_calls_config,
             pos_config,
             executed_ops_config,
             executed_denunciations_config,
