@@ -2907,7 +2907,7 @@
         <span class="kw-2">*</span>sig_int_toggled_clone
             .<span class="number">0
             </span>.lock()
-            .expect(<span class="string">&quot;double-lock on interrupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
+            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
         sig_int_toggled_clone.<span class="number">1</span>.notify_all();
     })
     .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
@@ -2959,11 +2959,11 @@
             </span><span class="kw">let </span>int_sig = sig_int_toggled
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">&quot;double-lock() on interrupted signal mutex&quot;</span>);
+                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
             <span class="kw">let </span>wake = sig_int_toggled
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
-                .expect(<span class="string">&quot;interrupt signal mutex poisoned&quot;</span>);
+                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
                 <span class="kw">break </span><span class="bool-val">false</span>;

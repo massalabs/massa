@@ -338,7 +338,7 @@
     </span>}
 }
 
-<span class="comment">// Broadcast the stream(sender) content via a WebSocket
+<span class="comment">// Brodcast the stream(sender) content via a WebSocket
 </span><span class="kw">async fn </span>broadcast_via_ws&lt;T: Serialize + Send + Clone + <span class="lifetime">&#39;static</span>&gt;(
     sender: tokio::sync::broadcast::Sender&lt;T&gt;,
     pending: PendingSubscriptionSink,

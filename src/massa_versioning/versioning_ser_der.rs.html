@@ -1921,7 +1921,7 @@
                 ))
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>(rem3, latest_announcements_) = context(
+        <span class="kw">let </span>(rem3, latest_annoucements_) = context(
             <span class="string">&quot;Failed MipStoreStats latest announcements der&quot;</span>,
             length_count(
                 context(<span class="string">&quot;Failed latest announcements count der&quot;</span>, |input| {
@@ -1967,7 +1967,7 @@
             rem4,
             MipStoreStats {
                 config: <span class="self">self</span>.config.clone(),
-                latest_announcements: latest_announcements_.into_iter().collect(),
+                latest_announcements: latest_annoucements_.into_iter().collect(),
                 network_version_counters: network_version_counters.into_iter().collect(),
             },
         ))

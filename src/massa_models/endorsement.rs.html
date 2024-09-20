@@ -938,7 +938,7 @@
             <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
         }
         <span class="kw">if </span><span class="self">self</span>.content.slot.thread &gt;= <span class="kw">crate</span>::config::THREAD_COUNT {
-            <span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement slot on non-existent thread&quot;</span>.into())
+            <span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement slot on non-existant thread&quot;</span>.into())
         } <span class="kw">else if </span><span class="self">self</span>.content.index &gt;= <span class="kw">crate</span>::config::ENDORSEMENT_COUNT {
             <span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement index out of range&quot;</span>.into())
         } <span class="kw">else </span>{
@@ -1356,7 +1356,7 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_endorsement_id_errors() {
-        <span class="kw">let </span>actual_error = EndorsementId::from_str(<span class="string">&quot;SomeInvalidEndorsementId&quot;</span>)
+        <span class="kw">let </span>actual_error = EndorsementId::from_str(<span class="string">&quot;SomeUnvalidEndorsementId&quot;</span>)
             .unwrap_err()
             .to_string();
         <span class="kw">let </span>expected_error = <span class="string">&quot;endorsement id parsing error&quot;</span>.to_string();

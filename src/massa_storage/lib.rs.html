@@ -610,7 +610,7 @@
 
     <span class="doccomment">/// Efficiently extends the current Storage by consuming the refs of another storage.
     </span><span class="kw">pub fn </span>extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>other: Storage) {
-        <span class="comment">// Take ownership of `other`&#39;s references.
+        <span class="comment">// Take ownership ot `other`&#39;s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
         </span>other
             .local_used_ops
