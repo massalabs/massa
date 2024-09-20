@@ -340,6 +340,12 @@
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -441,6 +447,10 @@
     </span>OpExecutionStatusCandidate(OperationId),
     <span class="doccomment">/// gets the execution status (final) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     </span>OpExecutionStatusFinal(OperationId),
+
+    <span class="doccomment">/// gets the deferred call quote (candidate) for a slot, returns ExecutionQueryResponseItem::DeferredCallQuote(available, price)
+    </span>DeferredCallQuote(Slot, u64),
+
     <span class="doccomment">/// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     </span>DenunciationExecutionStatusCandidate(DenunciationIndex),
     <span class="doccomment">/// gets the execution status (final) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
@@ -481,6 +491,8 @@
     </span>DatastoreValue(Vec&lt;u8&gt;),
     <span class="doccomment">/// list of keys
     </span>KeyList(BTreeSet&lt;Vec&lt;u8&gt;&gt;),
+    <span class="doccomment">/// deferred call quote (target_slot, gas_request, available, price)
+    </span>DeferredCallQuote(Slot, u64, bool, u64),
     <span class="doccomment">/// deferred credits value
     </span>DeferredCredits(BTreeMap&lt;Slot, Amount&gt;),
     <span class="doccomment">/// execution status value

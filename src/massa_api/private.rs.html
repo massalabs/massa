@@ -491,6 +491,16 @@
 <a href="#491" id="491">491</a>
 <a href="#492" id="492">492</a>
 <a href="#493" id="493">493</a>
+<a href="#494" id="494">494</a>
+<a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
+<a href="#498" id="498">498</a>
+<a href="#499" id="499">499</a>
+<a href="#500" id="500">500</a>
+<a href="#501" id="501">501</a>
+<a href="#502" id="502">502</a>
+<a href="#503" id="503">503</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
@@ -504,7 +514,10 @@
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
+    execution::{
+        DeferredCallQuoteRequest, DeferredCallQuoteResponse, ExecuteReadOnlyResponse,
+        ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -842,6 +855,13 @@
             ListType::Blacklist,
             ScrudOperation::Delete,
         )
+    }
+
+    <span class="kw">async fn </span>get_deferred_call_quote(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        _req: Vec&lt;DeferredCallQuoteRequest&gt;,
+    ) -&gt; RpcResult&lt;Vec&lt;DeferredCallQuoteResponse&gt;&gt; {
+        <span class="kw">crate</span>::wrong_api::&lt;Vec&lt;DeferredCallQuoteResponse&gt;&gt;()
     }
 
     <span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt; {
