@@ -544,7 +544,9 @@ impl ExecutionManager for ExecutionManagerImpl {
         }
         // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
-            join_handle.join().expect("Execution controller thread panicked");
+            join_handle
+                .join()
+                .expect("Execution controller thread panicked");
         }
         info!("Execution controller stopped");
     }
