@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/execution.rs`."><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2272,41 +2272,6 @@
 <a href="#2272" id="2272">2272</a>
 <a href="#2273" id="2273">2273</a>
 <a href="#2274" id="2274">2274</a>
-<a href="#2275" id="2275">2275</a>
-<a href="#2276" id="2276">2276</a>
-<a href="#2277" id="2277">2277</a>
-<a href="#2278" id="2278">2278</a>
-<a href="#2279" id="2279">2279</a>
-<a href="#2280" id="2280">2280</a>
-<a href="#2281" id="2281">2281</a>
-<a href="#2282" id="2282">2282</a>
-<a href="#2283" id="2283">2283</a>
-<a href="#2284" id="2284">2284</a>
-<a href="#2285" id="2285">2285</a>
-<a href="#2286" id="2286">2286</a>
-<a href="#2287" id="2287">2287</a>
-<a href="#2288" id="2288">2288</a>
-<a href="#2289" id="2289">2289</a>
-<a href="#2290" id="2290">2290</a>
-<a href="#2291" id="2291">2291</a>
-<a href="#2292" id="2292">2292</a>
-<a href="#2293" id="2293">2293</a>
-<a href="#2294" id="2294">2294</a>
-<a href="#2295" id="2295">2295</a>
-<a href="#2296" id="2296">2296</a>
-<a href="#2297" id="2297">2297</a>
-<a href="#2298" id="2298">2298</a>
-<a href="#2299" id="2299">2299</a>
-<a href="#2300" id="2300">2300</a>
-<a href="#2301" id="2301">2301</a>
-<a href="#2302" id="2302">2302</a>
-<a href="#2303" id="2303">2303</a>
-<a href="#2304" id="2304">2304</a>
-<a href="#2305" id="2305">2305</a>
-<a href="#2306" id="2306">2306</a>
-<a href="#2307" id="2307">2307</a>
-<a href="#2308" id="2308">2308</a>
-<a href="#2309" id="2309">2309</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2488,7 +2453,6 @@
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
-            condom_limits: config.condom_limits.clone(),
         })));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
@@ -3280,7 +3244,6 @@
             module,
             <span class="kw-2">*</span>max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="self">self</span>.config.condom_limits.clone(),
         )
         .map_err(|error| ExecutionError::VMError {
             context: <span class="string">&quot;ExecuteSC&quot;</span>.to_string(),
@@ -3381,7 +3344,6 @@
             param,
             max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="self">self</span>.config.condom_limits.clone(),
         );
         <span class="kw">match </span>response {
             <span class="prelude-val">Ok</span>(Response { init_gas_cost, .. })
@@ -3435,7 +3397,7 @@
             context.stack = <span class="macro">vec!</span>[
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: Default::default(),
+                    coins: message.coins,
                     owned_addresses: <span class="macro">vec!</span>[message.sender],
                     operation_datastore: <span class="prelude-val">None</span>,
                 },
@@ -3487,19 +3449,10 @@
 
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        </span><span class="kw">let </span><span class="prelude-val">Ok</span>(module) = <span class="self">self
+        </span><span class="kw">let </span>module = <span class="self">self
             </span>.module_cache
             .write()
-            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)
-        <span class="kw">else </span>{
-            <span class="kw">let </span>err =
-                ExecutionError::RuntimeError(<span class="string">&quot;could not load module for async execution&quot;</span>.into());
-            <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            context.reset_to_snapshot(context_snapshot, err.clone());
-            context.cancel_async_message(<span class="kw-2">&amp;</span>message);
-            <span class="kw">return </span><span class="prelude-val">Err</span>(err);
-        };
-
+            .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas)<span class="question-mark">?</span>;
         <span class="kw">let </span>response = massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
@@ -3507,7 +3460,6 @@
             <span class="kw-2">&amp;</span>message.function_params,
             message.max_gas,
             <span class="self">self</span>.config.gas_costs.clone(),
-            <span class="self">self</span>.config.condom_limits.clone(),
         );
         <span class="kw">match </span>response {
             <span class="prelude-val">Ok</span>(res) =&gt; {
@@ -3593,9 +3545,7 @@
 
         <span class="comment">// Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        </span><span class="kw">for </span>(_message_id, message) <span class="kw">in </span>messages {
-            <span class="kw">let </span>opt_bytecode = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_bytecode(<span class="kw-2">&amp;</span>message.destination);
-
+        </span><span class="kw">for </span>(opt_bytecode, message) <span class="kw">in </span>messages {
             <span class="kw">match </span><span class="self">self</span>.execute_async_message(message, opt_bytecode) {
                 <span class="prelude-val">Ok</span>(_message_return) =&gt; {
                     <span class="macro">cfg_if::cfg_if! </span>{
@@ -3672,9 +3622,7 @@
             <span class="comment">// Set remaining block gas
             </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_block_gas = <span class="self">self</span>.config.max_gas_per_block;
 
-            <span class="comment">// Block credits count every operation fee, denunciation slash and endorsement reward.
-            // We initialize the block credits with the block reward to stimulate block production
-            // even in the absence of operations and denunciations.
+            <span class="comment">// Set block credits
             </span><span class="kw">let </span><span class="kw-2">mut </span>block_credits = <span class="self">self</span>.config.block_reward;
 
             <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.
@@ -3800,29 +3748,13 @@
             <span class="comment">// Update speculative rolls state production stats
             </span>context.update_production_stats(<span class="kw-2">&amp;</span>block_creator_addr, <span class="kw-2">*</span>slot, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>block_id));
 
-            <span class="comment">// Divide the total block credits into parts + remainder
-            </span><span class="kw">let </span>block_credit_part_count = <span class="number">3 </span>* (<span class="number">1 </span>+ <span class="self">self</span>.config.endorsement_count);
+            <span class="comment">// Credit endorsement producers and endorsed block producers
+            </span><span class="kw">let </span><span class="kw-2">mut </span>remaining_credit = block_credits;
             <span class="kw">let </span>block_credit_part = block_credits
-                .checked_div_u64(block_credit_part_count)
+                .checked_div_u64(<span class="number">3 </span>* (<span class="number">1 </span>+ (<span class="self">self</span>.config.endorsement_count)))
                 .expect(<span class="string">&quot;critical: block_credits checked_div factor is 0&quot;</span>);
-            <span class="kw">let </span>remainder = block_credits
-                .checked_rem_u64(block_credit_part_count)
-                .expect(<span class="string">&quot;critical: block_credits checked_rem factor is 0&quot;</span>);
-
-            <span class="comment">// Give 3 parts + remainder to the block producer to stimulate block production
-            // even in the absence of endorsements.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>block_producer_credit = block_credit_part
-                .saturating_mul_u64(<span class="number">3</span>)
-                .saturating_add(remainder);
-
             <span class="kw">for </span>endorsement_creator <span class="kw">in </span>endorsement_creators {
-                <span class="comment">// Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                // and dissuade from emitting the block too early (before the endorsements have propageted).
-                </span>block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
-
-                <span class="comment">// Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
-                // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
-                // and to not publish too late (will not be included in the block).
+                <span class="comment">// credit creator of the endorsement with coins
                 </span><span class="kw">match </span>context.transfer_coins(
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">Some</span>(endorsement_creator),
@@ -3830,6 +3762,8 @@
                     <span class="bool-val">false</span>,
                 ) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
+
                         <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
                         </span>exec_info
                             .endorsement_creator_rewards
@@ -3843,9 +3777,7 @@
                     }
                 }
 
-                <span class="comment">// Credit the creator of the endorsed block with 1 part.
-                // This is done to incentivize block producers to be endorsed,
-                // typically by not publishing their blocks too late.
+                <span class="comment">// credit creator of the endorsed block with coins
                 </span><span class="kw">match </span>context.transfer_coins(
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">Some</span>(endorsement_target_creator),
@@ -3853,6 +3785,7 @@
                     <span class="bool-val">false</span>,
                 ) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
+                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
                         <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
                         </span>{
                             exec_info.endorsement_target_reward =
@@ -3868,19 +3801,18 @@
                 }
             }
 
-            <span class="comment">// Credit block producer
+            <span class="comment">// Credit block creator with remaining_credit
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
-                context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), block_producer_credit, <span class="bool-val">false</span>)
+                context.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(block_creator_addr), remaining_credit, <span class="bool-val">false</span>)
             {
                 <span class="macro">debug!</span>(
                     <span class="string">&quot;failed to credit {} coins to block creator {} on block execution: {}&quot;</span>,
-                    block_producer_credit, block_creator_addr, err
+                    remaining_credit, block_creator_addr, err
                 )
             } <span class="kw">else </span>{
                 <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
                 </span>{
-                    exec_info.block_producer_reward =
-                        <span class="prelude-val">Some</span>((block_creator_addr, block_producer_credit));
+                    exec_info.block_producer_reward = <span class="prelude-val">Some</span>((block_creator_addr, remaining_credit));
                 }
             }
         } <span class="kw">else </span>{
@@ -4120,7 +4052,7 @@
                     <span class="kw">let </span>call_stack_addr = context.get_call_stack();
 
                     <span class="comment">// transfer fee
-                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.first()) {
+                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.get(<span class="number">0</span>)) {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr), <span class="prelude-val">None</span>, fee, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
                 }
@@ -4137,7 +4069,6 @@
                     module,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                    <span class="self">self</span>.config.condom_limits.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: <span class="string">&quot;ReadOnlyExecutionTarget::BytecodeExecution&quot;</span>.to_string(),
@@ -4166,13 +4097,13 @@
                     <span class="kw">let </span>call_stack_addr = context.get_call_stack();
 
                     <span class="comment">// transfer fee
-                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.first()) {
+                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.get(<span class="number">0</span>)) {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr), <span class="prelude-val">None</span>, fee, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
 
                     <span class="comment">// transfer coins
                     </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(coins), <span class="prelude-val">Some</span>(from), <span class="prelude-val">Some</span>(to)) =
-                        (req.coins, call_stack_addr.first(), call_stack_addr.get(<span class="number">1</span>))
+                        (req.coins, call_stack_addr.get(<span class="number">0</span>), call_stack_addr.get(<span class="number">1</span>))
                     {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>from), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>to), coins, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
@@ -4192,7 +4123,6 @@
                     <span class="kw-2">&amp;</span>parameter,
                     req.max_gas,
                     <span class="self">self</span>.config.gas_costs.clone(),
-                    <span class="self">self</span>.config.condom_limits.clone(),
                 );
 
                 <span class="kw">match </span>response {
