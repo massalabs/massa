@@ -142,7 +142,7 @@ async fn get_operations() {
 
     let op_type = response
         .wrapped_operations
-        .get(0)
+        .first()
         .unwrap()
         .clone()
         .operation
@@ -195,7 +195,7 @@ async fn get_blocks() {
         .unwrap()
         .into_inner();
 
-    let s = result.wrapped_blocks.get(0).unwrap().clone().status;
+    let s = result.wrapped_blocks.first().unwrap().clone().status;
 
     assert_eq!(s, BlockStatus::Final as i32);
     stop_handle.stop();
@@ -328,7 +328,7 @@ async fn get_datastore_entries() {
         .unwrap()
         .into_inner();
 
-    let data = result.datastore_entries.get(0).unwrap();
+    let data = result.datastore_entries.first().unwrap();
     // TODO candidate value should be an option in the api : issue #4427
     assert!(data.candidate_value.is_empty());
     assert_eq!(data.final_value, "toto".as_bytes());
@@ -539,7 +539,7 @@ async fn get_endorsements() {
         .into_inner();
 
     assert_eq!(result.wrapped_endorsements.len(), 1);
-    let endorsement = result.wrapped_endorsements.get(0).unwrap();
+    let endorsement = result.wrapped_endorsements.first().unwrap();
     assert!(endorsement.is_final);
     assert!(endorsement.in_blocks.contains(&block_id.to_string()));
 
@@ -583,7 +583,7 @@ async fn get_next_block_best_parents() {
         .into_inner();
 
     assert_eq!(result.block_parents.len(), 2);
-    let parent = result.block_parents.get(0).unwrap();
+    let parent = result.block_parents.first().unwrap();
     assert_eq!(
         parent.block_id,
         "B1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC".to_string()
@@ -651,7 +651,7 @@ async fn get_sc_execution_events() {
         .unwrap()
         .into_inner();
 
-    let event = result.events.get(0).unwrap();
+    let event = result.events.first().unwrap();
     assert_eq!(event.data, "massa".as_bytes().to_vec());
     assert!(event.context.is_some());
     let context = event.context.as_ref().unwrap();
@@ -885,7 +885,7 @@ async fn get_selector_draws() {
 
     assert_eq!(result.draws.len(), 2);
     let slots: &Vec<massa_proto_rs::massa::model::v1::SlotDraw> = result.draws.as_ref();
-    let slot = slots.get(0).unwrap();
+    let slot = slots.first().unwrap();
     assert!(slot.slot.is_some());
     assert!(!slot.endorsement_draws.is_empty());
     assert!(slot.block_producer.is_some());
@@ -1159,7 +1159,7 @@ async fn search_blocks() {
         .unwrap()
         .into_inner();
 
-    let block_result = result.block_infos.get(0).unwrap();
+    let block_result = result.block_infos.first().unwrap();
     assert_eq!(block_result.block_id, block_op.id.to_string());
 
     // search address + slot range

@@ -55,7 +55,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.75.0
           target: ${{ matrix.target }}
           override: true
       - uses: Swatinem/rust-cache@v2

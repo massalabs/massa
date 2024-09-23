@@ -5,5 +5,4 @@
 mod config;
 mod mock;
 
-pub use config::*;
 pub use mock::*;

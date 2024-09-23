@@ -130,6 +130,7 @@ impl InterfaceImpl {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // create an empty default store
@@ -1700,6 +1701,11 @@ impl Interface for InterfaceImpl {
                 warn!("Context is locked, cannot save gas remaining before subexecution");
             }
         }
+    }
+
+    /// Interface version to sync with the runtime for its versioning
+    fn get_interface_version(&self) -> Result<u32> {
+        Ok(0)
     }
 }
 

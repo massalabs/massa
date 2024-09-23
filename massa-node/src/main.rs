@@ -33,7 +33,8 @@ use massa_db_exports::{MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+    CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
+    StorageCostsConstants,
 };
 use massa_execution_worker::start_execution_worker;
 #[cfg(all(
@@ -87,7 +88,13 @@ use massa_models::config::constants::{
 use massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
+    MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
+    MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
+    MAX_RUNTIME_MODULE_TABLE_INITIALIZER, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
@@ -461,6 +468,25 @@ async fn launch(
     )
     .expect("Failed to load gas costs");
 
+    // Limits imposed to wasm files so the compilation phase is smooth
+    let condom_limits = CondomLimits {
+        max_exports: Some(MAX_RUNTIME_MODULE_EXPORTS),
+        max_functions: Some(MAX_RUNTIME_MODULE_FUNCTIONS),
+        max_signature_len: Some(MAX_RUNTIME_MODULE_SIGNATURE_LEN),
+        max_name_len: Some(MAX_RUNTIME_MODULE_NAME_LEN),
+        max_imports_len: Some(MAX_RUNTIME_MODULE_IMPORTS),
+        max_table_initializers_len: Some(MAX_RUNTIME_MODULE_TABLE_INITIALIZER),
+        max_passive_elements_len: Some(MAX_RUNTIME_MODULE_PASSIVE_ELEMENT),
+        max_passive_data_len: Some(MAX_RUNTIME_MODULE_PASSIVE_DATA),
+        max_global_initializers_len: Some(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_function_names_len: Some(MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN),
+        max_tables_count: Some(MAX_RUNTIME_MODULE_TABLE),
+        max_memories_len: Some(MAX_RUNTIME_MODULE_MEMORIES),
+        max_globals_len: Some(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_custom_sections_len: Some(MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN),
+        max_custom_sections_data_len: Some(MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN),
+    };
+
     let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     if !block_dump_folder_path.exists() {
         info!("Current folder: {:?}", std::env::current_dir().unwrap());
@@ -518,6 +544,7 @@ async fn launch(
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
+        condom_limits,
     };
 
     let execution_channels = ExecutionChannels {

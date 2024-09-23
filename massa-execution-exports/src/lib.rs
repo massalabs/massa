@@ -59,7 +59,7 @@ pub use controller_traits::MockExecutionController;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
-pub use massa_sc_runtime::GasCosts;
+pub use massa_sc_runtime::{CondomLimits, GasCosts};
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,
