@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-module-cache/src/hd_cache.rs`."><title>hd_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_module_cache" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_module_cache/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-module-cache/src/hd_cache.rs`."><title>hd_cache.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_module_cache" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0 (82e1608df 2023-12-21)" data-channel="1.75.0" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -314,11 +314,32 @@
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
 <a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_sc_runtime::{GasCosts, RuntimeModule};
+<span class="kw">use </span>massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>rocksdb::{Direction, IteratorMode, WriteBatch, DB};
@@ -453,7 +474,12 @@
     }
 
     <span class="doccomment">/// Retrieve a module
-    </span><span class="kw">pub fn </span>get(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: Hash, gas_costs: GasCosts) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
+    </span><span class="kw">pub fn </span>get(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        hash: Hash,
+        gas_costs: GasCosts,
+        condom_limits: CondomLimits,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>iterator = <span class="self">self
             </span>.db
             .iterator(IteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">module_key!</span>(hash), Direction::Forward));
@@ -469,9 +495,13 @@
                 <span class="kw">if let </span>ModuleMetadata::Invalid(err_msg) = metadata {
                     <span class="kw">return </span><span class="prelude-val">Some</span>(ModuleInfo::Invalid(err_msg));
                 }
-                <span class="kw">let </span>module =
-                    RuntimeModule::deserialize(<span class="kw-2">&amp;</span>ser_module, gas_costs.max_instance_cost, gas_costs)
-                        .expect(MOD_DESER_ERROR);
+                <span class="kw">let </span>module = RuntimeModule::deserialize(
+                    <span class="kw-2">&amp;</span>ser_module,
+                    gas_costs.max_instance_cost,
+                    gas_costs,
+                    condom_limits,
+                )
+                .expect(MOD_DESER_ERROR);
                 <span class="kw">let </span>result = <span class="kw">match </span>metadata {
                     ModuleMetadata::Invalid(err_msg) =&gt; ModuleInfo::Invalid(err_msg),
                     ModuleMetadata::NotExecuted =&gt; ModuleInfo::Module(module),
@@ -549,7 +579,13 @@
             <span class="number">0x70</span>, <span class="number">0x30</span>,
         ];
         ModuleInfo::Module(
-            RuntimeModule::new(<span class="kw-2">&amp;</span>bytecode, GasCosts::default(), Compiler::CL).unwrap(),
+            RuntimeModule::new(
+                <span class="kw-2">&amp;</span>bytecode,
+                GasCosts::default(),
+                Compiler::CL,
+                CondomLimits::default(),
+            )
+            .unwrap(),
         )
     }
 
@@ -567,18 +603,23 @@
 
         <span class="kw">let </span>init_cost = <span class="number">100</span>;
         <span class="kw">let </span>gas_costs = GasCosts::default();
+        <span class="kw">let </span>condom_limits = CondomLimits::default();
 
         cache.insert(hash, module);
-        <span class="kw">let </span>cached_module_v1 = cache.get(hash, gas_costs.clone()).unwrap();
+        <span class="kw">let </span>cached_module_v1 = cache
+            .get(hash, gas_costs.clone(), condom_limits.clone())
+            .unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v1, ModuleInfo::Module(<span class="kw">_</span>)));
 
         cache.set_init_cost(hash, init_cost);
-        <span class="kw">let </span>cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
+        <span class="kw">let </span>cached_module_v2 = cache
+            .get(hash, gas_costs.clone(), condom_limits.clone())
+            .unwrap();
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(cached_module_v2, ModuleInfo::ModuleAndDelta(<span class="kw">_</span>)));
 
         <span class="kw">let </span>err_msg = <span class="string">&quot;test_error&quot;</span>.to_string();
         cache.set_invalid(hash, err_msg.clone());
-        <span class="kw">let </span>cached_module_v3 = cache.get(hash, gas_costs).unwrap();
+        <span class="kw">let </span>cached_module_v3 = cache.get(hash, gas_costs, condom_limits.clone()).unwrap();
         <span class="kw">let </span>ModuleInfo::Invalid(res_err) = cached_module_v3 <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">&quot;expected ModuleInfo::Invalid&quot;</span>);
         };
@@ -615,6 +656,7 @@
         <span class="kw">let </span>module = make_default_module_info();
 
         <span class="kw">let </span>gas_costs = GasCosts::default();
+        <span class="kw">let </span>condom_limits = CondomLimits::default();
 
         <span class="kw">for </span>count <span class="kw">in </span><span class="number">0</span>..cache.max_entry_count {
             <span class="kw">let </span>key = Hash::compute_from(count.to_string().as_bytes());
@@ -625,7 +667,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>rbytes = [<span class="number">0u8</span>; <span class="number">16</span>];
             thread_rng().fill_bytes(<span class="kw-2">&amp;mut </span>rbytes);
             <span class="kw">let </span>get_key = Hash::compute_from(<span class="kw-2">&amp;</span>rbytes);
-            <span class="kw">let </span>cached_module = cache.get(get_key, gas_costs.clone());
+            <span class="kw">let </span>cached_module = cache.get(get_key, gas_costs.clone(), condom_limits.clone());
             <span class="macro">assert!</span>(cached_module.is_none());
         }
     }
