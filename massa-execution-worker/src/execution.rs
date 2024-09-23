@@ -2452,4 +2452,13 @@ impl ExecutionState {
             Err(_) => (target_slot, gas_request, false, 0),
         }
     }
+
+    pub fn deferred_call_info(&self, call_id: &DeferredCallId) -> Option<DeferredCall> {
+        let context = context_guard!(self);
+        context.get_deferred_call(call_id)
+    }
+
+    pub fn get_deferred_calls_by_slot(&self, slot: Slot) -> BTreeMap<DeferredCallId, DeferredCall> {
+        context_guard!(self).get_deferred_calls_by_slot(slot)
+    }
 }

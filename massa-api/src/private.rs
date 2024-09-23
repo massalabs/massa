@@ -12,8 +12,9 @@ use massa_api_exports::{
     endorsement::EndorsementInfo,
     error::ApiError,
     execution::{
-        DeferredCallQuoteRequest, DeferredCallQuoteResponse, ExecuteReadOnlyResponse,
-        ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer,
+        DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
+        DeferredCallsSlotResponse, ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution,
+        ReadOnlyCall, Transfer,
     },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
@@ -356,9 +357,22 @@ impl MassaRpcServer for API<Private> {
 
     async fn get_deferred_call_quote(
         &self,
-        _req: Vec<DeferredCallQuoteRequest>,
-    ) -> RpcResult<Vec<DeferredCallQuoteResponse>> {
-        crate::wrong_api::<Vec<DeferredCallQuoteResponse>>()
+        _req: Vec<DeferredCallsQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
+        crate::wrong_api::<Vec<DeferredCallsQuoteResponse>>()
+    }
+    async fn get_deferred_call_info(
+        &self,
+        _arg: Vec<String>,
+    ) -> RpcResult<Vec<DeferredCallResponse>> {
+        crate::wrong_api::<Vec<DeferredCallResponse>>()
+    }
+
+    async fn list_deferred_calls_by_slot(
+        &self,
+        _slot: Vec<Slot>,
+    ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
+        crate::wrong_api::<Vec<DeferredCallsSlotResponse>>()
     }
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {

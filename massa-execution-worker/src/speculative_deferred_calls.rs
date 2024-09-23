@@ -169,15 +169,7 @@ impl SpeculativeDeferredCallRegistry {
     /// and returns the calls that need to be executed in the current slot
     pub fn advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
         // get the state of the current slot
-        let mut slot_calls: DeferredSlotCalls = self
-            .final_state
-            .read()
-            .get_deferred_call_registry()
-            .get_slot_calls(current_slot);
-        for hist_item in self.active_history.read().0.iter() {
-            slot_calls.apply_changes(&hist_item.state_changes.deferred_call_changes);
-        }
-        slot_calls.apply_changes(&self.deferred_calls_changes);
+        let mut slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
 
         let avg_booked_gas =
@@ -253,6 +245,19 @@ impl SpeculativeDeferredCallRegistry {
             self.set_total_calls_registered(new_call_registered);
         }
 
+        slot_calls
+    }
+
+    pub fn get_calls_by_slot(&self, slot: Slot) -> DeferredSlotCalls {
+        let mut slot_calls: DeferredSlotCalls = self
+            .final_state
+            .read()
+            .get_deferred_call_registry()
+            .get_slot_calls(slot);
+        for hist_item in self.active_history.read().0.iter() {
+            slot_calls.apply_changes(&hist_item.state_changes.deferred_call_changes);
+        }
+        slot_calls.apply_changes(&self.deferred_calls_changes);
         slot_calls
     }
 

@@ -1170,6 +1170,11 @@ impl ExecutionContext {
         false
     }
 
+    /// Get a deferred call by its id
+    pub fn get_deferred_call(&self, call_id: &DeferredCallId) -> Option<DeferredCall> {
+        self.speculative_deferred_calls.get_call(call_id)
+    }
+
     /// when a deferred call execution fails we need to refund the coins to the caller
     pub fn deferred_call_fail_exec(
         &mut self,
@@ -1235,6 +1240,13 @@ impl ExecutionContext {
                 call_id
             )))?,
         }
+    }
+
+    /// find the deferred calls for a given slot
+    pub fn get_deferred_calls_by_slot(&self, slot: Slot) -> BTreeMap<DeferredCallId, DeferredCall> {
+        self.speculative_deferred_calls
+            .get_calls_by_slot(slot)
+            .slot_calls
     }
 }
 

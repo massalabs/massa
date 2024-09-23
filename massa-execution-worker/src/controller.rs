@@ -341,6 +341,21 @@ impl ExecutionController for ExecutionControllerImpl {
                         price,
                     ))
                 }
+                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => execution_lock
+                    .deferred_call_info(&deferred_call_id)
+                    .ok_or_else(|| {
+                        ExecutionQueryError::NotFound(format!(
+                            "Deferred call id {}",
+                            deferred_call_id
+                        ))
+                    })
+                    .map(|call| {
+                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
+                    }),
+                ExecutionQueryRequestItem::DeferredCallSlotCalls(slot) => {
+                    let res = execution_lock.get_deferred_calls_by_slot(slot);
+                    Ok(ExecutionQueryResponseItem::DeferredCallSlotCalls(slot, res))
+                }
             };
             resp.responses.push(resp_item);
         }

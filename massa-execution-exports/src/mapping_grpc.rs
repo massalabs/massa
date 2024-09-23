@@ -266,6 +266,10 @@ fn to_execution_query_result(
             )
         }
         ExecutionQueryResponseItem::DeferredCallQuote(_, _, _, _) => todo!(),
+        ExecutionQueryResponseItem::DeferredCallInfo(_, _) => todo!(),
+        ExecutionQueryResponseItem::DeferredCallSlotCalls(_deferred_call_id, _deferred_call) => {
+            todo!()
+        }
     };
 
     grpc_api::ExecutionQueryResponseItem {

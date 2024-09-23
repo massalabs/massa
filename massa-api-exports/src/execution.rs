@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_deferred_calls::DeferredCall;
 use massa_final_state::StateChanges;
 use massa_models::{
     address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
@@ -124,7 +125,7 @@ pub struct Transfer {
 
 /// request for deferred call quote
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct DeferredCallQuoteRequest {
+pub struct DeferredCallsQuoteRequest {
     /// The slot at which the deferred call is to be executed.
     pub target_slot: Slot,
     /// The maximum gas requested.
@@ -133,7 +134,7 @@ pub struct DeferredCallQuoteRequest {
 
 /// The response to a request for a deferred call quote.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct DeferredCallQuoteResponse {
+pub struct DeferredCallsQuoteResponse {
     /// The slot at which the deferred call is to be executed.
     pub target_slot: Slot,
     /// The maximum gas requested.
@@ -142,4 +143,22 @@ pub struct DeferredCallQuoteResponse {
     pub available: bool,
     /// the cost for booking the call
     pub price: u64,
+}
+
+/// response for deferred call
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeferredCallResponse {
+    /// deferred call id
+    pub call_id: String,
+    /// deferred call
+    pub call: DeferredCall,
+}
+
+/// response for deferred calls by slot
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeferredCallsSlotResponse {
+    /// deferred calls
+    pub slot: Slot,
+    /// deferred calls
+    pub calls: Vec<DeferredCallResponse>,
 }

@@ -11,7 +11,10 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::middleware::HostFilterLayer;
 use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
-use massa_api_exports::execution::{DeferredCallQuoteRequest, DeferredCallQuoteResponse, Transfer};
+use massa_api_exports::execution::{
+    DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
+    DeferredCallsSlotResponse, Transfer,
+};
 use massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
@@ -405,8 +408,22 @@ pub trait MassaRpc {
     #[method(name = "get_deferred_call_quote")]
     async fn get_deferred_call_quote(
         &self,
-        arg: Vec<DeferredCallQuoteRequest>,
-    ) -> RpcResult<Vec<DeferredCallQuoteResponse>>;
+        arg: Vec<DeferredCallsQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallsQuoteResponse>>;
+
+    /// DeferredCall get info
+    #[method(name = "get_deferred_call_info")]
+    async fn get_deferred_call_info(
+        &self,
+        arg: Vec<String>,
+    ) -> RpcResult<Vec<DeferredCallResponse>>;
+
+    /// List deferred calls for given slot
+    #[method(name = "list_deferred_calls_by_slot")]
+    async fn list_deferred_calls_by_slot(
+        &self,
+        arg: Vec<Slot>,
+    ) -> RpcResult<Vec<DeferredCallsSlotResponse>>;
 }
 
 fn wrong_api<T>() -> RpcResult<T> {
