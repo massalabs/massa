@@ -1982,26 +1982,18 @@
                 "type": "object",
                 "properties": {
                     "candidate_value": {
-                        "description": "",
-                        "oneOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "description": "The candidate datastore entry value bytes",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     },
                     "final_value": {
-                        "description": "",
-                        "oneOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "description": "The final datastore entry value bytes",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
                     }
                 },
                 "additionalProperties": false
