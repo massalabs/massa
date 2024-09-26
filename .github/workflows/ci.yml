@@ -205,7 +205,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-nextest --locked
+          args: cargo-nextest
       - uses: actions-rs/cargo@v1
         with:
           command: nextest
