@@ -103,11 +103,16 @@ pub enum ExecutionQueryRequestItem {
     OpExecutionStatusFinal(OperationId),
 
     /// gets the deferred call quote (candidate) for a slot, returns ExecutionQueryResponseItem::DeferredCallQuote(available, price)
-    DeferredCallQuote(Slot, u64),
+    DeferredCallQuote {
+        /// slot to query
+        target_slot: Slot,
+        /// gas request
+        max_gas_request: u64,
+    },
     /// get info of deferred calls
     DeferredCallInfo(DeferredCallId),
     /// retrieves the deferred call for given slot
-    DeferredCallSlotCalls(Slot),
+    DeferredCallsBySlot(Slot),
 
     /// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     DenunciationExecutionStatusCandidate(DenunciationIndex),
@@ -150,11 +155,11 @@ pub enum ExecutionQueryResponseItem {
     /// list of keys
     KeyList(BTreeSet<Vec<u8>>),
     /// deferred call quote (target_slot, gas_request, available, price)
-    DeferredCallQuote(Slot, u64, bool, u64),
+    DeferredCallQuote(Slot, u64, bool, Amount),
     /// deferred call info value
     DeferredCallInfo(DeferredCallId, DeferredCall),
     /// deferred call slot calls value
-    DeferredCallSlotCalls(Slot, BTreeMap<DeferredCallId, DeferredCall>),
+    DeferredCallsBySlot(Slot, BTreeMap<DeferredCallId, DeferredCall>),
     /// deferred credits value
     DeferredCredits(BTreeMap<Slot, Amount>),
     /// execution status value

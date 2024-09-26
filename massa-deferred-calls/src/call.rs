@@ -4,6 +4,7 @@ use massa_models::{
     serialization::{StringDeserializer, StringSerializer, VecU8Deserializer, VecU8Serializer},
     slot::{Slot, SlotDeserializer, SlotSerializer},
 };
+use massa_proto_rs::massa::api::v1 as grpc_api;
 use massa_serialization::{
     BoolDeserializer, BoolSerializer, Deserializer, SerializeError, Serializer,
     U16VarIntDeserializer, U16VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -72,6 +73,22 @@ impl DeferredCall {
     /// This is the maximum gas of the call + vm allocation cost
     pub fn get_effective_gas(&self, alloc_gas_cost: u64) -> u64 {
         self.max_gas.saturating_add(alloc_gas_cost)
+    }
+}
+
+impl From<DeferredCall> for grpc_api::DeferredCallInfoEntry {
+    fn from(call: DeferredCall) -> Self {
+        grpc_api::DeferredCallInfoEntry {
+            sender_address: call.sender_address.to_string(),
+            target_slot: Some(call.target_slot.into()),
+            target_address: call.target_address.to_string(),
+            target_function: call.target_function,
+            parameters: call.parameters,
+            coins: Some(call.coins.into()),
+            max_gas: call.max_gas,
+            fee: Some(call.fee.into()),
+            cancelled: call.cancelled,
+        }
     }
 }
 

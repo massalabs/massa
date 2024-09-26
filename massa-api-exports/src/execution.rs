@@ -142,7 +142,7 @@ pub struct DeferredCallsQuoteResponse {
     /// if the slot is bookable
     pub available: bool,
     /// the cost for booking the call
-    pub price: u64,
+    pub price: Amount,
 }
 
 /// response for deferred call

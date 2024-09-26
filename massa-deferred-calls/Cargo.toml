@@ -17,6 +17,7 @@ massa_models = { workspace = true }
 massa_serialization = { workspace = true }
 serde_with = { workspace = true }
 serde_json = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
 
 [dev-dependencies]
 tempfile = { workspace = true }

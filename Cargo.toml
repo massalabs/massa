@@ -107,8 +107,8 @@ massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "8eb7aa8384a407b588e190965c8e501cebdd38e3" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "b582bcd83120cfe980211ea7bcdaf994a784c714" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "a274d8b374f627f16a0113b6bbc974bf5934dcc7" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "f51d2472212be10838b2318aade1bc14d49f90d9" }
 
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }

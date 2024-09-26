@@ -331,14 +331,13 @@ impl ExecutionController for ExecutionControllerImpl {
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
-                ExecutionQueryRequestItem::DeferredCallQuote(slot, max_request_gas) => {
-                    let (target_slot, gas_request, available, price) =
-                        execution_lock.deferred_call_quote(slot, max_request_gas);
+                ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot,
+                    max_gas_request,
+                } => {
+                    let result = execution_lock.deferred_call_quote(target_slot, max_gas_request);
                     Ok(ExecutionQueryResponseItem::DeferredCallQuote(
-                        target_slot,
-                        gas_request,
-                        available,
-                        price,
+                        result.0, result.1, result.2, result.3,
                     ))
                 }
                 ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => execution_lock
@@ -352,9 +351,9 @@ impl ExecutionController for ExecutionControllerImpl {
                     .map(|call| {
                         ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
                     }),
-                ExecutionQueryRequestItem::DeferredCallSlotCalls(slot) => {
+                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) => {
                     let res = execution_lock.get_deferred_calls_by_slot(slot);
-                    Ok(ExecutionQueryResponseItem::DeferredCallSlotCalls(slot, res))
+                    Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
                 }
             };
             resp.responses.push(resp_item);

@@ -1160,7 +1160,10 @@ impl MassaRpcServer for API<Public> {
         &self,
         req: Vec<DeferredCallsQuoteRequest>,
     ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
-        // TODO limit
+        if req.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
         let queries: Vec<ExecutionQueryRequestItem> = req
             .into_iter()
             .map(|call| {
@@ -1168,10 +1171,10 @@ impl MassaRpcServer for API<Public> {
                 let effective_gas_request = call
                     .max_gas_request
                     .saturating_add(self.0.api_settings.deferred_calls_config.call_cst_gas_cost);
-                ExecutionQueryRequestItem::DeferredCallQuote(
-                    call.target_slot,
-                    effective_gas_request,
-                )
+                ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot: call.target_slot,
+                    max_gas_request: effective_gas_request,
+                }
             })
             .collect();
 
@@ -1193,7 +1196,6 @@ impl MassaRpcServer for API<Public> {
                     available,
                     price,
                 }),
-
                 Ok(_) => Err(ApiError::InternalServerError(
                     "unexpected response type".to_string(),
                 )),
@@ -1208,14 +1210,9 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<String>,
     ) -> RpcResult<Vec<DeferredCallResponse>> {
-        // TODO limit
-        // if id_str.len() > self.0.api_settings.max_deferred_call_id_length as usize {
-        //     return Err(ApiError::BadRequest(format!(
-        //         "deferred call id too long: {}",
-        //         id_str
-        //     ))
-        //     .into());
-        // }
+        if arg.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
 
         let requests: Vec<ExecutionQueryRequestItem> = arg
             .into_iter()
@@ -1253,11 +1250,13 @@ impl MassaRpcServer for API<Public> {
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
-        // TODO limit slot count
+        if slots.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
 
         let requests: Vec<ExecutionQueryRequestItem> = slots
             .into_iter()
-            .map(ExecutionQueryRequestItem::DeferredCallSlotCalls)
+            .map(ExecutionQueryRequestItem::DeferredCallsBySlot)
             .collect();
 
         let mut slot_calls = Vec::new();
@@ -1270,7 +1269,7 @@ impl MassaRpcServer for API<Public> {
             .into_iter()
         {
             match exec {
-                Ok(ExecutionQueryResponseItem::DeferredCallSlotCalls(slot, result)) => {
+                Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, result)) => {
                     let calls = result
                         .into_iter()
                         .map(|(id, call)| DeferredCallResponse {
