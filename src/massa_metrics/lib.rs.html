@@ -761,63 +761,6 @@
 <a href="#761" id="761">761</a>
 <a href="#762" id="762">762</a>
 <a href="#763" id="763">763</a>
-<a href="#764" id="764">764</a>
-<a href="#765" id="765">765</a>
-<a href="#766" id="766">766</a>
-<a href="#767" id="767">767</a>
-<a href="#768" id="768">768</a>
-<a href="#769" id="769">769</a>
-<a href="#770" id="770">770</a>
-<a href="#771" id="771">771</a>
-<a href="#772" id="772">772</a>
-<a href="#773" id="773">773</a>
-<a href="#774" id="774">774</a>
-<a href="#775" id="775">775</a>
-<a href="#776" id="776">776</a>
-<a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
-<a href="#795" id="795">795</a>
-<a href="#796" id="796">796</a>
-<a href="#797" id="797">797</a>
-<a href="#798" id="798">798</a>
-<a href="#799" id="799">799</a>
-<a href="#800" id="800">800</a>
-<a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
-<a href="#810" id="810">810</a>
-<a href="#811" id="811">811</a>
-<a href="#812" id="812">812</a>
-<a href="#813" id="813">813</a>
-<a href="#814" id="814">814</a>
-<a href="#815" id="815">815</a>
-<a href="#816" id="816">816</a>
-<a href="#817" id="817">817</a>
-<a href="#818" id="818">818</a>
-<a href="#819" id="819">819</a>
-<a href="#820" id="820">820</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -850,26 +793,6 @@
         <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_storage_counter&quot;</span>, <span class="string">&quot;blocks storage counter len&quot;</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>ENDORSEMENTS_COUNTER: IntGauge =
         <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_storage_counter&quot;</span>, <span class="string">&quot;endorsements storage counter len&quot;</span>).unwrap();
-
-        <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_REGISTERED: IntGauge = <span class="macro">register_int_gauge!</span>(
-        <span class="string">&quot;deferred_calls_registered&quot;</span>, <span class="string">&quot;number of deferred calls registered&quot; </span>).unwrap();
-
-}
-
-<span class="kw">pub fn </span>dec_deferred_calls_registered() {
-    DEFERRED_CALL_REGISTERED.dec();
-}
-
-<span class="kw">pub fn </span>inc_deferred_calls_registered() {
-    DEFERRED_CALL_REGISTERED.inc();
-}
-
-<span class="kw">pub fn </span>set_deferred_calls_registered(val: usize) {
-    DEFERRED_CALL_REGISTERED.set(val <span class="kw">as </span>i64);
-}
-
-<span class="kw">pub fn </span>get_deferred_calls_registered() -&gt; i64 {
-    DEFERRED_CALL_REGISTERED.get()
 }
 
 <span class="kw">pub fn </span>set_blocks_counter(val: usize) {
@@ -1013,11 +936,6 @@
     </span>peers_bandwidth: Arc&lt;RwLock&lt;HashMap&lt;String, (IntCounter, IntCounter)&gt;&gt;&gt;,
 
     <span class="kw">pub </span>tick_delay: Duration,
-
-    <span class="comment">// deferred calls metrics
-    </span>deferred_calls_executed: IntCounter,
-    deferred_calls_failed: IntCounter,
-    deferred_calls_total_gas: IntGauge,
 }
 
 <span class="kw">impl </span>MassaMetrics {
@@ -1043,8 +961,6 @@
 
             consensus_vec.push(gauge);
         }
-
-        set_deferred_calls_registered(<span class="number">0</span>);
 
         <span class="comment">// set available processors
         </span><span class="kw">let </span>process_available_processors =
@@ -1253,18 +1169,6 @@
         )
         .unwrap();
 
-        <span class="kw">let </span>deferred_calls_executed = IntCounter::new(
-            <span class="string">&quot;deferred_calls_executed&quot;</span>,
-            <span class="string">&quot;number of deferred calls executed&quot;</span>,
-        )
-        .unwrap();
-
-        <span class="kw">let </span>deferred_calls_failed =
-            IntCounter::new(<span class="string">&quot;deferred_calls_failed&quot;</span>, <span class="string">&quot;number of deferred calls failed&quot;</span>).unwrap();
-
-        <span class="kw">let </span>deferred_calls_total_gas =
-            IntGauge::new(<span class="string">&quot;deferred_total_gas&quot;</span>, <span class="string">&quot;total gas used by deferred calls&quot;</span>).unwrap();
-
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
@@ -1317,9 +1221,6 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_period.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_thread.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(block_slot_delay.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_executed.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_failed.clone()));
-                <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_total_gas.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1376,9 +1277,6 @@
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 tick_delay,
-                deferred_calls_executed,
-                deferred_calls_failed,
-                deferred_calls_total_gas,
             },
             stopper,
         )
@@ -1565,18 +1463,6 @@
 
     <span class="kw">pub fn </span>set_block_slot_delay(<span class="kw-2">&amp;</span><span class="self">self</span>, delay: f64) {
         <span class="self">self</span>.block_slot_delay.observe(delay);
-    }
-
-    <span class="kw">pub fn </span>inc_deferred_calls_executed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.deferred_calls_executed.inc();
-    }
-
-    <span class="kw">pub fn </span>inc_deferred_calls_failed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="self">self</span>.deferred_calls_failed.inc();
-    }
-
-    <span class="kw">pub fn </span>set_deferred_calls_total_gas(<span class="kw-2">&amp;</span><span class="self">self</span>, gas: u128) {
-        <span class="self">self</span>.deferred_calls_total_gas.set(gas <span class="kw">as </span>i64);
     }
 
     <span class="doccomment">/// Update the bandwidth metrics for all peers

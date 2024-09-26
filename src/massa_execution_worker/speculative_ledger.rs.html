@@ -666,7 +666,6 @@
 <a href="#666" id="666">666</a>
 <a href="#667" id="667">667</a>
 <a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -678,10 +677,9 @@
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
 <span class="kw">use </span>massa_final_state::FinalStateController;
-<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
+<span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
-<span class="kw">use </span>massa_models::types::{Applicable, SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::cmp::Ordering;

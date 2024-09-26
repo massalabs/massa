@@ -351,11 +351,6 @@
 <a href="#351" id="351">351</a>
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -622,11 +617,6 @@
                     events: result.into_iter().map(|event| event.into()).collect(),
                 },
             )
-        }
-        ExecutionQueryResponseItem::DeferredCallQuote(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        ExecutionQueryResponseItem::DeferredCallInfo(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">todo!</span>(),
-        ExecutionQueryResponseItem::DeferredCallSlotCalls(_deferred_call_id, _deferred_call) =&gt; {
-            <span class="macro">todo!</span>()
         }
     };
 
