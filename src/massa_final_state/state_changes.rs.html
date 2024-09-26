@@ -371,6 +371,32 @@
 <a href="#371" id="371">371</a>
 <a href="#372" id="372">372</a>
 <a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -378,16 +404,21 @@
 </span><span class="kw">use </span>massa_async_pool::{
     AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer,
 };
+<span class="kw">use </span>massa_deferred_calls::{
+    config::DeferredCallsConfig,
+    registry_changes::{
+        DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
+        DeferredRegistryChangesSerializer,
+    },
+};
 <span class="kw">use </span>massa_executed_ops::{
     ExecutedDenunciationsChanges, ExecutedDenunciationsChangesDeserializer,
     ExecutedDenunciationsChangesSerializer, ExecutedOpsChanges, ExecutedOpsChangesDeserializer,
     ExecutedOpsChangesSerializer,
 };
 <span class="kw">use </span>massa_hash::{HashDeserializer, HashSerializer};
-<span class="kw">use </span>massa_ledger_exports::{
-    LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer, SetOrKeep,
-    SetOrKeepDeserializer, SetOrKeepSerializer,
-};
+<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, LedgerChangesDeserializer, LedgerChangesSerializer};
+<span class="kw">use </span>massa_models::types::{SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 <span class="kw">use </span>massa_pos_exports::{PoSChanges, PoSChangesDeserializer, PoSChangesSerializer};
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::{
@@ -404,6 +435,8 @@
     </span><span class="kw">pub </span>ledger_changes: LedgerChanges,
     <span class="doccomment">/// asynchronous pool changes
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
+    <span class="doccomment">/// deferred call changes
+    </span><span class="kw">pub </span>deferred_call_changes: DeferredCallRegistryChanges,
     <span class="doccomment">/// roll state changes
     </span><span class="kw">pub </span>pos_changes: PoSChanges,
     <span class="doccomment">/// executed operations changes
@@ -418,6 +451,7 @@
 </span><span class="kw">pub struct </span>StateChangesSerializer {
     ledger_changes_serializer: LedgerChangesSerializer,
     async_pool_changes_serializer: AsyncPoolChangesSerializer,
+    deferred_call_changes_serializer: DeferredRegistryChangesSerializer,
     pos_changes_serializer: PoSChangesSerializer,
     ops_changes_serializer: ExecutedOpsChangesSerializer,
     de_changes_serializer: ExecutedDenunciationsChangesSerializer,
@@ -436,6 +470,7 @@
         <span class="self">Self </span>{
             ledger_changes_serializer: LedgerChangesSerializer::new(),
             async_pool_changes_serializer: AsyncPoolChangesSerializer::new(),
+            deferred_call_changes_serializer: DeferredRegistryChangesSerializer::new(),
             pos_changes_serializer: PoSChangesSerializer::new(),
             ops_changes_serializer: ExecutedOpsChangesSerializer::new(),
             de_changes_serializer: ExecutedDenunciationsChangesSerializer::new(),
@@ -450,6 +485,8 @@
             .serialize(<span class="kw-2">&amp;</span>value.ledger_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.async_pool_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.async_pool_changes, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.deferred_call_changes_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.deferred_call_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_changes_serializer
             .serialize(<span class="kw-2">&amp;</span>value.pos_changes, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.ops_changes_serializer
@@ -466,6 +503,7 @@
 </span><span class="kw">pub struct </span>StateChangesDeserializer {
     ledger_changes_deserializer: LedgerChangesDeserializer,
     async_pool_changes_deserializer: AsyncPoolChangesDeserializer,
+    deferred_call_changes_deserializer: DeferredRegistryChangesDeserializer,
     pos_changes_deserializer: PoSChangesDeserializer,
     ops_changes_deserializer: ExecutedOpsChangesDeserializer,
     de_changes_deserializer: ExecutedDenunciationsChangesDeserializer,
@@ -491,6 +529,7 @@
         max_ops_changes_length: u64,
         endorsement_count: u32,
         max_de_changes_length: u64,
+        deferred_calls_config: DeferredCallsConfig,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             ledger_changes_deserializer: LedgerChangesDeserializer::new(
@@ -505,6 +544,10 @@
                 max_function_length,
                 max_function_params_length,
                 max_datastore_key_length <span class="kw">as </span>u32,
+            ),
+            <span class="comment">// todo max gas
+            </span>deferred_call_changes_deserializer: DeferredRegistryChangesDeserializer::new(
+                deferred_calls_config,
             ),
             pos_changes_deserializer: PoSChangesDeserializer::new(
                 thread_count,
@@ -542,6 +585,9 @@
                 context(<span class="string">&quot;Failed async_pool_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.async_pool_changes_deserializer.deserialize(input)
                 }),
+                context(<span class="string">&quot;Failed deferred_call_changes deserialization&quot;</span>, |input| {
+                    <span class="self">self</span>.deferred_call_changes_deserializer.deserialize(input)
+                }),
                 context(<span class="string">&quot;Failed roll_state_changes deserialization&quot;</span>, |input| {
                     <span class="self">self</span>.pos_changes_deserializer.deserialize(input)
                 }),
@@ -564,6 +610,7 @@
             |(
                 ledger_changes,
                 async_pool_changes,
+                deferred_call_changes,
                 pos_changes,
                 executed_ops_changes,
                 executed_denunciations_changes,
@@ -571,6 +618,7 @@
             )| StateChanges {
                 ledger_changes,
                 async_pool_changes,
+                deferred_call_changes,
                 pos_changes,
                 executed_ops_changes,
                 executed_denunciations_changes,
@@ -584,7 +632,8 @@
 <span class="kw">impl </span>StateChanges {
     <span class="doccomment">/// extends the current `StateChanges` with another one
     </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
-        <span class="kw">use </span>massa_ledger_exports::Applicable;
+        <span class="comment">// TODO deferred_call_changes ?
+        </span><span class="kw">use </span>massa_models::types::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
@@ -601,11 +650,13 @@
     <span class="kw">use </span>std::str::FromStr;
 
     <span class="kw">use </span>massa_async_pool::AsyncMessage;
-    <span class="kw">use </span>massa_ledger_exports::{LedgerEntryUpdate, SetUpdateOrDelete};
+    <span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
+    <span class="kw">use </span>massa_ledger_exports::LedgerEntryUpdate;
     <span class="kw">use </span>massa_models::address::Address;
     <span class="kw">use </span>massa_models::amount::Amount;
     <span class="kw">use </span>massa_models::bytecode::Bytecode;
     <span class="kw">use </span>massa_models::slot::Slot;
+    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
     <span class="kw">use </span>massa_serialization::DeserializeError;
 
     <span class="kw">use </span>massa_models::config::{
@@ -690,6 +741,7 @@
             MAX_EXECUTED_OPS_CHANGES_LENGTH,
             ENDORSEMENT_COUNT,
             MAX_DENUNCIATION_CHANGES_LENGTH,
+            DeferredCallsConfig::default(),
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized)
         .unwrap();
@@ -726,7 +778,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>datastore = BTreeMap::new();
         datastore.insert(
             <span class="string">b&quot;hello&quot;</span>.to_vec(),
-            massa_ledger_exports::SetOrDelete::Set(<span class="string">b&quot;world&quot;</span>.to_vec()),
+            massa_models::types::SetOrDelete::Set(<span class="string">b&quot;world&quot;</span>.to_vec()),
         );
         <span class="kw">let </span>ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),

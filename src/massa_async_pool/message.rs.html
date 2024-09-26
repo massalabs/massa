@@ -1514,12 +1514,12 @@
 
 //! This file defines the structure representing an asynchronous message
 
-</span><span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
-<span class="kw">use </span>massa_models::address::{AddressDeserializer, AddressSerializer};
+</span><span class="kw">use </span>massa_models::address::{AddressDeserializer, AddressSerializer};
 <span class="kw">use </span>massa_models::amount::{AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::config::GENESIS_KEY;
 <span class="kw">use </span>massa_models::serialization::{StringDeserializer, StringSerializer};
 <span class="kw">use </span>massa_models::slot::{SlotDeserializer, SlotSerializer};
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -2518,7 +2518,7 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep};
+    <span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep};
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
     <span class="kw">use </span>num::rational::Ratio;
 
