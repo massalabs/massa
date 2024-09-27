@@ -584,8 +584,8 @@
                 },
                 "name": "DeferredCallResponse"
             },
-            "name": "list_deferred_calls_by_slot",
-            "summary": "List deferred calls by slots",
+            "name": "get_deferred_call_ids_by_slot",
+            "summary": "List deferred call ids by slot",
             "description": "Returns deferred calls list for given slots."
         },
         {
@@ -2210,10 +2210,10 @@
                     "slot": {
                         "$ref": "#/components/schemas/Slot"
                     },
-                    "calls": {
+                    "call_ids": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/DeferredCallResponse"
+                            "type": "string"
                         }
                     }
                 }
