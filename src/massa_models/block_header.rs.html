@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block_header.rs`."><title>block_header.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block_header.rs`."><title>block_header.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -865,7 +865,7 @@
 }
 
 <span class="comment">// TODO: gh-issue #3398
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+</span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
 </span><span class="kw">impl </span>BlockHeader {
     <span class="doccomment">/// This is an intentional duplication of invariant checks. In production code,
     /// these checks are dispersed throughout the deserialization process. This test-only function
@@ -877,25 +877,25 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if </span><span class="self">self</span>.slot.period == <span class="number">0 </span>{
             <span class="kw">if </span>!<span class="self">self</span>.parents.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with parent(s)&quot;</span>.into());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Invariant broken: genesis block with parent(s)"</span>.into());
             }
             <span class="kw">if </span>!<span class="self">self</span>.endorsements.is_empty() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: genesis block with endorsement(s)&quot;</span>.into());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Invariant broken: genesis block with endorsement(s)"</span>.into());
             }
         } <span class="kw">else </span>{
             <span class="kw">if </span><span class="self">self</span>.parents.len() != thread_count <span class="kw">as </span>usize {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(
-                    <span class="string">&quot;Invariant broken: non-genesis block with incorrect number of parents&quot;</span>.into(),
+                    <span class="string">"Invariant broken: non-genesis block with incorrect number of parents"</span>.into(),
                 );
             }
             <span class="kw">if </span><span class="self">self</span>.endorsements.len() &gt; endorsement_count <span class="kw">as </span>usize {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: endorsement count too high&quot;</span>.into());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Invariant broken: endorsement count too high"</span>.into());
             }
 
             <span class="kw">let </span>parent_id = <span class="self">self</span>.parents[<span class="self">self</span>.slot.thread <span class="kw">as </span>usize];
             <span class="kw">for </span>endo <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
                 <span class="kw">if </span>endo.content.endorsed_block != parent_id {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Invariant broken: endorsement doesn&#39;t match parent&quot;</span>.into());
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Invariant broken: endorsement doesn't match parent"</span>.into());
                 }
             }
         }
@@ -904,7 +904,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>set = HashSet::new();
         <span class="kw">for </span>endo <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
             <span class="kw">if </span>!set.insert(endo.content.index) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">&quot;Endorsement duplicate index found&quot;</span>.into());
+                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"Endorsement duplicate index found"</span>.into());
             }
         }
 
@@ -937,7 +937,7 @@
     </span>}
     <span class="comment">// TODO: gh-issue #3398
     </span><span class="attr">#[allow(dead_code)]
-    #[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+    #[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assert_invariants(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         thread_count: u8,
@@ -946,7 +946,7 @@
         <span class="self">self</span>.content
             .assert_invariants(thread_count, endorsement_count)<span class="question-mark">?</span>;
         <span class="self">self</span>.verify_signature()
-            .map_err(|er| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, er).into())
+            .map_err(|er| <span class="macro">format!</span>(<span class="string">"{}"</span>, er).into())
     }
 }
 
@@ -1003,13 +1003,13 @@
     ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents,
-    ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
+    ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
     ///     Endorsement::new_verifiable(
     ///        Endorsement {
     ///          slot: Slot::new(1, 1),
     ///          index: 1,
-    ///          endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///          endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     ///        },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
@@ -1020,7 +1020,7 @@
     ///       Endorsement {
     ///         slot: Slot::new(4, 0),
     ///         index: 3,
-    ///         endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///         endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     ///       },
     ///     EndorsementSerializer::new(),
     ///     &amp;keypair,
@@ -1058,7 +1058,7 @@
 
         <span class="self">self</span>.u32_serializer.serialize(
             <span class="kw-2">&amp;</span>value.endorsements.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many endorsements: {}&quot;</span>, err))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"too many endorsements: {}"</span>, err))
             })<span class="question-mark">?</span>,
             buffer,
         )<span class="question-mark">?</span>;
@@ -1072,7 +1072,7 @@
         }
         <span class="self">self</span>.u32_serializer.serialize(
             <span class="kw-2">&amp;</span>value.denunciations.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many denunciations: {}&quot;</span>, err))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"too many denunciations: {}"</span>, err))
             })<span class="question-mark">?</span>,
             buffer,
         )<span class="question-mark">?</span>;
@@ -1169,7 +1169,7 @@
     ///   announced_version: None,
     ///   slot: Slot::new(1, 1),
     ///   parents: parents.clone(),
-    ///   operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
+    ///   operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///   endorsements: vec![
     ///     Endorsement::new_verifiable(
     ///        Endorsement {
@@ -1205,32 +1205,32 @@
     /// assert_eq!(buffer, buffer2);
     /// ```
     </span><span class="attr">#[allow(clippy::type_complexity)]
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeader, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BlockHeader, E&gt; {
         <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents, operation_merkle_root)): (
             <span class="kw-2">&amp;</span>[u8],
             (u32, <span class="prelude-ty">Option</span>&lt;u32&gt;, Slot, Vec&lt;BlockId&gt;, Hash),
-        ) = context(<span class="string">&quot;Failed BlockHeader deserialization&quot;</span>, |input| {
+        ) = context(<span class="string">"Failed BlockHeader deserialization"</span>, |input| {
             <span class="kw">let </span>(rest, (current_version, announced_version, slot, parents)) = tuple((
-                context(<span class="string">&quot;Failed current_version deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed current_version deserialization"</span>, |input| {
                     <span class="self">self</span>.network_versions_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed announced_version deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed announced_version deserialization"</span>, |input| {
                     <span class="self">self</span>.opt_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
                 context(
-                    <span class="string">&quot;Failed parents deserialization&quot;</span>,
+                    <span class="string">"Failed parents deserialization"</span>,
                     alt((
                         preceded(tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>]), |input| <span class="prelude-val">Ok</span>((input, Vec::new()))),
                         preceded(
                             tag(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
                             count(
-                                context(<span class="string">&quot;Failed block_id deserialization&quot;</span>, |input| {
+                                context(<span class="string">"Failed block_id deserialization"</span>, |input| {
                                     <span class="self">self</span>.block_id_deserializer.deserialize(input)
                                 }),
                                 <span class="self">self</span>.thread_count <span class="kw">as </span>usize,
@@ -1246,7 +1246,7 @@
                 <span class="kw">if </span>slot.period == last_start_period &amp;&amp; !parents.is_empty() {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
-                        <span class="string">&quot;Genesis block cannot contain parents&quot;</span>,
+                        <span class="string">"Genesis block cannot contain parents"</span>,
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
                 } <span class="kw">else if </span>slot.period != last_start_period
@@ -1254,13 +1254,13 @@
                 {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                         rest,
-                        <span class="string">&quot;Non-genesis block must have same numbers of parents as threads count&quot;</span>,
+                        <span class="string">"Non-genesis block must have same numbers of parents as threads count"</span>,
                         ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                     )));
                 }
             }
 
-            <span class="kw">let </span>(rest, merkle) = context(<span class="string">&quot;Failed operation_merkle_root&quot;</span>, |input| {
+            <span class="kw">let </span>(rest, merkle) = context(<span class="string">"Failed operation_merkle_root"</span>, |input| {
                 <span class="self">self</span>.hash_deserializer.deserialize(input)
             })
             .parse(rest)<span class="question-mark">?</span>;
@@ -1283,12 +1283,12 @@
             };
 
             <span class="comment">// TODO: gh-issue #3398
-            </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+            </span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
             </span>res.assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
                 .unwrap();
 
             <span class="comment">// As we have 0 endorsements &amp; 0 denunciations, rest = [0, 0] (length 0 &amp; length 0)
-            // As we want to return an empty &quot;res&quot; we use nom tag
+            // As we want to return an empty "res" we use nom tag
             </span><span class="kw">let </span>(rest2, <span class="kw">_</span>) = tag(<span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">0</span>])(rest)<span class="question-mark">?</span>;
             <span class="kw">return </span><span class="prelude-val">Ok</span>((rest2, res));
         }
@@ -1305,19 +1305,19 @@
 
         <span class="kw">let </span>parent_id = parents[slot.thread <span class="kw">as </span>usize];
         <span class="kw">let </span>(rest, endorsements): (<span class="kw-2">&amp;</span>[u8], Vec&lt;SecureShare&lt;Endorsement, EndorsementId&gt;&gt;) = context(
-            <span class="string">&quot;Failed endorsements deserialization&quot;</span>,
+            <span class="string">"Failed endorsements deserialization"</span>,
             length_count::&lt;<span class="kw-2">&amp;</span>[u8], SecureShare&lt;Endorsement, EndorsementId&gt;, u32, E, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.endorsement_len_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed endorsement deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed endorsement deserialization"</span>, |input| {
                     <span class="kw">let </span>(rest, endo) = endorsement_deserializer
                         .deserialize_with(<span class="kw-2">&amp;</span><span class="self">self</span>.endorsement_serializer, input)<span class="question-mark">?</span>;
 
                     <span class="kw">if </span>endo.content.endorsed_block != parent_id {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                             rest,
-                            <span class="string">&quot;Endorsement does not match block parents&quot;</span>,
+                            <span class="string">"Endorsement does not match block parents"</span>,
                             ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                         )));
                     }
@@ -1333,20 +1333,20 @@
             <span class="kw">if </span>!set.insert(end.content.index) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Failure(ContextError::add_context(
                     rest,
-                    <span class="string">&quot;Duplicate endorsement index found&quot;</span>,
+                    <span class="string">"Duplicate endorsement index found"</span>,
                     ParseError::from_error_kind(rest, nom::error::ErrorKind::Fail),
                 )));
             }
         }
 
         <span class="kw">let </span>(rest, denunciations): (<span class="kw-2">&amp;</span>[u8], Vec&lt;Denunciation&gt;) = context(
-            <span class="string">&quot;Failed denunciations deserialization&quot;</span>,
+            <span class="string">"Failed denunciations deserialization"</span>,
             length_count::&lt;<span class="kw-2">&amp;</span>[u8], Denunciation, u32, E, <span class="kw">_</span>, <span class="kw">_</span>&gt;(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="kw">let </span>(res, count) = <span class="self">self</span>.denunciation_len_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     IResult::Ok((res, count))
                 }),
-                context(<span class="string">&quot;Failed denunciation deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed denunciation deserialization"</span>, |input| {
                     <span class="self">self</span>.denunciation_deserializer.deserialize(input)
                 }),
             ),
@@ -1364,7 +1364,7 @@
         };
 
         <span class="comment">// TODO: gh-issue #3398
-        </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+        </span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
         </span>header
             .assert_invariants(<span class="self">self</span>.thread_count, <span class="self">self</span>.endorsement_count)
             .unwrap();
@@ -1374,37 +1374,37 @@
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockHeader {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">&quot;\t(period: {}, thread: {})&quot;</span>,
+            <span class="string">"\t(period: {}, thread: {})"</span>,
             <span class="self">self</span>.slot.period, <span class="self">self</span>.slot.thread,
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tMerkle root: {}&quot;</span>, <span class="self">self</span>.operation_merkle_root,)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tParents: &quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"\tMerkle root: {}"</span>, <span class="self">self</span>.operation_merkle_root,)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"\tParents: "</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>id <span class="kw">in </span><span class="self">self</span>.parents.iter() {
             <span class="kw">let </span>str_id = id.to_string();
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t{}&quot;</span>, str_id)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\t{}"</span>, str_id)<span class="question-mark">?</span>;
         }
         <span class="kw">if </span><span class="self">self</span>.parents.is_empty() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;No parents found: This is a genesis header&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"No parents found: This is a genesis header"</span>)<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\tEndorsements:&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"\tEndorsements:"</span>)<span class="question-mark">?</span>;
         <span class="kw">for </span>ed <span class="kw">in </span><span class="self">self</span>.endorsements.iter() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\t-----&quot;</span>)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tId: {}&quot;</span>, ed.id)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tIndex: {}&quot;</span>, ed.content.index)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed slot: {}&quot;</span>, ed.content.slot)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\t-----"</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\tId: {}"</span>, ed.id)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\tIndex: {}"</span>, ed.content.index)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\tEndorsed slot: {}"</span>, ed.content.slot)<span class="question-mark">?</span>;
             <span class="macro">writeln!</span>(
                 f,
-                <span class="string">&quot;\t\tEndorser&#39;s public key: {}&quot;</span>,
+                <span class="string">"\t\tEndorser's public key: {}"</span>,
                 ed.content_creator_pub_key
             )<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tEndorsed block: {}&quot;</span>, ed.content.endorsed_block)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\t\tSignature: {}&quot;</span>, ed.signature)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\tEndorsed block: {}"</span>, ed.content.endorsed_block)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\t\tSignature: {}"</span>, ed.signature)<span class="question-mark">?</span>;
         }
         <span class="kw">if </span><span class="self">self</span>.endorsements.is_empty() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;\tNo endorsements found&quot;</span>)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"\tNo endorsements found"</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1493,7 +1493,7 @@
             announced_version: <span class="prelude-val">None</span>,
             slot,
             parents: parents_1,
-            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
             endorsements: <span class="macro">vec!</span>[s_endorsement_1],
             denunciations: <span class="macro">vec!</span>[de_a, de_b],
         };
@@ -1523,7 +1523,7 @@
             announced_version: <span class="prelude-val">None</span>,
             slot,
             parents: <span class="macro">vec!</span>[],
-            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
             endorsements: <span class="macro">vec!</span>[],
             denunciations: <span class="macro">vec!</span>[],
         };
@@ -1616,7 +1616,7 @@
             announced_version: <span class="prelude-val">None</span>,
             slot,
             parents: parents_1,
-            operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+            operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
             endorsements: <span class="macro">vec!</span>[s_endorsement_1],
             denunciations: <span class="macro">vec!</span>[de_a, de_b],
         };
@@ -1626,15 +1626,15 @@
         <span class="comment">// check equality
         </span><span class="macro">assert_eq!</span>(
             block_header_1.current_version,
-            res_block_header[<span class="string">&quot;current_version&quot;</span>]
+            res_block_header[<span class="string">"current_version"</span>]
         );
         <span class="macro">assert_eq!</span>(
             block_header_1.slot.period,
-            res_block_header[<span class="string">&quot;slot&quot;</span>][<span class="string">&quot;period&quot;</span>]
+            res_block_header[<span class="string">"slot"</span>][<span class="string">"period"</span>]
         );
         <span class="macro">assert_eq!</span>(
             block_header_1.slot.thread,
-            res_block_header[<span class="string">&quot;slot&quot;</span>][<span class="string">&quot;thread&quot;</span>]
+            res_block_header[<span class="string">"slot"</span>][<span class="string">"thread"</span>]
         );
     }
 }

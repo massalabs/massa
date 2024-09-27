@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/operation_handler/retrieval.rs`."><title>retrieval.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/operation_handler/retrieval.rs`."><title>retrieval.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -547,7 +547,7 @@
 };
 
 <span class="comment">// protocol-operation-handler-retrieval
-</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;poh-retrieval&quot;</span>;
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"poh-retrieval"</span>;
 <span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="doccomment">/// Structure containing a Batch of `operation_ids` we would like to ask
@@ -595,7 +595,7 @@
         <span class="kw">let </span>tick_ask_operations = tick(<span class="self">self</span>.config.operation_batch_proc_period.to_duration());
 
         <span class="kw">loop </span>{
-            <span class="macro">select! </span>{
+            <span class="macro">select!</span> {
                 recv(<span class="self">self</span>.receiver) -&gt; msg =&gt; {
                     <span class="self">self</span>.receiver.update_metrics();
                     <span class="kw">match </span>msg {
@@ -604,17 +604,17 @@
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                     <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
                                     <span class="prelude-val">Err</span>(err) =&gt; {
-                                        <span class="macro">warn!</span>(<span class="string">&quot;Error when deserializing message from peer {}: Err = {}&quot;</span>, peer_id, err);
+                                        <span class="macro">warn!</span>(<span class="string">"Error when deserializing message from peer {}: Err = {}"</span>, peer_id, err);
                                         <span class="kw">continue</span>;
                                     }
                                 };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">println!</span>(<span class="string">&quot;Error: message not fully consumed&quot;</span>);
+                                <span class="macro">println!</span>(<span class="string">"Error: message not fully consumed"</span>);
                                 <span class="kw">return</span>;
                             }
                             <span class="kw">match </span>message {
                                 OperationMessage::Operations(ops) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received operation message: Operations from {}&quot;</span>, peer_id);
+                                    <span class="macro">debug!</span>(<span class="string">"Received operation message: Operations from {}"</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
                                         <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
                                         <span class="kw-2">&amp;mut </span><span class="self">self</span>.cache,
@@ -624,31 +624,31 @@
                                         <span class="kw-2">&amp;mut </span><span class="self">self</span>.internal_sender,
                                         <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller
                                     ) {
-                                        <span class="macro">warn!</span>(<span class="string">&quot;peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}&quot;</span>, peer_id, err);
+                                        <span class="macro">warn!</span>(<span class="string">"peer {} sent us critically incorrect operation, which may be an attack attempt by the remote peer or a loss of sync between us and the remote peer. Err = {}"</span>, peer_id, err);
 
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.ban_node(<span class="kw-2">&amp;</span>peer_id) {
-                                            <span class="macro">warn!</span>(<span class="string">&quot;Error when banning node: {}&quot;</span>, e);
+                                            <span class="macro">warn!</span>(<span class="string">"Error when banning node: {}"</span>, e);
                                         }
                                     }
                                 }
                                 OperationMessage::OperationsAnnouncement(announcement) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received operation message: OperationsAnnouncement from {}&quot;</span>, peer_id);
+                                    <span class="macro">debug!</span>(<span class="string">"Received operation message: OperationsAnnouncement from {}"</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
                                         <span class="self">self</span>.on_operations_announcements_received(announcement, <span class="kw-2">&amp;</span>peer_id)
                                     {
-                                        <span class="macro">warn!</span>(<span class="string">&quot;error when processing announcement received from peer {}: Err = {}&quot;</span>, peer_id, err);
+                                        <span class="macro">warn!</span>(<span class="string">"error when processing announcement received from peer {}: Err = {}"</span>, peer_id, err);
                                     }
                                 }
                                 OperationMessage::AskForOperations(ask) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received operation message: AskForOperations from {}&quot;</span>, peer_id);
+                                    <span class="macro">debug!</span>(<span class="string">"Received operation message: AskForOperations from {}"</span>, peer_id);
                                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.on_asked_operations_received(<span class="kw-2">&amp;</span>peer_id, ask) {
-                                        <span class="macro">warn!</span>(<span class="string">&quot;error when processing asked operations received from peer {}: Err = {}&quot;</span>, peer_id, err);
+                                        <span class="macro">warn!</span>(<span class="string">"error when processing asked operations received from peer {}: Err = {}"</span>, peer_id, err);
                                     }
                                 }
                             }
                         }
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Stop operation retrieval thread&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Stop operation retrieval thread"</span>);
                             <span class="kw">return</span>;
                         }
                     }
@@ -658,19 +658,19 @@
                     <span class="kw">match </span>msg {
                         <span class="prelude-val">Ok</span>(cmd) =&gt; <span class="kw">match </span>cmd {
                             OperationHandlerRetrievalCommand::Stop =&gt; {
-                                <span class="macro">info!</span>(<span class="string">&quot;Stop operation retrieval thread&quot;</span>);
+                                <span class="macro">info!</span>(<span class="string">"Stop operation retrieval thread"</span>);
                                 <span class="kw">return</span>;
                             }
                         },
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Stop operation retrieval thread&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Stop operation retrieval thread"</span>);
                             <span class="kw">return</span>;
                         }
                     }
                 }
                 recv(tick_ask_operations) -&gt; <span class="kw">_ </span>=&gt; {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.update_ask_operation() {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Error in update_ask_operation: {}&quot;</span>, err);
+                        <span class="macro">warn!</span>(<span class="string">"Error in update_ask_operation: {}"</span>, err);
                     };
                 }
             }
@@ -724,7 +724,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>ask_set = OperationPrefixIds::with_capacity(op_batch.len());
         <span class="kw">let </span><span class="kw-2">mut </span>future_set = OperationPrefixIds::with_capacity(op_batch.len());
-        <span class="comment">// exactitude isn&#39;t important, we want to have a now for that function call
+        <span class="comment">// exactitude isn't important, we want to have a now for that function call
         </span><span class="kw">let </span>now = Instant::now();
         <span class="kw">let </span><span class="kw-2">mut </span>count_reask = <span class="number">0</span>;
         <span class="kw">for </span>op_id <span class="kw">in </span>op_batch {
@@ -761,7 +761,7 @@
         } <span class="comment">// EndOf for op_id in op_batch:
 
         </span><span class="kw">if </span>count_reask &gt; <span class="number">0 </span>{
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;re-ask operations.&quot;</span>, { <span class="string">&quot;count&quot;</span>: count_reask });
+            <span class="macro">massa_trace!</span>(<span class="string">"re-ask operations."</span>, { <span class="string">"count"</span>: count_reask });
         }
         <span class="kw">if </span><span class="self">self</span>.op_batch_buffer.len() &lt; <span class="self">self</span>.config.operation_batch_buffer_capacity
             &amp;&amp; !future_set.is_empty()
@@ -776,7 +776,7 @@
         }
         <span class="kw">if </span>!ask_set.is_empty() {
             <span class="macro">debug!</span>(
-                <span class="string">&quot;Send ask operations of len {} to {}&quot;</span>,
+                <span class="string">"Send ask operations of len {} to {}"</span>,
                 ask_set.len(),
                 peer_id
             );
@@ -794,7 +794,7 @@
                     .into(),
                     <span class="bool-val">false</span>,
                 ) {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Failed to send AskForOperations message to peer: {}&quot;</span>, err);
+                    <span class="macro">warn!</span>(<span class="string">"Failed to send AskForOperations message to peer: {}"</span>, err);
                     <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
                         <span class="kw">break</span>;
                     }
@@ -807,7 +807,7 @@
     <span class="kw">fn </span>update_ask_operation(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
         <span class="kw">let </span>now = Instant::now();
         <span class="kw">while </span>!<span class="self">self</span>.op_batch_buffer.is_empty()
-        <span class="comment">// This unwrap is ok because we checked that it&#39;s not empty just before.
+        <span class="comment">// This unwrap is ok because we checked that it's not empty just before.
             </span>&amp;&amp; now &gt;= <span class="self">self</span>.op_batch_buffer.front().unwrap().instant
         {
             <span class="kw">let </span>op_batch_item = <span class="self">self</span>.op_batch_buffer.pop_front().unwrap();
@@ -849,7 +849,7 @@
                 }
             }
         }
-        <span class="macro">debug!</span>(<span class="string">&quot;Send full operations of len {} to {}&quot;</span>, ops.len(), peer_id);
+        <span class="macro">debug!</span>(<span class="string">"Send full operations of len {} to {}"</span>, ops.len(), peer_id);
         <span class="kw">for </span>sub_list <span class="kw">in </span>ops.chunks(<span class="self">self</span>.config.max_operations_per_message <span class="kw">as </span>usize) {
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
                 peer_id,
@@ -857,7 +857,7 @@
                 OperationMessage::Operations(sub_list.to_vec()).into(),
                 <span class="bool-val">false</span>,
             ) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send Operations message to peer: {}&quot;</span>, err);
+                <span class="macro">warn!</span>(<span class="string">"Failed to send Operations message to peer: {}"</span>, err);
                 <span class="kw">if let </span>ProtocolError::PeerDisconnected(<span class="kw">_</span>) = err {
                     <span class="kw">break</span>;
                 }
@@ -868,7 +868,7 @@
 
     <span class="doccomment">/// send a ban peer command to the peer handler
     </span><span class="kw">fn </span>ban_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, peer_id: <span class="kw-2">&amp;</span>PeerId) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;ban node from retrieval thread&quot;</span>, { <span class="string">&quot;peer_id&quot;</span>: peer_id.to_string() });
+        <span class="macro">massa_trace!</span>(<span class="string">"ban node from retrieval thread"</span>, { <span class="string">"peer_id"</span>: peer_id.to_string() });
         <span class="self">self</span>.peer_cmd_sender
             .try_send(PeerManagementCmd::Ban(<span class="macro">vec!</span>[<span class="kw-2">*</span>peer_id]))
             .map_err(|err| ProtocolError::SendError(err.to_string()))
@@ -884,7 +884,7 @@
     ops_propagation_sender: <span class="kw-2">&amp;mut </span>MassaSender&lt;OperationHandlerPropagationCommand&gt;,
     pool_controller: <span class="kw-2">&amp;mut </span>Box&lt;<span class="kw">dyn </span>PoolController&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ProtocolError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.note_operations_from_peer&quot;</span>, { <span class="string">&quot;peer&quot;</span>: source_peer_id, <span class="string">&quot;operations&quot;</span>: operations });
+    <span class="macro">massa_trace!</span>(<span class="string">"protocol.protocol_worker.note_operations_from_peer"</span>, { <span class="string">"peer"</span>: source_peer_id, <span class="string">"operations"</span>: operations });
     <span class="kw">let </span>now = MassaTime::now();
 
     <span class="kw">let </span><span class="kw-2">mut </span>new_operations = PreHashMap::with_capacity(operations.len());
@@ -913,7 +913,7 @@
         <span class="comment">// quit if op is too big
         </span><span class="kw">if </span>operation.serialized_size() &gt; config.max_serialized_operations_size_per_block {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidOperationError(<span class="macro">format!</span>(
-                <span class="string">&quot;Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes&quot;</span>,
+                <span class="string">"Operation {} exceeds max block size,  maximum authorized {} bytes but found {} bytes"</span>,
                 operation.id,
                 operation.serialized_size(),
                 config.max_serialized_operations_size_per_block
@@ -969,7 +969,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(_err) = ops_propagation_sender.try_send(
             OperationHandlerPropagationCommand::PropagateOperations(ops.clone()),
         ) {
-            <span class="macro">warn!</span>(<span class="string">&quot;Error sending operations to propagation channel&quot;</span>);
+            <span class="macro">warn!</span>(<span class="string">"Error sending operations to propagation channel"</span>);
         }
 
         <span class="comment">// Add to pool
@@ -1007,7 +1007,7 @@
                     config
                         .asked_operations_buffer_capacity
                         .try_into()
-                        .expect(<span class="string">&quot;asked_operations_buffer_capacity in config must be &gt; 0&quot;</span>),
+                        .expect(<span class="string">"asked_operations_buffer_capacity in config must be &gt; 0"</span>),
                 )),
                 config,
                 operation_message_serializer: MessagesSerializer::new()
@@ -1018,6 +1018,6 @@
             };
             retrieval_thread.run();
         })
-        .expect(<span class="string">&quot;OS failed to start operation retrieval thread&quot;</span>)
+        .expect(<span class="string">"OS failed to start operation retrieval thread"</span>)
 }
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/process.rs`."><title>process.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -893,31 +893,31 @@
         <span class="comment">// list items to reprocess
         </span><span class="kw">let </span><span class="kw-2">mut </span>reprocess = BTreeSet::new();
 
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process&quot;</span>, { <span class="string">&quot;block_id&quot;</span>: block_id });
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process"</span>, { <span class="string">"block_id"</span>: block_id });
         <span class="comment">// control all the waiting states and try to get a valid block
         </span><span class="kw">match </span><span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id) {
             <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new()), <span class="comment">// disappeared before being processed: do nothing
 
             // discarded: do nothing
             </span><span class="prelude-val">Some</span>(BlockStatus::Discarded { .. }) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.discarded&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.discarded"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
             }
 
             <span class="comment">// already active: do nothing
             </span><span class="prelude-val">Some</span>(BlockStatus::Active { .. }) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.active&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.active"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
             }
 
             <span class="comment">// incoming header
             </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Header(<span class="kw">_</span>))) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.incoming_header&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.incoming_header"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
 
                 <span class="kw">let </span>new_state = <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Header(header))) =
@@ -926,7 +926,7 @@
                     <span class="self">self</span>.convert_block_header(block_id, header.clone(), current_slot)
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(
-                        <span class="string">&quot;inconsistency inside block statuses removing incoming header {}&quot;</span>,
+                        <span class="string">"inconsistency inside block statuses removing incoming header {}"</span>,
                         block_id
                     )
                 };
@@ -940,7 +940,7 @@
                             new_state
                         } <span class="kw">else </span>{
                             <span class="macro">panic!</span>(
-                                <span class="string">&quot;inconsistency inside block statuses removing incoming header {}&quot;</span>,
+                                <span class="string">"inconsistency inside block statuses removing incoming header {}"</span>,
                                 block_id
                             )
                         }
@@ -951,8 +951,8 @@
             <span class="comment">// incoming block
             </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Block { id: block_id, .. })) =&gt; {
                 <span class="kw">let </span>block_id = <span class="kw-2">*</span>block_id;
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.incoming_block&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.incoming_block"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="kw">let </span>header_check_outcome =
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Incoming(HeaderOrBlock::Block {
@@ -965,7 +965,7 @@
                             .read_blocks()
                             .get(<span class="kw-2">&amp;</span>block_id)
                             .cloned()
-                            .expect(<span class="string">&quot;incoming block not found in storage&quot;</span>);
+                            .expect(<span class="string">"incoming block not found in storage"</span>);
                         <span class="kw">let </span>res = <span class="self">self</span>.check_header(
                             <span class="kw-2">&amp;</span>block_id,
                             <span class="kw-2">&amp;</span>stored_block.content.header,
@@ -984,7 +984,7 @@
                         res
                     } <span class="kw">else </span>{
                         <span class="macro">panic!</span>(
-                            <span class="string">&quot;inconsistency inside block statuses removing incoming block {}&quot;</span>,
+                            <span class="string">"inconsistency inside block statuses removing incoming block {}"</span>,
                             block_id
                         )
                     };
@@ -1002,7 +1002,7 @@
                                 .read_blocks()
                                 .get(<span class="kw-2">&amp;</span>block_id)
                                 .cloned()
-                                .expect(<span class="string">&quot;incoming block not found in storage&quot;</span>)
+                                .expect(<span class="string">"incoming block not found in storage"</span>)
                                 .content
                                 .header;
                             <span class="kw">let </span>new_state = <span class="kw">match </span>header_check_outcome {
@@ -1093,7 +1093,7 @@
                             }
                         } <span class="kw">else </span>{
                             <span class="macro">panic!</span>(
-                                <span class="string">&quot;inconsistency inside block statuses removing incoming block {}&quot;</span>,
+                                <span class="string">"inconsistency inside block statuses removing incoming block {}"</span>,
                                 block_id
                             )
                         }
@@ -1107,7 +1107,7 @@
                             valid_block_infos.<span class="number">2</span>,
                             valid_block_infos.<span class="number">3</span>,
                         ) {
-                            <span class="macro">panic!</span>(<span class="string">&quot;error adding block to graph: {:?}&quot;</span>, err);
+                            <span class="macro">panic!</span>(<span class="string">"error adding block to graph: {:?}"</span>, err);
                         }
                     }
                     <span class="prelude-val">None </span>=&gt; <span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new()),
@@ -1115,14 +1115,14 @@
             }
 
             <span class="prelude-val">Some</span>(BlockStatus::WaitingForSlot(header_or_block)) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.waiting_for_slot&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.waiting_for_slot"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="kw">let </span>slot = header_or_block.get_slot();
                 <span class="kw">if </span><span class="prelude-val">Some</span>(slot) &gt; current_slot {
                     <span class="macro">massa_trace!</span>(
-                        <span class="string">&quot;consensus.block_graph.process.waiting_for_slot.in_the_future&quot;</span>,
-                        { <span class="string">&quot;block_id&quot;</span>: block_id }
+                        <span class="string">"consensus.block_graph.process.waiting_for_slot.in_the_future"</span>,
+                        { <span class="string">"block_id"</span>: block_id }
                     );
                     <span class="comment">// in the future: ignore
                     </span><span class="kw">return </span><span class="prelude-val">Ok</span>(BTreeSet::new());
@@ -1134,7 +1134,7 @@
                             <span class="prelude-val">Some</span>(BlockStatus::Incoming(header_or_block))
                         } <span class="kw">else </span>{
                             <span class="macro">panic!</span>(
-                                <span class="string">&quot;inconsistency inside block statuses removing waiting for slot {}&quot;</span>,
+                                <span class="string">"inconsistency inside block statuses removing waiting for slot {}"</span>,
                                 block_id
                             )
                         }
@@ -1147,8 +1147,8 @@
                 unsatisfied_dependencies,
                 ..
             }) =&gt; {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.waiting_for_dependencies&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.waiting_for_dependencies"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="kw">if </span>!unsatisfied_dependencies.is_empty() {
                     <span class="comment">// still has unsatisfied dependencies: ignore
@@ -1165,7 +1165,7 @@
                             <span class="prelude-val">Some</span>(BlockStatus::Incoming(header_or_block))
                         } <span class="kw">else </span>{
                             <span class="macro">panic!</span>(
-                                <span class="string">&quot;inconsistency inside block statuses removing waiting for slot {}&quot;</span>,
+                                <span class="string">"inconsistency inside block statuses removing waiting for slot {}"</span>,
                                 block_id
                             )
                         }
@@ -1180,8 +1180,8 @@
             ..
         }) = <span class="self">self</span>.blocks_state.get(<span class="kw-2">&amp;</span>block_id)
         {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.is_active&quot;</span>, {
-                <span class="string">&quot;block_id&quot;</span>: block_id
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.is_active"</span>, {
+                <span class="string">"block_id"</span>: block_id
             });
             <span class="self">self</span>.to_propagate.insert(block_id, storage.clone());
             <span class="kw">for </span>itm_block_id <span class="kw">in </span><span class="self">self
@@ -1229,8 +1229,8 @@
         incomp: PreHashSet&lt;BlockId&gt;,
         inherited_incomp_count: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph&quot;</span>, {
-            <span class="string">&quot;block_id&quot;</span>: add_block_id
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.add_block_to_graph"</span>, {
+            <span class="string">"block_id"</span>: add_block_id
         });
 
         <span class="comment">// add as child to parents
@@ -1243,7 +1243,7 @@
 
         <span class="comment">// add incompatibilities to gi_head
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.add_incompatibilities&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.add_incompatibilities"</span>,
             {}
         );
         <span class="kw">for </span>incomp_h <span class="kw">in </span>incomp.iter() {
@@ -1251,7 +1251,7 @@
                 .get_mut(incomp_h)
                 .ok_or_else(|| {
                     ConsensusError::MissingBlock(<span class="macro">format!</span>(
-                        <span class="string">&quot;missing block when adding incomp to gi_head: {}&quot;</span>,
+                        <span class="string">"missing block when adding incomp to gi_head: {}"</span>,
                         incomp_h
                     ))
                 })<span class="question-mark">?
@@ -1261,7 +1261,7 @@
 
         <span class="comment">// max cliques update
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.max_cliques_update&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.max_cliques_update"</span>,
             {}
         );
         <span class="kw">if </span>incomp.len() == inherited_incomp_count {
@@ -1277,8 +1277,8 @@
         } <span class="kw">else </span>{
             <span class="comment">// fully recompute max cliques
             </span><span class="macro">massa_trace!</span>(
-                <span class="string">&quot;consensus.block_graph.add_block_to_graph.clique_full_computing&quot;</span>,
-                { <span class="string">&quot;hash&quot;</span>: add_block_id }
+                <span class="string">"consensus.block_graph.add_block_to_graph.clique_full_computing"</span>,
+                { <span class="string">"hash"</span>: add_block_id }
             );
             <span class="kw">let </span>before = <span class="self">self</span>.max_cliques.len();
             <span class="self">self</span>.max_cliques = compute_max_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>.gi_head)
@@ -1292,25 +1292,25 @@
             <span class="kw">let </span>after = <span class="self">self</span>.max_cliques.len();
             <span class="kw">if </span>before != after {
                 <span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique&quot;</span>,
-                    { <span class="string">&quot;cliques&quot;</span>: <span class="self">self</span>.max_cliques, <span class="string">&quot;gi_head&quot;</span>: <span class="self">self</span>.gi_head }
+                    <span class="string">"consensus.block_graph.add_block_to_graph.clique_full_computing more than one clique"</span>,
+                    { <span class="string">"cliques"</span>: <span class="self">self</span>.max_cliques, <span class="string">"gi_head"</span>: <span class="self">self</span>.gi_head }
                 );
                 <span class="comment">// gi_head
                 </span><span class="macro">debug!</span>(
-                    <span class="string">&quot;clique number went from {} to {} after adding {}&quot;</span>,
+                    <span class="string">"clique number went from {} to {} after adding {}"</span>,
                     before, after, add_block_id
                 );
             }
         }
 
         <span class="comment">// compute clique fitnesses and find blockclique
-        </span><span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique&quot;</span>, {});
+        </span><span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.add_block_to_graph.compute_clique_fitnesses_and_find_blockclique"</span>, {});
         <span class="comment">// note: clique_fitnesses is pair (fitness, -hash_sum) where the second parameter is negative for sorting
         </span><span class="kw">let </span>position_blockclique = <span class="self">self</span>.compute_fitness_find_blockclique(<span class="kw-2">&amp;</span>add_block_id)<span class="question-mark">?</span>;
 
         <span class="comment">// update best parents
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.update_best_parents&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.update_best_parents"</span>,
             {}
         );
         {
@@ -1323,7 +1323,7 @@
             </span><span class="kw">for </span>block_h <span class="kw">in </span>blockclique.block_ids.iter() {
                 <span class="kw">let </span>b_slot = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.slot,
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating best parents while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
+                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">"inconsistency inside block statuses updating best parents while adding {} - missing {}"</span>, add_block_id, block_h))),
                 };
                 <span class="kw">if </span>b_slot.period &gt; <span class="self">self</span>.best_parents[b_slot.thread <span class="kw">as </span>usize].<span class="number">1 </span>{
                     <span class="self">self</span>.best_parents[b_slot.thread <span class="kw">as </span>usize] = (<span class="kw-2">*</span>block_h, b_slot.period);
@@ -1333,7 +1333,7 @@
 
         <span class="comment">// list stale blocks
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.list_stale_blocks&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.list_stale_blocks"</span>,
             {}
         );
         <span class="kw">let </span>fitness_threshold = <span class="self">self</span>.max_cliques[position_blockclique]
@@ -1343,7 +1343,7 @@
         <span class="self">self</span>.max_cliques.retain(|c| c.fitness &gt;= fitness_threshold);
         <span class="comment">// mark stale blocks
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.mark_stale_blocks&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.mark_stale_blocks"</span>,
             {}
         );
         <span class="kw">for </span>stale_block_hash <span class="kw">in </span>stale_blocks.into_iter() {
@@ -1352,19 +1352,19 @@
 
         <span class="comment">// list final blocks
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.list_final_blocks&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.list_final_blocks"</span>,
             {}
         );
         <span class="kw">let </span>final_blocks = <span class="self">self</span>.list_final_blocks()<span class="question-mark">?</span>;
 
         <span class="comment">// mark final blocks and update latest_final_blocks_periods
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.mark_final_blocks&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.mark_final_blocks"</span>,
             {}
         );
         <span class="self">self</span>.mark_final_blocks(<span class="kw-2">&amp;</span>add_block_id, final_blocks)<span class="question-mark">?</span>;
 
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.end&quot;</span>, {});
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.add_block_to_graph.end"</span>, {});
 
         {
             <span class="comment">// set metrics
@@ -1384,11 +1384,11 @@
 
     <span class="doccomment">/// Note an attack attempt if the discard reason indicates one.
     </span><span class="kw">pub fn </span>maybe_note_attack_attempt(<span class="kw-2">&amp;mut </span><span class="self">self</span>, reason: <span class="kw-2">&amp;</span>DiscardReason, hash: <span class="kw-2">&amp;</span>BlockId) {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.maybe_note_attack_attempt&quot;</span>, {<span class="string">&quot;hash&quot;</span>: hash, <span class="string">&quot;reason&quot;</span>: reason});
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.maybe_note_attack_attempt"</span>, {<span class="string">"hash"</span>: hash, <span class="string">"reason"</span>: reason});
         <span class="comment">// If invalid, note the attack attempt.
         </span><span class="kw">if let </span>DiscardReason::Invalid(reason) = reason {
             <span class="macro">info!</span>(
-                <span class="string">&quot;consensus.block_graph.maybe_note_attack_attempt DiscardReason::Invalid:{}&quot;</span>,
+                <span class="string">"consensus.block_graph.maybe_note_attack_attempt DiscardReason::Invalid:{}"</span>,
                 reason
             );
             <span class="self">self</span>.attack_attempts.push(<span class="kw-2">*</span>hash);
@@ -1400,8 +1400,8 @@
     /// # Arguments:
     /// * `finalized_blocks`: Block that became final and need to be send to execution
     </span><span class="kw">fn </span>notify_execution(<span class="kw-2">&amp;mut </span><span class="self">self</span>, finalized_blocks: HashMap&lt;Slot, BlockId&gt;) {
-        <span class="comment">// List new block storage instances that Execution doesn&#39;t know about.
-        // That&#39;s blocks that have not been sent to execution before, ie. in the previous blockclique).
+        <span class="comment">// List new block storage instances that Execution doesn't know about.
+        // That's blocks that have not been sent to execution before, ie. in the previous blockclique).
         </span><span class="kw">let </span><span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt; = finalized_blocks
             .iter()
             .filter_map(|(_slot, b_id)| {
@@ -1419,7 +1419,7 @@
                         storage: <span class="prelude-val">Some</span>(storage.clone()),
                     },
                     <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(
-                        <span class="string">&quot;final block not found in active blocks and/or its operations are missing&quot;
+                        <span class="string">"final block not found in active blocks and/or its operations are missing"
                     </span>),
                 };
                 <span class="prelude-val">Some</span>((<span class="kw-2">*</span>b_id, metadata))
@@ -1439,14 +1439,14 @@
                     </span>(<span class="kw-2">*</span>b_id, slot)
                 } <span class="kw">else </span>{
                     <span class="comment">// The block was not present in the previous blockclique:
-                    // the blockclique has changed =&gt; get the block&#39;s slot by querying Storage.
+                    // the blockclique has changed =&gt; get the block's slot by querying Storage.
                     </span>blockclique_changed = <span class="bool-val">true</span>;
                     <span class="kw">let </span>(a_block, storage) = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(b_id) {
                         <span class="prelude-val">Some</span>(BlockStatus::Active {
                             a_block,
                             storage_or_block: StorageOrBlock::Storage(storage),
                         }) =&gt; (a_block, storage),
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;blockclique block not found in active blocks and/or its operations are missing&quot;</span>),
+                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"blockclique block not found in active blocks and/or its operations are missing"</span>),
                     };
                     new_blocks_metadata.insert(<span class="kw-2">*</span>b_id, ExecutionBlockMetadata { same_thread_parent_creator: a_block.same_thread_parent_creator, storage: <span class="prelude-val">Some</span>(storage.clone()) });
                     (<span class="kw-2">*</span>b_id, a_block.slot)
@@ -1498,12 +1498,12 @@
     /// 11. add stale blocks to stats
     </span><span class="kw">pub fn </span>block_db_changed(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), ConsensusError&gt; {
         <span class="kw">let </span>final_block_slots = {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed&quot;</span>, {});
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed"</span>, {});
 
             <span class="comment">// Propagate new blocks
             </span><span class="kw">for </span>(block_id, storage) <span class="kw">in </span>mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.to_propagate).into_iter() {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.integrated&quot;</span>, {
-                    <span class="string">&quot;block_id&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.integrated"</span>, {
+                    <span class="string">"block_id"</span>: block_id
                 });
                 <span class="self">self</span>.channels
                     .protocol_controller
@@ -1515,8 +1515,8 @@
                 <span class="self">self</span>.channels
                     .protocol_controller
                     .notify_block_attack(hash)<span class="question-mark">?</span>;
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.attack&quot;</span>, {
-                    <span class="string">&quot;hash&quot;</span>: hash
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.attack"</span>, {
+                    <span class="string">"hash"</span>: hash
                 });
             }
 
@@ -1580,7 +1580,7 @@
             })
             .collect();
         <span class="kw">if </span>!new_blocks.is_empty() || !remove_blocks.is_empty() {
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.consensus_worker.block_db_changed.send_wishlist_delta&quot;</span>, { <span class="string">&quot;new&quot;</span>: new_wishlist, <span class="string">&quot;remove&quot;</span>: remove_blocks });
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.consensus_worker.block_db_changed.send_wishlist_delta"</span>, { <span class="string">"new"</span>: new_wishlist, <span class="string">"remove"</span>: remove_blocks });
             <span class="self">self</span>.channels
                 .protocol_controller
                 .send_wishlist_delta(new_blocks, remove_blocks)<span class="question-mark">?</span>;

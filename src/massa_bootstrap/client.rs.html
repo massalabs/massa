@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><title>client.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/client.rs`."><title>client.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -788,7 +788,7 @@
                         .write_batch_bootstrap_client(state_part, versioning_part)
                         .map_err(|e| {
                             BootstrapError::GeneralError(<span class="macro">format!</span>(
-                                <span class="string">&quot;Cannot write received stream batch to disk: {}&quot;</span>,
+                                <span class="string">"Cannot write received stream batch to disk: {}"</span>,
                                 e
                             ))
                         })<span class="question-mark">?</span>;
@@ -827,12 +827,12 @@
 
                     <span class="comment">// Logs for an easier diagnostic if needed
                     </span><span class="macro">debug!</span>(
-                        <span class="string">&quot;client final state bootstrap cursors: {:?}&quot;</span>,
+                        <span class="string">"client final state bootstrap cursors: {:?}"</span>,
                         next_bootstrap_message
                     );
                 }
                 BootstrapServerMessage::BootstrapFinished =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;State bootstrap complete&quot;</span>);
+                    <span class="macro">info!</span>(<span class="string">"State bootstrap complete"</span>);
                     <span class="comment">// Set next bootstrap message
                     </span><span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPeers;
 
@@ -849,7 +849,7 @@
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(());
                 }
                 BootstrapServerMessage::SlotTooOld =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;Slot is too old retry bootstrap from scratch&quot;</span>);
+                    <span class="macro">info!</span>(<span class="string">"Slot is too old retry bootstrap from scratch"</span>);
                     <span class="kw-2">*</span>next_bootstrap_message = BootstrapClientMessage::AskBootstrapPart {
                         last_slot: <span class="prelude-val">None</span>,
                         last_state_step: StreamingStep::Started,
@@ -859,22 +859,22 @@
                     };
                     <span class="kw">let </span><span class="kw-2">mut </span>write_final_state = global_bootstrap_state.final_state.write();
                     write_final_state.reset();
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(<span class="string">&quot;Slot too old&quot;</span>)));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(String::from(<span class="string">"Slot too old"</span>)));
                 }
-                <span class="comment">// At this point, we have successfully received the next message from the server, and it&#39;s an error-message String
+                <span class="comment">// At this point, we have successfully received the next message from the server, and it's an error-message String
                 </span>BootstrapServerMessage::BootstrapError { error } =&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(error))
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                        <span class="string">&quot;unexpected message&quot;</span>.to_string(),
+                        <span class="string">"unexpected message"</span>.to_string(),
                     ))
                 }
             }
         }
     } <span class="kw">else </span>{
         <span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="macro">format!</span>(
-            <span class="string">&quot;Try to stream the final state but the message to send to the server was {:#?}&quot;</span>,
+            <span class="string">"Try to stream the final state but the message to send to the server was {:#?}"</span>,
             next_bootstrap_message
         )))
     }
@@ -889,14 +889,14 @@
     global_bootstrap_state: <span class="kw-2">&amp;mut </span>GlobalBootstrapState,
     our_version: Version,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.bootstrap_from_server&quot;</span>, {});
+    <span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.bootstrap_from_server"</span>, {});
 
     <span class="comment">// read error (if sent by the server)
-    // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it's OK
     </span><span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_error_timeout.to_duration())) {
         <span class="prelude-val">Err</span>(BootstrapError::TimedOut(<span class="kw">_</span>)) =&gt; {
             <span class="macro">massa_trace!</span>(
-                <span class="string">&quot;bootstrap.lib.bootstrap_from_server: No error sent at connection&quot;</span>,
+                <span class="string">"bootstrap.lib.bootstrap_from_server: No error sent at connection"</span>,
                 {}
             );
         }
@@ -909,19 +909,19 @@
 
     <span class="comment">// handshake
     </span><span class="kw">let </span>send_time_uncompensated = MassaTime::now();
-    <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
+    <span class="comment">// client.handshake() is not cancel-safe but we drop the whole client object if cancelled =&gt; it's OK
     </span>client.handshake(our_version)<span class="question-mark">?</span>;
 
     <span class="comment">// compute ping
     </span><span class="kw">let </span>ping = MassaTime::now().saturating_sub(send_time_uncompensated);
     <span class="kw">if </span>ping &gt; cfg.max_ping {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-            <span class="string">&quot;bootstrap ping too high&quot;</span>.into(),
+            <span class="string">"bootstrap ping too high"</span>.into(),
         ));
     }
 
     <span class="comment">// First, clock and version.
-    // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it&#39;s OK
+    // client.next() is not cancel-safe but we drop the whole client object if cancelled =&gt; it's OK
     </span><span class="kw">let </span>server_time = <span class="kw">match </span>client.next_timeout(<span class="prelude-val">Some</span>(cfg.read_timeout.into())) {
         <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(e),
         <span class="prelude-val">Ok</span>(BootstrapServerMessage::BootstrapTime {
@@ -930,7 +930,7 @@
         }) =&gt; {
             <span class="kw">if </span>!our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(
-                    <span class="string">&quot;remote is running incompatible version: {} (local node version: {})&quot;</span>,
+                    <span class="string">"remote is running incompatible version: {} (local node version: {})"</span>,
                     version, our_version
                 )));
             }
@@ -949,7 +949,7 @@
     </span><span class="kw">let </span>ping = recv_time.saturating_sub(send_time_uncompensated);
     <span class="kw">if </span>ping &gt; cfg.max_ping {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-            <span class="string">&quot;bootstrap ping too high&quot;</span>.into(),
+            <span class="string">"bootstrap ping too high"</span>.into(),
         ));
     }
 
@@ -961,9 +961,9 @@
 
     <span class="comment">// if clock delta is too high warn the user and restart bootstrap
     </span><span class="kw">if </span>clock_delta &gt; cfg.max_clock_delta {
-        <span class="macro">warn!</span>(<span class="string">&quot;client and server clocks differ too much, please check your clock&quot;</span>);
+        <span class="macro">warn!</span>(<span class="string">"client and server clocks differ too much, please check your clock"</span>);
         <span class="kw">let </span>message = <span class="macro">format!</span>(
-            <span class="string">&quot;client = {}, server = {}, ping = {}, max_delta = {}&quot;</span>,
+            <span class="string">"client = {}, server = {}, ping = {}, max_delta = {}"</span>,
             recv_time, server_time, ping, cfg.max_clock_delta
         );
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::ClockError(message));
@@ -987,7 +987,7 @@
                     client,
                     write_timeout,
                     cfg.read_timeout.into(),
-                    <span class="string">&quot;ask bootstrap peers timed out&quot;</span>,
+                    <span class="string">"ask bootstrap peers timed out"</span>,
                 )<span class="question-mark">? </span>{
                     BootstrapServerMessage::BootstrapPeers { peers } =&gt; peers,
                     BootstrapServerMessage::BootstrapError { error } =&gt; {
@@ -1003,11 +1003,11 @@
                 <span class="kw">break</span>;
             }
             BootstrapClientMessage::BootstrapError { error: <span class="kw">_ </span>} =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;The next message to send shouldn&#39;t be BootstrapError&quot;</span>);
+                <span class="macro">panic!</span>(<span class="string">"The next message to send shouldn't be BootstrapError"</span>);
             }
         };
     }
-    <span class="macro">info!</span>(<span class="string">&quot;Successful bootstrap&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"Successful bootstrap"</span>);
     <span class="prelude-val">Ok</span>(())
 }
 
@@ -1064,7 +1064,7 @@
     <span class="kw">let </span>new_bootstrap_list_len = filtered_bootstrap_list.len();
 
     <span class="macro">debug!</span>(
-        <span class="string">&quot;Keeping {:?} bootstrap ip types. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers.&quot;</span>,
+        <span class="string">"Keeping {:?} bootstrap ip types. Filtered out {} bootstrap addresses out of a total of {} bootstrap servers."</span>,
         ip_type,
         prev_bootstrap_list_len <span class="kw">as </span>i32 - new_bootstrap_list_len <span class="kw">as </span>i32,
         prev_bootstrap_list_len
@@ -1088,17 +1088,17 @@
     interupted: Arc&lt;(Mutex&lt;bool&gt;, Condvar)&gt;,
     massa_metrics: MassaMetrics,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GlobalBootstrapState, BootstrapError&gt; {
-    <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state&quot;</span>, {});
+    <span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.get_state"</span>, {});
 
     <span class="comment">// If we restart from a snapshot, do not bootstrap
     </span><span class="kw">if </span>restart_from_snapshot_at_period.is_some() {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_snapshot&quot;</span>, {});
+        <span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.get_state.init_from_snapshot"</span>, {});
         <span class="kw">return </span><span class="prelude-val">Ok</span>(GlobalBootstrapState::new(final_state));
     }
 
     <span class="comment">// if we are before genesis, do not bootstrap
     </span><span class="kw">if </span>MassaTime::now() &lt; genesis_timestamp {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_scratch&quot;</span>, {});
+        <span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.get_state.init_from_scratch"</span>, {});
         <span class="comment">// init final state
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>final_state_guard = final_state.write();
@@ -1110,7 +1110,7 @@
                     .load_initial_ledger()
                     .map_err(|err| {
                         BootstrapError::GeneralError(<span class="macro">format!</span>(
-                            <span class="string">&quot;could not load initial ledger: {}&quot;</span>,
+                            <span class="string">"could not load initial ledger: {}"</span>,
                             err
                         ))
                     })<span class="question-mark">?</span>;
@@ -1137,7 +1137,7 @@
                 .load_initial_deferred_credits(<span class="kw-2">&amp;mut </span>batch)
                 .map_err(|err| {
                     BootstrapError::GeneralError(<span class="macro">format!</span>(
-                        <span class="string">&quot;could not load initial deferred credits: {}&quot;</span>,
+                        <span class="string">"could not load initial deferred credits: {}"</span>,
                         err
                     ))
                 })<span class="question-mark">?</span>;
@@ -1174,18 +1174,18 @@
     <span class="kw">let </span>limit = bootstrap_config.rate_limit;
     <span class="kw">loop </span>{
         <span class="comment">// check for interuption
-        </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">&quot;double-lock on interupt-mutex&quot;</span>) {
+        </span><span class="kw">if </span><span class="kw-2">*</span>interupted.<span class="number">0</span>.lock().expect(<span class="string">"double-lock on interupt-mutex"</span>) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
-                <span class="string">&quot;Sig INT received while getting state&quot;</span>.to_string(),
+                <span class="string">"Sig INT received while getting state"</span>.to_string(),
             ));
         }
         <span class="kw">for </span>(addr, node_id) <span class="kw">in </span>filtered_bootstrap_list.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = end_timestamp {
                 <span class="kw">if </span>MassaTime::now() &gt; end {
-                    <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
+                    <span class="macro">panic!</span>(<span class="string">"This episode has come to an end, please get the latest testnet node version to continue"</span>);
                 }
             }
-            <span class="macro">info!</span>(<span class="string">&quot;Start bootstrapping from {}&quot;</span>, addr);
+            <span class="macro">info!</span>(<span class="string">"Start bootstrapping from {}"</span>, addr);
             <span class="kw">let </span>conn = connect_to_server(
                 <span class="kw-2">&amp;mut </span>connector,
                 bootstrap_config,
@@ -1206,11 +1206,11 @@
                     <span class="comment">// cancellable
                     </span><span class="kw">match </span>bs {
                         <span class="prelude-val">Err</span>(BootstrapError::ReceivedError(error)) =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">&quot;Error received from bootstrap server: {}&quot;</span>, error)
+                            <span class="macro">warn!</span>(<span class="string">"Error received from bootstrap server: {}"</span>, error)
                         }
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">warn!</span>(<span class="string">&quot;Error while bootstrapping: {}&quot;</span>, <span class="kw-2">&amp;</span>e);
-                            <span class="comment">// We allow unused result because we don&#39;t care if an error is thrown when sending the error message to the server we will close the socket anyway.
+                            <span class="macro">warn!</span>(<span class="string">"Error while bootstrapping: {}"</span>, <span class="kw-2">&amp;</span>e);
+                            <span class="comment">// We allow unused result because we don't care if an error is thrown when sending the error message to the server we will close the socket anyway.
                             </span><span class="kw">let _ </span>= client.send_timeout(
                                 <span class="kw-2">&amp;</span>BootstrapClientMessage::BootstrapError {
                                     error: e.to_string(),
@@ -1222,11 +1222,11 @@
                     }
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Error while connecting to bootstrap server: {}&quot;</span>, e);
+                    <span class="macro">warn!</span>(<span class="string">"Error while connecting to bootstrap server: {}"</span>, e);
                 }
             };
 
-            <span class="macro">info!</span>(<span class="string">&quot;Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}.&quot;</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
+            <span class="macro">info!</span>(<span class="string">"Bootstrap from server {} failed. Your node will try to bootstrap from another server in {}."</span>, addr, format_duration(bootstrap_config.retry_delay.to_duration()).to_string());
 
             <span class="comment">// Before, we would use a simple sleep(...), and that was fine
             // in a cancellable async context: the runtime could
@@ -1234,7 +1234,7 @@
             //
             // let state = tokio::select!{
             //    /* detect interupt */ =&gt; /* return, cancelling the async get_state */
-            //    get_state(...) =&gt; well, we got the state, and it didn&#39;t have to worry about interupts
+            //    get_state(...) =&gt; well, we got the state, and it didn't have to worry about interupts
             // };
             //
             // Without an external system to preempt this context, we use a condvar to manage the sleep.
@@ -1248,14 +1248,14 @@
             </span><span class="kw">let </span>int_sig = interupted
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
+                .expect(<span class="string">"double-lock() on interupted signal mutex"</span>);
             <span class="kw">let </span>wake = interupted
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
-                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
+                .expect(<span class="string">"interupt signal mutex poisoned"</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::Interrupted(
-                    <span class="string">&quot;Sig INT during bootstrap retry-wait&quot;</span>.to_string(),
+                    <span class="string">"Sig INT during bootstrap retry-wait"</span>.to_string(),
                 ));
             }
         }
@@ -1271,10 +1271,10 @@
     );
 
     <span class="comment">// we are after genesis =&gt; bootstrap
-    </span><span class="macro">massa_trace!</span>(<span class="string">&quot;bootstrap.lib.get_state.init_from_others&quot;</span>, {});
+    </span><span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.get_state.init_from_others"</span>, {});
     <span class="kw">if </span>filtered_bootstrap_list.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-            <span class="string">&quot;no bootstrap nodes found in list&quot;</span>.into(),
+            <span class="string">"no bootstrap nodes found in list"</span>.into(),
         ));
     }
 
@@ -1301,60 +1301,60 @@
                     <span class="kw">if </span>st_id == ComponentStateTypeId::LockedIn {
                         <span class="comment">// A new MipInfo @ state locked_in - we need to urge the user to update
                         </span><span class="macro">warn!</span>(
-                            <span class="string">&quot;A new MIP has been locked in: {}, version: {}&quot;</span>,
+                            <span class="string">"A new MIP has been locked in: {}, version: {}"</span>,
                             mip_info.name, mip_info.version
                         );
                         <span class="comment">// Safe to unwrap here (only panic if not LockedIn)
                         </span><span class="kw">let </span>activation_at = mip_state.activation_at(mip_info).unwrap();
 
                         <span class="macro">warn!</span>(
-                            <span class="string">&quot;Please update your Massa node before: {}&quot;</span>,
+                            <span class="string">"Please update your Massa node before: {}"</span>,
                             activation_at.format_instant()
                         );
                     } <span class="kw">else if </span>st_id == ComponentStateTypeId::Active {
                         <span class="comment">// A new MipInfo @ state active - we are not compatible anymore
                         </span><span class="macro">warn!</span>(
-                            <span class="string">&quot;A new MIP has become active {:?}, version: {:?}&quot;</span>,
+                            <span class="string">"A new MIP has become active {:?}, version: {:?}"</span>,
                             mip_info.name, mip_info.version
                         );
                         <span class="macro">panic!</span>(
-                            <span class="string">&quot;Please update your Massa node to support MIP version {} ({})&quot;</span>,
+                            <span class="string">"Please update your Massa node to support MIP version {} ({})"</span>,
                             mip_info.version, mip_info.name
                         );
                     } <span class="kw">else if </span>st_id == ComponentStateTypeId::Defined {
                         <span class="comment">// a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
                         </span><span class="macro">warn!</span>(
-                            <span class="string">&quot;A new MIP has been defined: {}, version: {}&quot;</span>,
+                            <span class="string">"A new MIP has been defined: {}, version: {}"</span>,
                             mip_info.name, mip_info.version
                         );
-                        <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
+                        <span class="macro">debug!</span>(<span class="string">"MIP state: {:?}"</span>, mip_state);
 
-                        <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
+                        <span class="macro">warn!</span>(<span class="string">"Please update your node between: {} and {} if you want to support this update"</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
                     } <span class="kw">else </span>{
                         <span class="comment">// a new MipInfo @ state defined or started (or failed / error)
                         // warn the user to update its node
                         </span><span class="macro">warn!</span>(
-                            <span class="string">&quot;A new MIP has been received: {}, version: {}&quot;</span>,
+                            <span class="string">"A new MIP has been received: {}, version: {}"</span>,
                             mip_info.name, mip_info.version
                         );
-                        <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
-                        <span class="macro">warn!</span>(<span class="string">&quot;Please update your Massa node to support it&quot;</span>);
+                        <span class="macro">debug!</span>(<span class="string">"MIP state: {:?}"</span>, mip_state);
+                        <span class="macro">warn!</span>(<span class="string">"Please update your Massa node to support it"</span>);
                     }
                 }
                 <span class="prelude-val">Err</span>(StateAtError::Unpredictable) =&gt; {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;A new MIP has started: {}, version: {}&quot;</span>,
+                        <span class="string">"A new MIP has started: {}, version: {}"</span>,
                         mip_info.name, mip_info.version
                     );
-                    <span class="macro">debug!</span>(<span class="string">&quot;MIP state: {:?}&quot;</span>, mip_state);
+                    <span class="macro">debug!</span>(<span class="string">"MIP state: {:?}"</span>, mip_state);
 
-                    <span class="macro">warn!</span>(<span class="string">&quot;Please update your node between: {} and {} if you want to support this update&quot;</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
+                    <span class="macro">warn!</span>(<span class="string">"Please update your node between: {} and {} if you want to support this update"</span>, mip_info.start.format_instant(), mip_info.timeout.format_instant());
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
                     <span class="comment">// Should never happen
                     </span><span class="macro">panic!</span>(
-                        <span class="string">&quot;Unable to get state at {} of mip info: {:?}, error: {}&quot;</span>,
+                        <span class="string">"Unable to get state at {} of mip info: {:?}, error: {}"</span>,
                         now, mip_info, e
                     )
                 }
@@ -1362,6 +1362,6 @@
         }
     }
 
-    <span class="macro">debug!</span>(<span class="string">&quot;MIP store got {} MIP updated from bootstrap&quot;</span>, updated.len());
+    <span class="macro">debug!</span>(<span class="string">"MIP store got {} MIP updated from bootstrap"</span>, updated.len());
 }
 </code></pre></div></section></main></body></html>

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"massa_serialization":[["impl&lt;'a&gt; ParseError&lt;&amp;'a [<a class=\"primitive\" href=\"https://doc.rust-lang.org/1.81.0/std/primitive.u8.html\">u8</a>]&gt; for <a class=\"struct\" href=\"massa_serialization/struct.DeserializeError.html\" title=\"struct massa_serialization::DeserializeError\">DeserializeError</a>&lt;'a&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
