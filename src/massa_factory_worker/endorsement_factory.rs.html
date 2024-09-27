@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-factory-worker/src/endorsement_factory.rs`."><title>endorsement_factory.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_factory_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_factory_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-factory-worker/src/endorsement_factory.rs`."><title>endorsement_factory.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_factory_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -269,13 +269,13 @@
         factory_receiver: MassaReceiver&lt;()&gt;,
     ) -&gt; thread::JoinHandle&lt;()&gt; {
         thread::Builder::new()
-            .name(<span class="string">&quot;endorsement-factory&quot;</span>.into())
+            .name(<span class="string">"endorsement-factory"</span>.into())
             .spawn(|| {
                 <span class="kw">let </span><span class="kw-2">mut </span>this = <span class="self">Self </span>{
                     half_t0: cfg
                         .t0
                         .checked_div_u64(<span class="number">2</span>)
-                        .expect(<span class="string">&quot;could not compute half_t0&quot;</span>),
+                        .expect(<span class="string">"could not compute half_t0"</span>),
                     cfg,
                     wallet,
                     channels,
@@ -284,7 +284,7 @@
                 };
                 this.run();
             })
-            .expect(<span class="string">&quot;failed to spawn thread : endorsement-factory&quot;</span>)
+            .expect(<span class="string">"failed to spawn thread : endorsement-factory"</span>)
     }
 
     <span class="doccomment">/// Gets the next slot and the instant when the corresponding endorsements should be made.
@@ -294,7 +294,7 @@
         <span class="comment">// get delayed time
         </span><span class="kw">let </span>now = MassaTime::now();
 
-        <span class="comment">// if it&#39;s the first computed slot, add a time shift to prevent double-production on node restart with clock skew
+        <span class="comment">// if it's the first computed slot, add a time shift to prevent double-production on node restart with clock skew
         </span><span class="kw">let </span>base_time = <span class="kw">if </span>previous_slot.is_none() {
             now.saturating_add(<span class="self">self</span>.cfg.initial_delay)
         } <span class="kw">else </span>{
@@ -314,7 +314,7 @@
             <span class="kw">if </span>next_slot &lt;= prev_slot {
                 next_slot = prev_slot
                     .get_next_slot(<span class="self">self</span>.cfg.thread_count)
-                    .expect(<span class="string">&quot;could not compute next slot&quot;</span>);
+                    .expect(<span class="string">"could not compute next slot"</span>);
             }
         }
 
@@ -330,10 +330,10 @@
             <span class="self">self</span>.cfg.genesis_timestamp,
             next_slot,
         )
-        .expect(<span class="string">&quot;could not get block slot timestamp&quot;</span>)
+        .expect(<span class="string">"could not get block slot timestamp"</span>)
         .saturating_sub(<span class="self">self</span>.half_t0)
         .estimate_instant()
-        .expect(<span class="string">&quot;could not estimate block slot instant&quot;</span>);
+        .expect(<span class="string">"could not estimate block slot instant"</span>);
 
         (next_slot, next_instant)
     }
@@ -360,7 +360,7 @@
             <span class="prelude-val">Ok</span>(sel) =&gt; sel.endorsements,
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;endorsement factory could not get selector draws for slot {}: {}&quot;</span>,
+                    <span class="string">"endorsement factory could not get selector draws for slot {}: {}"</span>,
                     slot, err
                 );
                 <span class="kw">return</span>;
@@ -391,11 +391,11 @@
         }
 
         <span class="comment">// check if we need to have connections to produce a block and in this case, check if we have enough.
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;sandbox&quot;</span>))]
+        </span><span class="attr">#[cfg(not(feature = <span class="string">"sandbox"</span>))]
         </span><span class="kw">if </span><span class="self">self</span>.cfg.stop_production_when_zero_connections {
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(stats) = <span class="self">self</span>.channels.protocol.get_stats() {
                 <span class="kw">if </span>stats.<span class="number">1</span>.is_empty() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;endorsement factory could not produce endorsement for slot {} because there are no connections&quot;</span>, slot);
+                    <span class="macro">warn!</span>(<span class="string">"endorsement factory could not produce endorsement for slot {} because there are no connections"</span>, slot);
                     <span class="kw">return</span>;
                 }
             }
@@ -421,11 +421,11 @@
                 <span class="kw-2">&amp;</span>keypair,
                 <span class="self">self</span>.cfg.chain_id,
             )
-            .expect(<span class="string">&quot;could not create endorsement&quot;</span>);
+            .expect(<span class="string">"could not create endorsement"</span>);
 
             <span class="comment">// log endorsement creation
             </span><span class="macro">debug!</span>(
-                <span class="string">&quot;endorsement {} created at slot {} by address {}&quot;</span>,
+                <span class="string">"endorsement {} created at slot {} by address {}"</span>,
                 endorsement.id, endorsement.content.slot, endorsement.content_creator_address
             );
 
@@ -440,7 +440,7 @@
         </span><span class="self">self</span>.channels.pool.add_endorsements(endo_storage.clone());
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.channels.protocol.propagate_endorsements(endo_storage) {
-            <span class="macro">warn!</span>(<span class="string">&quot;could not propagate endorsements to protocol: {}&quot;</span>, err);
+            <span class="macro">warn!</span>(<span class="string">"could not propagate endorsements to protocol: {}"</span>, err);
         }
     }
 

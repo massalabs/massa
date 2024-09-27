@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><title>worker.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/worker.rs`."><title>worker.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -318,7 +318,7 @@
 //! orders active and final blocks in queues sorted by increasing slot number,
 //! and requests the execution of active and final slots from execution.rs.
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
 <span class="kw">use crate</span>::{
     controller::{ExecutionControllerImpl, ExecutionInputData, ExecutionManagerImpl},
@@ -417,7 +417,7 @@
 
             <span class="comment">// Send the execution output through resp_tx.
             // Ignore errors because they just mean that the request emitter dropped the received
-            // because it doesn&#39;t need the response anymore.
+            // because it doesn't need the response anymore.
             </span><span class="kw">let _ </span>= resp_tx.send(outcome);
 
             <span class="kw">return </span><span class="bool-val">true</span>;
@@ -472,12 +472,12 @@
             }
 
             <span class="comment">// Wait to be notified of new input, for at most time_until_next_slot
-            // The return value is ignored because we don&#39;t care what woke up the condition variable.
+            // The return value is ignored because we don't care what woke up the condition variable.
             </span><span class="kw">let _ </span>= <span class="self">self</span>.input_data.<span class="number">0</span>.wait_until(
                 <span class="kw-2">&amp;mut </span>input_data_lock,
                 wakeup_deadline
                     .estimate_instant()
-                    .expect(<span class="string">&quot;could not estimate instant&quot;</span>),
+                    .expect(<span class="string">"could not estimate instant"</span>),
             );
         }
     }
@@ -491,7 +491,7 @@
         // 3 - read-only executions
         </span><span class="kw">loop </span>{
             <span class="kw">let </span>(input_data, stop) = <span class="self">self</span>.wait_loop_event();
-            <span class="macro">debug!</span>(<span class="string">&quot;Execution loop triggered, input_data = {}&quot;</span>, input_data);
+            <span class="macro">debug!</span>(<span class="string">"Execution loop triggered, input_data = {}"</span>, input_data);
 
             <span class="comment">// update the sequence of read-only requests
             </span><span class="self">self</span>.update_readonly_requests(input_data.readonly_requests);
@@ -541,7 +541,7 @@
 
         // Cancel pending readonly requests
         </span><span class="kw">let </span>cancel_err = ExecutionError::ChannelError(
-            <span class="string">&quot;readonly execution cancelled because the execution worker is closing&quot;</span>.into(),
+            <span class="string">"readonly execution cancelled because the execution worker is closing"</span>.into(),
         );
         <span class="self">self</span>.input_data
             .<span class="number">1
@@ -571,10 +571,10 @@
     channels: ExecutionChannels,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     massa_metrics: MassaMetrics,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
+    <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="kw">if </span>config.hd_cache_size &lt; config.snip_amount {
-        <span class="macro">panic!</span>(<span class="string">&quot;In config.toml, hd_cache_size must be greater than snip_amount&quot;</span>);
+        <span class="macro">panic!</span>(<span class="string">"In config.toml, hd_cache_size must be greater than snip_amount"</span>);
     }
 
     <span class="comment">// create an execution state
@@ -586,7 +586,7 @@
         channels,
         wallet,
         massa_metrics,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
         </span>block_storage_backend,
     )));
 
@@ -609,12 +609,12 @@
     // as a temporary workaround fully fixed by https://github.com/massalabs/massa/pull/4729
     </span><span class="kw">let </span>thread_builder = thread::Builder::new()
         .stack_size(<span class="number">200 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
-        .name(<span class="string">&quot;execution&quot;</span>.into());
+        .name(<span class="string">"execution"</span>.into());
     <span class="kw">let </span>thread_handle = thread_builder
         .spawn(<span class="kw">move </span>|| {
             ExecutionThread::new(config, input_data_clone, execution_state, selector).main_loop();
         })
-        .expect(<span class="string">&quot;failed to spawn thread : execution&quot;</span>);
+        .expect(<span class="string">"failed to spawn thread : execution"</span>);
     <span class="comment">// create a manager
     </span><span class="kw">let </span>manager = ExecutionManagerImpl {
         input_data,

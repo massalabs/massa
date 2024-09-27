@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/block_handler/retrieval.rs`."><title>retrieval.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/block_handler/retrieval.rs`."><title>retrieval.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1378,10 +1378,10 @@
 };
 
 <span class="comment">// protocol-block-handler-retrieval
-</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pbh-retrieval&quot;</span>;
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"pbh-retrieval"</span>;
 <span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
-<span class="doccomment">/// Info about a block we&#39;ve seen
+<span class="doccomment">/// Info about a block we've seen
 </span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>BlockInfo {
     <span class="doccomment">/// The header of the block.
@@ -1389,7 +1389,7 @@
     <span class="doccomment">/// Operations ids. None if not received yet
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) operation_ids: <span class="prelude-ty">Option</span>&lt;Vec&lt;OperationId&gt;&gt;,
     <span class="doccomment">/// Operations and endorsements contained in the block,
-    /// if we&#39;ve received them already, and none otherwise.
+    /// if we've received them already, and none otherwise.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) storage: Storage,
 }
 
@@ -1448,7 +1448,7 @@
 
         <span class="kw">let </span>tick_update_metrics = tick(<span class="self">self</span>.massa_metrics.tick_delay);
         <span class="kw">loop </span>{
-            <span class="macro">select! </span>{
+            <span class="macro">select!</span> {
                 recv(<span class="self">self</span>.receiver_network) -&gt; msg =&gt; {
                     <span class="self">self</span>.receiver_network.update_metrics();
                     <span class="kw">match </span>msg {
@@ -1457,12 +1457,12 @@
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
                                 <span class="prelude-val">Err</span>(err) =&gt; {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;Error in deserializing block message: {:?}&quot;</span>, err);
+                                    <span class="macro">warn!</span>(<span class="string">"Error in deserializing block message: {:?}"</span>, err);
                                     <span class="kw">continue</span>;
                                 }
                             };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">println!</span>(<span class="string">&quot;Error: message not fully consumed&quot;</span>);
+                                <span class="macro">println!</span>(<span class="string">"Error: message not fully consumed"</span>);
                                 <span class="kw">return</span>;
                             }
                             <span class="kw">match </span>message {
@@ -1480,7 +1480,7 @@
                             }
                         },
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Stop block retrieval thread&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Stop block retrieval thread"</span>);
                             <span class="kw">return</span>;
                         }
                     }
@@ -1491,7 +1491,7 @@
                         <span class="prelude-val">Ok</span>(command) =&gt; {
                             <span class="kw">match </span>command {
                                 BlockHandlerRetrievalCommand::WishlistDelta { new, remove } =&gt; {
-                                    <span class="macro">massa_trace!</span>(<span class="string">&quot;protocol.protocol_worker.process_command.wishlist_delta.begin&quot;</span>, { <span class="string">&quot;new&quot;</span>: new, <span class="string">&quot;remove&quot;</span>: remove });
+                                    <span class="macro">massa_trace!</span>(<span class="string">"protocol.protocol_worker.process_command.wishlist_delta.begin"</span>, { <span class="string">"new"</span>: new, <span class="string">"remove"</span>: remove });
                                     <span class="kw">for </span>(block_id, header) <span class="kw">in </span>new.into_iter() {
                                         <span class="self">self</span>.block_wishlist.insert(
                                             block_id,
@@ -1510,13 +1510,13 @@
                                     </span><span class="self">self</span>.update_block_retrieval();
                                 },
                                 BlockHandlerRetrievalCommand::Stop =&gt; {
-                                    <span class="macro">info!</span>(<span class="string">&quot;Stop block retrieval thread from command receiver (Stop)&quot;</span>);
+                                    <span class="macro">info!</span>(<span class="string">"Stop block retrieval thread from command receiver (Stop)"</span>);
                                     <span class="kw">return</span>;
                                 }
                             }
                         },
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                            <span class="macro">info!</span>(<span class="string">&quot;Stop block retrieval thread from command receiver&quot;</span>);
+                            <span class="macro">info!</span>(<span class="string">"Stop block retrieval thread from command receiver"</span>);
                             <span class="kw">return</span>;
                         }
                     }
@@ -1556,7 +1556,7 @@
 
     <span class="doccomment">/// A remote node asked the local node for block data
     ///
-    /// We send the block&#39;s operation ids if the foreign node asked for `AskForBlockInfo::Info`
+    /// We send the block's operation ids if the foreign node asked for `AskForBlockInfo::Info`
     /// or a subset of the full operations of the block if it asked for `AskForBlockInfo::Operations`.
     </span><span class="kw">fn </span>on_ask_for_block_info_received(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -1565,11 +1565,11 @@
         info_requested: AskForBlockInfo,
     ) {
         <span class="macro">debug!</span>(
-            <span class="string">&quot;peer {} asked for block info on block {}: {:?}&quot;</span>,
+            <span class="string">"peer {} asked for block info on block {}: {:?}"</span>,
             <span class="kw-2">&amp;</span>from_peer_id, block_id, <span class="kw-2">&amp;</span>info_requested
         );
 
-        <span class="comment">// updates on the remote peer&#39;s knowledge on blocks, operations and endorsements
+        <span class="comment">// updates on the remote peer's knowledge on blocks, operations and endorsements
         // only applied if the response is successfully sent to the peer
         </span><span class="kw">let </span><span class="kw-2">mut </span>block_knowledge_updates = PreHashSet::default();
         <span class="kw">let </span><span class="kw-2">mut </span>operation_knowledge_updates = PreHashSet::default();
@@ -1649,7 +1649,7 @@
         };
 
         <span class="macro">debug!</span>(
-            <span class="string">&quot;sending reply for block {} info to {}&quot;</span>,
+            <span class="string">"sending reply for block {} info to {}"</span>,
             block_id, from_peer_id
         );
 
@@ -1665,14 +1665,14 @@
             <span class="bool-val">true</span>,
         ) {
             <span class="macro">warn!</span>(
-                <span class="string">&quot;Error while sending reply for block {} to {}: {:?}&quot;</span>,
+                <span class="string">"Error while sending reply for block {} to {}: {:?}"</span>,
                 block_id, from_peer_id, err
             );
             <span class="kw">return</span>;
         }
 
         <span class="comment">// here we know that the response was successfully sent to the peer
-        // so we can update our vision of the peer&#39;s knowledge on blocks, operations and endorsements
+        // so we can update our vision of the peer's knowledge on blocks, operations and endorsements
         </span><span class="kw">if </span>!block_knowledge_updates.is_empty() {
             <span class="self">self</span>.cache.write().insert_peer_known_block(
                 <span class="kw-2">&amp;</span>from_peer_id,
@@ -1716,7 +1716,7 @@
             BlockInfoReply::OperationIds(operation_list) =&gt; {
                 <span class="comment">// Ask for missing operations ids and print a warning if there is no header for
                 // that block.
-                // Ban the node if the operation ids hash doesn&#39;t match with the hash contained in
+                // Ban the node if the operation ids hash doesn't match with the hash contained in
                 // the block_header.
                 </span><span class="self">self</span>.on_block_operation_list_received(from_peer_id, block_id, operation_list);
             }
@@ -1727,7 +1727,7 @@
                 </span><span class="self">self</span>.on_block_full_operations_received(from_peer_id, block_id, operations);
             }
             BlockInfoReply::NotFound =&gt; {
-                <span class="comment">// The peer doesn&#39;t know about the block. Mark it as such.
+                <span class="comment">// The peer doesn't know about the block. Mark it as such.
                 </span><span class="self">self</span>.cache
                     .write()
                     .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">false</span>);
@@ -1737,7 +1737,7 @@
 
     <span class="doccomment">/// On block header received from a node.
     </span><span class="kw">fn </span>on_block_header_received(<span class="kw-2">&amp;mut </span><span class="self">self</span>, from_peer_id: PeerId, header: SecuredHeader) {
-        <span class="macro">debug!</span>(<span class="string">&quot;received header {} from {}&quot;</span>, header.id, from_peer_id);
+        <span class="macro">debug!</span>(<span class="string">"received header {} from {}"</span>, header.id, from_peer_id);
 
         <span class="kw">let </span>block_id = header.id;
 
@@ -1746,11 +1746,11 @@
             <span class="prelude-val">Ok</span>(is_new) =&gt; is_new,
             <span class="prelude-val">Err</span>(err) =&gt; {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;peer {} sent us critically incorrect header: {}&quot;</span>,
+                    <span class="string">"peer {} sent us critically incorrect header: {}"</span>,
                     <span class="kw-2">&amp;</span>from_peer_id, err
                 );
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, <span class="kw-2">&amp;</span>from_peer_id, err);
+                    <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, <span class="kw-2">&amp;</span>from_peer_id, err);
                 }
                 <span class="kw">return</span>;
             }
@@ -1814,7 +1814,7 @@
     }
 
     <span class="doccomment">/// Performs validity checks on a block header,
-    /// and if valid update the node&#39;s view of its surrounding peers.
+    /// and if valid update the node's view of its surrounding peers.
     ///
     /// Returns a boolean indicating whether the header is new.
     ///
@@ -1836,7 +1836,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool, ProtocolError&gt; {
         <span class="comment">// refuse genesis blocks
         </span><span class="kw">if </span>header.content.slot.period == <span class="number">0 </span>|| header.content.parents.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="string">&quot;block is genesis&quot;</span>.to_string()));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="string">"block is genesis"</span>.to_string()));
         }
 
         <span class="comment">// Check that our node supports the block version
@@ -1903,7 +1903,7 @@
             <span class="self">self</span>.pool_controller.as_mut(),
         ) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                <span class="string">&quot;invalid endorsements: {}&quot;</span>,
+                <span class="string">"invalid endorsements: {}"</span>,
                 err
             )));
         };
@@ -1911,7 +1911,7 @@
         <span class="comment">// check header signature
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = header.verify_signature() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                <span class="string">&quot;invalid header signature: {}&quot;</span>,
+                <span class="string">"invalid header signature: {}"</span>,
                 err
             )));
         };
@@ -1923,14 +1923,14 @@
             <span class="comment">// check index reuse
             </span><span class="kw">if </span>!used_endorsement_indices.insert(endorsement.content.index) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                    <span class="string">&quot;duplicate endorsement index: {}&quot;</span>,
+                    <span class="string">"duplicate endorsement index: {}"</span>,
                     endorsement.content.index
                 )));
             }
             <span class="comment">// check slot
             </span><span class="kw">if </span>endorsement.content.slot != header.content.slot {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                    <span class="string">&quot;endorsement slot {} does not match header slot: {}&quot;</span>,
+                    <span class="string">"endorsement slot {} does not match header slot: {}"</span>,
                     endorsement.content.slot, header.content.slot
                 )));
             }
@@ -1939,7 +1939,7 @@
                 != header.content.parents[header.content.slot.thread <span class="kw">as </span>usize]
             {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ProtocolError::InvalidBlock(<span class="macro">format!</span>(
-                    <span class="string">&quot;endorsed block {} does not match header parent: {}&quot;</span>,
+                    <span class="string">"endorsed block {} does not match header parent: {}"</span>,
                     endorsement.content.endorsed_block,
                     header.content.parents[header.content.slot.thread <span class="kw">as </span>usize]
                 )));
@@ -2012,7 +2012,7 @@
         <span class="kw">if </span>!peers_to_ban.is_empty() {
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>peers_to_ban) {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;Error while banning peers {:?} err: {:?}&quot;</span>,
+                    <span class="string">"Error while banning peers {:?} err: {:?}"</span>,
                     peers_to_ban, err
                 );
             }
@@ -2035,7 +2035,7 @@
         operation_ids: Vec&lt;OperationId&gt;,
     ) {
         <span class="macro">debug!</span>(
-            <span class="string">&quot;received operation list for block {} from {}&quot;</span>,
+            <span class="string">"received operation list for block {} from {}"</span>,
             block_id, <span class="kw-2">&amp;</span>from_peer_id
         );
         <span class="comment">// Note that the length of the operation list was checked at deserialization to not overflow the max per block.
@@ -2061,7 +2061,7 @@
             info
         } <span class="kw">else </span>{
             <span class="comment">// we were not actively looking for that data, but mark the remote node as knowing the block
-            </span><span class="macro">debug!</span>(<span class="string">&quot;peer {} sent us a list of operation IDs for block id {} but we were not looking for it&quot;</span>, from_peer_id, block_id);
+            </span><span class="macro">debug!</span>(<span class="string">"peer {} sent us a list of operation IDs for block id {} but we were not looking for it"</span>, from_peer_id, block_id);
             <span class="self">self</span>.cache
                 .write()
                 .insert_peer_known_block(<span class="kw-2">&amp;</span>from_peer_id, <span class="kw-2">&amp;</span>[block_id], <span class="bool-val">true</span>);
@@ -2075,14 +2075,14 @@
         <span class="kw">if </span>wishlist_info
             .header
             .as_ref()
-            .expect(<span class="string">&quot;header presence in wishlist should have been checked above&quot;</span>)
+            .expect(<span class="string">"header presence in wishlist should have been checked above"</span>)
             .content
             .operation_merkle_root
             != computed_operations_hash
         {
-            <span class="macro">warn!</span>(<span class="string">&quot;Peer id {} sent us a operation list for block id {} but the hash in the header doesn&#39;t match.&quot;</span>, from_peer_id, block_id);
+            <span class="macro">warn!</span>(<span class="string">"Peer id {} sent us a operation list for block id {} but the hash in the header doesn't match."</span>, from_peer_id, block_id);
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, from_peer_id, err);
+                <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, from_peer_id, err);
             }
             <span class="kw">return</span>;
         }
@@ -2099,7 +2099,7 @@
         </span><span class="self">self</span>.remove_asked_blocks(<span class="kw-2">&amp;</span>[block_id].into_iter().collect());
     }
 
-    <span class="doccomment">/// Return the sum of all operation&#39;s serialized sizes in the id list
+    <span class="doccomment">/// Return the sum of all operation's serialized sizes in the id list
     </span><span class="kw">fn </span>get_total_operations_size(storage: <span class="kw-2">&amp;</span>Storage, operation_ids: <span class="kw-2">&amp;</span>[OperationId]) -&gt; usize {
         <span class="kw">let </span>op_read_lock = storage.read_operations();
         operation_ids
@@ -2117,7 +2117,7 @@
         operations: Vec&lt;SecureShareOperation&gt;,
     ) {
         <span class="macro">debug!</span>(
-            <span class="string">&quot;received full operations for block {} from {}&quot;</span>,
+            <span class="string">"received full operations for block {} from {}"</span>,
             block_id, <span class="kw-2">&amp;</span>from_peer_id
         );
 
@@ -2131,7 +2131,7 @@
         } <span class="kw">else </span>{
             <span class="comment">// we were not looking for this data
             </span><span class="macro">debug!</span>(
-                <span class="string">&quot;Peer id {} sent us full operations for block id {} but we were not looking for it&quot;</span>,
+                <span class="string">"Peer id {} sent us full operations for block id {} but we were not looking for it"</span>,
                 from_peer_id, block_id
             );
             <span class="comment">// still mark the sender as knowing the block and operations
@@ -2156,7 +2156,7 @@
         </span><span class="kw">let </span>block_ops_set = wishlist_info
             .operation_ids
             .as_ref()
-            .expect(<span class="string">&quot;operation_ids presence in wishlist should have been checked above&quot;</span>)
+            .expect(<span class="string">"operation_ids presence in wishlist should have been checked above"</span>)
             .iter()
             .copied()
             .collect::&lt;PreHashSet&lt;<span class="kw">_</span>&gt;&gt;();
@@ -2165,7 +2165,7 @@
         </span>wishlist_info.storage.claim_operation_refs(<span class="kw-2">&amp;</span>block_ops_set);
 
         {
-            <span class="comment">// filter out operations that we don&#39;t want or already know about
+            <span class="comment">// filter out operations that we don't want or already know about
             </span><span class="kw">let </span><span class="kw-2">mut </span>dropped_ops: PreHashSet&lt;OperationId&gt; = Default::default();
             operations.retain(|op_id, <span class="kw">_</span>| {
                 <span class="kw">if </span>!block_ops_set.contains(op_id)
@@ -2187,12 +2187,12 @@
             );
         }
 
-        <span class="comment">// Here we know that we were looking for that block&#39;s operations and that the sender node sent us some of the missing ones.
+        <span class="comment">// Here we know that we were looking for that block's operations and that the sender node sent us some of the missing ones.
 
         // Check the validity of the received operations.
         // TODO: in the future if the validiy check fails for something non-malleable (eg. not sig verif),
         //       we should stop retrieving the block and ban everyone who knows it
-        //       because we know for sure that this op&#39;s ID belongs to the block.
+        //       because we know for sure that this op's ID belongs to the block.
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = note_operations_from_peer(
             <span class="kw-2">&amp;</span><span class="self">self</span>.storage,
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.operation_cache,
@@ -2203,11 +2203,11 @@
             <span class="kw-2">&amp;mut </span><span class="self">self</span>.pool_controller,
         ) {
             <span class="macro">warn!</span>(
-                <span class="string">&quot;Peer id {} sent us operations for block id {} but they failed validity checks: {}&quot;</span>,
+                <span class="string">"Peer id {} sent us operations for block id {} but they failed validity checks: {}"</span>,
                 from_peer_id, block_id, err
             );
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.ban_peers(<span class="kw-2">&amp;</span>[from_peer_id]) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Error while banning peer {} err: {:?}&quot;</span>, from_peer_id, err);
+                <span class="macro">warn!</span>(<span class="string">"Error while banning peer {} err: {:?}"</span>, from_peer_id, err);
             }
             <span class="kw">return</span>;
         }
@@ -2248,7 +2248,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>next_tick = now
             .checked_add(<span class="self">self</span>.config.ask_block_timeout.into())
             .ok_or(TimeError::TimeOverflowError)
-            .expect(<span class="string">&quot;could not compute next block retrieval timer tick&quot;</span>);
+            .expect(<span class="string">"could not compute next block retrieval timer tick"</span>);
 
         <span class="kw">if </span><span class="self">self</span>.asked_blocks.is_empty() &amp;&amp; <span class="self">self</span>.block_wishlist.is_empty() {
             <span class="comment">// Note: in mainnet and before genesis, no blocks are processed but the timer needs to be updated
@@ -2282,7 +2282,7 @@
             <span class="kw">for </span>(block_id, ask_time) <span class="kw">in </span>asked_blocks.iter() {
                 <span class="kw">let </span>expiry = ask_time
                     .checked_add(ask_block_timeout)
-                    .expect(<span class="string">&quot;could not compute block ask expiry&quot;</span>);
+                    .expect(<span class="string">"could not compute block ask expiry"</span>);
                 <span class="kw">if </span>expiry &lt;= now {
                     <span class="comment">// the block has been asked for the block data a long time agp and did not respond
 
@@ -2338,7 +2338,7 @@
                         .and_then(|blocks_known| blocks_known.peek(<span class="kw-2">&amp;</span>block_id).copied());
                     <span class="kw">match </span>peer_knowledge_of_block {
                         <span class="prelude-val">Some</span>((<span class="bool-val">false</span>, info_t)) =&gt; {
-                            <span class="comment">// we think that the peer doesn&#39;t know the block
+                            <span class="comment">// we think that the peer doesn't know the block
                             </span><span class="prelude-val">Some</span>((
                                 <span class="number">1i8</span>,                                                               <span class="comment">// worst knowledge
                                 </span><span class="prelude-val">Some</span>(-(now.saturating_duration_since(info_t).as_millis() <span class="kw">as </span>i64)), <span class="comment">// the older the info the better
@@ -2348,7 +2348,7 @@
                             ))
                         }
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="comment">// we don&#39;t know if the peer knows the block
+                            <span class="comment">// we don't know if the peer knows the block
                             </span><span class="prelude-val">Some</span>((
                                 <span class="number">0i8</span>,                       <span class="comment">// medium knowledge
                                 </span><span class="prelude-val">None</span>,                      <span class="comment">// N/A
@@ -2378,7 +2378,7 @@
             </span><span class="kw">let </span>wishlist_info = <span class="self">self
                 </span>.block_wishlist
                 .get_mut(<span class="kw-2">&amp;</span>block_id)
-                .expect(<span class="string">&quot;block presence in wishlist should have been checked above&quot;</span>);
+                .expect(<span class="string">"block presence in wishlist should have been checked above"</span>);
             <span class="kw">let </span>request = <span class="kw">match </span>(
                 wishlist_info.header.is_some(),
                 wishlist_info.operation_ids.is_some(),
@@ -2395,13 +2395,13 @@
                         <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
                     }
                 }
-                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid wishlist state&quot;</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"invalid wishlist state"</span>),
             };
 
             <span class="comment">// try to ask peers from best to worst
             </span><span class="kw">for </span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, peer_id) <span class="kw">in </span>peer_scores {
                 <span class="macro">debug!</span>(
-                    <span class="string">&quot;Sending ask for block {} data to {}: {:?}&quot;</span>,
+                    <span class="string">"Sending ask for block {} data to {}: {:?}"</span>,
                     block_id, peer_id, <span class="kw-2">&amp;</span>request
                 );
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.active_connections.send_to_peer(
@@ -2414,7 +2414,7 @@
                     <span class="bool-val">true</span>,
                 ) {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;Failed to send BlockDataRequest to peer {} err: {}&quot;</span>,
+                        <span class="string">"Failed to send BlockDataRequest to peer {} err: {}"</span>,
                         peer_id, err
                     );
                 } <span class="kw">else </span>{
@@ -2463,7 +2463,7 @@
         </span><span class="kw">let </span>op_id_list = wishlist_info
             .operation_ids
             .as_ref()
-            .expect(<span class="string">&quot;operation IDs should be present&quot;</span>);
+            .expect(<span class="string">"operation IDs should be present"</span>);
         <span class="kw">let </span>op_id_set: PreHashSet&lt;OperationId&gt; = op_id_list.iter().copied().collect();
 
         <span class="comment">// Gather all the ops in storage
@@ -2484,7 +2484,7 @@
             <span class="kw-2">&amp;</span>wishlist_info
                 .operation_ids
                 .as_ref()
-                .expect(<span class="string">&quot;operation_ids presence in wishlist should have been checked above&quot;</span>)
+                .expect(<span class="string">"operation_ids presence in wishlist should have been checked above"</span>)
                 .to_vec(),
         );
 
@@ -2493,7 +2493,7 @@
         // We should stop trying to retrieve the block and ban everyone who knows it.
         </span><span class="kw">if </span>total_operations_size &gt; <span class="self">self</span>.config.max_serialized_operations_size_per_block {
             <span class="macro">warn!</span>(
-                <span class="string">&quot;The operations we already have in our records exceed max block size for block {}.&quot;</span>,
+                <span class="string">"The operations we already have in our records exceed max block size for block {}."</span>,
                 block_id
             );
 
@@ -2517,28 +2517,28 @@
 
     <span class="doccomment">/// Called when we have fully gathered a block
     </span><span class="kw">fn </span>fully_gathered_block(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_id: <span class="kw-2">&amp;</span>BlockId) {
-        <span class="macro">debug!</span>(<span class="string">&quot;Fully gathered block {}&quot;</span>, block_id);
+        <span class="macro">debug!</span>(<span class="string">"Fully gathered block {}"</span>, block_id);
 
         <span class="comment">// Gather all the elements needed to create the block. We must have it all by now.
         </span><span class="kw">let </span>wishlist_info = <span class="self">self
             </span>.block_wishlist
             .remove(block_id)
-            .expect(<span class="string">&quot;block presence in wishlist should have been checked before&quot;</span>);
+            .expect(<span class="string">"block presence in wishlist should have been checked before"</span>);
 
         <span class="comment">// Create the block
         </span><span class="kw">let </span>block = Block {
             header: wishlist_info
                 .header
-                .expect(<span class="string">&quot;header presence in wishlist should have been checked above&quot;</span>),
+                .expect(<span class="string">"header presence in wishlist should have been checked above"</span>),
             operations: wishlist_info
                 .operation_ids
-                .expect(<span class="string">&quot;operation_ids presence in wishlist should have been checked above&quot;</span>),
+                .expect(<span class="string">"operation_ids presence in wishlist should have been checked above"</span>),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>content_serialized = Vec::new();
         BlockSerializer::new() <span class="comment">// todo : keep the serializer in the struct to avoid recreating it
             </span>.serialize(<span class="kw-2">&amp;</span>block, <span class="kw-2">&amp;mut </span>content_serialized)
-            .expect(<span class="string">&quot;failed to serialize block&quot;</span>);
+            .expect(<span class="string">"failed to serialize block"</span>);
 
         <span class="comment">// wrap block
         </span><span class="kw">let </span>signed_block = SecureShare {
@@ -2624,6 +2624,6 @@
             };
             retrieval_thread.run();
         })
-        .expect(<span class="string">&quot;OS failed to start block retrieval thread&quot;</span>)
+        .expect(<span class="string">"OS failed to start block retrieval thread"</span>)
 }
 </code></pre></div></section></main></body></html>

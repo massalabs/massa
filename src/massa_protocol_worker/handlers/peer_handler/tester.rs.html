@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/peer_handler/tester.rs`."><title>tester.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/peer_handler/tester.rs`."><title>tester.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -510,7 +510,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::wrap_network::ActiveConnectionsTrait;
 
-<span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pph-tester&quot;</span>;
+<span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"pph-tester"</span>;
 <span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="kw">pub struct </span>Tester {
@@ -538,7 +538,7 @@
 
         <span class="comment">// create shared channel between thread for launching test
         </span><span class="kw">let </span>(test_sender, test_receiver) = MassaChannel::new(
-            <span class="string">&quot;test_sender&quot;</span>.to_string(),
+            <span class="string">"test_sender"</span>.to_string(),
             <span class="prelude-val">Some</span>(config.max_size_channel_commands_peer_testers),
         );
 
@@ -574,44 +574,44 @@
         <span class="kw">let </span>exec_handshake = || {
             <span class="kw">let </span><span class="kw-2">mut </span>socket =
                 std::net::TcpStream::connect_timeout(<span class="kw-2">&amp;</span>addr, config.tester_timeout.into())
-                    .map_err(|e| PeerNetError::PeerConnectionError.new(<span class="string">&quot;connect&quot;</span>, e, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+                    .map_err(|e| PeerNetError::PeerConnectionError.new(<span class="string">"connect"</span>, e, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             socket
                 .set_read_timeout(<span class="prelude-val">Some</span>(config.tester_timeout.into()))
-                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;read timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">"read timeout"</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             socket
                 .set_write_timeout(<span class="prelude-val">Some</span>(config.tester_timeout.into()))
-                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;write timeout&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">"write timeout"</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
             <span class="comment">// data.receive() from Endpoint
             </span><span class="kw">let </span><span class="kw-2">mut </span>len_bytes = <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="number">4</span>];
             socket
                 .read_exact(<span class="kw-2">&amp;mut </span>len_bytes)
-                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;recv len&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">"recv len"</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
 
             <span class="kw">let </span>res_size = u32::from_be_bytes(len_bytes.try_into().map_err(|err| {
-                PeerNetError::PeerConnectionError.error(<span class="string">&quot;recv len&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, err)))
+                PeerNetError::PeerConnectionError.error(<span class="string">"recv len"</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, err)))
             })<span class="question-mark">?</span>);
             <span class="kw">if </span>res_size &gt; <span class="number">1048576000 </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::InvalidMessage
-                    .error(<span class="string">&quot;len too long&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, res_size))));
+                    .error(<span class="string">"len too long"</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, res_size))));
             }
             <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">vec!</span>[<span class="number">0u8</span>; res_size <span class="kw">as </span>usize];
             socket
                 .read_exact(<span class="kw-2">&amp;mut </span>data)
-                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">&quot;recv data&quot;</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+                .map_err(|err| PeerNetError::PeerConnectionError.new(<span class="string">"recv data"</span>, err, <span class="prelude-val">None</span>))<span class="question-mark">?</span>;
 
             <span class="comment">// handshake
             </span><span class="kw">if </span>data.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Tester Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer didn&#39;t accepted us&quot;</span>)),
+                    <span class="string">"Tester Handshake"</span>,
+                    <span class="prelude-val">Some</span>(String::from(<span class="string">"Peer didn't accepted us"</span>)),
                 ));
             }
             <span class="kw">let </span>(data, peer_id) = peer_id_deserializer
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>data)
                 .map_err(|<span class="kw">_</span>| {
                     PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize PeerId&quot;</span>.to_string()),
+                        <span class="string">"Massa Handshake"</span>,
+                        <span class="prelude-val">Some</span>(<span class="string">"Failed to deserialize PeerId"</span>.to_string()),
                     )
                 })<span class="question-mark">?</span>;
             <span class="kw">let </span>res = {
@@ -621,7 +621,7 @@
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.get_peers().get(<span class="kw-2">&amp;</span>peer_id) {
                         <span class="kw">if </span>info.state == <span class="kw">super</span>::PeerState::Banned {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                                .error(<span class="string">&quot;Tester Handshake&quot;</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Peer is banned&quot;</span>))));
+                                .error(<span class="string">"Tester Handshake"</span>, <span class="prelude-val">Some</span>(String::from(<span class="string">"Peer is banned"</span>))));
                         }
                     }
                 }
@@ -630,33 +630,33 @@
                     .deserialize::&lt;DeserializeError&gt;(data)
                     .map_err(|err| {
                         PeerNetError::HandshakeError.error(
-                            <span class="string">&quot;Tester Handshake&quot;</span>,
-                            <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize version: {}&quot;</span>, err)),
+                            <span class="string">"Tester Handshake"</span>,
+                            <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to deserialize version: {}"</span>, err)),
                         )
                     })<span class="question-mark">?</span>;
                 <span class="kw">if </span>!our_version.is_compatible(<span class="kw-2">&amp;</span>version) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received version incompatible: {}&quot;</span>, version)),
+                        <span class="string">"Massa Handshake"</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Received version incompatible: {}"</span>, version)),
                     ));
                 }
                 <span class="kw">let </span>id = data.first().ok_or(
                     PeerNetError::HandshakeError
-                        .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
+                        .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Failed to get id"</span>.to_string())),
                 )<span class="question-mark">?</span>;
                 <span class="kw">match </span>id {
                     <span class="number">0 </span>=&gt; {
                         <span class="kw">let </span>(<span class="kw">_</span>, announcement) = announcement_deserializer
                             .deserialize::&lt;DeserializeError&gt;(data.get(<span class="number">1</span>..).ok_or(
                                 PeerNetError::HandshakeError.error(
-                                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                                    <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get buffer&quot;</span>.to_string()),
+                                    <span class="string">"Massa Handshake"</span>,
+                                    <span class="prelude-val">Some</span>(<span class="string">"Failed to get buffer"</span>.to_string()),
                                 ),
                             )<span class="question-mark">?</span>)
                             .map_err(|err| {
                                 PeerNetError::HandshakeError.error(
-                                    <span class="string">&quot;Tester Handshake&quot;</span>,
-                                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize announcement: {}&quot;</span>, err)),
+                                    <span class="string">"Tester Handshake"</span>,
+                                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to deserialize announcement: {}"</span>, err)),
                                 )
                             })<span class="question-mark">?</span>;
 
@@ -665,8 +665,8 @@
                             .is_err()
                         {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Tester Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(String::from(<span class="string">&quot;Invalid signature&quot;</span>)),
+                                <span class="string">"Tester Handshake"</span>,
+                                <span class="prelude-val">Some</span>(String::from(<span class="string">"Invalid signature"</span>)),
                             ));
                         }
                         <span class="comment">//TODO: Check ip we are connected match one of the announced ips
@@ -695,19 +695,19 @@
                     <span class="number">1 </span>=&gt; {
                         messages_handler.handle(
                             data.get(<span class="number">1</span>..).ok_or(PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get buffer&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Failed to get buffer"</span>.to_string()),
                             ))<span class="question-mark">?</span>,
                             <span class="kw-2">&amp;</span>peer_id,
                         )<span class="question-mark">?</span>;
                         <span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Tester Handshake failed received a message that our connection has been refused&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Tester Handshake failed received a message that our connection has been refused"</span>.to_string()),
                             ))
-                        <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                        <span class="comment">//TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                     </span>}
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                        .error(<span class="string">&quot;Massa handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid id&quot;</span>.to_string()))),
+                        .error(<span class="string">"Massa handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Invalid id"</span>.to_string()))),
                 }
             };
 
@@ -733,7 +733,7 @@
             }
 
             <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = socket.shutdown(std::net::Shutdown::Both) {
-                <span class="macro">tracing::error!</span>(<span class="string">&quot;Failed to shutdown socket for {} : {}&quot;</span>, addr, e);
+                <span class="macro">tracing::error!</span>(<span class="string">"Failed to shutdown socket for {} : {}"</span>, addr, e);
             }
             res
         };
@@ -776,8 +776,8 @@
 
             <span class="comment">//let mut network_manager = PeerNetManager::new(config);
             </span><span class="kw">let </span>protocol_config = protocol_config.clone();
-            <span class="lifetime">&#39;main_loop</span>: <span class="kw">loop </span>{
-                <span class="macro">crossbeam::select! </span>{
+            <span class="lifetime">'main_loop</span>: <span class="kw">loop </span>{
+                <span class="macro">crossbeam::select!</span> {
                     recv(receiver) -&gt; res =&gt; {
                         receiver.update_metrics();
                         <span class="kw">match </span>res {
@@ -825,13 +825,13 @@
 
                                         <span class="comment">//Find category of that address
                                         </span><span class="kw">let </span>ip_canonical = to_canonical(addr.ip());
-                                        <span class="kw">let </span>cooldown = <span class="lifetime">&#39;cooldown</span>: {
+                                        <span class="kw">let </span>cooldown = <span class="lifetime">'cooldown</span>: {
                                             <span class="kw">for </span>category <span class="kw">in </span><span class="kw-2">&amp;</span>slots_out_connections {
                                                 <span class="kw">if </span>category.<span class="number">1.0</span>.contains(<span class="kw-2">&amp;</span>ip_canonical) {
                                                     <span class="kw">if </span>category.<span class="number">1.1 </span>== <span class="number">0 </span>{
-                                                        <span class="kw">break </span><span class="lifetime">&#39;cooldown </span>Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>);
+                                                        <span class="kw">break </span><span class="lifetime">'cooldown </span>Duration::from_secs(<span class="number">60 </span>* <span class="number">60 </span>* <span class="number">2</span>);
                                                     } <span class="kw">else </span>{
-                                                        <span class="kw">break </span><span class="lifetime">&#39;cooldown </span>Duration::from_secs(<span class="number">30</span>);
+                                                        <span class="kw">break </span><span class="lifetime">'cooldown </span>Duration::from_secs(<span class="number">30</span>);
                                                     }
                                                 }
                                             }
@@ -845,7 +845,7 @@
                                         </span>{
                                             <span class="kw">let </span><span class="kw-2">mut </span>db_write = db.write();
                                             <span class="kw">if let </span><span class="prelude-val">Some</span>(last_tested_time) = db_write.get_tested_addresses().get(addr) {
-                                                <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">&quot;Time went backward&quot;</span>);
+                                                <span class="kw">let </span>last_tested_time = last_tested_time.estimate_instant().expect(<span class="string">"Time went backward"</span>);
                                                 <span class="kw">if </span>last_tested_time.elapsed() &lt; cooldown {
                                                     db_write.remove_peer_in_test(addr);
                                                     <span class="kw">continue</span>;
@@ -853,23 +853,23 @@
                                             }
                                             db_write.insert_tested_address(addr, now);
                                         }
-                                        <span class="comment">// TODO:  Don&#39;t launch test if peer is already connected to us as a normal connection.
+                                        <span class="comment">// TODO:  Don't launch test if peer is already connected to us as a normal connection.
                                         // Maybe we need to have a way to still update his last announce timestamp because he is a great peer
                                         </span><span class="kw">if </span>!active_connections.get_peers_connected().iter().any(|(<span class="kw">_</span>, (addr, <span class="kw">_</span>, <span class="kw">_</span>))| to_canonical(addr.ip()) == ip_canonical) {
-                                            <span class="comment">//Don&#39;t test our local addresses
+                                            <span class="comment">//Don't test our local addresses
                                             </span><span class="kw">if </span>protocol_config.listeners.iter().any(|(local_addr, _transport)| addr == local_addr) {
                                                 db.write().remove_peer_in_test(addr);
-                                                <span class="kw">continue </span><span class="lifetime">&#39;main_loop</span>;
+                                                <span class="kw">continue </span><span class="lifetime">'main_loop</span>;
                                             }
 
-                                            <span class="comment">//Don&#39;t test our proper ip
+                                            <span class="comment">//Don't test our proper ip
                                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                                                 <span class="kw">if </span>to_canonical(ip) == ip_canonical {
                                                     db.write().remove_peer_in_test(addr);
-                                                    <span class="kw">continue </span><span class="lifetime">&#39;main_loop</span>;
+                                                    <span class="kw">continue </span><span class="lifetime">'main_loop</span>;
                                                 }
                                             }
-                                            <span class="macro">debug!</span>(<span class="string">&quot;testing peer {} listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
+                                            <span class="macro">debug!</span>(<span class="string">"testing peer {} listener addr: {}"</span>, <span class="kw-2">&amp;</span>listener.<span class="number">0</span>, <span class="kw-2">&amp;</span>addr);
 
                                             <span class="kw">let </span>res = Tester::tcp_handshake(
                                                 messages_handler.clone(),
@@ -890,7 +890,7 @@
                                             //     &amp;OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                                             // );
 
-                                            </span><span class="macro">tracing::debug!</span>(<span class="string">&quot;{:?}&quot;</span>, res);
+                                            </span><span class="macro">tracing::debug!</span>(<span class="string">"{:?}"</span>, res);
                                         }
                                     };
                                 }
@@ -899,7 +899,7 @@
                         }
                     }
                     default(Duration::from_secs(<span class="number">2</span>)) =&gt; {
-                        <span class="comment">// If no message in 2 seconds they will test a peer that hasn&#39;t been tested for long time
+                        <span class="comment">// If no message in 2 seconds they will test a peer that hasn't been tested for long time
 
                         </span><span class="kw">let </span>listener = {
                             <span class="kw">let </span><span class="kw-2">mut </span>db_write = db.write();
@@ -921,21 +921,21 @@
                             db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
                             <span class="kw">continue</span>;
                         }
-                        <span class="comment">//Don&#39;t test our local addresses
+                        <span class="comment">//Don't test our local addresses
                         </span><span class="kw">for </span>(local_addr, _transport) <span class="kw">in </span>protocol_config.listeners.iter() {
                             <span class="kw">if </span>listener == <span class="kw-2">*</span>local_addr {
                                 db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
                                 <span class="kw">continue</span>;
                             }
                         }
-                        <span class="comment">//Don&#39;t test our proper ip
+                        <span class="comment">//Don't test our proper ip
                         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = protocol_config.routable_ip {
                             <span class="kw">if </span>to_canonical(ip) == ip_canonical {
                                 db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
                                 <span class="kw">continue</span>;
                             }
                         }
-                        <span class="macro">debug!</span>(<span class="string">&quot;testing listener addr: {}&quot;</span>, <span class="kw-2">&amp;</span>listener);
+                        <span class="macro">debug!</span>(<span class="string">"testing listener addr: {}"</span>, <span class="kw-2">&amp;</span>listener);
 
                         <span class="kw">let _ </span>= Tester::tcp_handshake(
                             messages_handler.clone(),
@@ -953,11 +953,11 @@
                         //     &amp;OutConnectionConfig::Tcp(Box::new(TcpOutConnectionConfig::new(protocol_config.read_write_limit_bytes_per_second / 10, Duration::from_millis(100)))),
                         // );
                         </span>db.write().remove_peer_in_test(<span class="kw-2">&amp;</span>listener);
-                        <span class="comment">// debug!(&quot;{:?}&quot;, res);
+                        <span class="comment">// debug!("{:?}", res);
                     </span>}
                 }
             }
-        }).expect(<span class="string">&quot;OS failed to start peer tester thread&quot;</span>);
+        }).expect(<span class="string">"OS failed to start peer tester thread"</span>);
 
         <span class="self">Self </span>{
             handler: <span class="prelude-val">Some</span>(handle),

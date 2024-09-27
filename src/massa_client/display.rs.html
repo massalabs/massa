@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/display.rs`."><title>display.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/display.rs`."><title>display.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -620,40 +620,40 @@
 
 <span class="attr">#[macro_export]
 </span><span class="doccomment">/// Display the MASSA logo on the CLI with fancy colors
-</span><span class="macro">macro_rules! </span>massa_fancy_ascii_art_logo {
+</span><span class="macro">macro_rules!</span> massa_fancy_ascii_art_logo {
     () =&gt; {
         <span class="macro">println!</span>(
-            <span class="string">&quot;{}\n{}\n{}\n{}\n{}\n&quot;</span>,
-            style(<span class="string">&quot;███    ███  █████  ███████ ███████  █████ &quot;</span>).color256(<span class="number">160</span>),
-            style(<span class="string">&quot;████  ████ ██   ██ ██      ██      ██   ██&quot;</span>).color256(<span class="number">161</span>),
-            style(<span class="string">&quot;██ ████ ██ ███████ ███████ ███████ ███████&quot;</span>).color256(<span class="number">162</span>),
-            style(<span class="string">&quot;██  ██  ██ ██   ██      ██      ██ ██   ██&quot;</span>).color256(<span class="number">163</span>),
-            style(<span class="string">&quot;██      ██ ██   ██ ███████ ███████ ██   ██&quot;</span>).color256(<span class="number">164</span>)
+            <span class="string">"{}\n{}\n{}\n{}\n{}\n"</span>,
+            style(<span class="string">"███    ███  █████  ███████ ███████  █████ "</span>).color256(<span class="number">160</span>),
+            style(<span class="string">"████  ████ ██   ██ ██      ██      ██   ██"</span>).color256(<span class="number">161</span>),
+            style(<span class="string">"██ ████ ██ ███████ ███████ ███████ ███████"</span>).color256(<span class="number">162</span>),
+            style(<span class="string">"██  ██  ██ ██   ██      ██      ██ ██   ██"</span>).color256(<span class="number">163</span>),
+            style(<span class="string">"██      ██ ██   ██ ███████ ███████ ██   ██"</span>).color256(<span class="number">164</span>)
         );
     };
 }
 
 <span class="attr">#[macro_export]
 </span><span class="doccomment">/// bail a shinny RPC error
-</span><span class="macro">macro_rules! </span>rpc_error {
+</span><span class="macro">macro_rules!</span> rpc_error {
     (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
-        <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running: {}&quot;</span>, <span class="macro-nonterminal">$e</span>)
+        <span class="macro">bail!</span>(<span class="string">"check if your node is running: {}"</span>, <span class="macro-nonterminal">$e</span>)
     };
 }
 
 <span class="attr">#[macro_export]
 </span><span class="doccomment">/// bail a shinny RPC error
-</span><span class="macro">macro_rules! </span>grpc_error {
+</span><span class="macro">macro_rules!</span> grpc_error {
     (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
-        <span class="macro">bail!</span>(<span class="string">&quot;check if your node is running and grpc api enabled: {}&quot;</span>, <span class="macro-nonterminal">$e</span>)
+        <span class="macro">bail!</span>(<span class="string">"check if your node is running and grpc api enabled: {}"</span>, <span class="macro-nonterminal">$e</span>)
     };
 }
 
 <span class="attr">#[macro_export]
 </span><span class="doccomment">/// print a yellow warning
-</span><span class="macro">macro_rules! </span>client_warning {
+</span><span class="macro">macro_rules!</span> client_warning {
     (<span class="macro-nonterminal">$e</span>:expr) =&gt; {
-        <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, style(<span class="string">&quot;WARNING&quot;</span>).yellow(), <span class="macro-nonterminal">$e</span>)
+        <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, style(<span class="string">"WARNING"</span>).yellow(), <span class="macro-nonterminal">$e</span>)
     };
 }
 
@@ -662,7 +662,7 @@
     </span>Id,
     <span class="doccomment">/// If a process is ongoing, not final, will change in the future
     </span>Pending,
-    <span class="doccomment">/// If a process is finished, fixed, and won&#39;t evolve in the future
+    <span class="doccomment">/// If a process is finished, fixed, and won't evolve in the future
     </span>Finished,
     <span class="doccomment">/// Good things in general, success of an operation
     </span>Good,
@@ -724,46 +724,46 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>Wallet {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>ExtendedWallet {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">if </span><span class="self">self</span>.<span class="number">0</span>.is_empty() {
-            <span class="macro">client_warning!</span>(<span class="string">&quot;your wallet does not contain any key, use &#39;wallet_generate_secret_key&#39; to generate a new key and add it to your wallet&quot;</span>);
+            <span class="macro">client_warning!</span>(<span class="string">"your wallet does not contain any key, use 'wallet_generate_secret_key' to generate a new key and add it to your wallet"</span>);
         }
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, Style::Separator.style(<span class="string">&quot;=====&quot;</span>));
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Separator.style(<span class="string">"====="</span>));
         <span class="kw">for </span>entry <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.values() {
             <span class="kw">if </span>entry.show_keys {
-                <span class="macro">println!</span>(<span class="string">&quot;Secret key: {}&quot;</span>, Style::Secret.style(<span class="kw-2">&amp;</span>entry.keypair));
+                <span class="macro">println!</span>(<span class="string">"Secret key: {}"</span>, Style::Secret.style(<span class="kw-2">&amp;</span>entry.keypair));
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;Public key: {}&quot;</span>,
+                    <span class="string">"Public key: {}"</span>,
                     Style::Wallet.style(entry.keypair.get_public_key())
                 );
             }
             <span class="macro">println!</span>(
-                <span class="string">&quot;Address: {} (thread {}):&quot;</span>,
+                <span class="string">"Address: {} (thread {}):"</span>,
                 Style::Wallet.style(entry.address_info.address),
                 Style::Protocol.style(entry.address_info.thread),
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;\tBalance: {}={}, {}={}&quot;</span>,
-                Style::Finished.style(<span class="string">&quot;final&quot;</span>),
+                <span class="string">"\tBalance: {}={}, {}={}"</span>,
+                Style::Finished.style(<span class="string">"final"</span>),
                 Style::Coins.style(entry.address_info.final_balance),
-                Style::Pending.style(<span class="string">&quot;candidate&quot;</span>),
+                Style::Pending.style(<span class="string">"candidate"</span>),
                 Style::Coins.style(entry.address_info.candidate_balance),
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;\tRolls: {}={}, {}={}, {}={}&quot;</span>,
-                Style::Good.style(<span class="string">&quot;active&quot;</span>),
+                <span class="string">"\tRolls: {}={}, {}={}, {}={}"</span>,
+                Style::Good.style(<span class="string">"active"</span>),
                 Style::Protocol.style(entry.address_info.active_rolls),
-                Style::Finished.style(<span class="string">&quot;final&quot;</span>),
+                Style::Finished.style(<span class="string">"final"</span>),
                 Style::Protocol.style(entry.address_info.final_rolls),
-                Style::Pending.style(<span class="string">&quot;candidate&quot;</span>),
+                Style::Pending.style(<span class="string">"candidate"</span>),
                 Style::Protocol.style(entry.address_info.candidate_rolls),
             );
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, Style::Separator.style(<span class="string">&quot;=====&quot;</span>));
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Separator.style(<span class="string">"====="</span>));
         }
     }
 }
@@ -771,11 +771,11 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;(Address, PublicKey)&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self</span>.len() {
-            <span class="number">1 </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>[<span class="number">0</span>].<span class="number">1</span>),
+            <span class="number">1 </span>=&gt; <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>[<span class="number">0</span>].<span class="number">1</span>),
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">for </span>address_pubkey <span class="kw">in </span><span class="self">self </span>{
-                    <span class="macro">println!</span>(<span class="string">&quot;Address: {}&quot;</span>, address_pubkey.<span class="number">0</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;Public key: {}&quot;</span>, address_pubkey.<span class="number">1</span>);
+                    <span class="macro">println!</span>(<span class="string">"Address: {}"</span>, address_pubkey.<span class="number">0</span>);
+                    <span class="macro">println!</span>(<span class="string">"Public key: {}"</span>, address_pubkey.<span class="number">1</span>);
                     <span class="macro">println!</span>();
                 }
             }
@@ -786,11 +786,11 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;(Address, KeyPair)&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self</span>.len() {
-            <span class="number">1 </span>=&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>[<span class="number">0</span>].<span class="number">1</span>),
+            <span class="number">1 </span>=&gt; <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>[<span class="number">0</span>].<span class="number">1</span>),
             <span class="kw">_ </span>=&gt; {
                 <span class="kw">for </span>address_seckey <span class="kw">in </span><span class="self">self </span>{
-                    <span class="macro">println!</span>(<span class="string">&quot;Address: {}&quot;</span>, address_seckey.<span class="number">0</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;Secret key: {}&quot;</span>, address_seckey.<span class="number">1</span>);
+                    <span class="macro">println!</span>(<span class="string">"Address: {}"</span>, address_seckey.<span class="number">0</span>);
+                    <span class="macro">println!</span>(<span class="string">"Secret key: {}"</span>, address_seckey.<span class="number">1</span>);
                     <span class="macro">println!</span>();
                 }
             }
@@ -804,56 +804,56 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>String {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span><span class="kw-2">&amp;</span>str {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>NodeStatus {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;Node&#39;s ID: {}&quot;</span>, Style::Id.style(<span class="self">self</span>.node_id));
+        <span class="macro">println!</span>(<span class="string">"Node's ID: {}"</span>, Style::Id.style(<span class="self">self</span>.node_id));
         <span class="kw">if </span><span class="self">self</span>.node_ip.is_some() {
             <span class="macro">println!</span>(
-                <span class="string">&quot;Node&#39;s IP: {}&quot;</span>,
+                <span class="string">"Node's IP: {}"</span>,
                 Style::Protocol.style(<span class="self">self</span>.node_ip.unwrap())
             );
         } <span class="kw">else </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, Style::Unknown.style(<span class="string">&quot;No routable IP set&quot;</span>));
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Unknown.style(<span class="string">"No routable IP set"</span>));
         }
         <span class="macro">println!</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Version: {}&quot;</span>, Style::Id.style(<span class="self">self</span>.version));
+        <span class="macro">println!</span>(<span class="string">"Version: {}"</span>, Style::Id.style(<span class="self">self</span>.version));
         <span class="self">self</span>.config.pretty_print();
         <span class="macro">println!</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Current time: {}&quot;</span>, <span class="self">self</span>.current_time.format_instant());
+        <span class="macro">println!</span>(<span class="string">"Current time: {}"</span>, <span class="self">self</span>.current_time.format_instant());
         <span class="macro">println!</span>(
-            <span class="string">&quot;Current cycle: {}&quot;</span>,
+            <span class="string">"Current cycle: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.current_cycle)
         );
         <span class="kw">if </span><span class="self">self</span>.last_slot.is_some() {
             <span class="macro">println!</span>(
-                <span class="string">&quot;Last slot: {}&quot;</span>,
+                <span class="string">"Last slot: {}"</span>,
                 Style::Protocol.style(<span class="self">self</span>.last_slot.unwrap())
             );
         }
-        <span class="macro">println!</span>(<span class="string">&quot;Next slot: {}&quot;</span>, Style::Protocol.style(<span class="self">self</span>.next_slot));
+        <span class="macro">println!</span>(<span class="string">"Next slot: {}"</span>, Style::Protocol.style(<span class="self">self</span>.next_slot));
         <span class="macro">println!</span>();
 
         <span class="self">self</span>.consensus_stats.pretty_print();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Pool stats:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"Pool stats:"</span>);
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tOperations count: {}&quot;</span>,
+            <span class="string">"\tOperations count: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.pool_stats.<span class="number">0</span>)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tEndorsements count: {}&quot;</span>,
+            <span class="string">"\tEndorsements count: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.pool_stats.<span class="number">1</span>)
         );
         <span class="macro">println!</span>();
@@ -862,47 +862,47 @@
         <span class="self">self</span>.execution_stats.pretty_print();
 
         <span class="kw">if </span>!<span class="self">self</span>.connected_nodes.is_empty() {
-            <span class="macro">println!</span>(<span class="string">&quot;Connected nodes:&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">"Connected nodes:"</span>);
             <span class="kw">for </span>(node_id, (ip_addr, is_outgoing)) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.connected_nodes {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;Node&#39;s ID: {} / IP address: {} / {} connection&quot;</span>,
+                    <span class="string">"Node's ID: {} / IP address: {} / {} connection"</span>,
                     Style::Id.style(node_id),
                     Style::Protocol.style(ip_addr),
-                    <span class="kw">if </span><span class="kw-2">*</span>is_outgoing { <span class="string">&quot;Out&quot; </span>} <span class="kw">else </span>{ <span class="string">&quot;In&quot; </span>}
+                    <span class="kw">if </span><span class="kw-2">*</span>is_outgoing { <span class="string">"Out" </span>} <span class="kw">else </span>{ <span class="string">"In" </span>}
                 )
             }
         }
 
         <span class="macro">println!</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;Chain id: {}&quot;</span>, <span class="self">self</span>.chain_id);
+        <span class="macro">println!</span>(<span class="string">"Chain id: {}"</span>, <span class="self">self</span>.chain_id);
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>ExecutionStats {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;Execution stats:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"Execution stats:"</span>);
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
+            <span class="string">"\tStart stats timespan time: {}"</span>,
             Style::Time.style(<span class="self">self</span>.time_window_start.format_instant())
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
+            <span class="string">"\tEnd stats timespan time: {}"</span>,
             Style::Time.style(<span class="self">self</span>.time_window_end.format_instant())
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tFinal executed block count: {}&quot;</span>,
+            <span class="string">"\tFinal executed block count: {}"</span>,
             Style::Block.style(<span class="self">self</span>.final_block_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tFinal executed operation count: {}&quot;</span>,
+            <span class="string">"\tFinal executed operation count: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.final_executed_operations_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tActive cursor: {}&quot;</span>,
+            <span class="string">"\tActive cursor: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.active_cursor)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tFinal cursor: {}&quot;</span>,
+            <span class="string">"\tFinal cursor: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.final_cursor)
         );
     }
@@ -910,25 +910,25 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>NetworkStats {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;Network stats:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"Network stats:"</span>);
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tIn connections: {}&quot;</span>,
+            <span class="string">"\tIn connections: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.in_connection_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tOut connections: {}&quot;</span>,
+            <span class="string">"\tOut connections: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.out_connection_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tKnown peers: {}&quot;</span>,
+            <span class="string">"\tKnown peers: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.known_peer_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tBanned peers: {}&quot;</span>,
+            <span class="string">"\tBanned peers: {}"</span>,
             Style::Bad.style(<span class="self">self</span>.banned_peer_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tActive nodes: {}&quot;</span>,
+            <span class="string">"\tActive nodes: {}"</span>,
             Style::Good.style(<span class="self">self</span>.active_node_count)
         );
     }
@@ -936,32 +936,32 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>CompactConfig {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;Config:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"Config:"</span>);
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tGenesis time: {}&quot;</span>,
+            <span class="string">"\tGenesis time: {}"</span>,
             Style::Time.style(<span class="self">self</span>.genesis_timestamp.format_instant())
         );
         <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="self">self</span>.end_timestamp {
-            <span class="macro">println!</span>(<span class="string">&quot;\tEnd time: {}&quot;</span>, Style::Time.style(end.format_instant()));
+            <span class="macro">println!</span>(<span class="string">"\tEnd time: {}"</span>, Style::Time.style(end.format_instant()));
         }
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tThread count: {}&quot;</span>,
+            <span class="string">"\tThread count: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.thread_count)
         );
-        <span class="macro">println!</span>(<span class="string">&quot;\tt0: {}&quot;</span>, Style::Time.style(<span class="self">self</span>.t0));
-        <span class="macro">println!</span>(<span class="string">&quot;\tdelta_f0: {}&quot;</span>, Style::Protocol.style(<span class="self">self</span>.delta_f0));
+        <span class="macro">println!</span>(<span class="string">"\tt0: {}"</span>, Style::Time.style(<span class="self">self</span>.t0));
+        <span class="macro">println!</span>(<span class="string">"\tdelta_f0: {}"</span>, Style::Protocol.style(<span class="self">self</span>.delta_f0));
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tOperation validity periods: {}&quot;</span>,
+            <span class="string">"\tOperation validity periods: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.operation_validity_periods)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tPeriods per cycle: {}&quot;</span>,
+            <span class="string">"\tPeriods per cycle: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.periods_per_cycle)
         );
-        <span class="macro">println!</span>(<span class="string">&quot;\tBlock reward: {}&quot;</span>, Style::Coins.style(<span class="self">self</span>.block_reward));
-        <span class="macro">println!</span>(<span class="string">&quot;\tRoll price: {}&quot;</span>, Style::Coins.style(<span class="self">self</span>.roll_price));
+        <span class="macro">println!</span>(<span class="string">"\tBlock reward: {}"</span>, Style::Coins.style(<span class="self">self</span>.block_reward));
+        <span class="macro">println!</span>(<span class="string">"\tRoll price: {}"</span>, Style::Coins.style(<span class="self">self</span>.roll_price));
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tMax block size (in bytes): {}&quot;</span>,
+            <span class="string">"\tMax block size (in bytes): {}"</span>,
             Style::Block.style(<span class="self">self</span>.max_block_size)
         );
     }
@@ -969,25 +969,25 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>ConsensusStats {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;Consensus stats:&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"Consensus stats:"</span>);
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tStart stats timespan time: {}&quot;</span>,
+            <span class="string">"\tStart stats timespan time: {}"</span>,
             Style::Time.style(<span class="self">self</span>.start_timespan.format_instant())
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tEnd stats timespan time: {}&quot;</span>,
+            <span class="string">"\tEnd stats timespan time: {}"</span>,
             Style::Time.style(<span class="self">self</span>.end_timespan.format_instant())
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tFinal block count: {}&quot;</span>,
+            <span class="string">"\tFinal block count: {}"</span>,
             Style::Block.style(<span class="self">self</span>.final_block_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tStale block count: {}&quot;</span>,
+            <span class="string">"\tStale block count: {}"</span>,
             Style::Block.style(<span class="self">self</span>.stale_block_count)
         );
         <span class="macro">println!</span>(
-            <span class="string">&quot;\tClique count: {}&quot;</span>,
+            <span class="string">"\tClique count: {}"</span>,
             Style::Protocol.style(<span class="self">self</span>.clique_count)
         );
     }
@@ -995,16 +995,16 @@
 
 <span class="kw">impl </span>Output <span class="kw">for </span>BlockInfo {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>PreHashSet&lt;Address&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(
-            <span class="string">&quot;{}&quot;</span>,
+            <span class="string">"{}"</span>,
             <span class="self">self</span>.iter()
-                .fold(<span class="string">&quot;&quot;</span>.to_string(), |acc, a| <span class="macro">format!</span>(<span class="string">&quot;{}{}\n&quot;</span>, acc, a))
+                .fold(<span class="string">""</span>.to_string(), |acc, a| <span class="macro">format!</span>(<span class="string">"{}{}\n"</span>, acc, a))
         )
     }
 }
@@ -1012,57 +1012,57 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;AddressInfo&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, Style::Separator.style(<span class="string">&quot;========&quot;</span>));
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Separator.style(<span class="string">"========"</span>));
             <span class="macro">println!</span>(
-                <span class="string">&quot;Address {} (thread {}):&quot;</span>,
+                <span class="string">"Address {} (thread {}):"</span>,
                 Style::Wallet.style(info.address),
                 Style::Protocol.style(info.thread),
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;\tBalance: {}={}, {}={}&quot;</span>,
-                Style::Finished.style(<span class="string">&quot;final&quot;</span>),
+                <span class="string">"\tBalance: {}={}, {}={}"</span>,
+                Style::Finished.style(<span class="string">"final"</span>),
                 Style::Coins.style(info.final_balance),
-                Style::Pending.style(<span class="string">&quot;candidate&quot;</span>),
+                Style::Pending.style(<span class="string">"candidate"</span>),
                 Style::Coins.style(info.candidate_balance),
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;\tRolls: {}={}, {}={}&quot;</span>,
-                Style::Finished.style(<span class="string">&quot;final&quot;</span>),
+                <span class="string">"\tRolls: {}={}, {}={}"</span>,
+                Style::Finished.style(<span class="string">"final"</span>),
                 Style::Protocol.style(info.final_roll_count),
-                Style::Pending.style(<span class="string">&quot;candidate&quot;</span>),
+                Style::Pending.style(<span class="string">"candidate"</span>),
                 Style::Protocol.style(info.candidate_roll_count),
             );
 
-            <span class="macro">print!</span>(<span class="string">&quot;\tLocked coins:&quot;</span>);
+            <span class="macro">print!</span>(<span class="string">"\tLocked coins:"</span>);
             <span class="kw">if </span>info.deferred_credits.is_empty() {
-                <span class="macro">println!</span>(<span class="string">&quot; {}&quot;</span>, Style::Coins.style(<span class="string">&quot;0&quot;</span>));
+                <span class="macro">println!</span>(<span class="string">" {}"</span>, Style::Coins.style(<span class="string">"0"</span>));
             } <span class="kw">else </span>{
                 <span class="macro">println!</span>();
                 <span class="kw">for </span>slot_amount <span class="kw">in </span><span class="kw-2">&amp;</span>info.deferred_credits {
                     <span class="macro">println!</span>(
-                        <span class="string">&quot;\t\t{} locked coins will be unlocked at slot {}&quot;</span>,
+                        <span class="string">"\t\t{} locked coins will be unlocked at slot {}"</span>,
                         Style::Coins.style(slot_amount.amount),
                         Style::Protocol.style(slot_amount.slot),
                     );
                 }
             }
             <span class="kw">if </span>!info.cycle_infos.is_empty() {
-                <span class="macro">println!</span>(<span class="string">&quot;\tCycle infos:&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">"\tCycle infos:"</span>);
             }
             <span class="kw">for </span>cycle_info <span class="kw">in </span><span class="kw-2">&amp;</span>info.cycle_infos {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;\t\tCycle {} ({}): produced {} and missed {} blocks{}&quot;</span>,
+                    <span class="string">"\t\tCycle {} ({}): produced {} and missed {} blocks{}"</span>,
                     Style::Protocol.style(cycle_info.cycle),
                     <span class="kw">if </span>cycle_info.is_final {
-                        Style::Finished.style(<span class="string">&quot;final&quot;</span>)
+                        Style::Finished.style(<span class="string">"final"</span>)
                     } <span class="kw">else </span>{
-                        Style::Pending.style(<span class="string">&quot;candidate&quot;</span>)
+                        Style::Pending.style(<span class="string">"candidate"</span>)
                     },
                     Style::Good.style(cycle_info.ok_count),
                     Style::Bad.style(cycle_info.nok_count),
                     <span class="kw">match </span>cycle_info.active_rolls {
-                        <span class="prelude-val">Some</span>(rolls) =&gt; <span class="macro">format!</span>(<span class="string">&quot; with {} active rolls&quot;</span>, Style::Good.style(rolls)),
-                        <span class="prelude-val">None </span>=&gt; <span class="string">&quot;&quot;</span>.into(),
+                        <span class="prelude-val">Some</span>(rolls) =&gt; <span class="macro">format!</span>(<span class="string">" with {} active rolls"</span>, Style::Good.style(rolls)),
+                        <span class="prelude-val">None </span>=&gt; <span class="string">""</span>.into(),
                     },
                 );
             }
@@ -1073,7 +1073,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;DatastoreEntryOutput&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>data_entry <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, data_entry);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, data_entry);
         }
     }
 }
@@ -1081,7 +1081,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;EndorsementInfo&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>endorsement_info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, endorsement_info);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, endorsement_info);
         }
     }
 }
@@ -1089,7 +1089,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;IpAddr&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>ips <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, ips);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, ips);
         }
     }
 }
@@ -1097,58 +1097,58 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;OperationInfo&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="string">&quot;==========&quot;</span>).color256(<span class="number">237</span>));
-            <span class="macro">print!</span>(<span class="string">&quot;Operation {}&quot;</span>, Style::Id.style(info.id));
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, style(<span class="string">"=========="</span>).color256(<span class="number">237</span>));
+            <span class="macro">print!</span>(<span class="string">"Operation {}"</span>, Style::Id.style(info.id));
             <span class="kw">if </span>info.in_pool {
-                <span class="macro">print!</span>(<span class="string">&quot;, {}&quot;</span>, Style::Pending.style(<span class="string">&quot;in pool&quot;</span>));
+                <span class="macro">print!</span>(<span class="string">", {}"</span>, Style::Pending.style(<span class="string">"in pool"</span>));
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(f) = info.is_operation_final {
                 <span class="macro">print!</span>(
-                    <span class="string">&quot;, operation is {}&quot;</span>,
+                    <span class="string">", operation is {}"</span>,
                     <span class="kw">if </span>f {
-                        Style::Finished.style(<span class="string">&quot;final&quot;</span>)
+                        Style::Finished.style(<span class="string">"final"</span>)
                     } <span class="kw">else </span>{
-                        Style::Pending.style(<span class="string">&quot;not final&quot;</span>)
+                        Style::Pending.style(<span class="string">"not final"</span>)
                     }
                 );
             } <span class="kw">else </span>{
-                <span class="macro">print!</span>(<span class="string">&quot;, finality {}&quot;</span>, Style::Unknown.style(<span class="string">&quot;unknown&quot;</span>));
+                <span class="macro">print!</span>(<span class="string">", finality {}"</span>, Style::Unknown.style(<span class="string">"unknown"</span>));
             }
             <span class="macro">println!</span>(
-                <span class="string">&quot;, {}&quot;</span>,
+                <span class="string">", {}"</span>,
                 <span class="kw">match </span>info.op_exec_status {
-                    <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; Style::Good.style(<span class="string">&quot;success&quot;</span>),
-                    <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; Style::Bad.style(<span class="string">&quot;failed&quot;</span>),
-                    <span class="prelude-val">None </span>=&gt; Style::Unknown.style(<span class="string">&quot;unknown status&quot;</span>),
+                    <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; Style::Good.style(<span class="string">"success"</span>),
+                    <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; Style::Bad.style(<span class="string">"failed"</span>),
+                    <span class="prelude-val">None </span>=&gt; Style::Unknown.style(<span class="string">"unknown status"</span>),
                 }
             );
             <span class="kw">if </span>info.in_blocks.is_empty() {
-                <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, Style::Block.style(<span class="string">&quot;Not in any blocks&quot;</span>));
+                <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Block.style(<span class="string">"Not in any blocks"</span>));
             } <span class="kw">else </span>{
-                <span class="macro">println!</span>(<span class="string">&quot;In blocks:&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">"In blocks:"</span>);
                 <span class="kw">for </span>bid <span class="kw">in </span>info.in_blocks.iter() {
-                    <span class="macro">println!</span>(<span class="string">&quot;\t- {}&quot;</span>, Style::Block.style(bid));
+                    <span class="macro">println!</span>(<span class="string">"\t- {}"</span>, Style::Block.style(bid));
                 }
             }
             <span class="macro">println!</span>(
-                <span class="string">&quot;Signature: {}&quot;</span>,
+                <span class="string">"Signature: {}"</span>,
                 Style::Signature.style(info.operation.signature)
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;Creator pubkey: {}&quot;</span>,
+                <span class="string">"Creator pubkey: {}"</span>,
                 Style::Wallet.style(info.operation.content_creator_pub_key)
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;Creator address: {}&quot;</span>,
+                <span class="string">"Creator address: {}"</span>,
                 Style::Wallet.style(info.operation.content_creator_address)
             );
-            <span class="macro">println!</span>(<span class="string">&quot;Fee: {}&quot;</span>, Style::Coins.style(info.operation.content.fee));
+            <span class="macro">println!</span>(<span class="string">"Fee: {}"</span>, Style::Coins.style(info.operation.content.fee));
             <span class="macro">println!</span>(
-                <span class="string">&quot;Expire period: {}&quot;</span>,
+                <span class="string">"Expire period: {}"</span>,
                 Style::Pending.style(info.operation.content.expire_period)
             );
             <span class="macro">println!</span>(
-                <span class="string">&quot;Operation type: {}&quot;</span>,
+                <span class="string">"Operation type: {}"</span>,
                 Style::Id.style(<span class="kw-2">&amp;</span>info.operation.content.op)
             );
         }
@@ -1158,7 +1158,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;BlockInfo&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>block_info <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, block_info);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, block_info);
         }
     }
 }
@@ -1166,7 +1166,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;OperationId&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>operation_id <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, operation_id);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, operation_id);
         }
     }
 }
@@ -1174,7 +1174,7 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;Address&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>addr <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, addr);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, addr);
         }
     }
 }
@@ -1182,20 +1182,20 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>Vec&lt;SCOutputEvent&gt; {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for </span>addr <span class="kw">in </span><span class="self">self </span>{
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, addr);
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, addr);
         }
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>PubkeySig {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
     }
 }
 
 <span class="kw">impl </span>Output <span class="kw">for </span>ExecuteReadOnlyResponse {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>);
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
     }
 }
 </code></pre></div></section></main></body></html>
