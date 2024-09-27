@@ -111,8 +111,6 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>massa_channel::{receiver::MassaReceiver, sender::MassaSender};
@@ -142,9 +140,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>messages::{BlockMessage, BlockMessageSerializer};
 
 <span class="attr">#[cfg(test)]
-</span><span class="kw">pub use </span>messages::{
-    AskForBlockInfo, BlockInfoReply, BlockMessageDeserializer, BlockMessageDeserializerArgs,
-};
+</span><span class="kw">pub use </span>messages::{AskForBlockInfo, BlockInfoReply};
 
 <span class="kw">use super</span>::{
     endorsement_handler::{

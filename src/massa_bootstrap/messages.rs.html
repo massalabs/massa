@@ -921,6 +921,7 @@
 <a href="#921" id="921">921</a>
 <a href="#922" id="922">922</a>
 <a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1007,7 +1008,8 @@
     },
 }
 
-<span class="kw">impl </span>ToString <span class="kw">for </span>BootstrapServerMessage {
+<span class="attr">#[allow(clippy::to_string_trait_impl)]
+</span><span class="kw">impl </span>ToString <span class="kw">for </span>BootstrapServerMessage {
     <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
             BootstrapServerMessage::BootstrapTime { .. } =&gt; <span class="string">"BootstrapTime"</span>.to_string(),

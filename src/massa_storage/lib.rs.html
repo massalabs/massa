@@ -478,6 +478,7 @@
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
@@ -575,7 +576,8 @@
     <span class="doccomment">/// Creates a new `Storage` instance. Must be called only one time in the execution:
     /// - In the main for the node
     /// - At the top of the test in tests
-    /// All others instances of Storage must be cloned from this one using `clone()` or `clone_without_refs()`.
+    ///
+    /// All others instance of Storage must be cloned from this one using `clone()` or `clone_without_refs()`.
     </span><span class="kw">pub fn </span>create_root() -&gt; Storage {
         Storage {
             blocks: Default::default(),

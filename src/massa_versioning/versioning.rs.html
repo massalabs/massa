@@ -3862,7 +3862,7 @@
             .iter()
             .rev()
             .filter(|(mi, ms)| {
-                mi.components.get(component).is_some()
+                mi.components.contains_key(component)
                     &amp;&amp; <span class="macro">matches!</span>(ms.state, ComponentState::Active(<span class="kw">_</span>))
             })
             .find_map(|(mi, ms)| {
