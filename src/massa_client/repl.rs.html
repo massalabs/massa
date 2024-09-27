@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><title>repl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/repl.rs`."><title>repl.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -242,35 +242,35 @@
     <span class="kw">for </span>param <span class="kw">in </span>parameters {
         <span class="kw">let </span><span class="kw-2">mut </span>chars = param.chars();
         <span class="kw">match </span>chars.next() {
-            <span class="prelude-val">Some</span>(<span class="string">&#39;\&#39;&#39;</span>) <span class="kw">if </span>!has_opening_double_quote =&gt; {
+            <span class="prelude-val">Some</span>(<span class="string">'\''</span>) <span class="kw">if </span>!has_opening_double_quote =&gt; {
                 has_opening_simple_quote = <span class="bool-val">true</span>;
                 temp_simple_quote = param.clone();
                 temp_simple_quote.remove(<span class="number">0</span>);
             }
-            <span class="prelude-val">Some</span>(<span class="string">&#39;&quot;&#39;</span>) <span class="kw">if </span>!has_opening_simple_quote =&gt; {
+            <span class="prelude-val">Some</span>(<span class="string">'"'</span>) <span class="kw">if </span>!has_opening_simple_quote =&gt; {
                 has_opening_double_quote = <span class="bool-val">true</span>;
                 temp_double_quote = param.clone();
                 temp_double_quote.remove(<span class="number">0</span>);
             }
             <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="kw">if </span>has_opening_simple_quote =&gt; {
-                temp_simple_quote.push(<span class="string">&#39; &#39;</span>);
+                temp_simple_quote.push(<span class="string">' '</span>);
                 temp_simple_quote.push_str(<span class="kw-2">&amp;</span>param);
             }
             <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="kw">if </span>has_opening_double_quote =&gt; {
-                temp_double_quote.push(<span class="string">&#39; &#39;</span>);
+                temp_double_quote.push(<span class="string">' '</span>);
                 temp_double_quote.push_str(<span class="kw-2">&amp;</span>param);
             }
             <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; new_parameters.push(param.clone()),
             <span class="prelude-val">None </span>=&gt; <span class="kw">continue</span>,
         };
         <span class="kw">match </span>chars.last() {
-            <span class="prelude-val">Some</span>(<span class="string">&#39;\&#39;&#39;</span>) <span class="kw">if </span>has_opening_simple_quote =&gt; {
+            <span class="prelude-val">Some</span>(<span class="string">'\''</span>) <span class="kw">if </span>has_opening_simple_quote =&gt; {
                 has_opening_simple_quote = <span class="bool-val">false</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>to_add = temp_simple_quote.clone();
                 to_add.pop();
                 new_parameters.push(to_add);
             }
-            <span class="prelude-val">Some</span>(<span class="string">&#39;&quot;&#39;</span>) <span class="kw">if </span>has_opening_double_quote =&gt; {
+            <span class="prelude-val">Some</span>(<span class="string">'"'</span>) <span class="kw">if </span>has_opening_double_quote =&gt; {
                 has_opening_double_quote = <span class="bool-val">false</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>to_add = temp_double_quote.clone();
                 to_add.pop();
@@ -297,10 +297,10 @@
     args_password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="macro">massa_fancy_ascii_art_logo!</span>();
-    <span class="macro">println!</span>(<span class="string">&quot;Use &#39;exit&#39; or &#39;CTRL+D or CTRL+C&#39; to quit the prompt&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Use the Up/Down arrows to scroll through history&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Use the Right arrow or Tab to complete your command&quot;</span>);
-    <span class="macro">println!</span>(<span class="string">&quot;Use the Enter key to execute your command&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">"Use 'exit' or 'CTRL+D or CTRL+C' to quit the prompt"</span>);
+    <span class="macro">println!</span>(<span class="string">"Use the Up/Down arrows to scroll through history"</span>);
+    <span class="macro">println!</span>(<span class="string">"Use the Right arrow or Tab to complete your command"</span>);
+    <span class="macro">println!</span>(<span class="string">"Use the Enter key to execute your command"</span>);
     <span class="kw">crate</span>::cmds::help();
     <span class="kw">let </span>h = MyHelper {
         completer: MassaCompleter::new(),
@@ -316,23 +316,23 @@
     <span class="kw">let </span><span class="kw-2">mut </span>rl = Editor::with_config(config)<span class="question-mark">?</span>;
     rl.set_helper(<span class="prelude-val">Some</span>(h));
     <span class="kw">if </span>rl.load_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path).is_err() {
-        <span class="macro">println!</span>(<span class="string">&quot;No previous history.&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">"No previous history."</span>);
     }
 
     <span class="kw">let </span><span class="kw-2">mut </span>wallet_opt = <span class="prelude-val">None</span>;
 
     <span class="kw">loop </span>{
-        <span class="kw">let </span>readline = rl.readline(<span class="string">&quot;command &gt; &quot;</span>);
+        <span class="kw">let </span>readline = rl.readline(<span class="string">"command &gt; "</span>);
         <span class="kw">match </span>readline {
             <span class="prelude-val">Ok</span>(line) =&gt; {
                 <span class="kw">if </span>line.is_empty() {
                     <span class="kw">continue</span>;
                 }
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.add_history_entry(line.as_str()) {
-                    <span class="macro">println!</span>(<span class="string">&quot;Failed to append commands history {}&quot;</span>, e);
+                    <span class="macro">println!</span>(<span class="string">"Failed to append commands history {}"</span>, e);
                 }
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = rl.append_history(<span class="kw-2">&amp;</span>SETTINGS.history_file_path) {
-                    <span class="macro">println!</span>(<span class="string">&quot;Failed to append commands file history: {}&quot;</span>, e);
+                    <span class="macro">println!</span>(<span class="string">"Failed to append commands file history: {}"</span>, e);
                 }
                 <span class="kw">let </span>input: Vec&lt;String&gt; =
                     group_parameters(line.split_whitespace().map(|x| x.to_string()).collect());
@@ -344,7 +344,7 @@
                         <span class="comment">// Check if we need to prompt the user for their wallet password
                         </span><span class="kw">if </span>command.is_pwd_needed() &amp;&amp; wallet_opt.is_none() {
                             <span class="kw">let </span>password =
-                                <span class="kw">match </span>(args_password.clone(), env::var(<span class="string">&quot;MASSA_CLIENT_PASSWORD&quot;</span>)) {
+                                <span class="kw">match </span>(args_password.clone(), env::var(<span class="string">"MASSA_CLIENT_PASSWORD"</span>)) {
                                     (<span class="prelude-val">Some</span>(pwd), <span class="kw">_</span>) =&gt; pwd,
                                     (<span class="kw">_</span>, <span class="prelude-val">Ok</span>(pwd)) =&gt; pwd,
                                     <span class="kw">_ </span>=&gt; ask_password(wallet_path),
@@ -357,7 +357,7 @@
                             ) {
                                 <span class="prelude-val">Ok</span>(wallet) =&gt; wallet,
                                 <span class="prelude-val">Err</span>(e) =&gt; {
-                                    <span class="macro">println!</span>(<span class="string">&quot;Could not open wallet: {}&quot;</span>, e);
+                                    <span class="macro">println!</span>(<span class="string">"Could not open wallet: {}"</span>, e);
                                     <span class="kw">continue</span>;
                                 }
                             };
@@ -369,11 +369,11 @@
                             .<span class="kw">await
                         </span>{
                             <span class="prelude-val">Ok</span>(output) =&gt; output.pretty_print(),
-                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red()),
+                            <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">"{}"</span>, style(<span class="macro">format!</span>(<span class="string">"Error: {}"</span>, e)).red()),
                         }
                     }
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="macro">println!</span>(<span class="string">&quot;Command not found!\ntype \&quot;help\&quot; to get the list of commands&quot;</span>)
+                        <span class="macro">println!</span>(<span class="string">"Command not found!\ntype \"help\" to get the list of commands"</span>)
                     }
                 }
             }
@@ -384,7 +384,7 @@
                 <span class="kw">break</span>;
             }
             <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">println!</span>(<span class="string">&quot;Error: {err:?}&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">"Error: {err:?}"</span>);
                 <span class="kw">break</span>;
             }
         }
@@ -410,9 +410,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         line: <span class="kw-2">&amp;</span>str,
         pos: usize,
-        ctx: <span class="kw-2">&amp;</span>rustyline::Context&lt;<span class="lifetime">&#39;_</span>&gt;,
+        ctx: <span class="kw-2">&amp;</span>rustyline::Context&lt;<span class="lifetime">'_</span>&gt;,
     ) -&gt; rustyline::Result&lt;(usize, Vec&lt;<span class="self">Self</span>::Candidate&gt;)&gt; {
-        <span class="kw">if </span>line.contains(<span class="string">&#39; &#39;</span>) {
+        <span class="kw">if </span>line.contains(<span class="string">' '</span>) {
             <span class="self">self</span>.file_completer.complete(line, pos, ctx)
         } <span class="kw">else </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>candidates = Vec::new();

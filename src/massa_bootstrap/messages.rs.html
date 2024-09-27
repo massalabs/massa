@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><title>messages.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_bootstrap/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/messages.rs`."><title>messages.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -921,6 +921,7 @@
 <a href="#921" id="921">921</a>
 <a href="#922" id="922">922</a>
 <a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::settings::BootstrapServerMessageDeserializerArgs;
@@ -1007,16 +1008,17 @@
     },
 }
 
-<span class="kw">impl </span>ToString <span class="kw">for </span>BootstrapServerMessage {
+<span class="attr">#[allow(clippy::to_string_trait_impl)]
+</span><span class="kw">impl </span>ToString <span class="kw">for </span>BootstrapServerMessage {
     <span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="kw">match </span><span class="self">self </span>{
-            BootstrapServerMessage::BootstrapTime { .. } =&gt; <span class="string">&quot;BootstrapTime&quot;</span>.to_string(),
-            BootstrapServerMessage::BootstrapPeers { .. } =&gt; <span class="string">&quot;BootstrapPeers&quot;</span>.to_string(),
-            BootstrapServerMessage::BootstrapPart { .. } =&gt; <span class="string">&quot;BootstrapPart&quot;</span>.to_string(),
-            BootstrapServerMessage::BootstrapFinished =&gt; <span class="string">&quot;BootstrapFinished&quot;</span>.to_string(),
-            BootstrapServerMessage::SlotTooOld =&gt; <span class="string">&quot;SlotTooOld&quot;</span>.to_string(),
+            BootstrapServerMessage::BootstrapTime { .. } =&gt; <span class="string">"BootstrapTime"</span>.to_string(),
+            BootstrapServerMessage::BootstrapPeers { .. } =&gt; <span class="string">"BootstrapPeers"</span>.to_string(),
+            BootstrapServerMessage::BootstrapPart { .. } =&gt; <span class="string">"BootstrapPart"</span>.to_string(),
+            BootstrapServerMessage::BootstrapFinished =&gt; <span class="string">"BootstrapFinished"</span>.to_string(),
+            BootstrapServerMessage::SlotTooOld =&gt; <span class="string">"SlotTooOld"</span>.to_string(),
             BootstrapServerMessage::BootstrapError { error } =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;BootstrapError {{ error: {} }}&quot;</span>, error)
+                <span class="macro">format!</span>(<span class="string">"BootstrapError {{ error: {} }}"</span>, error)
             }
         }
     }
@@ -1090,7 +1092,7 @@
     /// let message_serializer = BootstrapServerMessageSerializer::new();
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
-    ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
+    ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&amp;bootstrap_server_message, &amp;mut message_serialized).unwrap();
@@ -1141,7 +1143,7 @@
                     <span class="kw-2">&amp;</span>state_new_element_buffer
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of state new_elements len&quot;</span>),
+                        .expect(<span class="string">"Overflow of state new_elements len"</span>),
                     buffer,
                 )<span class="question-mark">?</span>;
                 buffer.extend(state_new_element_buffer);
@@ -1157,7 +1159,7 @@
                     <span class="kw-2">&amp;</span>state_updates_buffer
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of state updates len&quot;</span>),
+                        .expect(<span class="string">"Overflow of state updates len"</span>),
                     buffer,
                 )<span class="question-mark">?</span>;
                 buffer.extend(state_updates_buffer);
@@ -1175,7 +1177,7 @@
                     <span class="kw-2">&amp;</span>versioning_new_element_buffer
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of versioning new_elements len&quot;</span>),
+                        .expect(<span class="string">"Overflow of versioning new_elements len"</span>),
                     buffer,
                 )<span class="question-mark">?</span>;
                 buffer.extend(versioning_new_element_buffer);
@@ -1191,7 +1193,7 @@
                     <span class="kw-2">&amp;</span>versioning_updates_buffer
                         .len()
                         .try_into()
-                        .expect(<span class="string">&quot;Overflow of versioning updates len&quot;</span>),
+                        .expect(<span class="string">"Overflow of versioning updates len"</span>),
                     buffer,
                 )<span class="question-mark">?</span>;
                 buffer.extend(versioning_updates_buffer);
@@ -1223,7 +1225,7 @@
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageServerTypeId::BootstrapError), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u32_serializer.serialize(
                     <span class="kw-2">&amp;</span>error.len().try_into().map_err(|<span class="kw">_</span>| {
-                        SerializeError::GeneralError(<span class="string">&quot;Fail to convert usize to u32&quot;</span>.to_string())
+                        SerializeError::GeneralError(<span class="string">"Fail to convert usize to u32"</span>.to_string())
                     })<span class="question-mark">?</span>,
                     buffer,
                 )<span class="question-mark">?</span>;
@@ -1353,7 +1355,7 @@
     /// let message_deserializer = BootstrapServerMessageDeserializer::new(args);
     /// let bootstrap_server_message = BootstrapServerMessage::BootstrapTime {
     ///    server_time: MassaTime::from_millis(0),
-    ///    version: Version::from_str(&quot;TEST.1.10&quot;).unwrap(),
+    ///    version: Version::from_str("TEST.1.10").unwrap(),
     /// };
     /// let mut message_serialized = Vec::new();
     /// message_serializer.serialize(&amp;bootstrap_server_message, &amp;mut message_serialized).unwrap();
@@ -1364,18 +1366,18 @@
     ///        version,
     ///    } =&gt; {
     ///     assert_eq!(server_time, MassaTime::from_millis(0));
-    ///     assert_eq!(version, Version::from_str(&quot;TEST.1.10&quot;).unwrap());
+    ///     assert_eq!(version, Version::from_str("TEST.1.10").unwrap());
     ///   }
-    ///   _ =&gt; panic!(&quot;Unexpected message&quot;),
+    ///   _ =&gt; panic!("Unexpected message"),
     /// }
     /// assert_eq!(rest.len(), 0);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: nom::error::ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + nom::error::ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: nom::error::ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + nom::error::ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BootstrapServerMessage, E&gt; {
-        context(<span class="string">&quot;Failed BootstrapServerMessage deserialization&quot;</span>, |buffer| {
-            <span class="kw">let </span>(input, id) = context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BootstrapServerMessage, E&gt; {
+        context(<span class="string">"Failed BootstrapServerMessage deserialization"</span>, |buffer| {
+            <span class="kw">let </span>(input, id) = context(<span class="string">"Failed id deserialization"</span>, |input| {
                 <span class="self">self</span>.message_id_deserializer.deserialize(input)
             })
             .map(|id| {
@@ -1389,10 +1391,10 @@
             .parse(buffer)<span class="question-mark">?</span>;
             <span class="kw">match </span>id<span class="question-mark">? </span>{
                 MessageServerTypeId::BootstrapTime =&gt; tuple((
-                    context(<span class="string">&quot;Failed server_time deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed server_time deserialization"</span>, |input| {
                         <span class="self">self</span>.time_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed version deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed version deserialization"</span>, |input| {
                         <span class="self">self</span>.version_deserializer.deserialize(input)
                     }),
                 ))
@@ -1403,22 +1405,22 @@
                     },
                 )
                 .parse(input),
-                MessageServerTypeId::Peers =&gt; context(<span class="string">&quot;Failed peers deserialization&quot;</span>, |input| {
+                MessageServerTypeId::Peers =&gt; context(<span class="string">"Failed peers deserialization"</span>, |input| {
                     <span class="self">self</span>.peers_deserializer.deserialize(input)
                 })
                 .map(|peers| BootstrapServerMessage::BootstrapPeers { peers })
                 .parse(input),
                 MessageServerTypeId::FinalStatePart =&gt; tuple((
-                    context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed slot deserialization"</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
                     }),
                     context(
-                        <span class="string">&quot;Failed state_part deserialization&quot;</span>,
+                        <span class="string">"Failed state_part deserialization"</span>,
                         tuple((
                             context(
-                                <span class="string">&quot;Failed new_elements deserialization&quot;</span>,
+                                <span class="string">"Failed new_elements deserialization"</span>,
                                 length_value(
-                                    context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                                    context(<span class="string">"Failed length deserialization"</span>, |input| {
                                         <span class="self">self</span>.state_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
@@ -1429,9 +1431,9 @@
                                 ),
                             ),
                             context(
-                                <span class="string">&quot;Failed updates deserialization&quot;</span>,
+                                <span class="string">"Failed updates deserialization"</span>,
                                 length_value(
-                                    context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                                    context(<span class="string">"Failed length deserialization"</span>, |input| {
                                         <span class="self">self</span>.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
@@ -1441,18 +1443,18 @@
                                     ))),
                                 ),
                             ),
-                            context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed slot deserialization"</span>, |input| {
                                 <span class="self">self</span>.slot_deserializer.deserialize(input)
                             }),
                         )),
                     ),
                     context(
-                        <span class="string">&quot;Failed versioning_part deserialization&quot;</span>,
+                        <span class="string">"Failed versioning_part deserialization"</span>,
                         tuple((
                             context(
-                                <span class="string">&quot;Failed new_elements deserialization&quot;</span>,
+                                <span class="string">"Failed new_elements deserialization"</span>,
                                 length_value(
-                                    context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                                    context(<span class="string">"Failed length deserialization"</span>, |input| {
                                         <span class="self">self</span>.versioning_part_new_elements_length_deserializer
                                             .deserialize(input)
                                     }),
@@ -1463,9 +1465,9 @@
                                 ),
                             ),
                             context(
-                                <span class="string">&quot;Failed updates deserialization&quot;</span>,
+                                <span class="string">"Failed updates deserialization"</span>,
                                 length_value(
-                                    context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                                    context(<span class="string">"Failed length deserialization"</span>, |input| {
                                         <span class="self">self</span>.stream_batch_updates_length_deserializer
                                             .deserialize(input)
                                     }),
@@ -1475,22 +1477,22 @@
                                     ))),
                                 ),
                             ),
-                            context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed slot deserialization"</span>, |input| {
                                 <span class="self">self</span>.slot_deserializer.deserialize(input)
                             }),
                         )),
                     ),
-                    context(<span class="string">&quot;Failed consensus_part deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed consensus_part deserialization"</span>, |input| {
                         <span class="self">self</span>.bootstrapable_graph_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed consensus_outdated_ids deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed consensus_outdated_ids deserialization"</span>, |input| {
                         <span class="self">self</span>.block_id_set_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed last_start_period deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed last_start_period deserialization"</span>, |input| {
                         <span class="self">self</span>.opt_last_start_period_deserializer.deserialize(input)
                     }),
                     context(
-                        <span class="string">&quot;Failed last_slot_before_downtime deserialization&quot;</span>,
+                        <span class="string">"Failed last_slot_before_downtime deserialization"</span>,
                         |input| {
                             <span class="self">self</span>.opt_last_slot_before_downtime_deserializer
                                 .deserialize(input)
@@ -1541,8 +1543,8 @@
                 }
                 MessageServerTypeId::SlotTooOld =&gt; <span class="prelude-val">Ok</span>((input, BootstrapServerMessage::SlotTooOld)),
                 MessageServerTypeId::BootstrapError =&gt; context(
-                    <span class="string">&quot;Failed BootstrapError deserialization&quot;</span>,
-                    length_data(context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="string">"Failed BootstrapError deserialization"</span>,
+                    length_data(context(<span class="string">"Failed length deserialization"</span>, |input| {
                         <span class="self">self</span>.length_bootstrap_error.deserialize(input)
                     })),
                 )
@@ -1676,7 +1678,7 @@
                     .serialize(<span class="kw-2">&amp;</span>u32::from(MessageClientTypeId::BootstrapError), buffer)<span class="question-mark">?</span>;
                 <span class="self">self</span>.u32_serializer.serialize(
                     <span class="kw-2">&amp;</span>error.len().try_into().map_err(|<span class="kw">_</span>| {
-                        SerializeError::GeneralError(<span class="string">&quot;Fail to convert usize to u32&quot;</span>.to_string())
+                        SerializeError::GeneralError(<span class="string">"Fail to convert usize to u32"</span>.to_string())
                     })<span class="question-mark">?</span>,
                     buffer,
                 )<span class="question-mark">?</span>;
@@ -1751,16 +1753,16 @@
     /// let (rest, message_deserialized) = message_deserializer.deserialize::&lt;DeserializeError&gt;(&amp;message_serialized).unwrap();
     /// match message_deserialized {
     ///     BootstrapClientMessage::AskBootstrapPeers =&gt; (),
-    ///   _ =&gt; panic!(&quot;Unexpected message&quot;),
+    ///   _ =&gt; panic!("Unexpected message"),
     /// };
     /// assert_eq!(rest.len(), 0);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BootstrapClientMessage, E&gt; {
-        context(<span class="string">&quot;Failed BootstrapClientMessage deserialization&quot;</span>, |buffer| {
-            <span class="kw">let </span>(input, id) = context(<span class="string">&quot;Failed id deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BootstrapClientMessage, E&gt; {
+        context(<span class="string">"Failed BootstrapClientMessage deserialization"</span>, |buffer| {
+            <span class="kw">let </span>(input, id) = context(<span class="string">"Failed id deserialization"</span>, |input| {
                 <span class="self">self</span>.id_deserializer.deserialize(input)
             })
             .map(|id| {
@@ -1790,19 +1792,19 @@
                         ))
                     } <span class="kw">else </span>{
                         tuple((
-                            context(<span class="string">&quot;Failed last_slot deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed last_slot deserialization"</span>, |input| {
                                 <span class="self">self</span>.slot_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Faild last_state_step deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Faild last_state_step deserialization"</span>, |input| {
                                 <span class="self">self</span>.state_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Faild last_versioning_step deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Faild last_versioning_step deserialization"</span>, |input| {
                                 <span class="self">self</span>.state_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed last_consensus_step deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed last_consensus_step deserialization"</span>, |input| {
                                 <span class="self">self</span>.block_ids_step_deserializer.deserialize(input)
                             }),
-                            context(<span class="string">&quot;Failed send_last_start_period deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed send_last_start_period deserialization"</span>, |input| {
                                 <span class="self">self</span>.bool_deserializer.deserialize(input)
                             }),
                         ))
@@ -1827,8 +1829,8 @@
                     }
                 }
                 MessageClientTypeId::BootstrapError =&gt; context(
-                    <span class="string">&quot;Failed BootstrapError deserialization&quot;</span>,
-                    length_data(context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                    <span class="string">"Failed BootstrapError deserialization"</span>,
+                    length_data(context(<span class="string">"Failed length deserialization"</span>, |input| {
                         <span class="self">self</span>.length_error_deserializer.deserialize(input)
                     })),
                 )

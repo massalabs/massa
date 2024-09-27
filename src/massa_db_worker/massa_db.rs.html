@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-worker/src/massa_db.rs`."><title>massa_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_db_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-db-worker/src/massa_db.rs`."><title>massa_db.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_db_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1876,11 +1876,11 @@
     ChangeIDSerializer: Serializer&lt;ChangeID&gt;,
     ChangeIDDeserializer: Deserializer&lt;ChangeID&gt;,
 {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        f.debug_struct(<span class="string">&quot;RawMassaDB&quot;</span>)
-            .field(<span class="string">&quot;db&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.db)
-            .field(<span class="string">&quot;config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.config)
-            .field(<span class="string">&quot;change_history&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.change_history)
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        f.debug_struct(<span class="string">"RawMassaDB"</span>)
+            .field(<span class="string">"db"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.db)
+            .field(<span class="string">"config"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.config)
+            .field(<span class="string">"change_history"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.change_history)
             .finish()
     }
 }
@@ -1905,7 +1905,7 @@
             <span class="kw">_ </span>=&gt; Unbounded,
         };
 
-        <span class="comment">// Updates == &quot;everything that changed since the last change_id streamed, up to a certain key&quot;.
+        <span class="comment">// Updates == "everything that changed since the last change_id streamed, up to a certain key".
         // This definition also applies to keys that were not in the DB beforehand.
         </span><span class="kw">let </span>updates_on_previous_elements = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_state_step, last_change_id) {
             (StreamingStep::Started, <span class="kw">_</span>) =&gt; {
@@ -1918,7 +1918,7 @@
                 </span><span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::CacheMissError(String::from(
-                            <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
+                            <span class="string">"we don't have this change yet on this node (it's in the future for us)"</span>,
                         )));
                     }
                     std::cmp::Ordering::Equal =&gt; {
@@ -1957,7 +1957,7 @@
                                 // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
                                 // This can happen if the client has a poor connection, or if the network is unstable.
                                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::CacheMissError(String::from(
-                                    <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                                    <span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any"</span>,
                                 )));
                             }
                         }
@@ -1967,7 +1967,7 @@
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// last_change_id is None, but StreamingStep is either Ongoing or Finished
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                    <span class="string">&quot;State streaming was ongoing or finished, but no last_change_id was provided&quot;</span>,
+                    <span class="string">"State streaming was ongoing or finished, but no last_change_id was provided"</span>,
                 )));
             }
         };
@@ -1998,12 +1998,12 @@
                 u64_ser
                     .serialize(<span class="kw-2">&amp;</span>(key_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
                     .map_err(|<span class="kw">_</span>| {
-                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize key length&quot;</span>))
+                        MassaDBError::SerializeError(String::from(<span class="string">"Cannot serialize key length"</span>))
                     })<span class="question-mark">?</span>;
                 u64_ser
                     .serialize(<span class="kw-2">&amp;</span>(value_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
                     .map_err(|<span class="kw">_</span>| {
-                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize value length&quot;</span>))
+                        MassaDBError::SerializeError(String::from(<span class="string">"Cannot serialize value length"</span>))
                     })<span class="question-mark">?</span>;
                 <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
@@ -2047,7 +2047,7 @@
                 </span><span class="kw">match </span>last_change_id.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR)) {
                     std::cmp::Ordering::Greater =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::CacheMissError(String::from(
-                            <span class="string">&quot;we don&#39;t have this change yet on this node (it&#39;s in the future for us)&quot;</span>,
+                            <span class="string">"we don't have this change yet on this node (it's in the future for us)"</span>,
                         )));
                     }
                     std::cmp::Ordering::Equal =&gt; {
@@ -2086,7 +2086,7 @@
                                 // More than `max_history_length` slots have happen since last_change_id, and we have deleted the changes associated to this change_id.
                                 // This can happen if the client has a poor connection, or if the network is unstable.
                                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::CacheMissError(String::from(
-                                    <span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>,
+                                    <span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any"</span>,
                                 )));
                             }
                         }
@@ -2096,7 +2096,7 @@
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// last_change_id is None, but StreamingStep is either Ongoing or Finished
                 </span><span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::TimeError(String::from(
-                    <span class="string">&quot;State streaming was ongoing or finished, but no last_change_id was provided&quot;</span>,
+                    <span class="string">"State streaming was ongoing or finished, but no last_change_id was provided"</span>,
                 )));
             }
         };
@@ -2126,12 +2126,12 @@
                 u64_ser
                     .serialize(<span class="kw-2">&amp;</span>(key_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
                     .map_err(|<span class="kw">_</span>| {
-                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize key length&quot;</span>))
+                        MassaDBError::SerializeError(String::from(<span class="string">"Cannot serialize key length"</span>))
                     })<span class="question-mark">?</span>;
                 u64_ser
                     .serialize(<span class="kw-2">&amp;</span>(value_len <span class="kw">as </span>u64), <span class="kw-2">&amp;mut </span>buffer)
                     .map_err(|<span class="kw">_</span>| {
-                        MassaDBError::SerializeError(String::from(<span class="string">&quot;Cannot serialize value length&quot;</span>))
+                        MassaDBError::SerializeError(String::from(<span class="string">"Cannot serialize value length"</span>))
                     })<span class="question-mark">?</span>;
                 <span class="comment">// We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
                 // in order to make deserialization easier
@@ -2165,7 +2165,7 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(change_id) = change_id.clone() {
             <span class="kw">if </span>change_id &lt; <span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::InvalidChangeID(String::from(
-                    <span class="string">&quot;change_id should monotonically increase after every write&quot;</span>,
+                    <span class="string">"change_id should monotonically increase after every write"</span>,
                 )));
             }
         }
@@ -2203,7 +2203,7 @@
         }
 
         <span class="comment">// in versioning_changes, we have the data that we do not want to include in hash
-        // e.g everything that is not in &#39;Active&#39; state (so hashes remain compatibles)
+        // e.g everything that is not in 'Active' state (so hashes remain compatibles)
         </span><span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_changes.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
                 <span class="self">self</span>.current_batch
@@ -2229,7 +2229,7 @@
             current_batch_guard.clear();
 
             <span class="self">self</span>.db.write(batch).map_err(|e| {
-                MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;Can&#39;t write batch to disk: {}&quot;</span>, e))
+                MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">"Can't write batch to disk: {}"</span>, e))
             })<span class="question-mark">?</span>;
         }
 
@@ -2279,7 +2279,7 @@
 
         <span class="kw">let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(change_id_bytes)) = db.get_pinned_cf(handle, CHANGE_ID_KEY) <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::BufferError(String::from(
-                <span class="string">&quot;Could not recover change_id in database&quot;</span>,
+                <span class="string">"Could not recover change_id in database"</span>,
             )));
         };
 
@@ -2446,13 +2446,13 @@
     <span class="doccomment">/// Creates a new hard copy of the DB, for the given slot
     </span><span class="kw">fn </span>backup_db(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; PathBuf {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
-        <span class="kw">let </span>subpath = <span class="macro">format!</span>(<span class="string">&quot;backup_{}_{}&quot;</span>, slot.period, slot.thread);
+        <span class="kw">let </span>subpath = <span class="macro">format!</span>(<span class="string">"backup_{}_{}"</span>, slot.period, slot.thread);
 
         <span class="kw">let </span>previous_backups_paths = std::fs::read_dir(db.path())
-            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>)
+            .expect(<span class="string">"Cannot walk db path"</span>)
             .map(|res| res.map(|e| e.path()))
             .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, std::io::Error&gt;&gt;()
-            .expect(<span class="string">&quot;Cannot walk db path&quot;</span>);
+            .expect(<span class="string">"Cannot walk db path"</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>previous_backups = BTreeMap::new();
 
@@ -2460,8 +2460,8 @@
             <span class="kw">let </span><span class="prelude-val">Some</span>(path_str) = backup_path.file_name().and_then(|f| f.to_str()) <span class="kw">else </span>{
                 <span class="kw">continue</span>;
             };
-            <span class="kw">let </span>vec = path_str.split(<span class="string">&#39;_&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
-            <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">&quot;backup&quot; </span>{
+            <span class="kw">let </span>vec = path_str.split(<span class="string">'_'</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
+            <span class="kw">if </span>vec.len() == <span class="number">3 </span>&amp;&amp; vec[<span class="number">0</span>] == <span class="string">"backup" </span>{
                 <span class="kw">let </span><span class="prelude-val">Ok</span>(period) = vec[<span class="number">1</span>].parse::&lt;u64&gt;() <span class="kw">else </span>{
                     <span class="kw">continue</span>;
                 };
@@ -2476,16 +2476,16 @@
         <span class="comment">// Remove the oldest backups if we have too many
         </span><span class="kw">while </span>previous_backups.len() &gt;= <span class="self">self</span>.config.max_ledger_backups <span class="kw">as </span>usize {
             <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, oldest_backup_path)) = previous_backups.pop_first() {
-                std::fs::remove_dir_all(oldest_backup_path).expect(<span class="string">&quot;Cannot remove oldest backup&quot;</span>);
+                std::fs::remove_dir_all(oldest_backup_path).expect(<span class="string">"Cannot remove oldest backup"</span>);
             }
         }
 
         <span class="kw">let </span>backup_path = db.path().join(subpath);
-        <span class="macro">println!</span>(<span class="string">&quot;backup_path: {:?}&quot;</span>, backup_path);
+        <span class="macro">println!</span>(<span class="string">"backup_path: {:?}"</span>, backup_path);
         Checkpoint::new(db)
-            .expect(<span class="string">&quot;Cannot init checkpoint&quot;</span>)
+            .expect(<span class="string">"Cannot init checkpoint"</span>)
             .create_checkpoint(backup_path.clone())
-            .expect(<span class="string">&quot;Failed to create checkpoint&quot;</span>);
+            .expect(<span class="string">"Failed to create checkpoint"</span>);
 
         backup_path
     }
@@ -2542,10 +2542,10 @@
         <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
         db.get_cf(handle, key)
-            .map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e)))
+            .map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, e)))
     }
 
-    <span class="doccomment">/// Exposes RocksDB&#39;s &quot;multi_get_cf&quot; function
+    <span class="doccomment">/// Exposes RocksDB's "multi_get_cf" function
     </span><span class="kw">fn </span>multi_get_cf(<span class="kw-2">&amp;</span><span class="self">self</span>, query: Vec&lt;(<span class="kw-2">&amp;</span>str, Key)&gt;) -&gt; Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;Value&gt;, MassaDBError&gt;&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
 
@@ -2556,16 +2556,16 @@
 
         db.multi_get_cf(rocks_db_query)
             .into_iter()
-            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e))))
+            .map(|res| res.map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, e))))
             .collect()
     }
 
-    <span class="doccomment">/// Exposes RocksDB&#39;s &quot;iterator_cf&quot; function
+    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function
     </span><span class="kw">fn </span>iterator_cf(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         mode: MassaIteratorMode,
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt; {
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -2587,12 +2587,12 @@
         )
     }
 
-    <span class="doccomment">/// Exposes RocksDB&#39;s &quot;prefix_iterator_cf&quot; function
+    <span class="doccomment">/// Exposes RocksDB's "prefix_iterator_cf" function
     </span><span class="kw">fn </span>prefix_iterator_cf(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         handle_cf: <span class="kw-2">&amp;</span>str,
         prefix: <span class="kw-2">&amp;</span>[u8],
-    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">&#39;_</span>&gt; {
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt; {
         <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
         <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
 
@@ -2622,7 +2622,7 @@
     </span><span class="kw">fn </span>flush(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt; {
         <span class="self">self</span>.db
             .flush()
-            .map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e)))
+            .map_err(|e| MassaDBError::RocksDBError(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, e)))
     }
 
     <span class="doccomment">/// Write a stream_batch of database entries received from a bootstrap server
@@ -2656,7 +2656,7 @@
         <span class="self">self</span>.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
     </span><span class="kw">fn </span>get_entire_database(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>handle_state = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_metadata = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
@@ -2729,8 +2729,8 @@
     </span><span class="kw">fn </span>test_init() {
         <span class="comment">// Test we cannot double init a Db object
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -2748,7 +2748,7 @@
         <span class="comment">// Check not allowed to init a second instance
         </span><span class="kw">let </span>db2 = MassaDB::new_with_options(db_config, db_opts.clone());
         <span class="macro">assert!</span>(db2.is_err());
-        <span class="macro">assert!</span>(db2.err().unwrap().into_string().contains(<span class="string">&quot;IO error&quot;</span>));
+        <span class="macro">assert!</span>(db2.err().unwrap().into_string().contains(<span class="string">"IO error"</span>));
     }
 
     <span class="attr">#[test]
@@ -2759,8 +2759,8 @@
         // 4- Remove data
 
         // Init
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -2775,7 +2775,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="macro">assert_eq!</span>(
@@ -2785,15 +2785,15 @@
 
         <span class="comment">// Checks up
         </span><span class="kw">let </span>cfs = rocksdb::DB::list_cf(<span class="kw-2">&amp;</span>db_opts, temp_dir_db.path()).unwrap_or_default();
-        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| cf == <span class="string">&quot;state&quot;</span>);
-        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| cf == <span class="string">&quot;metadata&quot;</span>);
-        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| cf == <span class="string">&quot;versioning&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;cfs: {:?}&quot;</span>, cfs);
+        <span class="kw">let </span>cf_exists_1 = cfs.iter().any(|cf| cf == <span class="string">"state"</span>);
+        <span class="kw">let </span>cf_exists_2 = cfs.iter().any(|cf| cf == <span class="string">"metadata"</span>);
+        <span class="kw">let </span>cf_exists_3 = cfs.iter().any(|cf| cf == <span class="string">"versioning"</span>);
+        <span class="macro">println!</span>(<span class="string">"cfs: {:?}"</span>, cfs);
         <span class="macro">assert!</span>(cf_exists_1);
         <span class="macro">assert!</span>(cf_exists_2);
         <span class="macro">assert!</span>(cf_exists_3);
         <span class="kw">for </span>col <span class="kw">in </span>cfs {
-            <span class="kw">if </span>col == <span class="string">&quot;metadata&quot; </span>{
+            <span class="kw">if </span>col == <span class="string">"metadata" </span>{
                 <span class="kw">continue</span>;
             }
             <span class="macro">assert!</span>(dump_column(db.clone(), col.as_str()).is_empty());
@@ -2814,10 +2814,10 @@
         guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">None</span>);
         drop(guard);
 
-        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), &quot;state&quot;), batch);
-        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">&quot;state&quot;</span>), batch);
-        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), &quot;versioning&quot;), versioning_batch);
-        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">&quot;versioning&quot;</span>), versioning_batch);
+        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">"state"</span>), batch);
+        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">"versioning"</span>), versioning_batch);
 
         <span class="comment">// Remove data
 
@@ -2829,10 +2829,10 @@
         guard.write_batch(batch_2.clone(), versioning_batch_2.clone(), <span class="prelude-val">None</span>);
         drop(guard);
 
-        <span class="comment">// assert!(dump_column(db_.clone(), &quot;state&quot;).is_empty());
-        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">&quot;state&quot;</span>).is_empty());
-        <span class="comment">// assert!(dump_column(db_.clone(), &quot;versioning&quot;).is_empty());
-        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">&quot;versioning&quot;</span>).is_empty());
+        <span class="comment">// assert!(dump_column(db_.clone(), "state").is_empty());
+        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">"state"</span>).is_empty());
+        <span class="comment">// assert!(dump_column(db_.clone(), "versioning").is_empty());
+        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">"versioning"</span>).is_empty());
     }
 
     <span class="attr">#[test]
@@ -2843,8 +2843,8 @@
         // 4- Remove data (using delete_prefix)
 
         // Init
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -2859,7 +2859,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="macro">assert_eq!</span>(
@@ -2880,10 +2880,10 @@
         guard.write_batch(batch.clone(), versioning_batch.clone(), <span class="prelude-val">None</span>);
         drop(guard);
 
-        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), &quot;state&quot;), batch);
-        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">&quot;state&quot;</span>), batch);
-        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), &quot;versioning&quot;), versioning_batch);
-        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">&quot;versioning&quot;</span>), versioning_batch);
+        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), "state"), batch);
+        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">"state"</span>), batch);
+        <span class="comment">// assert_eq!(dump_column_opt(db_.clone(), "versioning"), versioning_batch);
+        </span><span class="macro">assert_eq!</span>(dump_column_opt(db.clone(), <span class="string">"versioning"</span>), versioning_batch);
 
         <span class="comment">// Remove data
 
@@ -2895,10 +2895,10 @@
         guard.write_batch(batch_2.clone(), versioning_batch_2, <span class="prelude-val">None</span>);
         drop(guard);
 
-        <span class="comment">// assert!(dump_column(db_.clone(), &quot;state&quot;).is_empty());
-        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">&quot;state&quot;</span>).is_empty());
-        <span class="comment">// assert!(dump_column(db_.clone(), &quot;versioning&quot;).is_empty());
-        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">&quot;versioning&quot;</span>).is_empty());
+        <span class="comment">// assert!(dump_column(db_.clone(), "state").is_empty());
+        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">"state"</span>).is_empty());
+        <span class="comment">// assert!(dump_column(db_.clone(), "versioning").is_empty());
+        </span><span class="macro">assert!</span>(dump_column(db.clone(), <span class="string">"versioning"</span>).is_empty());
 
         <span class="comment">// Add some datas then remove using prefix
         </span>batch.clear();
@@ -2914,9 +2914,9 @@
         db.write()
             .write_batch(batch.clone(), versioning_batch, <span class="prelude-val">None</span>);
 
-        <span class="comment">// &quot;ab&quot;.as_bytes == [97, 98]
-        </span>db.write().delete_prefix(<span class="string">&quot;ab&quot;</span>, <span class="string">&quot;state&quot;</span>, <span class="prelude-val">None</span>);
-        <span class="macro">assert_eq!</span>(dump_column(db.clone(), <span class="string">&quot;state&quot;</span>), BTreeMap::from([(v3, k3)]))
+        <span class="comment">// "ab".as_bytes == [97, 98]
+        </span>db.write().delete_prefix(<span class="string">"ab"</span>, <span class="string">"state"</span>, <span class="prelude-val">None</span>);
+        <span class="macro">assert_eq!</span>(dump_column(db.clone(), <span class="string">"state"</span>), BTreeMap::from([(v3, k3)]))
     }
 
     <span class="attr">#[test]
@@ -2928,8 +2928,8 @@
         // 5- Init from backup 2 + checks
 
         // Init
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -2944,7 +2944,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// Add data
@@ -2992,7 +2992,7 @@
             <span class="kw">let </span>db_backup_1 = Arc::new(RwLock::new(Box::new(
                 MassaDB::new_with_options(db_backup_1_config, db_backup_1_opts.clone()).unwrap(),
             )
-                <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;));
+                <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;));
 
             <span class="macro">assert_eq!</span>(db_backup_1.read().get_xof_db_hash(), hash_1);
             <span class="macro">assert_ne!</span>(db_backup_1.read().get_xof_db_hash(), hash_2);
@@ -3016,7 +3016,7 @@
             <span class="kw">let </span>db_backup_2 = Arc::new(RwLock::new(Box::new(
                 MassaDB::new_with_options(db_backup_2_config, db_backup_2_opts.clone()).unwrap(),
             )
-                <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;));
+                <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;));
 
             <span class="macro">assert_eq!</span>(db_backup_2.read().get_xof_db_hash(), hash_2);
             <span class="macro">assert_ne!</span>(db_backup_2.read().get_xof_db_hash(), hash_1);
@@ -3034,8 +3034,8 @@
         // 3- Init from backups + checks
 
         // Init
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -3051,7 +3051,7 @@
         <span class="kw">let </span>db = Arc::new(RwLock::new(Box::new(
             MassaDB::new_with_options(db_config.clone(), db_opts.clone()).unwrap(),
         )
-            <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;));
+            <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;));
 
         <span class="kw">let </span><span class="kw-2">mut </span>backups = BTreeMap::default();
 
@@ -3079,7 +3079,7 @@
             <span class="kw">let </span>(backup_xof, backup_path) = backups.get(<span class="kw-2">&amp;</span>slot).unwrap();
 
             <span class="comment">// println!(
-            //     &quot;Checking backup_path: {:?} -&gt; exists: {}&quot;,
+            //     "Checking backup_path: {:?} -&gt; exists: {}",
             //     backup_path,
             //     backup_path.exists()
             // );
@@ -3109,7 +3109,7 @@
                         db_opts_no_create.clone(),
                     );
                     Arc::new(RwLock::new(
-                        Box::new(_db.unwrap()) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+                        Box::new(_db.unwrap()) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
                     ))
                 }
             };
@@ -3130,8 +3130,8 @@
         // Stream Finished
         // Stream edge cases
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -3146,7 +3146,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// Add data (at slot 1)
@@ -3174,8 +3174,8 @@
         <span class="kw">let </span>stream_batch_ = db.read().get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">None</span>);
         <span class="kw">let </span>stream_batch = stream_batch_.unwrap();
         <span class="comment">// Here we retrieved the whole db content (see config.max_new_elements)
-        // assert_eq!(stream_batch.new_elements, dump_column(db_.clone(), &quot;state&quot;));
-        </span><span class="macro">assert_eq!</span>(stream_batch.new_elements, dump_column(db.clone(), <span class="string">&quot;state&quot;</span>));
+        // assert_eq!(stream_batch.new_elements, dump_column(db_.clone(), "state"));
+        </span><span class="macro">assert_eq!</span>(stream_batch.new_elements, dump_column(db.clone(), <span class="string">"state"</span>));
         <span class="macro">assert_eq!</span>(stream_batch.updates_on_previous_elements, BTreeMap::new());
         <span class="macro">assert_eq!</span>(stream_batch.change_id, slot_2);
 
@@ -3185,7 +3185,7 @@
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_2));
         <span class="kw">let </span>stream_batch = stream_batch_.unwrap();
-        <span class="comment">// println!(&quot;stream_batch: {:?}&quot;, stream_batch);
+        <span class="comment">// println!("stream_batch: {:?}", stream_batch);
         </span><span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
             BTreeMap::from([(batch_key_2, batch_value_2)])
@@ -3207,15 +3207,15 @@
         </span><span class="kw">let </span>stream_batch = db
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>StreamingStep::Ongoing(<span class="macro">vec!</span>[]), <span class="prelude-val">Some</span>(Slot::new(<span class="number">5</span>, <span class="number">0</span>)));
-        <span class="comment">// println!(&quot;stream_batch: {:?}&quot;, stream_batch);
+        <span class="comment">// println!("stream_batch: {:?}", stream_batch);
         </span><span class="macro">assert_matches!</span>(stream_batch, <span class="prelude-val">Err</span>(MassaDBError::CacheMissError(..)));
-        <span class="macro">assert!</span>(stream_batch.err().unwrap().to_string().contains(<span class="string">&quot;future&quot;</span>));
+        <span class="macro">assert!</span>(stream_batch.err().unwrap().to_string().contains(<span class="string">"future"</span>));
 
         <span class="comment">//
         </span><span class="kw">let </span>stream_batch = db
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>StreamingStep::Finished(<span class="prelude-val">None</span>), <span class="prelude-val">None</span>);
-        <span class="comment">// println!(&quot;stream_batch: {:?}&quot;, stream_batch);
+        <span class="comment">// println!("stream_batch: {:?}", stream_batch);
         </span><span class="macro">assert_matches!</span>(stream_batch, <span class="prelude-val">Err</span>(TimeError(..)));
     }
 
@@ -3223,8 +3223,8 @@
     </span><span class="kw">fn </span>test_db_stream_versioning() {
         <span class="comment">// Same as test_db_stream but for versioning
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -3239,7 +3239,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// let db_ = db.read().get_db();
@@ -3278,7 +3278,7 @@
         <span class="comment">// Here we retrieved the whole db content (see config.max_new_elements )
         </span><span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
-            dump_column(db.clone(), <span class="string">&quot;versioning&quot;</span>)
+            dump_column(db.clone(), <span class="string">"versioning"</span>)
         );
         <span class="macro">assert_eq!</span>(stream_batch.updates_on_previous_elements, BTreeMap::new());
         <span class="macro">assert_eq!</span>(stream_batch.change_id, slot_2);
@@ -3289,7 +3289,7 @@
             .read()
             .get_versioning_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_2));
         <span class="kw">let </span>stream_batch = stream_batch_.unwrap();
-        <span class="comment">// println!(&quot;stream_batch: {:?}&quot;, stream_batch);
+        <span class="comment">// println!("stream_batch: {:?}", stream_batch);
         </span><span class="macro">assert_eq!</span>(
             stream_batch.new_elements,
             BTreeMap::from([(batch_v_key_2, batch_v_value_2)])
@@ -3311,8 +3311,8 @@
         <span class="comment">// Init db + add data
         // Stream (Ongoing) with previous data updated
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;temp_dir_db: {:?}&quot;</span>, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="macro">println!</span>(<span class="string">"temp_dir_db: {:?}"</span>, temp_dir_db);
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -3327,7 +3327,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// Add data 1 (at slot 1)
@@ -3396,8 +3396,8 @@
         //       the consensus is streamed, but during that, updates to the state must be
         //       streamed as well
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">100</span>,
@@ -3412,7 +3412,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// Add data 1 (at slot 1)
@@ -3506,10 +3506,10 @@
         // Add changes for N slots, N &lt;= max_history_length
         // Stream Slot 2, should succeed
         // Add changes for M slots, M &gt; max_history_length
-        // Stream Slot 3, should return error because we don&#39;t have changes for slot 2
+        // Stream Slot 3, should return error because we don't have changes for slot 2
 
-        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;temp_dir_db: {:?}&quot;, temp_dir_db);
+        </span><span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("temp_dir_db: {:?}", temp_dir_db);
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
             max_history_length: <span class="number">4</span>,
@@ -3529,7 +3529,7 @@
 
         <span class="kw">let </span>_db = MassaDB::new_with_options(db_config, db_opts.clone()).unwrap();
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(_db) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// Add data 1 (at slot 1)
@@ -3612,7 +3612,7 @@
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_2));
         <span class="macro">assert!</span>(stream_batch_.is_err());
-        <span class="macro">assert!</span>(stream_batch_.unwrap_err().to_string().contains(<span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>));
+        <span class="macro">assert!</span>(stream_batch_.unwrap_err().to_string().contains(<span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any"</span>));
 
         <span class="comment">// Stream using StreamingStep::Finished
         </span><span class="kw">let </span>last_state_step: StreamingStep&lt;Vec&lt;u8&gt;&gt; =
@@ -3621,7 +3621,7 @@
             .read()
             .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, <span class="prelude-val">Some</span>(slot_2));
         <span class="macro">assert!</span>(stream_batch_.is_err());
-        <span class="macro">assert!</span>(stream_batch_.unwrap_err().to_string().contains(<span class="string">&quot;all our changes are strictly after last_change_id, we can&#39;t be sure we did not miss any&quot;</span>));
+        <span class="macro">assert!</span>(stream_batch_.unwrap_err().to_string().contains(<span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any"</span>));
     }
 }
 </code></pre></div></section></main></body></html>

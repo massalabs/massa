@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-versioning/src/versioning_ser_der.rs`."><title>versioning_ser_der.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_versioning" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_versioning/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-versioning/src/versioning_ser_der.rs`."><title>versioning_ser_der.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_versioning" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1239,12 +1239,6 @@
 <a href="#1239" id="1239">1239</a>
 <a href="#1240" id="1240">1240</a>
 <a href="#1241" id="1241">1241</a>
-<a href="#1242" id="1242">1242</a>
-<a href="#1243" id="1243">1243</a>
-<a href="#1244" id="1244">1244</a>
-<a href="#1245" id="1245">1245</a>
-<a href="#1246" id="1246">1246</a>
-<a href="#1247" id="1247">1247</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included};
 
@@ -1307,7 +1301,7 @@
         <span class="comment">// name
         </span><span class="kw">let </span>name_len_ = value.name.len();
         <span class="kw">let </span>name_len = u32::try_from(name_len_).map_err(|<span class="kw">_</span>| {
-            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Cannot convert name_len ({}) to u32&quot;</span>, name_len_))
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Cannot convert name_len ({}) to u32"</span>, name_len_))
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>name_len, buffer)<span class="question-mark">?</span>;
         buffer.extend(value.name.as_bytes());
@@ -1318,7 +1312,7 @@
         </span><span class="kw">let </span>components_len_ = value.components.len();
         <span class="kw">let </span>components_len = u32::try_from(components_len_).map_err(|<span class="kw">_</span>| {
             SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;Cannot convert component_len ({}) to u32&quot;</span>,
+                <span class="string">"Cannot convert component_len ({}) to u32"</span>,
                 components_len_
             ))
         })<span class="question-mark">?</span>;
@@ -1381,14 +1375,14 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;MipInfo&gt; <span class="kw">for </span>MipInfoDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MipInfo, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MipInfo, E&gt; {
         context(
-            <span class="string">&quot;Failed MipInfo deserialization&quot;</span>,
+            <span class="string">"Failed MipInfo deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed name deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed name deserialization"</span>, |input| {
                     <span class="comment">// Note: this is bounded to MIP_INFO_NAME_MAX_LEN
                     </span><span class="kw">let </span>(input_, len_) = <span class="self">self</span>.name_len_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     <span class="comment">// Safe to unwrap as it returns Result&lt;usize, Infallible&gt;
@@ -1402,41 +1396,35 @@
                     })<span class="question-mark">?</span>;
                     IResult::Ok((rem, name))
                 }),
-                context(<span class="string">&quot;Failed version deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed version deserialization"</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
                 context(
-                    <span class="string">&quot;Failed components deserialization&quot;</span>,
+                    <span class="string">"Failed components deserialization"</span>,
                     length_count(
-                        context(<span class="string">&quot;Failed components length deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed components length deserialization"</span>, |input| {
                             <span class="comment">// Note: this is bounded to MIP_INFO_COMPONENTS_MAX_ENTRIES
                             </span><span class="self">self</span>.components_len_deserializer.deserialize(input)
                         }),
                         tuple((
-                            context(<span class="string">&quot;Failed component deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed component deserialization"</span>, |input| {
                                 <span class="kw">let </span>(rem, component_) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
-                                <span class="kw">let </span>component =
-                                    MipComponent::try_from(component_).map_err(|<span class="kw">_</span>| {
-                                        nom::Err::Error(ParseError::from_error_kind(
-                                            input,
-                                            nom::error::ErrorKind::Fail,
-                                        ))
-                                    })<span class="question-mark">?</span>;
+                                <span class="kw">let </span>component = MipComponent::from(component_);
                                 IResult::Ok((rem, component))
                             }),
-                            context(<span class="string">&quot;Failed component version deserialization&quot;</span>, |input| {
+                            context(<span class="string">"Failed component version deserialization"</span>, |input| {
                                 <span class="self">self</span>.u32_deserializer.deserialize(input)
                             }),
                         )),
                     ),
                 ),
-                context(<span class="string">&quot;Failed start deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed start deserialization"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed timeout deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed timeout deserialization"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed activation delay deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed activation delay deserialization"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
             )),
@@ -1544,11 +1532,11 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;ComponentState&gt; <span class="kw">for </span>ComponentStateDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ComponentState, E&gt; {
-        <span class="kw">let </span>(rem, enum_value_) = context(<span class="string">&quot;Failed enum value der&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], ComponentState, E&gt; {
+        <span class="kw">let </span>(rem, enum_value_) = context(<span class="string">"Failed enum value der"</span>, |input| {
             <span class="self">self</span>.state_deserializer.deserialize(input)
         })
         .parse(buffer)<span class="question-mark">?</span>;
@@ -1562,21 +1550,21 @@
         <span class="kw">let </span>(rem2, state): (<span class="kw-2">&amp;</span>[u8], ComponentState) = <span class="kw">match </span>enum_value {
             ComponentStateTypeId::Defined =&gt; (rem, ComponentState::defined()),
             ComponentStateTypeId::Started =&gt; {
-                <span class="kw">let </span>(rem2, threshold) = context(<span class="string">&quot;Failed threshold value der&quot;</span>, |input| {
+                <span class="kw">let </span>(rem2, threshold) = context(<span class="string">"Failed threshold value der"</span>, |input| {
                     <span class="self">self</span>.ratio_deserializer.deserialize(input)
                 })
                 .parse(rem)<span class="question-mark">?</span>;
                 (rem2, ComponentState::started(threshold))
             }
             ComponentStateTypeId::LockedIn =&gt; {
-                <span class="kw">let </span>(rem2, at) = context(<span class="string">&quot;Failed delay value der&quot;</span>, |input| {
+                <span class="kw">let </span>(rem2, at) = context(<span class="string">"Failed delay value der"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 })
                 .parse(rem)<span class="question-mark">?</span>;
                 (rem2, ComponentState::locked_in(at))
             }
             ComponentStateTypeId::Active =&gt; {
-                <span class="kw">let </span>(rem2, at) = context(<span class="string">&quot;Failed at value der&quot;</span>, |input| {
+                <span class="kw">let </span>(rem2, at) = context(<span class="string">"Failed at value der"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 })
                 .parse(rem)<span class="question-mark">?</span>;
@@ -1655,17 +1643,17 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;AdvanceLW&gt; <span class="kw">for </span>AdvanceLWDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AdvanceLW, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], AdvanceLW, E&gt; {
         context(
-            <span class="string">&quot;Failed Advance deserialization&quot;</span>,
+            <span class="string">"Failed Advance deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed threshold deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed threshold deserialization"</span>, |input| {
                     <span class="self">self</span>.ratio_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed now deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed now deserialization"</span>, |input| {
                     <span class="self">self</span>.time_deserializer.deserialize(input)
                 }),
             )),
@@ -1709,7 +1697,7 @@
         <span class="comment">// history len
         </span><span class="self">self</span>.u32_serializer.serialize(
             <span class="kw-2">&amp;</span>value.history.len().try_into().map_err(|err| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many history: {}&quot;</span>, err))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"too many history: {}"</span>, err))
             })<span class="question-mark">?</span>,
             buffer,
         )<span class="question-mark">?</span>;
@@ -1753,29 +1741,29 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;MipState&gt; <span class="kw">for </span>MipStateDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MipState, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MipState, E&gt; {
         <span class="comment">// Der component state
-        </span><span class="kw">let </span>(rem, component_state) = context(<span class="string">&quot;Failed component state deserialization&quot;</span>, |input| {
+        </span><span class="kw">let </span>(rem, component_state) = context(<span class="string">"Failed component state deserialization"</span>, |input| {
             <span class="self">self</span>.state_deserializer.deserialize(input)
         })
         .parse(buffer)<span class="question-mark">?</span>;
         <span class="comment">// Der history
         </span><span class="kw">let </span>(rem2, history) = context(
-            <span class="string">&quot;Failed history deserialization&quot;</span>,
+            <span class="string">"Failed history deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
                 context(
-                    <span class="string">&quot;Failed history items deserialization&quot;</span>,
+                    <span class="string">"Failed history items deserialization"</span>,
                     tuple((
-                        context(<span class="string">&quot;Failed advance deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed advance deserialization"</span>, |input| {
                             <span class="self">self</span>.advance_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed state id deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed state id deserialization"</span>, |input| {
                             <span class="comment">// TEST NOTE: deser fails here for last two tests
                             </span><span class="kw">let </span>(res, state_id_) = <span class="self">self</span>.state_id_deserializer.deserialize(input)<span class="question-mark">?</span>;
 
@@ -1842,15 +1830,15 @@
         </span>{
             <span class="kw">let </span>entry_count_ = value.latest_announcements.len();
             <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Could not convert to u32: {}"</span>, e))
             })<span class="question-mark">?</span>;
             <span class="kw">let </span>entry_count_max = u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Could not convert to u32: {}"</span>, e))
             })<span class="question-mark">?</span>;
 
             <span class="kw">if </span>entry_count &gt; entry_count_max {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats latest announcements, max: {}, received: {}&quot;</span>,
+                    <span class="string">"Too many entries in MipStoreStats latest announcements, max: {}, received: {}"</span>,
                     entry_count_max, entry_count
                 )));
             }
@@ -1863,16 +1851,16 @@
         {
             <span class="kw">let </span>entry_count_2_ = value.network_version_counters.len();
             <span class="kw">let </span>entry_count_2 = u32::try_from(entry_count_2_).map_err(|e| {
-                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+                SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Could not convert to u32: {}"</span>, e))
             })<span class="question-mark">?</span>;
             <span class="kw">let </span>entry_count_2_max =
                 u32::try_from(MIP_STORE_STATS_BLOCK_CONSIDERED).map_err(|e| {
-                    SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+                    SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Could not convert to u32: {}"</span>, e))
                 })<span class="question-mark">?</span>;
 
             <span class="kw">if </span>entry_count_2 &gt; entry_count_2_max {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Too many entries in MipStoreStats version counters, max: {}, received: {}&quot;</span>,
+                    <span class="string">"Too many entries in MipStoreStats version counters, max: {}, received: {}"</span>,
                     entry_count_2_max, entry_count_2
                 )));
             }
@@ -1909,10 +1897,10 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;MipStoreStats&gt; <span class="kw">for </span>MipStoreStatsDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MipStoreStats, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MipStoreStats, E&gt; {
         <span class="kw">let </span>cfg_block_considered: u32 =
             u32::try_from(<span class="self">self</span>.config.block_count_considered).map_err(|_e| {
                 nom::Err::Error(ParseError::from_error_kind(
@@ -1922,9 +1910,9 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(rem3, latest_annoucements_) = context(
-            <span class="string">&quot;Failed MipStoreStats latest announcements der&quot;</span>,
+            <span class="string">"Failed MipStoreStats latest announcements der"</span>,
             length_count(
-                context(<span class="string">&quot;Failed latest announcements count der&quot;</span>, |input| {
+                context(<span class="string">"Failed latest announcements count der"</span>, |input| {
                     <span class="kw">let </span>(rem, count) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     <span class="kw">if </span>count &gt; cfg_block_considered {
                         <span class="kw">return </span>IResult::Err(nom::Err::Error(ParseError::from_error_kind(
@@ -1934,7 +1922,7 @@
                     }
                     IResult::Ok((rem, count))
                 }),
-                context(<span class="string">&quot;Failed latest announcement data der&quot;</span>, |input| {
+                context(<span class="string">"Failed latest announcement data der"</span>, |input| {
                     <span class="self">self</span>.u32_deserializer.deserialize(input)
                 }),
             ),
@@ -1942,9 +1930,9 @@
         .parse(buffer)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(rem4, network_version_counters) = context(
-            <span class="string">&quot;Failed MipStoreStats network version counters der&quot;</span>,
+            <span class="string">"Failed MipStoreStats network version counters der"</span>,
             length_count(
-                context(<span class="string">&quot;Failed counters len der&quot;</span>, |input| {
+                context(<span class="string">"Failed counters len der"</span>, |input| {
                     <span class="kw">let </span>(rem, count) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     <span class="kw">if </span>count &gt; cfg_block_considered {
                         <span class="kw">return </span>IResult::Err(nom::Err::Error(ParseError::from_error_kind(
@@ -1954,7 +1942,7 @@
                     }
                     IResult::Ok((rem, count))
                 }),
-                context(<span class="string">&quot;Failed counters data der&quot;</span>, |input| {
+                context(<span class="string">"Failed counters data der"</span>, |input| {
                     <span class="kw">let </span>(rem, v) = <span class="self">self</span>.u32_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     <span class="kw">let </span>(rem2, c) = <span class="self">self</span>.u64_deserializer.deserialize(rem)<span class="question-mark">?</span>;
                     IResult::Ok((rem2, (v, c)))
@@ -2008,11 +1996,11 @@
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>MipStoreRaw, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>entry_count_ = value.store.len();
         <span class="kw">let </span>entry_count = u32::try_from(entry_count_).map_err(|e| {
-            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;Could not convert to u32: {}&quot;</span>, e))
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"Could not convert to u32: {}"</span>, e))
         })<span class="question-mark">?</span>;
         <span class="kw">if </span>entry_count &gt; MIP_STORE_MAX_ENTRIES {
             <span class="kw">return </span><span class="prelude-val">Err</span>(SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;Too many entries in VersioningStoreRaw, max: {}, received: {}&quot;</span>,
+                <span class="string">"Too many entries in VersioningStoreRaw, max: {}, received: {}"</span>,
                 MIP_STORE_MAX_ENTRIES, entry_count
             )));
         }
@@ -2053,24 +2041,24 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;MipStoreRaw&gt; <span class="kw">for </span>MipStoreRawDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MipStoreRaw, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MipStoreRaw, E&gt; {
         context(
-            <span class="string">&quot;Failed MipStoreRaw der&quot;</span>,
+            <span class="string">"Failed MipStoreRaw der"</span>,
             tuple((
                 length_count(
-                    context(<span class="string">&quot;Failed entry count der&quot;</span>, |input| {
+                    context(<span class="string">"Failed entry count der"</span>, |input| {
                         <span class="self">self</span>.entry_count_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed items der&quot;</span>, |input| {
+                    context(<span class="string">"Failed items der"</span>, |input| {
                         <span class="kw">let </span>(rem, vi) = <span class="self">self</span>.info_deserializer.deserialize(input)<span class="question-mark">?</span>;
                         <span class="kw">let </span>(rem2, vs) = <span class="self">self</span>.state_deserializer.deserialize(rem)<span class="question-mark">?</span>;
                         IResult::Ok((rem2, (vi, vs)))
                     }),
                 ),
-                context(<span class="string">&quot;Failed mip store stats der&quot;</span>, |input| {
+                context(<span class="string">"Failed mip store stats der"</span>, |input| {
                     <span class="self">self</span>.stats_deserializer.deserialize(input)
                 }),
             )),
@@ -2109,11 +2097,11 @@
 
         <span class="kw">match </span>last_variant {
             MipComponent::__Nonexhaustive =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;Should be a known enum value&quot;</span>)
+                <span class="macro">panic!</span>(<span class="string">"Should be a known enum value"</span>)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// all good
-                </span><span class="macro">println!</span>(<span class="string">&quot;last variant of MipComponent is: {:?}&quot;</span>, last_variant);
+                </span><span class="macro">println!</span>(<span class="string">"last variant of MipComponent is: {:?}"</span>, last_variant);
             }
         }
 
@@ -2133,7 +2121,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_mip_info_ser_der() {
         <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -2158,7 +2146,7 @@
         {
             <span class="comment">// A MIP info with too many MIP Component
             </span><span class="kw">let </span>mi_1 = MipInfo {
-                name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+                name: <span class="string">"MIP-0002"</span>.to_string(),
                 version: <span class="number">2</span>,
                 components: BTreeMap::from([
                     (MipComponent::Address, <span class="number">1</span>),
@@ -2191,7 +2179,7 @@
         {
             <span class="comment">// A MIP info with a very long name
             </span><span class="kw">let </span>mi_2 = MipInfo {
-                name: <span class="string">&quot;a&quot;</span>.repeat(MIP_INFO_NAME_MAX_LEN <span class="kw">as </span>usize + <span class="number">1</span>),
+                name: <span class="string">"a"</span>.repeat(MIP_INFO_NAME_MAX_LEN <span class="kw">as </span>usize + <span class="number">1</span>),
                 version: <span class="number">2</span>,
                 components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
                 start: MassaTime::from_millis(<span class="number">2</span>),
@@ -2214,7 +2202,7 @@
         {
             <span class="comment">// A MIP info, tweak to have an incorrect length (for name)
 
-            </span><span class="kw">let </span>mip_info_name = <span class="string">&quot;MIP-0002&quot;</span>.to_string();
+            </span><span class="kw">let </span>mip_info_name = <span class="string">"MIP-0002"</span>.to_string();
             <span class="kw">let </span>mi_1 = MipInfo {
                 name: mip_info_name.clone(),
                 version: <span class="number">2</span>,
@@ -2330,7 +2318,7 @@
         buf.clear();
 
         <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -2384,7 +2372,7 @@
         };
 
         <span class="kw">let </span>mi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -2393,7 +2381,7 @@
         };
 
         <span class="kw">let </span>mi_3 = MipInfo {
-            name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0003"</span>.to_string(),
             version: <span class="number">3</span>,
             components: BTreeMap::from([(MipComponent::Block, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">12</span>),
@@ -2427,7 +2415,7 @@
     #[ignore]
     </span><span class="kw">fn </span>mip_store_raw_max_size() {
         <span class="kw">let </span><span class="kw-2">mut </span>mi_base = MipInfo {
-            name: <span class="string">&quot;A&quot;</span>.repeat(<span class="number">254</span>),
+            name: <span class="string">"A"</span>.repeat(<span class="number">254</span>),
             version: <span class="number">0</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">0</span>)]),
             start: MassaTime::from_millis(<span class="number">0</span>),
@@ -2483,7 +2471,7 @@
 
         store_raw_ser
             .serialize(<span class="kw-2">&amp;</span>store_raw, <span class="kw-2">&amp;mut </span>buf)
-            .expect(<span class="string">&quot;Unable to serialize&quot;</span>);
+            .expect(<span class="string">"Unable to serialize"</span>);
 
         <span class="kw">let </span>store_raw_der = MipStoreRawDeserializer::new(<span class="number">10</span>, Ratio::new(<span class="number">30</span>, <span class="number">100</span>));
         <span class="kw">let </span>(rem, store_raw_der_res) = store_raw_der.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buf).unwrap();

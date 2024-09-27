@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block_id.rs`."><title>block_id.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block_id.rs`."><title>block_id.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -323,7 +323,7 @@
 
 <span class="doccomment">/// block id
 </span><span class="attr">#[allow(missing_docs)]
-#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(
     Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
@@ -359,13 +359,13 @@
     }
 
     <span class="doccomment">/// Generate a version 0 block id from an hash used only for tests
-    </span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+    </span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
     </span><span class="kw">pub fn </span>generate_from_hash(hash: Hash) -&gt; BlockId {
         BlockId::BlockIdV0(BlockIdV0(hash))
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>BlockId {
     <span class="kw">fn </span>get_hash(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Hash {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0
@@ -382,17 +382,17 @@
     }
 }
 
-<span class="kw">const </span>BLOCKID_PREFIX: char = <span class="string">&#39;B&#39;</span>;
+<span class="kw">const </span>BLOCKID_PREFIX: char = <span class="string">'B'</span>;
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            BlockId::BlockIdV0(block_id) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, block_id),
+            BlockId::BlockIdV0(block_id) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, block_id),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>BlockId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
@@ -404,7 +404,7 @@
         bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="string">"{}{}"</span>,
             BLOCKID_PREFIX,
             bs58::encode(bytes).with_check().into_string()
         )
@@ -413,7 +413,7 @@
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>BlockId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
@@ -425,7 +425,7 @@
     /// # use std::str::FromStr;
     /// # use massa_models::block_id::BlockId;
     /// # use crate::massa_models::secure_share::Id;
-    /// # let hash = Hash::compute_from(b&quot;test&quot;);
+    /// # let hash = Hash::compute_from(b"test");
     /// # let block_id = BlockId::new(hash);
     /// let ser = block_id.to_string();
     /// let res_block_id = BlockId::from_str(&amp;ser).unwrap();
@@ -455,7 +455,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>FromStr <span class="kw">for </span>BlockId {
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
@@ -507,7 +507,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;BlockId&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"BlockId"</span>))]
 </span><span class="kw">impl </span>Serializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdSerializer {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>BlockId, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         buffer.extend(value.<span class="number">0</span>.to_bytes());
@@ -539,10 +539,10 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockId, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BlockId, E&gt; {
         <span class="comment">// Verify that we at least have a version and something else
         </span><span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
@@ -554,22 +554,22 @@
                     nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
                 })<span class="question-mark">?</span>;
         <span class="kw">match </span>op_id_version {
-            &lt;<span class="macro">BlockId!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
+            &lt;<span class="macro">BlockId!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; {
                 <span class="kw">let </span>(rest, op_id) = <span class="self">self</span>.deserialize(rest)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((rest, <span class="macro">BlockIdVariant!</span>[<span class="string">&quot;0&quot;</span>](op_id)))
+                <span class="prelude-val">Ok</span>((rest, <span class="macro">BlockIdVariant!</span>[<span class="string">"0"</span>](op_id)))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;BlockId&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"BlockId"</span>))]
 </span><span class="kw">impl </span>Deserializer&lt;BlockId&gt; <span class="kw">for </span>BlockIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockId, E&gt; {
-        context(<span class="string">&quot;Failed BlockId deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BlockId, E&gt; {
+        context(<span class="string">"Failed BlockId deserialization"</span>, |input| {
             <span class="kw">let </span>(rest, hash) = <span class="self">self</span>.hash_deserializer.deserialize(input)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>((rest, BlockId(hash)))
         })(buffer)
@@ -583,18 +583,18 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_id() {
         <span class="kw">let </span>expected_block_id =
-            BlockId::from_str(<span class="string">&quot;B12iL52kye2CraMXdkdKDxjZJXF9it6E4hz8KEj656QnhvwocvBX&quot;</span>).unwrap();
-        <span class="kw">let </span>actual_block_id = BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk&quot;</span>.as_bytes()));
+            BlockId::from_str(<span class="string">"B12iL52kye2CraMXdkdKDxjZJXF9it6E4hz8KEj656QnhvwocvBX"</span>).unwrap();
+        <span class="kw">let </span>actual_block_id = BlockId::generate_from_hash(Hash::compute_from(<span class="string">"blk"</span>.as_bytes()));
 
         <span class="macro">assert_eq!</span>(actual_block_id, expected_block_id);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_id_errors() {
-        <span class="kw">let </span>actual_error = BlockId::from_str(<span class="string">&quot;SomeUnvalidBlockId&quot;</span>)
+        <span class="kw">let </span>actual_error = BlockId::from_str(<span class="string">"SomeUnvalidBlockId"</span>)
             .unwrap_err()
             .to_string();
-        <span class="kw">let </span>expected_error = <span class="string">&quot;block id parsing error&quot;</span>.to_string();
+        <span class="kw">let </span>expected_error = <span class="string">"block id parsing error"</span>.to_string();
 
         <span class="macro">assert_eq!</span>(actual_error, expected_error);
     }
@@ -602,7 +602,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_id_serde() {
         <span class="kw">let </span>expected_block_id =
-            BlockId::from_str(<span class="string">&quot;B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg&quot;</span>).unwrap();
+            BlockId::from_str(<span class="string">"B12DvrcQkzF1Wi8BVoNfc4n93CD3E2qhCNe7nVhnEQGWHZ24fEmg"</span>).unwrap();
 
         <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>expected_block_id).unwrap();
         <span class="kw">let </span>actual_block_id: BlockId = serde_json::from_str(<span class="kw-2">&amp;</span>serialized).unwrap();

@@ -1,0 +1,5 @@
+(function() {var implementors = {
+"massa_channel":[["impl&lt;T&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/1.81.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"massa_channel/receiver/struct.MassaReceiver.html\" title=\"struct massa_channel::receiver::MassaReceiver\">MassaReceiver</a>&lt;T&gt;"]],
+"massa_storage":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.81.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"massa_storage/struct.Storage.html\" title=\"struct massa_storage::Storage\">Storage</a>"]],
+"massa_wallet":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.81.0/core/ops/drop/trait.Drop.html\" title=\"trait core::ops::drop::Drop\">Drop</a> for <a class=\"struct\" href=\"massa_wallet/struct.Wallet.html\" title=\"struct massa_wallet::Wallet\">Wallet</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

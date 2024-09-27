@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/amount.rs`."><title>amount.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/amount.rs`."><title>amount.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -482,21 +482,21 @@
     </span><span class="kw">fn </span>from_decimal(dec: Decimal) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ModelsError&gt; {
         <span class="kw">let </span>res = dec
             .checked_mul(AMOUNT_DECIMAL_FACTOR.into())
-            .ok_or_else(|| ModelsError::AmountParseError(<span class="string">&quot;amount is too large&quot;</span>.to_string()))<span class="question-mark">?</span>;
+            .ok_or_else(|| ModelsError::AmountParseError(<span class="string">"amount is too large"</span>.to_string()))<span class="question-mark">?</span>;
         <span class="kw">if </span>res.is_sign_negative() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::AmountParseError(
-                <span class="string">&quot;amounts cannot be strictly negative&quot;</span>.to_string(),
+                <span class="string">"amounts cannot be strictly negative"</span>.to_string(),
             ));
         }
         <span class="kw">if </span>!res.fract().is_zero() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ModelsError::AmountParseError(<span class="macro">format!</span>(
-                <span class="string">&quot;amounts cannot be more precise than 1/{}&quot;</span>,
+                <span class="string">"amounts cannot be more precise than 1/{}"</span>,
                 AMOUNT_DECIMAL_FACTOR
             )));
         }
         <span class="kw">let </span>res = res.to_u64().ok_or_else(|| {
             ModelsError::AmountParseError(
-                <span class="string">&quot;amount is too large to be represented as u64&quot;</span>.to_string(),
+                <span class="string">"amount is too large to be represented as u64"</span>.to_string(),
             )
         })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Amount(res))
@@ -509,10 +509,10 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1: Amount = Amount::from_str(&quot;0.042&quot;).unwrap();
+    /// let amount_1: Amount = Amount::from_str("0.042").unwrap();
     /// let amount_2: Amount = Amount::const_init(42, 3);
     /// assert_eq!(amount_1, amount_2);
-    /// let amount_1: Amount = Amount::from_str(&quot;1000&quot;).unwrap();
+    /// let amount_1: Amount = Amount::from_str("1000").unwrap();
     /// let amount_2: Amount = Amount::const_init(1000, 0);
     /// assert_eq!(amount_1, amount_2);
     /// ```
@@ -534,7 +534,7 @@
     /// # use massa_models::amount::Amount;
     /// # use massa_models::amount::AMOUNT_DECIMAL_SCALE;
     /// # use std::str::FromStr;
-    /// let amount = Amount::from_str(&quot;0.123456789&quot;).unwrap();
+    /// let amount = Amount::from_str("0.123456789").unwrap();
     /// let (mantissa, scale) = amount.to_mantissa_scale();
     /// assert_eq!(mantissa, 123456789);
     /// assert_eq!(scale, AMOUNT_DECIMAL_SCALE);
@@ -548,7 +548,7 @@
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
     /// let a = Amount::from_mantissa_scale(123, 2).unwrap();
-    /// assert_eq!(a.to_string(), &quot;1.23&quot;);
+    /// assert_eq!(a.to_string(), "1.23");
     /// let a = Amount::from_mantissa_scale(123, 100);
     /// assert!(a.is_err());
     /// ```
@@ -568,7 +568,7 @@
     <span class="doccomment">/// constructs an `Amount` from the underlying raw `u64` representation
     /// Warning: do not use this unless you know what you are doing
     /// because the raw value does not take the `AMOUNT_DECIMAL_FACTOR` into account
-    /// In most cases, you should be using `Amount::from_str(&quot;11.23&quot;)`
+    /// In most cases, you should be using `Amount::from_str("11.23")`
     </span><span class="kw">pub const fn </span>from_raw(raw: u64) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>(raw)
     }
@@ -594,10 +594,10 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
-    /// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
     /// let res : Amount = amount_1.checked_sub(amount_2).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;35&quot;).unwrap())
+    /// assert_eq!(res, Amount::from_str("35").unwrap())
     /// ```
     </span><span class="kw">pub fn </span>checked_sub(<span class="self">self</span>, amount: Amount) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="self">self</span>.<span class="number">0</span>.checked_sub(amount.<span class="number">0</span>).map(Amount)
@@ -607,10 +607,10 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
-    /// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
     /// let res : Amount = amount_1.checked_add(amount_2).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;49&quot;).unwrap())
+    /// assert_eq!(res, Amount::from_str("49").unwrap())
     /// ```
     </span><span class="kw">pub fn </span>checked_add(<span class="self">self</span>, amount: Amount) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="self">self</span>.<span class="number">0</span>.checked_add(amount.<span class="number">0</span>).map(Amount)
@@ -620,9 +620,9 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_mul_u64(7).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap())
+    /// assert_eq!(res, Amount::from_str("294").unwrap())
     /// ```
     </span><span class="kw">pub fn </span>checked_mul_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="self">self</span>.<span class="number">0</span>.checked_mul(factor).map(Amount)
@@ -632,9 +632,9 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.saturating_mul_u64(7);
-    /// assert_eq!(res, Amount::from_str(&quot;294&quot;).unwrap());
+    /// assert_eq!(res, Amount::from_str("294").unwrap());
     /// ```
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub const fn </span>saturating_mul_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="self">Self </span>{
@@ -645,9 +645,9 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_div_u64(7).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;6&quot;).unwrap());
+    /// assert_eq!(res, Amount::from_str("6").unwrap());
     /// ```
     </span><span class="kw">pub fn </span>checked_div_u64(<span class="self">self</span>, factor: u64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="self">self</span>.<span class="number">0</span>.checked_div(factor).map(Amount)
@@ -657,8 +657,8 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
-    /// let amount_2 : Amount = Amount::from_str(&quot;7&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("7").unwrap();
     /// let res : u64 = amount_1.checked_div(amount_2).unwrap();
     /// assert_eq!(res, 6);
     /// ```
@@ -670,10 +670,10 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
-    /// let amount_2 : Amount = Amount::from_str(&quot;10&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
+    /// let amount_2 : Amount = Amount::from_str("10").unwrap();
     /// let res : Amount = amount_1.checked_rem(&amp;amount_2).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;2&quot;).unwrap());
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
     /// ```
     </span><span class="kw">pub fn </span>checked_rem(<span class="kw-2">&amp;</span><span class="self">self</span>, divisor: <span class="kw-2">&amp;</span>Amount) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
         <span class="prelude-val">Some</span>(Amount(<span class="self">self</span>.<span class="number">0</span>.checked_rem(divisor.<span class="number">0</span>)<span class="question-mark">?</span>))
@@ -683,48 +683,48 @@
     /// ```
     /// # use massa_models::amount::Amount;
     /// # use std::str::FromStr;
-    /// let amount_1 : Amount = Amount::from_str(&quot;42&quot;).unwrap();
+    /// let amount_1 : Amount = Amount::from_str("42").unwrap();
     /// let res : Amount = amount_1.checked_rem_u64(40000000000).unwrap();
-    /// assert_eq!(res, Amount::from_str(&quot;2&quot;).unwrap());
+    /// assert_eq!(res, Amount::from_str("2").unwrap());
     /// ```
     </span><span class="kw">pub fn </span>checked_rem_u64(<span class="kw-2">&amp;</span><span class="self">self</span>, divisor: u64) -&gt; <span class="prelude-ty">Option</span>&lt;Amount&gt; {
         <span class="prelude-val">Some</span>(Amount(<span class="self">self</span>.<span class="number">0</span>.checked_rem(divisor)<span class="question-mark">?</span>))
     }
 }
 
-<span class="doccomment">/// display an Amount in decimal string form (like &quot;10.33&quot;)
+<span class="doccomment">/// display an Amount in decimal string form (like "10.33")
 ///
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// let value = Amount::from_str(&quot;11.111&quot;).unwrap();
-/// assert_eq!(format!(&quot;{}&quot;, value), &quot;11.111&quot;)
+/// let value = Amount::from_str("11.111").unwrap();
+/// assert_eq!(format!("{}", value), "11.111")
 /// ```
 </span><span class="kw">impl </span>fmt::Display <span class="kw">for </span>Amount {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_decimal())
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.to_decimal())
     }
 }
 
 <span class="doccomment">/// Use display implementation in debug to get the decimal representation
 </span><span class="kw">impl </span>fmt::Debug <span class="kw">for </span>Amount {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
-<span class="doccomment">/// build an Amount from decimal string form (like &quot;10.33&quot;)
+<span class="doccomment">/// build an Amount from decimal string form (like "10.33")
 /// note that this will fail if the string format is invalid
 /// or if the conversion would cause an overflow, underflow or precision loss
 ///
 /// ```
 /// # use massa_models::amount::Amount;
 /// # use std::str::FromStr;
-/// assert!(Amount::from_str(&quot;11.1&quot;).is_ok());
-/// assert!(Amount::from_str(&quot;11.1111111111111111111111&quot;).is_err());
-/// assert!(Amount::from_str(&quot;1111111111111111111111&quot;).is_err());
-/// assert!(Amount::from_str(&quot;-11.1&quot;).is_err());
-/// assert!(Amount::from_str(&quot;abc&quot;).is_err());
+/// assert!(Amount::from_str("11.1").is_ok());
+/// assert!(Amount::from_str("11.1111111111111111111111").is_err());
+/// assert!(Amount::from_str("1111111111111111111111").is_err());
+/// assert!(Amount::from_str("-11.1").is_err());
+/// assert!(Amount::from_str("abc").is_err());
 /// ```
 </span><span class="kw">impl </span>FromStr <span class="kw">for </span>Amount {
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
@@ -765,7 +765,7 @@
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let amount = Amount::from_str("11.111").unwrap();
     /// let serializer = AmountSerializer::new();
     /// let mut serialized = vec![];
     /// serializer.serialize(&amp;amount, &amp;mut serialized).unwrap();
@@ -810,7 +810,7 @@
     /// use std::str::FromStr;
     /// use std::ops::Bound::Included;
     ///
-    /// let amount = Amount::from_str(&quot;11.111&quot;).unwrap();
+    /// let amount = Amount::from_str("11.111").unwrap();
     /// let serializer = AmountSerializer::new();
     /// let deserializer = AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
     /// let mut serialized = vec![];
@@ -819,11 +819,11 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(amount_deser, amount);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Amount, E&gt; {
-        context(<span class="string">&quot;Failed Amount deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Amount, E&gt; {
+        context(<span class="string">"Failed Amount deserialization"</span>, |input| {
             <span class="self">self</span>.u64_deserializer.deserialize(input)
         })
         .map(Amount::from_raw)
@@ -831,10 +831,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Amount {
+<span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; serde::Deserialize&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>Amount {
     <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, D::Error&gt;
     <span class="kw">where
-        </span>D: serde::de::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
+        </span>D: serde::de::Deserializer&lt;<span class="lifetime">'de</span>&gt;,
     {
         deserializer.deserialize_str(AmountVisitor)
     }
@@ -842,7 +842,7 @@
 
 <span class="kw">struct </span>AmountVisitor;
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>AmountVisitor {
+<span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; serde::de::Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>AmountVisitor {
     <span class="kw">type </span>Value = Amount;
 
     <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, E&gt;
@@ -855,7 +855,7 @@
     <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>fmt::Formatter) -&gt; fmt::Result {
         <span class="macro">write!</span>(
             formatter,
-            <span class="string">&quot;an Amount type representing a fixed-point currency amount&quot;
+            <span class="string">"an Amount type representing a fixed-point currency amount"
         </span>)
     }
 }
