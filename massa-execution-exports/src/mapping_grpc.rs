@@ -310,18 +310,12 @@ fn to_execution_query_result(
                 },
             )
         }
-        ExecutionQueryResponseItem::DeferredCallsBySlot(slot, calls) => {
-            let arr = calls
-                .into_iter()
-                .map(|(id, call)| grpc_api::DeferredCallInfoResponse {
-                    call_id: id.to_string(),
-                    call: Some(call.into()),
-                })
-                .collect();
+        ExecutionQueryResponseItem::DeferredCallsBySlot(slot, ids) => {
+            let arr = ids.into_iter().map(|id| id.to_string()).collect();
             grpc_api::execution_query_response_item::ResponseItem::DeferredCallsBySlot(
                 grpc_api::DeferredCallsBySlotResponse {
                     slot: Some(slot.into()),
-                    calls: arr,
+                    call_ids: arr,
                 },
             )
         }

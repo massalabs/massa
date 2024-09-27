@@ -419,8 +419,8 @@ pub trait MassaRpc {
     ) -> RpcResult<Vec<DeferredCallResponse>>;
 
     /// List deferred calls for given slot
-    #[method(name = "list_deferred_calls_by_slot")]
-    async fn list_deferred_calls_by_slot(
+    #[method(name = "get_deferred_call_ids_by_slot")]
+    async fn get_deferred_call_ids_by_slot(
         &self,
         arg: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>>;

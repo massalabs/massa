@@ -159,7 +159,7 @@ pub enum ExecutionQueryResponseItem {
     /// deferred call info value
     DeferredCallInfo(DeferredCallId, DeferredCall),
     /// deferred call slot calls value
-    DeferredCallsBySlot(Slot, BTreeMap<DeferredCallId, DeferredCall>),
+    DeferredCallsBySlot(Slot, Vec<DeferredCallId>),
     /// deferred credits value
     DeferredCredits(BTreeMap<Slot, Amount>),
     /// execution status value

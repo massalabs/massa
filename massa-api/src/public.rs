@@ -1246,7 +1246,7 @@ impl MassaRpcServer for API<Public> {
         Ok(result)
     }
 
-    async fn list_deferred_calls_by_slot(
+    async fn get_deferred_call_ids_by_slot(
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
@@ -1270,15 +1270,9 @@ impl MassaRpcServer for API<Public> {
         {
             match exec {
                 Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, result)) => {
-                    let calls = result
-                        .into_iter()
-                        .map(|(id, call)| DeferredCallResponse {
-                            call_id: id.to_string(),
-                            call,
-                        })
-                        .collect();
+                    let call_ids = result.into_iter().map(|id| id.to_string()).collect();
 
-                    slot_calls.push(DeferredCallsSlotResponse { slot, calls });
+                    slot_calls.push(DeferredCallsSlotResponse { slot, call_ids });
                 }
                 Ok(_) => {
                     return Err(ApiError::InternalServerError(

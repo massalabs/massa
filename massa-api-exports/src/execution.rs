@@ -160,5 +160,5 @@ pub struct DeferredCallsSlotResponse {
     /// deferred calls
     pub slot: Slot,
     /// deferred calls
-    pub calls: Vec<DeferredCallResponse>,
+    pub call_ids: Vec<String>,
 }

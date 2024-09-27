@@ -2458,7 +2458,10 @@ impl ExecutionState {
         context.get_deferred_call(call_id)
     }
 
-    pub fn get_deferred_calls_by_slot(&self, slot: Slot) -> BTreeMap<DeferredCallId, DeferredCall> {
-        context_guard!(self).get_deferred_calls_by_slot(slot)
+    pub fn get_deferred_calls_by_slot(&self, slot: Slot) -> Vec<DeferredCallId> {
+        context_guard!(self)
+            .get_deferred_calls_by_slot(slot)
+            .into_keys()
+            .collect()
     }
 }

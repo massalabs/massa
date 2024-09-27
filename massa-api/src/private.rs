@@ -368,7 +368,7 @@ impl MassaRpcServer for API<Private> {
         crate::wrong_api::<Vec<DeferredCallResponse>>()
     }
 
-    async fn list_deferred_calls_by_slot(
+    async fn get_deferred_call_ids_by_slot(
         &self,
         _slot: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
