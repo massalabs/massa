@@ -37,6 +37,7 @@ mod stats;
 mod tick;
 mod verifications;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct ConsensusState {
     /// Configuration
