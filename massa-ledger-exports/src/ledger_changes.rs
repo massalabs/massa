@@ -839,11 +839,11 @@ impl LedgerChanges {
     /// and optionally if a datastore key write also exists in the address's datastore.
     /// Notes:
     /// - A ledger entry could be written to without any changes on the values associated,
-    /// 
+    ///
     /// for example if the value was changed multiple times in the same slot.
-    /// 
+    ///
     /// - This code assumes Delete cannot be shadowed by Set operations in the same slot, which may not be the case
-    /// 
+    ///
     /// when / if we allow full entry Delete given the current LedgerChanges::Delete handling. In that case, a rework may be necessary.
     ///
     /// # Arguments
