@@ -14,7 +14,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 #[test]
 fn test_serialize_bootstrap_server_message() {
     let config = BootstrapClientConfig {
-        rate_limit: std::u64::MAX,
+        rate_limit: u64::MAX,
         max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -147,7 +147,7 @@ fn test_serialize_error_cases_clientmsg() {
 #[test]
 fn test_serialize_error_cases_servermsg() {
     let config = BootstrapClientConfig {
-        rate_limit: std::u64::MAX,
+        rate_limit: u64::MAX,
         max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
         endorsement_count: ENDORSEMENT_COUNT,
         max_advertise_length: MAX_ADVERTISE_LENGTH,

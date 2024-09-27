@@ -189,6 +189,7 @@ impl ExecutionContext {
     ///
     /// # arguments
     /// * `final_state`: thread-safe access to the final state.
+    /// 
     /// Note that this will be used only for reading, never for writing
     ///
     /// # returns

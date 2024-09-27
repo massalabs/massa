@@ -138,12 +138,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
     fn serialize(&self, message: &Message, buffer: &mut Vec<u8>) -> PeerNetResult<()> {
         self.id_serializer
             .serialize(
-                &MessageTypeId::from(message).try_into().map_err(|_| {
-                    PeerNetError::HandlerError.error(
-                        "MessagesSerializer",
-                        Some(String::from("Failed to serialize id")),
-                    )
-                })?,
+                &MessageTypeId::from(message).into(),
                 buffer,
             )
             .map_err(|err| {

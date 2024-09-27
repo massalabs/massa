@@ -64,9 +64,7 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
         self.id_serializer.serialize(
-            &MessageTypeId::from(value).try_into().map_err(|_| {
-                SerializeError::GeneralError(String::from("Failed to serialize id"))
-            })?,
+            &MessageTypeId::from(value).into(),
             buffer,
         )?;
         match value {

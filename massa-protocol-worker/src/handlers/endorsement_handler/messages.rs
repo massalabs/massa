@@ -3,7 +3,7 @@ use massa_models::{
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
 use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
+    Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use nom::{
     error::{context, ContextError, ParseError},
@@ -57,9 +57,7 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
         self.id_serializer.serialize(
-            &MessageTypeId::from(value).try_into().map_err(|_| {
-                SerializeError::GeneralError(String::from("Failed to serialize id"))
-            })?,
+            &MessageTypeId::from(value).into(),
             buffer,
         )?;
         match value {
