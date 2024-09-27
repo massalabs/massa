@@ -27,9 +27,7 @@ mod retrieval;
 pub(crate) use messages::{BlockMessage, BlockMessageSerializer};
 
 #[cfg(test)]
-pub use messages::{
-    AskForBlockInfo, BlockInfoReply, 
-};
+pub use messages::{AskForBlockInfo, BlockInfoReply};
 
 use super::{
     endorsement_handler::{

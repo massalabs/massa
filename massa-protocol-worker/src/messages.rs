@@ -137,10 +137,7 @@ impl PeerNetMessagesSerializer<Message> for MessagesSerializer {
     /// Serialize the message
     fn serialize(&self, message: &Message, buffer: &mut Vec<u8>) -> PeerNetResult<()> {
         self.id_serializer
-            .serialize(
-                &MessageTypeId::from(message).into(),
-                buffer,
-            )
+            .serialize(&MessageTypeId::from(message).into(), buffer)
             .map_err(|err| {
                 PeerNetError::HandlerError.error(
                     "MessagesHandler",

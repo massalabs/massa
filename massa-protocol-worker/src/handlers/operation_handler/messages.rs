@@ -63,10 +63,8 @@ impl Serializer<OperationMessage> for OperationMessageSerializer {
         value: &OperationMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), SerializeError> {
-        self.id_serializer.serialize(
-            &MessageTypeId::from(value).into(),
-            buffer,
-        )?;
+        self.id_serializer
+            .serialize(&MessageTypeId::from(value).into(), buffer)?;
         match value {
             OperationMessage::OperationsAnnouncement(operations) => {
                 self.operation_prefix_ids_serializer

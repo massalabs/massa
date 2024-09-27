@@ -2,9 +2,7 @@ use std::{collections::HashMap, net::SocketAddr, ops::Bound::Included};
 
 use massa_models::serialization::{IpAddrDeserializer, IpAddrSerializer};
 use massa_protocol_exports::{PeerId, PeerIdDeserializer, PeerIdSerializer};
-use massa_serialization::{
-    Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -65,10 +63,8 @@ impl Serializer<PeerManagementMessage> for PeerManagementMessageSerializer {
         value: &PeerManagementMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.id_serializer.serialize(
-            &MessageTypeId::from(value).into(),
-            buffer,
-        )?;
+        self.id_serializer
+            .serialize(&MessageTypeId::from(value).into(), buffer)?;
         match value {
             PeerManagementMessage::NewPeerConnected((peer_id, listeners)) => {
                 self.peer_id_serializer.serialize(peer_id, buffer)?;

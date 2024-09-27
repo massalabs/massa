@@ -7,9 +7,7 @@ use massa_models::{
     },
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
-use massa_serialization::{
-    Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
     sequence::tuple,
@@ -120,10 +118,8 @@ impl Serializer<BlockMessage> for BlockMessageSerializer {
         value: &BlockMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.id_serializer.serialize(
-            &MessageTypeId::from(value).into(),
-            buffer,
-        )?;
+        self.id_serializer
+            .serialize(&MessageTypeId::from(value).into(), buffer)?;
         match value {
             BlockMessage::Header(header) => {
                 self.secure_share_serializer.serialize(header, buffer)?;
@@ -273,8 +269,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     "Failed BlockDataRequest deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
-                            self.block_id_deserializer
-                                .deserialize(input)
+                            self.block_id_deserializer.deserialize(input)
                         }),
                         context("Failed infos deserialization", |input| {
                             let (rest, raw_id) = self.id_deserializer.deserialize(input)?;
@@ -314,8 +309,7 @@ impl Deserializer<BlockMessage> for BlockMessageDeserializer {
                     "Failed BlockDataResponse deserialization",
                     tuple((
                         context("Failed BlockId deserialization", |input| {
-                            self.block_id_deserializer
-                                .deserialize(input)
+                            self.block_id_deserializer.deserialize(input)
                         }),
                         context("Failed infos deserialization", |input| {
                             let (rest, raw_id) = self.id_deserializer.deserialize(input)?;
