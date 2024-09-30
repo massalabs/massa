@@ -84,6 +84,7 @@ pub enum BootstrapServerMessage {
     },
 }
 
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for BootstrapServerMessage {
     fn to_string(&self) -> String {
         match self {

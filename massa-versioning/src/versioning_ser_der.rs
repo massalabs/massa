@@ -168,13 +168,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                         tuple((
                             context("Failed component deserialization", |input| {
                                 let (rem, component_) = self.u32_deserializer.deserialize(input)?;
-                                let component =
-                                    MipComponent::try_from(component_).map_err(|_| {
-                                        nom::Err::Error(ParseError::from_error_kind(
-                                            input,
-                                            nom::error::ErrorKind::Fail,
-                                        ))
-                                    })?;
+                                let component = MipComponent::from(component_);
                                 IResult::Ok((rem, component))
                             }),
                             context("Failed component version deserialization", |input| {

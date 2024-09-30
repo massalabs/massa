@@ -41,7 +41,12 @@ impl ModuleCache {
 
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
-        match RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::CL) {
+        match RuntimeModule::new(
+            bytecode,
+            self.cfg.gas_costs.clone(),
+            Compiler::CL,
+            self.cfg.condom_limits.clone(),
+        ) {
             Ok(module) => {
                 debug!("compilation of module {} succeeded", hash);
                 ModuleInfo::Module(module)
@@ -57,7 +62,11 @@ impl ModuleCache {
     /// Save a new or an already existing module in the cache
     pub fn save_module(&mut self, bytecode: &[u8]) {
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) = self.hd_cache.get(hash, self.cfg.gas_costs.clone()) {
+        if let Some(hd_module_info) = self.hd_cache.get(
+            hash,
+            self.cfg.gas_costs.clone(),
+            self.cfg.condom_limits.clone(),
+        ) {
             debug!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
         } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -110,7 +119,11 @@ impl ModuleCache {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);
             lru_module_info
-        } else if let Some(hd_module_info) = self.hd_cache.get(hash, self.cfg.gas_costs.clone()) {
+        } else if let Some(hd_module_info) = self.hd_cache.get(
+            hash,
+            self.cfg.gas_costs.clone(),
+            self.cfg.condom_limits.clone(),
+        ) {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
@@ -181,7 +194,12 @@ impl ModuleCache {
                 "Provided gas {} is lower than the base instance creation gas cost {}",
                 limit, self.cfg.gas_costs.max_instance_cost
             )))?;
-        let module = RuntimeModule::new(bytecode, self.cfg.gas_costs.clone(), Compiler::SP)?;
+        let module = RuntimeModule::new(
+            bytecode,
+            self.cfg.gas_costs.clone(),
+            Compiler::SP,
+            self.cfg.condom_limits.clone(),
+        )?;
         Ok(module)
     }
 }

@@ -189,6 +189,7 @@ impl ExecutionContext {
     ///
     /// # arguments
     /// * `final_state`: thread-safe access to the final state.
+    ///
     /// Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -364,12 +365,12 @@ impl ExecutionContext {
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
-        self.speculative_async_pool
-            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
-            .collect()
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        self.speculative_async_pool.take_batch_to_execute(
+            self.slot,
+            max_gas,
+            async_msg_cst_gas_cost,
+        )
     }
 
     /// Create a new `ExecutionContext` for executing an active slot.
@@ -780,7 +781,7 @@ impl ExecutionContext {
             .try_slash_rolls(denounced_addr, roll_count);
 
         // convert slashed rolls to coins (as deferred credits => coins)
-        let mut slashed_coins = self
+        let slashed_coins_from_rolls = self
             .config
             .roll_price
             .checked_mul_u64(slashed_rolls.unwrap_or_default())
@@ -802,7 +803,9 @@ impl ExecutionContext {
                     roll_count
                 ))
             })?
-            .saturating_sub(slashed_coins);
+            .saturating_sub(slashed_coins_from_rolls);
+
+        let mut total_slashed_coins = slashed_coins_from_rolls;
 
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
@@ -811,19 +814,21 @@ impl ExecutionContext {
                 .speculative_roll_state
                 .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
 
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+            total_slashed_coins =
+                total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+
             let amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+                amount_remaining_to_slash.saturating_sub(slashed_coins_in_deferred_credits);
             if amount_remaining_to_slash_2 > Amount::zero() {
                 // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
                 warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
+                    slashed_coins_from_rolls, slashed_coins_in_deferred_credits, denounced_addr,
                     self.config.roll_price.saturating_mul_u64(roll_count)
                 );
             }
         }
 
-        Ok(slashed_coins)
+        Ok(total_slashed_coins)
     }
 
     /// Update production statistics of an address.
@@ -893,13 +898,10 @@ impl ExecutionContext {
         // execute the deferred credits coming from roll sells
         let deferred_credits_transfers = self.execute_deferred_credits(&slot);
 
-        // take the ledger changes first as they are needed for async messages and cache
-        let ledger_changes = self.speculative_ledger.take();
-
         // settle emitted async messages and reimburse the senders of deleted messages
         let deleted_messages = self
             .speculative_async_pool
-            .settle_slot(&slot, &ledger_changes);
+            .settle_slot(&slot, &self.speculative_ledger.added_changes);
 
         let mut cancel_async_message_transfers = vec![];
         for (_msg_id, msg) in deleted_messages {
@@ -909,7 +911,7 @@ impl ExecutionContext {
         }
 
         // update module cache
-        let bc_updates = ledger_changes.get_bytecode_updates();
+        let bc_updates = self.speculative_ledger.added_changes.get_bytecode_updates();
         {
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
@@ -935,7 +937,7 @@ impl ExecutionContext {
 
         // generate the execution output
         let state_changes = StateChanges {
-            ledger_changes,
+            ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),

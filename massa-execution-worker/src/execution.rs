@@ -179,6 +179,7 @@ impl ExecutionState {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
@@ -970,6 +971,7 @@ impl ExecutionState {
             module,
             *max_gas,
             self.config.gas_costs.clone(),
+            self.config.condom_limits.clone(),
         )
         .map_err(|error| ExecutionError::VMError {
             context: "ExecuteSC".to_string(),
@@ -1070,6 +1072,7 @@ impl ExecutionState {
             param,
             max_gas,
             self.config.gas_costs.clone(),
+            self.config.condom_limits.clone(),
         );
         match response {
             Ok(Response { init_gas_cost, .. })
@@ -1123,7 +1126,7 @@ impl ExecutionState {
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: message.coins,
+                    coins: Default::default(),
                     owned_addresses: vec![message.sender],
                     operation_datastore: None,
                 },
@@ -1175,10 +1178,19 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self
+        let Ok(module) = self
             .module_cache
             .write()
-            .load_module(&bytecode, message.max_gas)?;
+            .load_module(&bytecode, message.max_gas)
+        else {
+            let err =
+                ExecutionError::RuntimeError("could not load module for async execution".into());
+            let mut context = context_guard!(self);
+            context.reset_to_snapshot(context_snapshot, err.clone());
+            context.cancel_async_message(&message);
+            return Err(err);
+        };
+
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1186,6 +1198,7 @@ impl ExecutionState {
             &message.function_params,
             message.max_gas,
             self.config.gas_costs.clone(),
+            self.config.condom_limits.clone(),
         );
         match response {
             Ok(res) => {
@@ -1271,7 +1284,9 @@ impl ExecutionState {
 
         // Try executing asynchronous messages.
         // Effects are cancelled on failure and the sender is reimbursed.
-        for (opt_bytecode, message) in messages {
+        for (_message_id, message) in messages {
+            let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
+
             match self.execute_async_message(message, opt_bytecode) {
                 Ok(_message_return) => {
                     cfg_if::cfg_if! {
@@ -1348,7 +1363,9 @@ impl ExecutionState {
             // Set remaining block gas
             let mut remaining_block_gas = self.config.max_gas_per_block;
 
-            // Set block credits
+            // Block credits count every operation fee, denunciation slash and endorsement reward.
+            // We initialize the block credits with the block reward to stimulate block production
+            // even in the absence of operations and denunciations.
             let mut block_credits = self.config.block_reward;
 
             // Try executing the operations of this block in the order in which they appear in the block.
@@ -1474,13 +1491,29 @@ impl ExecutionState {
             // Update speculative rolls state production stats
             context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
-            // Credit endorsement producers and endorsed block producers
-            let mut remaining_credit = block_credits;
+            // Divide the total block credits into parts + remainder
+            let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
             let block_credit_part = block_credits
-                .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
+                .checked_div_u64(block_credit_part_count)
                 .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(block_credit_part_count)
+                .expect("critical: block_credits checked_rem factor is 0");
+
+            // Give 3 parts + remainder to the block producer to stimulate block production
+            // even in the absence of endorsements.
+            let mut block_producer_credit = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder);
+
             for endorsement_creator in endorsement_creators {
-                // credit creator of the endorsement with coins
+                // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
+                // and dissuade from emitting the block too early (before the endorsements have propageted).
+                block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
+
+                // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
+                // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
+                // and to not publish too late (will not be included in the block).
                 match context.transfer_coins(
                     None,
                     Some(endorsement_creator),
@@ -1488,8 +1521,6 @@ impl ExecutionState {
                     false,
                 ) {
                     Ok(_) => {
-                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
-
                         #[cfg(feature = "execution-info")]
                         exec_info
                             .endorsement_creator_rewards
@@ -1503,7 +1534,9 @@ impl ExecutionState {
                     }
                 }
 
-                // credit creator of the endorsed block with coins
+                // Credit the creator of the endorsed block with 1 part.
+                // This is done to incentivize block producers to be endorsed,
+                // typically by not publishing their blocks too late.
                 match context.transfer_coins(
                     None,
                     Some(endorsement_target_creator),
@@ -1511,7 +1544,6 @@ impl ExecutionState {
                     false,
                 ) {
                     Ok(_) => {
-                        remaining_credit = remaining_credit.saturating_sub(block_credit_part);
                         #[cfg(feature = "execution-info")]
                         {
                             exec_info.endorsement_target_reward =
@@ -1527,18 +1559,19 @@ impl ExecutionState {
                 }
             }
 
-            // Credit block creator with remaining_credit
+            // Credit block producer
             if let Err(err) =
-                context.transfer_coins(None, Some(block_creator_addr), remaining_credit, false)
+                context.transfer_coins(None, Some(block_creator_addr), block_producer_credit, false)
             {
                 debug!(
                     "failed to credit {} coins to block creator {} on block execution: {}",
-                    remaining_credit, block_creator_addr, err
+                    block_producer_credit, block_creator_addr, err
                 )
             } else {
                 #[cfg(feature = "execution-info")]
                 {
-                    exec_info.block_producer_reward = Some((block_creator_addr, remaining_credit));
+                    exec_info.block_producer_reward =
+                        Some((block_creator_addr, block_producer_credit));
                 }
             }
         } else {
@@ -1778,7 +1811,7 @@ impl ExecutionState {
                     let call_stack_addr = context.get_call_stack();
 
                     // transfer fee
-                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(Some(*addr), None, fee, false)?;
                     }
                 }
@@ -1795,6 +1828,7 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
+                    self.config.condom_limits.clone(),
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
@@ -1823,13 +1857,13 @@ impl ExecutionState {
                     let call_stack_addr = context.get_call_stack();
 
                     // transfer fee
-                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(Some(*addr), None, fee, false)?;
                     }
 
                     // transfer coins
                     if let (Some(coins), Some(from), Some(to)) =
-                        (req.coins, call_stack_addr.get(0), call_stack_addr.get(1))
+                        (req.coins, call_stack_addr.first(), call_stack_addr.get(1))
                     {
                         context.transfer_coins(Some(*from), Some(*to), coins, false)?;
                     }
@@ -1849,6 +1883,7 @@ impl ExecutionState {
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
+                    self.config.condom_limits.clone(),
                 );
 
                 match response {

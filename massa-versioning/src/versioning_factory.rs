@@ -144,6 +144,7 @@ mod test {
         }
     }
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     enum TestAddress {
         V0(TestAddressV0),

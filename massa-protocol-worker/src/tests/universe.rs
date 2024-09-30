@@ -39,6 +39,7 @@ use num::rational::Ratio;
 use std::ops::Bound::Included;
 use tracing::{debug, log::warn};
 
+#[allow(dead_code)]
 pub struct ProtocolTestUniverse {
     pub module_controller: Box<dyn ProtocolController>,
     module_manager: Box<dyn ProtocolManager>,

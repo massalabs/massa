@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, staging, trying]
   pull_request:
-    branches: [main, 'testnet_*']
+    branches: [main, 'mainnet_*']
     types:
     - opened
     - reopened
@@ -33,7 +33,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -57,7 +57,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "check"
@@ -82,7 +82,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
           components: clippy
           override: true
       - uses: Swatinem/rust-cache@v2
@@ -191,7 +191,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
           override: true
       - uses: Swatinem/rust-cache@v2
         with:
@@ -239,7 +239,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
           components: rustfmt
           override: true
       - uses: actions/checkout@v3
@@ -274,7 +274,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.74.1
+          toolchain: 1.81.0
           components: rustfmt
           override: true
       - uses: Swatinem/rust-cache@v2

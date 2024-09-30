@@ -866,7 +866,7 @@ impl Command {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![addr]).await
                             {
-                                match addresses_info.get(0) {
+                                match addresses_info.first() {
                                     Some(info) => {
                                         if info.candidate_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");
@@ -911,7 +911,7 @@ impl Command {
 
                 if !json {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                        match addresses_info.get(0) {
+                        match addresses_info.first() {
                             Some(info) => {
                                 if info.candidate_balance < fee
                                     || roll_count > info.candidate_roll_count
@@ -948,7 +948,7 @@ impl Command {
 
                 if !json {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                        match addresses_info.get(0) {
+                        match addresses_info.first() {
                             Some(info) => {
                                 if info.candidate_balance < fee {
                                     client_warning!("this operation may be rejected due to insufficient balance");
@@ -994,7 +994,7 @@ impl Command {
                 let fee = parameters[4].parse::<Amount>()?;
                 if !json {
                     if let Ok(addresses_info) = client.public.get_addresses(vec![addr]).await {
-                        match addresses_info.get(0) {
+                        match addresses_info.first() {
                             Some(info) => {
                                 if info.candidate_balance < fee.saturating_add(max_coins) {
                                     client_warning!("this operation may be rejected due to insufficient balance");
@@ -1052,7 +1052,7 @@ impl Command {
                             if let Ok(addresses_info) =
                                 client.public.get_addresses(vec![target_addr]).await
                             {
-                                match addresses_info.get(0) {
+                                match addresses_info.first() {
                                     Some(info) => {
                                         if info.candidate_balance < total {
                                             client_warning!("this operation may be rejected due to insufficient balance");

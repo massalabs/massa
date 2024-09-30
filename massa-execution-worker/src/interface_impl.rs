@@ -130,6 +130,7 @@ impl InterfaceImpl {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // create an empty default store
@@ -1183,6 +1184,11 @@ impl Interface for InterfaceImpl {
         if validity_end.1 >= self.config.thread_count {
             bail!("validity end thread exceeds the configuration thread count")
         }
+
+        if max_gas < self.config.gas_costs.max_instance_cost {
+            bail!("max gas is lower than the minimum instance cost")
+        }
+
         let target_addr = Address::from_str(target_address)?;
 
         // check that the target address is an SC address
@@ -1200,6 +1206,15 @@ impl Interface for InterfaceImpl {
 
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
+
+        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
+        {
+            bail!("validity end is earlier than the validity start")
+        }
+        if Slot::new(validity_end.0, validity_end.1) < emission_slot {
+            bail!("validity end is earlier than the current slot")
+        }
+
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
@@ -1504,8 +1519,8 @@ impl Interface for InterfaceImpl {
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
         match addr {
-            Address::User(_) => Ok(AddressCategory::ScAddress),
-            Address::SC(_) => Ok(AddressCategory::UserAddress),
+            Address::User(_) => Ok(AddressCategory::UserAddress),
+            Address::SC(_) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
             _ => Ok(AddressCategory::Unspecified),
         }
@@ -1686,6 +1701,11 @@ impl Interface for InterfaceImpl {
                 warn!("Context is locked, cannot save gas remaining before subexecution");
             }
         }
+    }
+
+    /// Interface version to sync with the runtime for its versioning
+    fn get_interface_version(&self) -> Result<u32> {
+        Ok(0)
     }
 }
 
