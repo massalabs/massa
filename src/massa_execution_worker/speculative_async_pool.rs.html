@@ -738,7 +738,7 @@
 
 <span class="doccomment">/// Check in the ledger changes if a message trigger has been triggered
 </span><span class="kw">fn </span>is_triggered(filter: <span class="kw-2">&amp;</span>AsyncMessageTrigger, ledger_changes: <span class="kw-2">&amp;</span>LedgerChanges) -&gt; bool {
-    ledger_changes.has_writes(<span class="kw-2">&amp;</span>filter.address, filter.datastore_key.clone())
+    ledger_changes.has_changes(<span class="kw-2">&amp;</span>filter.address, filter.datastore_key.clone())
 }
 
 <span class="attr">#[cfg(test)]
