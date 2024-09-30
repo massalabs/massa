@@ -10,6 +10,7 @@ lazy_static::lazy_static! {
     pub static ref SETTINGS: Settings = build_massa_settings("massa-client", "MASSA_CLIENT");
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub default_node: DefaultNode,

@@ -22,6 +22,7 @@
 //!    * If the dependencies are already available, the module checks if it can validate the block and add it to a clique.
 //!    * If it's the second block received for the same slot we save it in order to denounce the creator in the future.
 //!    * If it's the third or more we ignore the block unless we asked for it explicitly as a dependency.
+//!
 //! If a queued block reaches the slot time at which it should be processed, the worker wakes up to check it and trigger, if necessary, the consensus algorithm.
 //! It then prunes the block graph and the caches.
 
