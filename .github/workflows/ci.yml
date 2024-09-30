@@ -22,12 +22,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# actions/checkout: https://github.com/actions/checkout
+#
+
 jobs:
   # Quick tests on each commit/PR
   sanity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -51,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -76,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -104,7 +107,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       # - uses: actions-rust-lang/audit@v1
@@ -185,7 +188,7 @@ jobs:
         if: runner.os == 'Linux'
         run: df -h
       - uses: ilammy/setup-nasm@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -233,7 +236,7 @@ jobs:
     if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -242,12 +245,12 @@ jobs:
           toolchain: 1.81.0
           components: rustfmt
           override: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: massalabs/gas-calibration
           path: gas-calibration
           ref: main
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: massalabs/massa-as-sdk
           path: massa-as-sdk
@@ -268,7 +271,7 @@ jobs:
   doc:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - uses: actions-rs/toolchain@v1
@@ -297,7 +300,7 @@ jobs:
   unit_tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - name: setup_tests
