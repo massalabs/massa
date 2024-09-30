@@ -545,7 +545,6 @@
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
 <a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -585,8 +584,7 @@
 <span class="kw">mod </span>tick;
 <span class="kw">mod </span>verifications;
 
-<span class="attr">#[allow(dead_code)]
-#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ConsensusState {
     <span class="doccomment">/// Configuration
     </span><span class="kw">pub </span>config: ConsensusConfig,

@@ -1162,6 +1162,7 @@
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
 <a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1529,12 +1530,12 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, AsyncMessage)&gt; {
-        <span class="self">self</span>.speculative_async_pool
-            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
-            .collect()
+    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
+        <span class="self">self</span>.speculative_async_pool.take_batch_to_execute(
+            <span class="self">self</span>.slot,
+            max_gas,
+            async_msg_cst_gas_cost,
+        )
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for executing an active slot.
@@ -1945,7 +1946,7 @@
             .try_slash_rolls(denounced_addr, roll_count);
 
         <span class="comment">// convert slashed rolls to coins (as deferred credits =&gt; coins)
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slashed_coins = <span class="self">self
+        </span><span class="kw">let </span>slashed_coins_from_rolls = <span class="self">self
             </span>.config
             .roll_price
             .checked_mul_u64(slashed_rolls.unwrap_or_default())
@@ -1967,7 +1968,9 @@
                     roll_count
                 ))
             })<span class="question-mark">?
-            </span>.saturating_sub(slashed_coins);
+            </span>.saturating_sub(slashed_coins_from_rolls);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>total_slashed_coins = slashed_coins_from_rolls;
 
         <span class="kw">if </span>amount_remaining_to_slash &gt; Amount::zero() {
             <span class="comment">// There is still an amount to slash for this denunciation so we need to slash
@@ -1976,19 +1979,21 @@
                 </span>.speculative_roll_state
                 .try_slash_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>.slot, denounced_addr, <span class="kw-2">&amp;</span>amount_remaining_to_slash);
 
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+            total_slashed_coins =
+                total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
+
             <span class="kw">let </span>amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
+                amount_remaining_to_slash.saturating_sub(slashed_coins_in_deferred_credits);
             <span class="kw">if </span>amount_remaining_to_slash_2 &gt; Amount::zero() {
                 <span class="comment">// Use saturating_mul_u64 to avoid an error (for just a warn!(..))
                 </span><span class="macro">warn!</span>(<span class="string">"Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins"</span>,
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
+                    slashed_coins_from_rolls, slashed_coins_in_deferred_credits, denounced_addr,
                     <span class="self">self</span>.config.roll_price.saturating_mul_u64(roll_count)
                 );
             }
         }
 
-        <span class="prelude-val">Ok</span>(slashed_coins)
+        <span class="prelude-val">Ok</span>(total_slashed_coins)
     }
 
     <span class="doccomment">/// Update production statistics of an address.
@@ -2058,13 +2063,10 @@
         <span class="comment">// execute the deferred credits coming from roll sells
         </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
-        <span class="comment">// take the ledger changes first as they are needed for async messages and cache
-        </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
-
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
         </span><span class="kw">let </span>deleted_messages = <span class="self">self
             </span>.speculative_async_pool
-            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes);
+            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes);
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
@@ -2074,7 +2076,7 @@
         }
 
         <span class="comment">// update module cache
-        </span><span class="kw">let </span>bc_updates = ledger_changes.get_bytecode_updates();
+        </span><span class="kw">let </span>bc_updates = <span class="self">self</span>.speculative_ledger.added_changes.get_bytecode_updates();
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
             <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
@@ -2100,7 +2102,7 @@
 
         <span class="comment">// generate the execution output
         </span><span class="kw">let </span>state_changes = StateChanges {
-            ledger_changes,
+            ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),

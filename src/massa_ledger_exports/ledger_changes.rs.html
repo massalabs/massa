@@ -1012,14 +1012,6 @@
 <a href="#1012" id="1012">1012</a>
 <a href="#1013" id="1013">1013</a>
 <a href="#1014" id="1014">1014</a>
-<a href="#1015" id="1015">1015</a>
-<a href="#1016" id="1016">1016</a>
-<a href="#1017" id="1017">1017</a>
-<a href="#1018" id="1018">1018</a>
-<a href="#1019" id="1019">1019</a>
-<a href="#1020" id="1020">1020</a>
-<a href="#1021" id="1021">1021</a>
-<a href="#1022" id="1022">1022</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file provides structures representing changes to ledger entries
@@ -1857,16 +1849,8 @@
         }
     }
 
-    <span class="doccomment">/// Tries to return whether the ledger changes contain a write for the given address
-    /// and optionally if a datastore key write also exists in the address's datastore.
-    /// Notes:
-    /// - A ledger entry could be written to without any changes on the values associated,
-    ///
-    /// for example if the value was changed multiple times in the same slot.
-    ///
-    /// - This code assumes Delete cannot be shadowed by Set operations in the same slot, which may not be the case
-    ///
-    /// when / if we allow full entry Delete given the current LedgerChanges::Delete handling. In that case, a rework may be necessary.
+    <span class="doccomment">/// Tries to return whether there is a change on a given address in the ledger changes
+    /// and optionally if a datastore key modification also exists in the address's datastore.
     ///
     /// # Arguments
     /// * `addr`: target address
@@ -1874,7 +1858,7 @@
     ///
     /// # Returns
     /// * true if the address and, optionally the datastore key, exists in the ledger changes
-    </span><span class="kw">pub fn </span>has_writes(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;) -&gt; bool {
+    </span><span class="kw">pub fn </span>has_changes(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;) -&gt; bool {
         <span class="comment">// Get the current changes being applied to the ledger entry associated to that address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
             <span class="comment">// This ledger entry is being replaced by a new one:
