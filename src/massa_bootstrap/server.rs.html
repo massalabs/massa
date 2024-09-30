@@ -799,14 +799,6 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
-<a href="#802" id="802">802</a>
-<a href="#803" id="803">803</a>
-<a href="#804" id="804">804</a>
-<a href="#805" id="805">805</a>
-<a href="#806" id="806">806</a>
-<a href="#807" id="807">807</a>
-<a href="#808" id="808">808</a>
-<a href="#809" id="809">809</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -873,15 +865,7 @@
     BootstrapConfig,
 };
 
-<span class="comment">/*
-/// Specifies a common interface that can be used by standard, or mockers
-#[cfg_attr(test, mockall::automock)]
-pub trait BSEventPoller {
-    fn poll(&amp;mut self) -&gt; Result&lt;PollEvent, BootstrapError&gt;;
-}
-*/
-
-</span><span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
+<span class="doccomment">/// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 
 /// handle on the bootstrap server
