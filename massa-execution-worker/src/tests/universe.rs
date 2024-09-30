@@ -79,6 +79,7 @@ impl ExecutionForeignControllers {
     }
 }
 
+#[allow(dead_code)]
 pub struct ExecutionTestUniverse {
     pub module_controller: Box<dyn ExecutionController>,
     pub storage: Storage,
