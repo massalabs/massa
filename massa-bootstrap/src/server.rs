@@ -64,14 +64,6 @@ use crate::{
     BootstrapConfig,
 };
 
-/*
-/// Specifies a common interface that can be used by standard, or mockers
-#[cfg_attr(test, mockall::automock)]
-pub trait BSEventPoller {
-    fn poll(&mut self) -> Result<PollEvent, BootstrapError>;
-}
-*/
-
 /// Abstraction layer over data produced by the listener, and transported
 /// over to the worker via a channel
 
