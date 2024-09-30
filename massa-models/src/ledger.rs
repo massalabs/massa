@@ -7,7 +7,6 @@ use crate::{
     error::ModelsResult as Result,
     prehash::{PreHashMap, PreHashSet},
 };
-use core::usize;
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
