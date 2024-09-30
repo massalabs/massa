@@ -545,6 +545,7 @@
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
 <a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::{HashMap, VecDeque},
     vec,
@@ -584,7 +585,8 @@
 <span class="kw">mod </span>tick;
 <span class="kw">mod </span>verifications;
 
-<span class="attr">#[derive(Clone)]
+<span class="attr">#[allow(dead_code)]
+#[derive(Clone)]
 </span><span class="kw">pub struct </span>ConsensusState {
     <span class="doccomment">/// Configuration
     </span><span class="kw">pub </span>config: ConsensusConfig,
@@ -617,7 +619,7 @@
     </span><span class="kw">pub </span>new_final_blocks: PreHashSet&lt;BlockId&gt;,
     <span class="doccomment">/// Newly stale block mapped to creator and slot
     </span><span class="kw">pub </span>new_stale_blocks: PreHashMap&lt;BlockId, (Address, Slot)&gt;,
-    <span class="doccomment">/// time at which the node was launched (used for desynchronization detection)
+    <span class="doccomment">/// time at which the node was launched (used for de-synchronization detection)
     </span><span class="kw">pub </span>launch_time: MassaTime,
     <span class="doccomment">/// Final block stats `(time, creator, is_from_protocol)`
     </span><span class="kw">pub </span>final_block_stats: VecDeque&lt;(MassaTime, Address, bool)&gt;,
@@ -627,7 +629,7 @@
     </span><span class="kw">pub </span>stale_block_stats: VecDeque&lt;MassaTime&gt;,
     <span class="doccomment">/// the time span considered for stats
     </span><span class="kw">pub </span>stats_history_timespan: MassaTime,
-    <span class="doccomment">/// the time span considered for desynchronization detection
+    <span class="doccomment">/// the time span considered for de-synchronization detection
     </span><span class="kw">pub </span>stats_desync_detection_timespan: MassaTime,
     <span class="doccomment">/// blocks we want
     </span><span class="kw">pub </span>wishlist: PreHashMap&lt;BlockId, <span class="prelude-ty">Option</span>&lt;SecuredHeader&gt;&gt;,
