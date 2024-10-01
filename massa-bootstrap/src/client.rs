@@ -491,7 +491,11 @@ pub fn get_state(
     let limit = bootstrap_config.rate_limit;
     loop {
         // check for interruption
-        if *interrupted.0.lock().expect("double-lock on interrupt-mutex") {
+        if *interrupted
+            .0
+            .lock()
+            .expect("double-lock on interrupt-mutex")
+        {
             return Err(BootstrapError::Interrupted(
                 "Sig INT received while getting state".to_string(),
             ));
