@@ -292,6 +292,13 @@ impl ExecutionContext {
     /// * `snapshot`: a saved snapshot to be restored
     /// * `error`: an execution error to emit as an event conserved after snapshot reset.
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
+        // Emit the error event.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        self.event_emit(self.event_create(
+            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
+            true,
+        ));
+
         // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
@@ -306,7 +313,7 @@ impl ExecutionContext {
         self.speculative_executed_denunciations
             .reset_to_snapshot(snapshot.executed_denunciations);
         self.created_addr_index = snapshot.created_addr_index;
-        self.created_event_index = snapshot.created_event_index;
+        self.stack = snapshot.stack;
         self.created_message_index = snapshot.created_message_index;
         self.unsafe_rng = snapshot.unsafe_rng;
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
@@ -315,15 +322,6 @@ impl ExecutionContext {
         for event in self.events.0.range_mut(snapshot.event_count..) {
             event.context.is_error = true;
         }
-
-        // Emit the error event.
-        // Note that the context event counter is properly handled by event_emit (see doc).
-        self.event_emit(self.event_create(
-            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
-            true,
-        ));
-        // Reset address stack after emitting the error event.
-        self.stack = snapshot.stack;
     }
 
     /// Create a new `ExecutionContext` for read-only execution
