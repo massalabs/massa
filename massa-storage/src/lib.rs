@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
-//! The clonable `Storage` structure has thread-safe shared access to the stored objects.
+//! The cloneable `Storage` structure has thread-safe shared access to the stored objects.
 //!
 //! The `Storage` structure also has lists of object references held by the current instance of `Storage`.
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
