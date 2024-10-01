@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-versioning/src/versioning.rs`."><title>versioning.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_versioning" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_versioning/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-versioning/src/versioning.rs`."><title>versioning.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_versioning" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2857,10 +2857,10 @@
         <span class="doccomment">/// Past start, can only go to LockedIn after the threshold is above a given value
         </span>Started { <span class="kw">pub</span>(<span class="kw">crate</span>) vote_ratio: Ratio&lt;u64&gt; },
         <span class="doccomment">/// Locked but wait for some time before going to active (to let users the time to upgrade)
-        /// &#39;at&#39; is the timestamp where the transition from &#39;Started&#39; to &#39;LockedIn&#39; happened
+        /// 'at' is the timestamp where the transition from 'Started' to 'LockedIn' happened
         </span>LockedIn { <span class="kw">pub</span>(<span class="kw">crate</span>) at: MassaTime },
         <span class="doccomment">/// After LockedIn, deployment is considered successful (after activation delay)
-        /// &#39;at&#39; is the timestamp where the transition from &#39;LockedIn&#39; to &#39;Active&#39; happened
+        /// 'at' is the timestamp where the transition from 'LockedIn' to 'Active' happened
         </span>Active { <span class="kw">pub</span>(<span class="kw">crate</span>) at: MassaTime },
         <span class="doccomment">/// Past the timeout, if LockedIn is not reach
         </span>Failed,
@@ -2937,7 +2937,7 @@
 
 <span class="kw">impl </span>Eq <span class="kw">for </span>Advance {}
 
-<span class="comment">// A Lightweight version of &#39;Advance&#39; (used in MipState history)
+<span class="comment">// A Lightweight version of 'Advance' (used in MipState history)
 </span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>AdvanceLW {
     <span class="doccomment">/// % of past blocks with this version
@@ -3004,7 +3004,7 @@
         }
 
         <span class="kw">if </span>input.threshold &gt;= VERSIONING_THRESHOLD_TRANSITION_ACCEPTED {
-            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) transition accepted, locking in&quot;</span>);
+            <span class="macro">debug!</span>(<span class="string">"(VERSIONING LOG) transition accepted, locking in"</span>);
             ComponentState::locked_in(input.now)
         } <span class="kw">else </span>{
             ComponentState::started(input.threshold)
@@ -3016,7 +3016,7 @@
     <span class="doccomment">/// Update state from state LockedIn ...
     </span><span class="kw">pub fn </span>on_advance(<span class="self">self</span>, input: Advance) -&gt; ComponentState {
         <span class="kw">if </span>input.now &gt; <span class="self">self</span>.at.saturating_add(input.activation_delay) {
-            <span class="macro">debug!</span>(<span class="string">&quot;(VERSIONING LOG) locked version has become active&quot;</span>);
+            <span class="macro">debug!</span>(<span class="string">"(VERSIONING LOG) locked version has become active"</span>);
             ComponentState::active(input.now)
         } <span class="kw">else </span>{
             ComponentState::locked_in(<span class="self">self</span>.at)
@@ -3042,15 +3042,15 @@
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>IsConsistentError {
     <span class="comment">// State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    </span><span class="attr">#[error(<span class="string">&quot;MipState history is empty&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"MipState history is empty"</span>)]
     </span>EmptyHistory,
-    <span class="attr">#[error(<span class="string">&quot;MipState is at state Error&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"MipState is at state Error"</span>)]
     </span>AtError,
-    <span class="attr">#[error(<span class="string">&quot;History must start at state &#39;Defined&#39; and not {0:?}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"History must start at state 'Defined' and not {0:?}"</span>)]
     </span>InvalidHistory(ComponentStateTypeId),
-    <span class="attr">#[error(<span class="string">&quot;Non consistent state: {0:?} versus rebuilt state: {1:?}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Non consistent state: {0:?} versus rebuilt state: {1:?}"</span>)]
     </span>NonConsistent(ComponentState, ComponentState),
-    <span class="attr">#[error(<span class="string">&quot;Invalid data in MIP info, start &gt;= timeout&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Invalid data in MIP info, start &gt;= timeout"</span>)]
     </span>Invalid,
 }
 
@@ -3066,7 +3066,7 @@
     </span><span class="kw">pub fn </span>new(defined: MassaTime) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>state: ComponentState = Default::default(); <span class="comment">// Default is Defined
         </span><span class="kw">let </span>state_id = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>state);
-        <span class="comment">// Build a &#39;dummy&#39; advance lw msg for state Defined, this is to avoid using an
+        <span class="comment">// Build a 'dummy' advance lw msg for state Defined, this is to avoid using an
         // Option&lt;AdvanceLW&gt; in MipStateHistory::history
         </span><span class="kw">let </span>advance = AdvanceLW {
             threshold: Default::default(),
@@ -3078,7 +3078,7 @@
         <span class="self">Self </span>{ state, history }
     }
 
-    <span class="doccomment">/// Create a new state from an existing state - resulting state will be at state &quot;Defined&quot;
+    <span class="doccomment">/// Create a new state from an existing state - resulting state will be at state "Defined"
     </span><span class="kw">pub fn </span>reset_from(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">match </span><span class="self">self</span>.history.first_key_value() {
             <span class="prelude-val">Some</span>((advance, state_id)) <span class="kw">if </span><span class="kw-2">*</span>state_id == ComponentStateTypeId::Defined =&gt; {
@@ -3092,7 +3092,7 @@
     /// Can be called as multiple times as it will only store what changes the state in history
     </span><span class="kw">pub fn </span>on_advance(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="kw-2">&amp;</span>Advance) {
         <span class="comment">// Check that input.now is after last item in history
-        // We don&#39;t want to go backward
+        // We don't want to go backward
         </span><span class="kw">let </span>is_forward = <span class="self">self
             </span>.history
             .last_key_value()
@@ -3119,7 +3119,7 @@
 
     <span class="doccomment">/// Given a corresponding MipInfo, check if state is consistent
     /// it is consistent
-    ///   if state can be at this position (e.g. can it be at state &quot;Started&quot; according to given time range)
+    ///   if state can be at this position (e.g. can it be at state "Started" according to given time range)
     ///   if history is consistent with current state
     /// Return false for state == ComponentState::Error
     </span><span class="kw">pub fn </span>is_consistent_with(<span class="kw-2">&amp;</span><span class="self">self</span>, mip_info: <span class="kw-2">&amp;</span>MipInfo) -&gt; <span class="prelude-ty">Result</span>&lt;(), IsConsistentError&gt; {
@@ -3165,7 +3165,7 @@
             vsh.on_advance(<span class="kw-2">&amp;</span>advance_msg);
         }
 
-        <span class="comment">// Advance state if both are at &#39;Started&#39; (to have the same threshold)
+        <span class="comment">// Advance state if both are at 'Started' (to have the same threshold)
         // Note: because in history we do not add entries for every threshold update
         </span><span class="kw">if let </span>(
             ComponentState::Started(Started {
@@ -3293,11 +3293,11 @@
 </span><span class="attr">#[allow(missing_docs)]
 #[derive(Error, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>StateAtError {
-    <span class="attr">#[error(<span class="string">&quot;Initial state ({0:?}) only defined after timestamp: {1}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Initial state ({0:?}) only defined after timestamp: {1}"</span>)]
     </span>BeforeInitialState(ComponentStateTypeId, MassaTime),
-    <span class="attr">#[error(<span class="string">&quot;Empty history, should never happen&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Empty history, should never happen"</span>)]
     </span>EmptyHistory,
-    <span class="attr">#[error(<span class="string">&quot;Cannot predict value: threshold not reached yet&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Cannot predict value: threshold not reached yet"</span>)]
     </span>Unpredictable,
 }
 
@@ -3380,7 +3380,7 @@
         guard.get_latest_component_version_at(component, ts)
     }
 
-    <span class="doccomment">/// Get all versions in &#39;Active state&#39; for the given MipComponent
+    <span class="doccomment">/// Get all versions in 'Active state' for the given MipComponent
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_all_active_component_versions(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent) -&gt; Vec&lt;u32&gt; {
         <span class="kw">let </span>guard = <span class="self">self</span>.<span class="number">0</span>.read();
         guard.get_all_active_component_versions(component)
@@ -3516,7 +3516,7 @@
     <span class="kw">pub </span>warn_announced_version_ratio: Ratio&lt;u64&gt;,
 }
 
-<span class="doccomment">/// In order for a MIP to be accepted, we compute statistics about other node &#39;network&#39; version announcement
+<span class="doccomment">/// In order for a MIP to be accepted, we compute statistics about other node 'network' version announcement
 </span><span class="attr">#[derive(Debug, Clone, PartialEq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>MipStoreStats {
     <span class="comment">// config for block count to consider when computing the vote ratio
@@ -3550,43 +3550,43 @@
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>UpdateWithError {
     <span class="comment">// State is not consistent with associated MipInfo, ex: State is active but MipInfo.start was not reach yet
-    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:#?} is not consistent with state: {1:#?}, error: {2}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"MipInfo {0:#?} is not consistent with state: {1:#?}, error: {2}"</span>)]
     </span>NonConsistent(MipInfo, MipState, IsConsistentError),
     <span class="comment">// ex: State is already started but received state is only defined
-    </span><span class="attr">#[error(<span class="string">&quot;For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"For MipInfo {0:?}, trying to downgrade from state {1:?} to {2:?}"</span>)]
     </span>Downgrade(MipInfo, ComponentState, ComponentState),
     <span class="comment">// ex: MipInfo 2 start is before MipInfo 1 timeout (MipInfo timings should only be sequential)
-    </span><span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has overlapping data of MipInfo {1:?}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">"MipInfo {0:?} has overlapping data of MipInfo {1:?}"</span>)]
     </span>Overlapping(MipInfo, MipInfo),
-    <span class="attr">#[error(<span class="string">&quot;MipInfo {0:?} has an invalid activation delay value: {1}, min allowed: {2}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"MipInfo {0:?} has an invalid activation delay value: {1}, min allowed: {2}"</span>)]
     </span>InvalidActivationDelay(MipInfo, MassaTime, MassaTime),
 }
 
-<span class="doccomment">/// Error returned by &#39;extend_from_db`
+<span class="doccomment">/// Error returned by 'extend_from_db`
 </span><span class="attr">#[derive(Error, Debug)]
 </span><span class="kw">pub enum </span>ExtendFromDbError {
-    <span class="attr">#[error(<span class="string">&quot;Unable to get an handle over db column: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Unable to get an handle over db column: {0}"</span>)]
     </span>UnknownDbColumn(String),
-    <span class="attr">#[error(<span class="string">&quot;{0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"{0}"</span>)]
     </span>Update(<span class="attr">#[from] </span>UpdateWithError),
-    <span class="attr">#[error(<span class="string">&quot;{0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"{0}"</span>)]
     </span>Deserialize(String),
 }
 
-<span class="doccomment">/// Error returned by &#39;is_consistent_with_shutdown_period`
+<span class="doccomment">/// Error returned by 'is_consistent_with_shutdown_period`
 </span><span class="attr">#[derive(Error, Debug)]
 </span><span class="kw">pub enum </span>IsConsistentWithShutdownPeriodError {
-    <span class="attr">#[error(<span class="string">&quot;{0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"{0}"</span>)]
     </span>Update(<span class="attr">#[from] </span>ModelsError),
-    <span class="attr">#[error(<span class="string">&quot;MipInfo: {0:?} (state: {1:?}) is not consistent with shutdown: {2} {3}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"MipInfo: {0:?} (state: {1:?}) is not consistent with shutdown: {2} {3}"</span>)]
     </span>NonConsistent(MipInfo, ComponentState, MassaTime, MassaTime),
 }
 
 <span class="attr">#[derive(Error, Debug)]
 </span><span class="kw">pub enum </span>IsKVValidError {
-    <span class="attr">#[error(<span class="string">&quot;{0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"{0}"</span>)]
     </span>Deserialize(String),
-    <span class="attr">#[error(<span class="string">&quot;Invalid prefix for key&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Invalid prefix for key"</span>)]
     </span>InvalidPrefix,
 }
 
@@ -3607,7 +3607,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(Vec&lt;MipInfo&gt;, BTreeMap&lt;MipInfo, MipState&gt;), UpdateWithError&gt; {
         <span class="comment">// iter over items in given store:
         // -&gt; 2 cases:
-        // * MipInfo is already in self store -&gt; add to &#39;to_update&#39; list
+        // * MipInfo is already in self store -&gt; add to 'to_update' list
         // * MipInfo is not in self.store -&gt; We received a new MipInfo so we are running an out dated version
         //                                   of the software
         //                                   We then return the list of new MipInfo so we can warn and ask
@@ -3642,7 +3642,7 @@
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(m_state_orig) = <span class="self">self</span>.store.get(m_info) {
                 <span class="comment">// Given MIP info is already in self
-                // Need to check if we add it to &#39;to_update&#39; list
+                // Need to check if we add it to 'to_update' list
                 </span><span class="kw">let </span>m_state_id: u32 = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>m_state.state).into();
                 <span class="kw">let </span>m_state_orig_id: u32 = ComponentStateTypeId::from(<span class="kw-2">&amp;</span>m_state_orig.state).into();
 
@@ -3653,12 +3653,12 @@
                         | ComponentState::Started(<span class="kw">_</span>)
                         | ComponentState::LockedIn(<span class="kw">_</span>)
                 ) {
-                    <span class="comment">// Only accept &#39;higher&#39; state
-                    // (e.g. &#39;started&#39; if &#39;defined&#39;, &#39;locked in&#39; if &#39;started&#39;...)
+                    <span class="comment">// Only accept 'higher' state
+                    // (e.g. 'started' if 'defined', 'locked in' if 'started'...)
                     </span><span class="kw">if </span>m_state_id &gt;= m_state_orig_id {
                         to_update.insert(m_info.clone(), m_state.clone());
                     } <span class="kw">else </span>{
-                        <span class="comment">// Trying to downgrade state&#39; (e.g. trying to go from &#39;active&#39; -&gt; &#39;defined&#39;)
+                        <span class="comment">// Trying to downgrade state' (e.g. trying to go from 'active' -&gt; 'defined')
                         </span>has_error = <span class="prelude-val">Some</span>(UpdateWithError::Downgrade(
                             m_info.clone(),
                             m_state_orig.state,
@@ -3669,7 +3669,7 @@
                 }
             } <span class="kw">else </span>{
                 <span class="comment">// Given MIP info is not in self
-                // Need to check if we add it to &#39;to_add&#39; list
+                // Need to check if we add it to 'to_add' list
 
                 </span><span class="kw">let </span>last_m_info_ = to_add
                     .last_key_value()
@@ -3686,7 +3686,7 @@
                         }
                     }
 
-                    <span class="attr">#[cfg(not(any(test, feature = <span class="string">&quot;test-exports&quot;</span>)))]
+                    <span class="attr">#[cfg(not(any(test, feature = <span class="string">"test-exports"</span>)))]
                     </span><span class="kw">if </span>m_info.activation_delay &lt; VERSIONING_ACTIVATION_DELAY_MIN {
                         has_error = <span class="prelude-val">Some</span>(UpdateWithError::InvalidActivationDelay(
                             m_info.clone(),
@@ -3702,7 +3702,7 @@
                         &amp;&amp; !names.contains(<span class="kw-2">&amp;</span>m_info.name)
                         &amp;&amp; component_version_compatible
                     {
-                        <span class="comment">// Time range is ok / version is ok / name is unique, let&#39;s add it
+                        <span class="comment">// Time range is ok / version is ok / name is unique, let's add it
                         </span>to_add.insert(m_info.clone(), m_state.clone());
                         names.insert(m_info.name.clone());
                         <span class="kw">for </span>(component, component_version) <span class="kw">in </span>m_info.components.iter() {
@@ -3795,7 +3795,7 @@
                             // announced version is not known (not in MIP store)
                             // announced version is &gt; to the last known network version in MIP store
                             // -&gt; Warn the user to update
-                            </span><span class="macro">warn!</span>(<span class="string">&quot;{} our of {} last blocks advertised that they are willing to transition to version {}. You should update your node if you wish to move to that version.&quot;</span>,
+                            </span><span class="macro">warn!</span>(<span class="string">"{} our of {} last blocks advertised that they are willing to transition to version {}. You should update your node if you wish to move to that version."</span>,
                                 network_version_count,
                                 <span class="self">self</span>.stats.config.block_count_considered,
                                 announced_network_version
@@ -3807,7 +3807,7 @@
         }
 
         <span class="macro">debug!</span>(
-            <span class="string">&quot;[VERSIONING STATS] stats have {} counters and {} announcements&quot;</span>,
+            <span class="string">"[VERSIONING STATS] stats have {} counters and {} announcements"</span>,
             <span class="self">self</span>.stats.network_version_counters.len(),
             <span class="self">self</span>.stats.latest_announcements.len()
         );
@@ -3835,7 +3835,7 @@
                 <span class="self">self</span>.stats.config.block_count_considered <span class="kw">as </span>u64,
             );
 
-            <span class="macro">debug!</span>(<span class="string">&quot;[VERSIONING STATS] Vote counts / blocks considered = {} / {} (for MipInfo with network version {} - {})&quot;</span>,
+            <span class="macro">debug!</span>(<span class="string">"[VERSIONING STATS] Vote counts / blocks considered = {} / {} (for MipInfo with network version {} - {})"</span>,
                 network_version_count,
                 <span class="self">self</span>.stats.config.block_count_considered,
                 mi.version,
@@ -3862,7 +3862,7 @@
             .iter()
             .rev()
             .filter(|(mi, ms)| {
-                mi.components.get(component).is_some()
+                mi.components.contains_key(component)
                     &amp;&amp; <span class="macro">matches!</span>(ms.state, ComponentState::Active(<span class="kw">_</span>))
             })
             .find_map(|(mi, ms)| {
@@ -3877,7 +3877,7 @@
         version
     }
 
-    <span class="doccomment">/// Get all versions in &#39;Active state&#39; for the given MipComponent
+    <span class="doccomment">/// Get all versions in 'Active state' for the given MipComponent
     </span><span class="kw">fn </span>get_all_active_component_versions(<span class="kw-2">&amp;</span><span class="self">self</span>, component: <span class="kw-2">&amp;</span>MipComponent) -&gt; Vec&lt;u32&gt; {
         <span class="kw">let </span>versions_iter = <span class="self">self</span>.store.iter().filter_map(|(mi, ms)| {
             <span class="kw">if </span><span class="macro">matches!</span>(ms.state, ComponentState::Active(<span class="kw">_</span>)) {
@@ -3956,7 +3956,7 @@
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="comment">// active / failed, error, nothing to do
-                    // locked in, nothing to do (might go from &#39;locked in&#39; to &#39;active&#39; during shutdown)
+                    // locked in, nothing to do (might go from 'locked in' to 'active' during shutdown)
                 </span>}
             }
         }
@@ -4031,9 +4031,9 @@
                         .start
                         .saturating_add(mip_info.timeout.saturating_sub(mip_info.start));
 
-                    <span class="comment">// Need to reset state to &#39;Defined&#39;
+                    <span class="comment">// Need to reset state to 'Defined'
                     </span><span class="kw">let </span>new_mip_state = MipState::reset_from(mip_state)
-                        .ok_or(ModelsError::from(<span class="string">&quot;Unable to reset state&quot;</span>))<span class="question-mark">?</span>;
+                        .ok_or(ModelsError::from(<span class="string">"Unable to reset state"</span>))<span class="question-mark">?</span>;
                     <span class="comment">// Note: statistics are already reset
                     </span>new_store.insert(new_mip_info, new_mip_state.clone());
                 }
@@ -4074,7 +4074,7 @@
 
             <span class="kw">if </span>!rem.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
+                    <span class="string">"Rem not empty after deserialization"</span>.to_string(),
                 ));
             }
 
@@ -4084,7 +4084,7 @@
 
             <span class="kw">if </span>!rem2.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
+                    <span class="string">"Rem not empty after deserialization"</span>.to_string(),
                 ));
             }
         } <span class="kw">else if </span>serialized_key.starts_with(MIP_STORE_STATS_PREFIX.as_bytes()) {
@@ -4094,7 +4094,7 @@
 
             <span class="kw">if </span>!rem.is_empty() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(IsKVValidError::Deserialize(
-                    <span class="string">&quot;Rem not empty after deserialization&quot;</span>.to_string(),
+                    <span class="string">"Rem not empty after deserialization"</span>.to_string(),
                 ));
             }
         } <span class="kw">else </span>{
@@ -4132,7 +4132,7 @@
                     <span class="kw">match </span>state_id {
                         ComponentStateTypeId::Active =&gt; {
                             batch.insert(key.clone(), <span class="prelude-val">Some</span>(value.clone()));
-                            <span class="comment">// + &quot;Remove key&quot; in VERSIONING_CF
+                            <span class="comment">// + "Remove key" in VERSIONING_CF
                             </span>versioning_batch.insert(key.clone(), <span class="prelude-val">None</span>);
                         }
                         <span class="kw">_ </span>=&gt; {
@@ -4371,7 +4371,7 @@
             start,
             timeout,
             MipInfo {
-                name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+                name: <span class="string">"MIP-0002"</span>.to_string(),
                 version: <span class="number">2</span>,
                 components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
                 start,
@@ -4398,7 +4398,7 @@
         advance_msg.now = now;
         state = state.on_advance(advance_msg);
 
-        <span class="comment">// println!(&quot;state: {:?}&quot;, state);
+        <span class="comment">// println!("state: {:?}", state);
         </span><span class="macro">assert_eq!</span>(
             state,
             ComponentState::Started(Started {
@@ -4637,7 +4637,7 @@
         // LockedIn @ time &gt; time(Started) &amp;&amp; &lt;= 5
         // Active @time &gt; 5
         </span><span class="kw">let </span>vi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -4646,7 +4646,7 @@
         };
         <span class="comment">// Another versioning info (from an attacker) for testing
         </span><span class="kw">let </span>vi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">7</span>),
@@ -4709,7 +4709,7 @@
         <span class="comment">// Test MipStoreRaw.update_with method (e.g. update a store from another, used in bootstrap)
 
         </span><span class="kw">let </span>vi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -4722,7 +4722,7 @@
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(vs_1.state, ComponentState::Active(<span class="kw">_</span>)));
 
         <span class="kw">let </span>vi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0003"</span>.to_string(),
             version: <span class="number">3</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from_millis(<span class="number">17</span>),
@@ -4756,7 +4756,7 @@
         </span><span class="macro">assert!</span>(added.is_empty());
         <span class="macro">assert_eq!</span>(updated, <span class="macro">vec!</span>[vi_2.clone()]);
 
-        <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to &quot;Active&quot;
+        <span class="comment">// Expect state 1 (for vi_1) no change, state 2 (for vi_2) updated to "Active"
         </span><span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_1).unwrap().state, vs_1.state);
         <span class="macro">assert_eq!</span>(vs_raw_1.store.get(<span class="kw-2">&amp;</span>vi_2).unwrap().state, vs_2_2.state);
     }
@@ -4767,7 +4767,7 @@
 
         // part 0 - defines data for the test
         </span><span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0001"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">0</span>),
@@ -4779,7 +4779,7 @@
         <span class="macro">assert!</span>(<span class="macro">matches!</span>(ms_1.state, ComponentState::Active(<span class="kw">_</span>)));
 
         <span class="kw">let </span>mi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">3</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from_millis(<span class="number">17</span>),
@@ -4927,7 +4927,7 @@
                 MipStoreRaw::try_from(([(mi_1.clone(), ms_1_1.clone())], mip_stats_cfg.clone()))
                     .unwrap();
 
-            <span class="comment">// Try to downgrade from &#39;LockedIn&#39; to &#39;Started&#39;
+            <span class="comment">// Try to downgrade from 'LockedIn' to 'Started'
             </span><span class="kw">let </span>store_2 = MipStoreRaw {
                 store: BTreeMap::from([(mi_1.clone(), ms_1_2.clone())]),
                 stats: MipStoreStats::new(mip_stats_cfg.clone()),
@@ -4950,7 +4950,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
         <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">0</span>),
@@ -5018,7 +5018,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>mip_store_raw_1 = MipStoreRaw::try_from(([], mip_stats_config.clone())).unwrap();
 
         <span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::__Nonexhaustive, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">0</span>),
@@ -5069,10 +5069,10 @@
                 .unwrap()
         };
         <span class="kw">let </span>_dump_store = |store: <span class="kw-2">&amp;</span>MipStoreRaw| {
-            <span class="macro">println!</span>(<span class="string">&quot;Dump store:&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">"Dump store:"</span>);
             <span class="kw">for </span>(mip_info, mip_state) <span class="kw">in </span>store.store.iter() {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot;mip_info {} {} - start: {} - timeout: {}: state: {:?}&quot;</span>,
+                    <span class="string">"mip_info {} {} - start: {} - timeout: {}: state: {:?}"</span>,
                     mip_info.name,
                     mip_info.version,
                     get_closest_slot_to_timestamp(
@@ -5101,7 +5101,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),
@@ -5109,7 +5109,7 @@
             activation_delay: MassaTime::from_millis(<span class="number">100</span>),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>mi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0003"</span>.to_string(),
             version: <span class="number">3</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: MassaTime::from_millis(<span class="number">7</span>),
@@ -5117,7 +5117,7 @@
             activation_delay: MassaTime::from_millis(<span class="number">100</span>),
         };
 
-        <span class="comment">// MipInfo 1 @ state &#39;Defined&#39; should start during shutdown
+        <span class="comment">// MipInfo 1 @ state 'Defined' should start during shutdown
         </span>{
             mi_1.start = get_slot_ts(Slot::new(<span class="number">3</span>, <span class="number">7</span>));
             mi_1.timeout = get_slot_ts(Slot::new(<span class="number">5</span>, <span class="number">7</span>));
@@ -5136,7 +5136,7 @@
                 <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) =&gt; {
                     <span class="macro">assert_eq!</span>(mi, mi_1);
                 }
-                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;is_consistent expects a non consistent error&quot;</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"is_consistent expects a non consistent error"</span>),
             }
 
             update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
@@ -5144,7 +5144,7 @@
             <span class="comment">// _dump_store(&amp;store);
         </span>}
 
-        <span class="comment">// MipInfo 1 @ state &#39;Defined&#39; will start AFTER shutdown
+        <span class="comment">// MipInfo 1 @ state 'Defined' will start AFTER shutdown
         </span>{
             mi_1.start = get_slot_ts(Slot::new(<span class="number">9</span>, <span class="number">7</span>));
             mi_1.timeout = get_slot_ts(Slot::new(<span class="number">11</span>, <span class="number">7</span>));
@@ -5160,7 +5160,7 @@
             .unwrap();
             <span class="kw">let </span>store_orig = store.clone();
 
-            <span class="comment">// Already ok even with a shutdown but let&#39;s check it
+            <span class="comment">// Already ok even with a shutdown but let's check it
             </span><span class="macro">assert!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end).is_ok());
             <span class="comment">// _dump_store(&amp;store);
             </span>update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
@@ -5171,7 +5171,7 @@
             </span><span class="macro">assert_eq!</span>(store_orig, store);
         }
 
-        <span class="comment">// MipInfo 1 @ state &#39;Started&#39; before shutdown
+        <span class="comment">// MipInfo 1 @ state 'Started' before shutdown
         </span>{
             mi_1.start = get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">7</span>));
             mi_1.timeout = get_slot_ts(Slot::new(<span class="number">5</span>, <span class="number">7</span>));
@@ -5195,7 +5195,7 @@
             <span class="comment">// _dump_store(&amp;store);
         </span>}
 
-        <span class="comment">// MipInfo 1 @ state &#39;LockedIn&#39; with transition during shutdown
+        <span class="comment">// MipInfo 1 @ state 'LockedIn' with transition during shutdown
         </span>{
             <span class="kw">let </span>shutdown_range = shutdown_start..=shutdown_end;
 
@@ -5207,7 +5207,7 @@
             <span class="macro">assert!</span>(locked_in_at &lt; shutdown_start);
             <span class="kw">let </span>activate_at = Slot::new(<span class="number">4</span>, <span class="number">0</span>);
             <span class="macro">assert!</span>(shutdown_range.contains(<span class="kw-2">&amp;</span>activate_at));
-            <span class="comment">// MIP 1 in state &#39;LockedIn&#39;, should transition to &#39;Active&#39; during shutdown period
+            <span class="comment">// MIP 1 in state 'LockedIn', should transition to 'Active' during shutdown period
             </span>mi_1.activation_delay =
                 get_slot_ts(activate_at).saturating_sub(get_slot_ts(locked_in_at));
             <span class="kw">let </span>ms_1 = advance_state_until(
@@ -5215,7 +5215,7 @@
                 <span class="kw-2">&amp;</span>mi_1,
             );
 
-            <span class="comment">// MIP 2 in state &#39;Defined&#39;
+            <span class="comment">// MIP 2 in state 'Defined'
             </span>mi_2.start = get_slot_ts(Slot::new(<span class="number">7</span>, <span class="number">7</span>));
             mi_2.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
@@ -5229,7 +5229,7 @@
                 <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) =&gt; {
                     <span class="macro">assert_eq!</span>(mi, mi_1);
                 }
-                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;is_consistent expects a non consistent error&quot;</span>),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"is_consistent expects a non consistent error"</span>),
             }
             <span class="comment">// _dump_store(&amp;store);
             </span>update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
@@ -5244,14 +5244,14 @@
 
             <span class="kw">let </span>(first_mi_info, first_mi_state) = store.store.first_key_value().unwrap();
             <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>first_mi_info.name, mi_1.name);
-            <span class="comment">// State was &#39;LockedIn&#39; -&gt; reset, start ts now defined right after network restart
+            <span class="comment">// State was 'LockedIn' -&gt; reset, start ts now defined right after network restart
             </span><span class="macro">assert_eq!</span>(
                 ComponentStateTypeId::from(<span class="kw-2">&amp;</span>first_mi_state.state),
                 ComponentStateTypeId::Started
             );
             <span class="kw">let </span>(last_mi_info, last_mi_state) = store.store.last_key_value().unwrap();
             <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>last_mi_info.name, mi_2.name);
-            <span class="comment">// State was &#39;Defined&#39; -&gt; start is set up after MIP 1 start &amp; timeout
+            <span class="comment">// State was 'Defined' -&gt; start is set up after MIP 1 start &amp; timeout
             </span><span class="macro">assert_eq!</span>(
                 ComponentStateTypeId::from(<span class="kw-2">&amp;</span>last_mi_state.state),
                 ComponentStateTypeId::Defined
@@ -5275,8 +5275,8 @@
 
         <span class="comment">// Db init
 
-        </span><span class="kw">let </span>temp_dir = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;Using temp dir: {:?}&quot;, temp_dir.path());
+        </span><span class="kw">let </span>temp_dir = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("Using temp dir: {:?}", temp_dir.path());
 
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir.path().to_path_buf(),
@@ -5287,13 +5287,13 @@
             max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="comment">// MIP info / store init
 
         </span><span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0002&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0002"</span>.to_string(),
             version: <span class="number">2</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: get_slot_ts(Slot::new(<span class="number">2</span>, <span class="number">0</span>)),
@@ -5303,7 +5303,7 @@
         <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_1);
 
         <span class="kw">let </span>mi_2 = MipInfo {
-            name: <span class="string">&quot;MIP-0003&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0003"</span>.to_string(),
             version: <span class="number">3</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">2</span>)]),
             start: get_slot_ts(Slot::new(<span class="number">4</span>, <span class="number">2</span>)),
@@ -5320,7 +5320,7 @@
             [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
             mip_stats_config.clone(),
         ))
-        .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+        .expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="comment">// Step 1
 
@@ -5342,7 +5342,7 @@
 
         <span class="kw">let </span>mip_store_ =
             MipStore::try_from(([(mi_1.clone(), ms_1_.clone())], mip_stats_config.clone()))
-                .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+                .expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span>(updated, added) = mip_store.update_with(<span class="kw-2">&amp;</span>mip_store_).unwrap();
 
@@ -5385,7 +5385,7 @@
             [(mi_1.clone(), ms_1.clone()), (mi_2.clone(), ms_2.clone())],
             mip_stats_config.clone(),
         ))
-        .expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+        .expect(<span class="string">"Cannot create an empty MIP store"</span>);
         <span class="comment">// assert_eq!(mip_store_2.0.read().store.len(), 0);
 
         </span>mip_store_2.extend_from_db(db.clone()).unwrap();
@@ -5395,8 +5395,8 @@
         <span class="kw">let </span>st1_raw = guard_1.deref();
         <span class="kw">let </span>st2_raw = guard_2.deref();
 
-        <span class="comment">// println!(&quot;st1_raw: {:?}&quot;, st1_raw);
-        // println!(&quot;st2_raw: {:?}&quot;, st2_raw);
+        <span class="comment">// println!("st1_raw: {:?}", st1_raw);
+        // println!("st2_raw: {:?}", st2_raw);
         </span><span class="macro">assert_eq!</span>(st1_raw, st2_raw);
 
         <span class="comment">// Step 5: test is_key_value_valid
@@ -5434,7 +5434,7 @@
         <span class="kw">let </span>activation_delay = MassaTime::from_millis(<span class="number">100</span>);
         <span class="kw">let </span>timeout = MassaTime::now().saturating_add(MassaTime::from_millis(<span class="number">50_000</span>)); <span class="comment">// + 50 seconds
         </span><span class="kw">let </span>mi_1 = MipInfo {
-            name: <span class="string">&quot;MIP-0001&quot;</span>.to_string(),
+            name: <span class="string">"MIP-0001"</span>.to_string(),
             version: <span class="number">1</span>,
             components: BTreeMap::from([(MipComponent::Address, <span class="number">1</span>)]),
             start: MassaTime::from_millis(<span class="number">2</span>),

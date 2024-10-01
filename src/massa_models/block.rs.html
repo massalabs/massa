@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block.rs`."><title>block.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/block.rs`."><title>block.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1455,8 +1455,8 @@
     }
 
     <span class="kw">fn </span>deserialize&lt;
-        <span class="lifetime">&#39;a</span>,
-        E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;,
+        <span class="lifetime">'a</span>,
+        E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;,
         DC: Deserializer&lt;<span class="self">Self</span>&gt;,
         U: Id,
     &gt;(
@@ -1464,9 +1464,9 @@
         _signature_deserializer: <span class="kw-2">&amp;</span>massa_signature::SignatureDeserializer,
         _creator_public_key_deserializer: <span class="kw-2">&amp;</span>massa_signature::PublicKeyDeserializer,
         content_deserializer: <span class="kw-2">&amp;</span>DC,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
         _chain_id: u64,
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], SecureShare&lt;<span class="self">Self</span>, U&gt;, E&gt; {
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], SecureShare&lt;<span class="self">Self</span>, U&gt;, E&gt; {
         <span class="kw">let </span>(rest, content) = content_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>((
             rest,
@@ -1525,13 +1525,13 @@
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents,
-    ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
+    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
     ///                     slot: Slot::new(1, 1),
     ///                     index: 1,
-    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk1&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk1".as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -1542,7 +1542,7 @@
     ///                 Endorsement {
     ///                     slot: Slot::new(4, 0),
     ///                     index: 3,
-    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from(&quot;blk2&quot;.as_bytes())),
+    ///                     endorsed_block: BlockId::generate_from_hash(Hash::compute_from("blk2".as_bytes())),
     ///                 },
     ///                 EndorsementSerializer::new(),
     ///                 &amp;keypair,
@@ -1638,7 +1638,7 @@
     ///         announced_version: None,
     ///         slot: Slot::new(1, 1),
     ///         parents: parents.clone(),
-    ///         operation_merkle_root: Hash::compute_from(&quot;mno&quot;.as_bytes()),
+    ///         operation_merkle_root: Hash::compute_from("mno".as_bytes()),
     ///         endorsements: vec![
     ///             Endorsement::new_verifiable(
     ///                 Endorsement {
@@ -1705,17 +1705,17 @@
     ///     res_block.header.signature
     /// );
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Block, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Block, E&gt; {
         context(
-            <span class="string">&quot;Failed Block deserialization&quot;</span>,
+            <span class="string">"Failed Block deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed header deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed header deserialization"</span>, |input| {
                     <span class="self">self</span>.header_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed operations deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed operations deserialization"</span>, |input| {
                     <span class="self">self</span>.op_ids_deserializer.deserialize(input)
                 }),
             )),
@@ -1743,16 +1743,16 @@
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Block {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.header)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.header)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">&quot;Operations: {}&quot;</span>,
+            <span class="string">"Operations: {}"</span>,
             <span class="self">self</span>.operations
                 .iter()
-                .map(|op| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, op))
+                .map(|op| <span class="macro">format!</span>(<span class="string">"{}"</span>, op))
                 .collect::&lt;Vec&lt;String&gt;&gt;()
-                .join(<span class="string">&quot; &quot;</span>)
+                .join(<span class="string">" "</span>)
         )<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -1813,11 +1813,11 @@
     #[serial]
     </span><span class="kw">fn </span>test_block_serialization() {
         <span class="kw">let </span>keypair =
-            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+            KeyPair::from_str(<span class="string">"S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG"</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 )
             })
@@ -1828,7 +1828,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -1842,7 +1842,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: ENDORSEMENT_COUNT - <span class="number">1</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -1859,7 +1859,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1, endo2],
                 denunciations: Vec::new(), <span class="comment">// FIXME
             </span>},
@@ -1950,7 +1950,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2045,7 +2045,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[Endorsement::new_verifiable(
                     endorsement,
                     EndorsementSerializer::new(),
@@ -2092,7 +2092,7 @@
         // TODO: assert that the error variant/context/etc. matches the expected failure
         </span><span class="macro">assert!</span>(res.is_err());
         <span class="comment">// let nom::Err::Failure(_) = res.unwrap_err() else {
-        //     panic!(&quot;Deserialisation with invalid endorsements should be total fail&quot;);
+        //     panic!("Deserialisation with invalid endorsements should be total fail");
         // };
     </span>}
     <span class="attr">#[test]
@@ -2110,7 +2110,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">0</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2164,7 +2164,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents: <span class="macro">vec!</span>[],
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2221,7 +2221,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2267,9 +2267,9 @@
     #[serial]
     </span><span class="kw">fn </span>test_block_serialization_max_endo_count() {
         <span class="kw">let </span>keypair =
-            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+            KeyPair::from_str(<span class="string">"S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG"</span>).unwrap();
         <span class="kw">let </span>endorsed = BlockId::generate_from_hash(
-            Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>).unwrap(),
+            Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>).unwrap(),
         );
         <span class="kw">let </span>fillers =
             (<span class="number">1</span>..THREAD_COUNT).map(|i| BlockId::generate_from_hash(Hash::compute_from(<span class="kw-2">&amp;</span>[i])));
@@ -2283,7 +2283,7 @@
                         index: i,
                         endorsed_block: BlockId::generate_from_hash(
                             Hash::from_bs58_check(
-                                <span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>,
+                                <span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>,
                             )
                             .unwrap(),
                         ),
@@ -2302,7 +2302,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements,
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2361,7 +2361,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2433,7 +2433,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements,
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2478,11 +2478,11 @@
     #[serial]
     </span><span class="kw">fn </span>test_invalid_endorsement_idx() {
         <span class="kw">let </span>keypair =
-            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+            KeyPair::from_str(<span class="string">"S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG"</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 )
             })
@@ -2493,7 +2493,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: ENDORSEMENT_COUNT,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -2510,7 +2510,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2554,11 +2554,11 @@
     #[serial]
     </span><span class="kw">fn </span>test_invalid_dupe_endo_idx() {
         <span class="kw">let </span>keypair =
-            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+            KeyPair::from_str(<span class="string">"S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG"</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 )
             })
@@ -2569,7 +2569,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -2583,7 +2583,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -2600,7 +2600,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1, endo2],
                 denunciations: <span class="macro">vec!</span>[],
             },
@@ -2646,11 +2646,11 @@
     #[serial]
     </span><span class="kw">fn </span>test_block_serde() {
         <span class="kw">let </span>keypair =
-            KeyPair::from_str(<span class="string">&quot;S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG&quot;</span>).unwrap();
+            KeyPair::from_str(<span class="string">"S1bXjyPwrssNmG4oUG5SEqaUhQkVArQi7rzQDWpCprTSmEgZDGG"</span>).unwrap();
         <span class="kw">let </span>parents = (<span class="number">0</span>..THREAD_COUNT)
             .map(|_i| {
                 BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 )
             })
@@ -2661,7 +2661,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: <span class="number">0</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -2675,7 +2675,7 @@
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 index: ENDORSEMENT_COUNT - <span class="number">1</span>,
                 endorsed_block: BlockId::generate_from_hash(
-                    Hash::from_bs58_check(<span class="string">&quot;bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf&quot;</span>)
+                    Hash::from_bs58_check(<span class="string">"bq1NsaCBAfseMKSjNBYLhpK7M5eeef2m277MYS2P2k424GaDf"</span>)
                         .unwrap(),
                 ),
             },
@@ -2692,7 +2692,7 @@
                 announced_version: <span class="prelude-val">None</span>,
                 slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
                 parents,
-                operation_merkle_root: Hash::compute_from(<span class="string">&quot;mno&quot;</span>.as_bytes()),
+                operation_merkle_root: Hash::compute_from(<span class="string">"mno"</span>.as_bytes()),
                 endorsements: <span class="macro">vec!</span>[endo1, endo2],
                 denunciations: Vec::new(), <span class="comment">// FIXME
             </span>},
@@ -2711,10 +2711,10 @@
         <span class="kw">let </span>serialized_block = serde_json::to_string(<span class="kw-2">&amp;</span>orig_block).unwrap();
         <span class="kw">let </span>res_block: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_block).unwrap();
         <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_block.header.id.to_string(), res_block[<span class="string">&quot;header&quot;</span>][<span class="string">&quot;id&quot;</span>]);
+        </span><span class="macro">assert_eq!</span>(orig_block.header.id.to_string(), res_block[<span class="string">"header"</span>][<span class="string">"id"</span>]);
         <span class="macro">assert_eq!</span>(
             orig_block.header.signature.to_string(),
-            res_block[<span class="string">&quot;header&quot;</span>][<span class="string">&quot;signature&quot;</span>]
+            res_block[<span class="string">"header"</span>][<span class="string">"signature"</span>]
         );
     }
 }

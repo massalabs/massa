@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/main.rs`."><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/main.rs`."><title>main.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -267,18 +267,18 @@
     </span><span class="attr">#[arg(long)]
     </span>ip: <span class="prelude-ty">Option</span>&lt;IpAddr&gt;,
     <span class="doccomment">/// Command that client would execute (non-interactive mode)
-    </span><span class="attr">#[arg(name = <span class="string">&quot;COMMAND&quot;</span>, default_value = <span class="string">&quot;help&quot;</span>)]
+    </span><span class="attr">#[arg(name = <span class="string">"COMMAND"</span>, default_value = <span class="string">"help"</span>)]
     </span>command: Command,
     <span class="doccomment">/// Optional command parameter (as a JSON string)
-    </span><span class="attr">#[arg(name = <span class="string">&quot;PARAMETERS&quot;</span>)]
+    </span><span class="attr">#[arg(name = <span class="string">"PARAMETERS"</span>)]
     </span>parameters: Vec&lt;String&gt;,
     <span class="doccomment">/// Path of wallet folder
-    </span><span class="attr">#[arg(short = <span class="string">&#39;w&#39;</span>, long = <span class="string">&quot;wallet&quot;</span>, default_value = <span class="string">&quot;wallets/&quot;</span>)]
+    </span><span class="attr">#[arg(short = <span class="string">'w'</span>, long = <span class="string">"wallet"</span>, default_value = <span class="string">"wallets/"</span>)]
     </span>wallet: PathBuf,
     <span class="doccomment">/// Enable a mode where input/output are serialized as JSON
-    </span><span class="attr">#[arg(short = <span class="string">&#39;j&#39;</span>, long = <span class="string">&quot;json&quot;</span>)]
+    </span><span class="attr">#[arg(short = <span class="string">'j'</span>, long = <span class="string">"json"</span>)]
     </span>json: bool,
-    <span class="attr">#[arg(short = <span class="string">&#39;p&#39;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    <span class="attr">#[arg(short = <span class="string">'p'</span>, long = <span class="string">"pwd"</span>)]
     </span><span class="doccomment">/// Wallet password
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 }
@@ -293,15 +293,15 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>ask_password(wallet_path: <span class="kw-2">&amp;</span>Path) -&gt; String {
     <span class="kw">if </span>wallet_path.is_dir() {
         Password::new()
-            .with_prompt(<span class="string">&quot;Enter wallet password&quot;</span>)
+            .with_prompt(<span class="string">"Enter wallet password"</span>)
             .interact()
-            .expect(<span class="string">&quot;IO error: Password reading failed, walled couldn&#39;t be unlocked&quot;</span>)
+            .expect(<span class="string">"IO error: Password reading failed, walled couldn't be unlocked"</span>)
     } <span class="kw">else </span>{
         Password::new()
-            .with_prompt(<span class="string">&quot;Enter new password for wallet&quot;</span>)
-            .with_confirmation(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
+            .with_prompt(<span class="string">"Enter new password for wallet"</span>)
+            .with_confirmation(<span class="string">"Confirm password"</span>, <span class="string">"Passwords mismatching"</span>)
             .interact()
-            .expect(<span class="string">&quot;IO error: Password reading failed, wallet couldn&#39;t be created&quot;</span>)
+            .expect(<span class="string">"IO error: Password reading failed, wallet couldn't be created"</span>)
     }
 }
 
@@ -311,7 +311,7 @@
         .thread_name_fn(|| {
             <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
             <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
-            <span class="macro">format!</span>(<span class="string">&quot;tokio-client-{}&quot;</span>, id)
+            <span class="macro">format!</span>(<span class="string">"tokio-client-{}"</span>, id)
         })
         .enable_all()
         .build()
@@ -397,7 +397,7 @@
         // Only prompt for password if the command needs wallet access.
         </span><span class="kw">let </span><span class="kw-2">mut </span>wallet_opt = <span class="kw">match </span>args.command.is_pwd_needed() {
             <span class="bool-val">true </span>=&gt; {
-                <span class="kw">let </span>password = <span class="kw">match </span>(args.password, env::var(<span class="string">&quot;MASSA_CLIENT_PASSWORD&quot;</span>)) {
+                <span class="kw">let </span>password = <span class="kw">match </span>(args.password, env::var(<span class="string">"MASSA_CLIENT_PASSWORD"</span>)) {
                     (<span class="prelude-val">Some</span>(pwd), <span class="kw">_</span>) =&gt; pwd,
                     (<span class="kw">_</span>, <span class="prelude-val">Ok</span>(pwd)) =&gt; pwd,
                     <span class="kw">_ </span>=&gt; ask_password(<span class="kw-2">&amp;</span>args.wallet),
@@ -418,7 +418,7 @@
                 <span class="kw">if </span>args.json {
                     output
                         .stdout_json()
-                        .expect(<span class="string">&quot;fail to serialize to JSON command output&quot;</span>)
+                        .expect(<span class="string">"fail to serialize to JSON command output"</span>)
                 } <span class="kw">else </span>{
                     output.pretty_print();
                 }
@@ -426,12 +426,12 @@
             <span class="prelude-val">Err</span>(e) =&gt; {
                 <span class="kw">if </span>args.json {
                     <span class="kw">let </span>error = serde_json::to_string(<span class="kw-2">&amp;</span>JsonError {
-                        error: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, e),
+                        error: <span class="macro">format!</span>(<span class="string">"{:?}"</span>, e),
                     })
-                    .expect(<span class="string">&quot;fail to serialize to JSON error&quot;</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, error);
+                    .expect(<span class="string">"fail to serialize to JSON error"</span>);
+                    <span class="macro">println!</span>(<span class="string">"{}"</span>, error);
                 } <span class="kw">else </span>{
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, style(<span class="macro">format!</span>(<span class="string">&quot;Error: {}&quot;</span>, e)).red());
+                    <span class="macro">println!</span>(<span class="string">"{}"</span>, style(<span class="macro">format!</span>(<span class="string">"Error: {}"</span>, e)).red());
                 }
             }
         }
