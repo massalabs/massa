@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/ledger.rs`."><title>ledger.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/ledger.rs`."><title>ledger.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -496,7 +496,6 @@
 <a href="#496" id="496">496</a>
 <a href="#497" id="497">497</a>
 <a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use crate</span>::{
@@ -506,7 +505,6 @@
     error::ModelsResult <span class="kw">as </span><span class="prelude-ty">Result</span>,
     prehash::{PreHashMap, PreHashSet},
 };
-<span class="kw">use </span>core::usize;
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
@@ -554,7 +552,7 @@
     /// use massa_models::ledger::{LedgerData, LedgerDataSerializer};
     ///
     /// let ledger_data = LedgerData {
-    ///    balance: Amount::from_str(&quot;1349&quot;).unwrap(),
+    ///    balance: Amount::from_str("1349").unwrap(),
     /// };
     /// let mut buffer = Vec::new();
     /// LedgerDataSerializer::new().serialize(&amp;ledger_data, &amp;mut buffer).unwrap();
@@ -597,7 +595,7 @@
     /// use massa_models::ledger::{LedgerData, LedgerDataDeserializer, LedgerDataSerializer};
     ///
     /// let ledger_data = LedgerData {
-    ///    balance: Amount::from_str(&quot;1349&quot;).unwrap(),
+    ///    balance: Amount::from_str("1349").unwrap(),
     /// };
     /// let mut buffer = Vec::new();
     /// LedgerDataSerializer::new().serialize(&amp;ledger_data, &amp;mut buffer).unwrap();
@@ -605,11 +603,11 @@
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(ledger_data.balance, ledger_data_deserialized.balance);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerData, E&gt; {
-        context(<span class="string">&quot;Failed LedgerData deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], LedgerData, E&gt; {
+        context(<span class="string">"Failed LedgerData deserialization"</span>, |input| {
             <span class="self">self</span>.amount_deserializer.deserialize(input)
         })
         .map(|balance| LedgerData { balance })
@@ -634,7 +632,7 @@
                 .checked_add(change.balance_delta)
                 .ok_or_else(|| {
                     ModelsError::InvalidLedgerChange(
-                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.into(),
+                        <span class="string">"balance overflow in LedgerData::apply_change"</span>.into(),
                     )
                 })<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
@@ -643,7 +641,7 @@
                 .checked_sub(change.balance_delta)
                 .ok_or_else(|| {
                     ModelsError::InvalidLedgerChange(
-                        <span class="string">&quot;balance overflow in LedgerData::apply_change&quot;</span>.into(),
+                        <span class="string">"balance overflow in LedgerData::apply_change"</span>.into(),
                     )
                 })<span class="question-mark">?</span>;
         }
@@ -697,7 +695,7 @@
     /// use massa_models::ledger::{LedgerChange, LedgerChangeSerializer};
     /// use massa_serialization::Serializer;
     /// let ledger_change = LedgerChange {
-    ///   balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
     ///   balance_increment: true
     /// };
     /// let mut serialized = Vec::new();
@@ -742,7 +740,7 @@
     /// use massa_models::ledger::{LedgerChange, LedgerChangeDeserializer, LedgerChangeSerializer};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// let ledger_change = LedgerChange {
-    ///   balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    ///   balance_delta: Amount::from_str("1149").unwrap(),
     ///   balance_increment: true
     /// };
     /// let mut serialized = Vec::new();
@@ -752,18 +750,18 @@
     /// assert_eq!(ledger_change.balance_delta, serialized.balance_delta);
     /// assert_eq!(ledger_change.balance_increment, serialized.balance_increment);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerChange, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], LedgerChange, E&gt; {
         context(
-            <span class="string">&quot;Failed LedgerChange deserialization&quot;</span>,
+            <span class="string">"Failed LedgerChange deserialization"</span>,
             tuple((
                 context(
-                    <span class="string">&quot;Failed balance_increment deserialization&quot;</span>,
+                    <span class="string">"Failed balance_increment deserialization"</span>,
                     alt((value(<span class="bool-val">true</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">1u8</span>])), value(<span class="bool-val">false</span>, tag(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>])))),
                 ),
-                context(<span class="string">&quot;Failed balance_delta deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed balance_delta deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
             )),
@@ -784,14 +782,14 @@
                 </span>.balance_delta
                 .checked_add(change.balance_delta)
                 .ok_or_else(|| {
-                    ModelsError::InvalidLedgerChange(<span class="string">&quot;overflow in LedgerChange::chain&quot;</span>.into())
+                    ModelsError::InvalidLedgerChange(<span class="string">"overflow in LedgerChange::chain"</span>.into())
                 })<span class="question-mark">?</span>;
         } <span class="kw">else if </span>change.balance_delta &gt; <span class="self">self</span>.balance_delta {
             <span class="self">self</span>.balance_delta = change
                 .balance_delta
                 .checked_sub(<span class="self">self</span>.balance_delta)
                 .ok_or_else(|| {
-                    ModelsError::InvalidLedgerChange(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.into())
+                    ModelsError::InvalidLedgerChange(<span class="string">"underflow in LedgerChange::chain"</span>.into())
                 })<span class="question-mark">?</span>;
             <span class="self">self</span>.balance_increment = !<span class="self">self</span>.balance_increment;
         } <span class="kw">else </span>{
@@ -799,7 +797,7 @@
                 </span>.balance_delta
                 .checked_sub(change.balance_delta)
                 .ok_or_else(|| {
-                    ModelsError::InvalidLedgerChange(<span class="string">&quot;underflow in LedgerChange::chain&quot;</span>.into())
+                    ModelsError::InvalidLedgerChange(<span class="string">"underflow in LedgerChange::chain"</span>.into())
                 })<span class="question-mark">?</span>;
         }
         <span class="kw">if </span><span class="self">self</span>.balance_delta == Amount::default() {
@@ -884,16 +882,16 @@
     /// # use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// # let ledger_changes = LedgerChanges(vec![
     /// #   (
-    /// #       Address::from_str(&quot;AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ&quot;).unwrap(),
+    /// #       Address::from_str("AU12hgh5ULW9o8fJE9muLNXhQENaUUswQbxPyDSq8ridnDGu5gRiJ").unwrap(),
     /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str(&quot;1149&quot;).unwrap(),
+    /// #           balance_delta: Amount::from_str("1149").unwrap(),
     /// #           balance_increment: true
     /// #       },
     /// #   ),
     /// #   (
-    /// #       Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
+    /// #       Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
     /// #       LedgerChange {
-    /// #           balance_delta: Amount::from_str(&quot;1020&quot;).unwrap(),
+    /// #           balance_delta: Amount::from_str("1020").unwrap(),
     /// #           balance_increment: true
     /// #       },
     /// #   )
@@ -914,12 +912,12 @@
     /// }
     /// assert_eq!(ledger_changes.0.len(), res.0.len());
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerChanges, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], LedgerChanges, E&gt; {
         context(
-            <span class="string">&quot;Failed LedgerChanges deserialization&quot;</span>,
+            <span class="string">"Failed LedgerChanges deserialization"</span>,
             length_count(
                 |input| <span class="self">self</span>.length_deserializer.deserialize(input),
                 tuple((

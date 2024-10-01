@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/peer_handler/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../massa_protocol_worker/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-protocol-worker/src/handlers/peer_handler/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="massa_protocol_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -779,6 +779,7 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::net::IpAddr;
 <span class="kw">use </span>std::{collections::HashMap, net::SocketAddr, thread::JoinHandle, time::Duration};
 
@@ -837,7 +838,8 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>messages::{PeerManagementMessage, PeerManagementMessageSerializer};
 
-<span class="kw">pub struct </span>PeerManagementHandler {
+<span class="attr">#[allow(dead_code)]
+</span><span class="kw">pub struct </span>PeerManagementHandler {
     <span class="kw">pub </span>peer_db: SharedPeerDB,
     <span class="kw">pub </span>thread_join: <span class="prelude-ty">Option</span>&lt;JoinHandle&lt;()&gt;&gt;,
     <span class="kw">pub </span>sender: PeerManagementChannel,
@@ -845,7 +847,7 @@
 }
 
 <span class="comment">// protocol-peer-handler
-</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;pph&quot;</span>;
+</span><span class="kw">const </span>THREAD_NAME: <span class="kw-2">&amp;</span>str = <span class="string">"pph"</span>;
 <span class="macro">static_assertions::const_assert!</span>(THREAD_NAME.len() &lt; <span class="number">16</span>);
 
 <span class="kw">impl </span>PeerManagementHandler {
@@ -897,7 +899,7 @@
 
             <span class="kw">move </span>|| {
                 <span class="kw">loop </span>{
-                    <span class="macro">select! </span>{
+                    <span class="macro">select!</span> {
                         recv(ticker) -&gt; <span class="kw">_ </span>=&gt; {
                             <span class="kw">let </span>peers_to_send = peer_db.read().get_rand_peers_to_send(<span class="number">100</span>);
                             <span class="kw">if </span>peers_to_send.is_empty() {
@@ -909,7 +911,7 @@
                             <span class="kw">for </span>peer_id <span class="kw">in </span><span class="kw-2">&amp;</span>active_connections.get_peer_ids_connected() {
                                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = active_connections
                                     .send_to_peer(peer_id, <span class="kw-2">&amp;</span>message_serializer, msg.clone().into(), <span class="bool-val">false</span>) {
-                                    <span class="macro">error!</span>(<span class="string">&quot;error sending ListPeers message to peer: {:?}&quot;</span>, e);
+                                    <span class="macro">error!</span>(<span class="string">"error sending ListPeers message to peer: {:?}"</span>, e);
                                }
                             }
                         }
@@ -941,7 +943,7 @@
                                     peers.push((peer_id, listeners));
                                 }
                                 <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = responder.try_send(BootstrapPeers(peers)) {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;error sending bootstrap peers: {:?}&quot;</span>, err);
+                                    <span class="macro">warn!</span>(<span class="string">"error sending bootstrap peers: {:?}"</span>, err);
                                 }
                              },
                              <span class="prelude-val">Ok</span>(PeerManagementCmd::Stop) =&gt; {
@@ -951,7 +953,7 @@
                                 <span class="kw">return</span>;
                              },
                             <span class="prelude-val">Err</span>(e) =&gt; {
-                                <span class="macro">error!</span>(<span class="string">&quot;error receiving command: {:?}&quot;</span>, e);
+                                <span class="macro">error!</span>(<span class="string">"error receiving command: {:?}"</span>, e);
                             }
                            }
                         },
@@ -966,7 +968,7 @@
                             <span class="comment">// check if peer is banned
                             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(peer) = peer_db.read().get_peers().get(<span class="kw-2">&amp;</span>peer_id) {
                                 <span class="kw">if </span>peer.state == PeerState::Banned {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;Banned peer sent us a message: {:?}&quot;</span>, peer_id);
+                                    <span class="macro">warn!</span>(<span class="string">"Banned peer sent us a message: {:?}"</span>, peer_id);
                                     <span class="kw">continue</span>;
                                 }
                             }
@@ -974,26 +976,26 @@
                                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>message) {
                                 <span class="prelude-val">Ok</span>((rest, message)) =&gt; (rest, message),
                                 <span class="prelude-val">Err</span>(e) =&gt; {
-                                    <span class="macro">warn!</span>(<span class="string">&quot;error when deserializing message: {:?}&quot;</span>, e);
+                                    <span class="macro">warn!</span>(<span class="string">"error when deserializing message: {:?}"</span>, e);
                                     <span class="kw">continue</span>;
                                 }
                             };
                             <span class="kw">if </span>!rest.is_empty() {
-                                <span class="macro">warn!</span>(<span class="string">&quot;message not fully deserialized&quot;</span>);
+                                <span class="macro">warn!</span>(<span class="string">"message not fully deserialized"</span>);
                                 <span class="kw">continue</span>;
                             }
                             <span class="kw">match </span>message {
                                 PeerManagementMessage::NewPeerConnected((peer_id, listeners)) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: NewPeerConnected from {}&quot;</span>, peer_id);
+                                    <span class="macro">debug!</span>(<span class="string">"Received peer message: NewPeerConnected from {}"</span>, peer_id);
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                            <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer connect : {}&quot;</span>, e);
+                                            <span class="macro">debug!</span>(<span class="string">"error when sending msg to peer connect : {}"</span>, e);
                                         }
                                 }
                                 PeerManagementMessage::ListPeers(peers) =&gt; {
-                                    <span class="macro">debug!</span>(<span class="string">&quot;Received peer message: List peers from {}&quot;</span>, peer_id);
+                                    <span class="macro">debug!</span>(<span class="string">"Received peer message: List peers from {}"</span>, peer_id);
                                     <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span>peers.into_iter() {
                                         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = test_sender.try_send((peer_id, listeners)) {
-                                            <span class="macro">debug!</span>(<span class="string">&quot;error when sending msg to peer tester : {}&quot;</span>, e);
+                                            <span class="macro">debug!</span>(<span class="string">"error when sending msg to peer tester : {}"</span>, e);
                                         }
                                     }
                                 }
@@ -1002,7 +1004,7 @@
                     }
                 }
             }
-        }).expect(<span class="string">&quot;OS failed to start peer management thread&quot;</span>);
+        }).expect(<span class="string">"OS failed to start peer management thread"</span>);
 
         <span class="kw">for </span>(peer_id, listeners) <span class="kw">in </span><span class="kw-2">&amp;</span>initial_peers {
             <span class="kw">let </span><span class="kw-2">mut </span>message = Vec::new();
@@ -1035,7 +1037,7 @@
         <span class="comment">// waiting for all threads to finish
         </span><span class="self">self</span>.testers.iter_mut().for_each(|tester| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = tester.handler.take() {
-                join_handle.join().expect(<span class="string">&quot;Failed to join tester thread&quot;</span>);
+                join_handle.join().expect(<span class="string">"Failed to join tester thread"</span>);
             }
         });
     }
@@ -1095,8 +1097,8 @@
             .map_err(|err| {
                 <span class="self">self</span>.handshake_fail(<span class="kw-2">&amp;</span>addr);
                 PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize  peer_id: {}&quot;</span>, err)),
+                    <span class="string">"Massa Handshake"</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to serialize  peer_id: {}"</span>, err)),
                 )
             })<span class="question-mark">?</span>;
         <span class="self">self</span>.version_serializer
@@ -1104,8 +1106,8 @@
             .map_err(|err| {
                 <span class="self">self</span>.handshake_fail(<span class="kw-2">&amp;</span>addr);
                 PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize version: {}&quot;</span>, err)),
+                    <span class="string">"Massa Handshake"</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to serialize version: {}"</span>, err)),
                 )
             })<span class="question-mark">?</span>;
         bytes.push(<span class="number">0</span>);
@@ -1120,8 +1122,8 @@
             .map_err(|err| {
                 <span class="self">self</span>.handshake_fail(<span class="kw-2">&amp;</span>addr);
                 PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize announcement: {}&quot;</span>, err)),
+                    <span class="string">"Massa Handshake"</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to serialize announcement: {}"</span>, err)),
                 )
             })<span class="question-mark">?</span>;
         endpoint.send::&lt;PeerId&gt;(<span class="kw-2">&amp;</span>bytes)<span class="question-mark">?</span>;
@@ -1129,8 +1131,8 @@
         <span class="kw">if </span>received.len() &lt; <span class="number">32 </span>{
             <span class="self">self</span>.handshake_fail(<span class="kw-2">&amp;</span>addr);
             <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                <span class="string">&quot;Massa Handshake&quot;</span>,
-                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received too short message len:{}&quot;</span>, received.len())),
+                <span class="string">"Massa Handshake"</span>,
+                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Received too short message len:{}"</span>, received.len())),
             ));
         }
         <span class="kw">let </span>(received, peer_id) = <span class="self">self
@@ -1139,15 +1141,15 @@
             .map_err(|err| {
                 <span class="self">self</span>.handshake_fail(<span class="kw-2">&amp;</span>addr);
                 PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize peer id: {}&quot;</span>, err)),
+                    <span class="string">"Massa Handshake"</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to deserialize peer id: {}"</span>, err)),
                 )
             })<span class="question-mark">?</span>;
         {
             <span class="kw">let </span>peer_db_read = <span class="self">self</span>.peer_db.read();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(info) = peer_db_read.get_peers().get(<span class="kw-2">&amp;</span>peer_id) {
                 <span class="kw">if </span>info.state == PeerState::Banned {
-                    <span class="macro">debug!</span>(<span class="string">&quot;Banned peer tried to connect: {:?}&quot;</span>, peer_id);
+                    <span class="macro">debug!</span>(<span class="string">"Banned peer tried to connect: {:?}"</span>, peer_id);
                 }
             }
         }
@@ -1168,19 +1170,19 @@
                 .deserialize::&lt;DeserializeError&gt;(received)
                 .map_err(|err| {
                     PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize version: {}&quot;</span>, err)),
+                        <span class="string">"Massa Handshake"</span>,
+                        <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to deserialize version: {}"</span>, err)),
                     )
                 })<span class="question-mark">?</span>;
             <span class="kw">if </span>!<span class="self">self</span>.config.version.is_compatible(<span class="kw-2">&amp;</span>version) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                    <span class="string">&quot;Massa Handshake&quot;</span>,
-                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Received version incompatible: {}&quot;</span>, version)),
+                    <span class="string">"Massa Handshake"</span>,
+                    <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Received version incompatible: {}"</span>, version)),
                 ));
             }
             <span class="kw">let </span>id = received.first().ok_or(
                 PeerNetError::HandshakeError
-                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get id&quot;</span>.to_string())),
+                    .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Failed to get id"</span>.to_string())),
             )<span class="question-mark">?</span>;
             <span class="kw">match </span>id {
                 <span class="number">0 </span>=&gt; {
@@ -1188,14 +1190,14 @@
                         </span>.announcement_deserializer
                         .deserialize::&lt;DeserializeError&gt;(
                             received.get(<span class="number">1</span>..).ok_or(PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get data&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Failed to get data"</span>.to_string()),
                             ))<span class="question-mark">?</span>,
                         )
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to deserialize announcement: {}&quot;</span>, err)),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to deserialize announcement: {}"</span>, err)),
                             )
                         })<span class="question-mark">?</span>;
                     <span class="kw">if </span>peer_id
@@ -1203,7 +1205,7 @@
                         .is_err()
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                            .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid signature&quot;</span>.to_string())));
+                            .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Invalid signature"</span>.to_string())));
                     }
                     <span class="kw">let </span>message = PeerManagementMessage::NewPeerConnected((
                         peer_id,
@@ -1218,8 +1220,8 @@
                         .serialize(<span class="kw-2">&amp;</span>Message::PeerManagement(Box::new(message)), <span class="kw-2">&amp;mut </span>bytes)
                         .map_err(|err| {
                             PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Failed to serialize announcement: {}&quot;</span>, err)),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Failed to serialize announcement: {}"</span>, err)),
                             )
                         })<span class="question-mark">?</span>;
                     messages_handler.handle(<span class="kw-2">&amp;</span>bytes, <span class="kw-2">&amp;</span>peer_id)<span class="question-mark">?</span>;
@@ -1234,8 +1236,8 @@
                     <span class="kw">let </span>other_random_bytes: <span class="kw-2">&amp;</span>[u8; <span class="number">32</span>] =
                         received.as_slice().try_into().map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to deserialize random bytes&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Failed to deserialize random bytes"</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>;
 
@@ -1244,8 +1246,8 @@
                     <span class="kw">let </span>self_signature =
                         context.our_keypair.sign(<span class="kw-2">&amp;</span>other_random_hash).map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to sign random bytes&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Failed to sign random bytes"</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>;
 
@@ -1258,8 +1260,8 @@
                     <span class="kw">let </span>other_signature =
                         Signature::from_bytes(received.as_slice()).map_err(|<span class="kw">_</span>| {
                             PeerNetError::HandshakeError.error(
-                                <span class="string">&quot;Massa Handshake&quot;</span>,
-                                <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to sign 2 random bytes&quot;</span>.to_string()),
+                                <span class="string">"Massa Handshake"</span>,
+                                <span class="prelude-val">Some</span>(<span class="string">"Failed to sign 2 random bytes"</span>.to_string()),
                             )
                         })<span class="question-mark">?</span>;
 
@@ -1268,7 +1270,7 @@
                         .verify_signature(<span class="kw-2">&amp;</span>self_random_hash, <span class="kw-2">&amp;</span>other_signature)
                         .map_err(|err| {
                             PeerNetError::HandshakeError
-                                .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">&quot;Signature error {}&quot;</span>, err)))
+                                .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"Signature error {}"</span>, err)))
                         })<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement)))
                 }
@@ -1276,14 +1278,14 @@
                     messages_handler.handle(
                         received.get(<span class="number">1</span>..).ok_or(
                             PeerNetError::HandshakeError
-                                .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Failed to get data&quot;</span>.to_string())),
+                                .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Failed to get data"</span>.to_string())),
                         )<span class="question-mark">?</span>,
                         <span class="kw-2">&amp;</span>peer_id,
                     )<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">None</span>))
                 }
                 <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(PeerNetError::HandshakeError
-                    .error(<span class="string">&quot;Massa Handshake&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;Invalid message id&quot;</span>.to_string()))),
+                    .error(<span class="string">"Massa Handshake"</span>, <span class="prelude-val">Some</span>(<span class="string">"Invalid message id"</span>.to_string()))),
             }
         };
         {
@@ -1291,7 +1293,7 @@
             <span class="comment">// if handshake failed, we set the peer state to HandshakeFailed
             </span><span class="kw">match </span><span class="kw-2">&amp;</span>res {
                 <span class="prelude-val">Ok</span>((peer_id, <span class="prelude-val">Some</span>(announcement))) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;Peer connected: {:?}&quot;</span>, peer_id);
+                    <span class="macro">info!</span>(<span class="string">"Peer connected: {:?}"</span>, peer_id);
                     peer_db_write.set_try_connect_success_or_insert(<span class="kw-2">&amp;</span>addr);
                     peer_db_write
                         .get_peers_mut()
@@ -1310,13 +1312,13 @@
                         .get_peers_mut()
                         .entry(peer_id)
                         .and_modify(|info| {
-                            <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                            <span class="comment">//TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                             </span>info.state = PeerState::HandshakeFailed;
                         });
                     peer_db_write.set_try_connect_failure_or_insert(<span class="kw-2">&amp;</span>addr);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
-                        <span class="prelude-val">Some</span>(<span class="string">&quot;Distant peer don&#39;t have slot for us.&quot;</span>.to_string()),
+                        <span class="string">"Massa Handshake"</span>,
+                        <span class="prelude-val">Some</span>(<span class="string">"Distant peer don't have slot for us."</span>.to_string()),
                     ));
                 }
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
@@ -1325,7 +1327,7 @@
                         .get_peers_mut()
                         .entry(peer_id)
                         .and_modify(|info| {
-                            <span class="comment">//TODO: Add the peerdb but for now impossible as we don&#39;t have announcement and we need one to place in peerdb
+                            <span class="comment">//TODO: Add the peerdb but for now impossible as we don't have announcement and we need one to place in peerdb
                             </span>info.state = PeerState::HandshakeFailed;
                         });
                 }
@@ -1364,34 +1366,34 @@
             <span class="kw">let </span>peers_to_send = db.read().get_rand_peers_to_send(<span class="number">100</span>);
             <span class="kw">let </span><span class="kw-2">mut </span>buf = <span class="macro">vec!</span>[];
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = peer_id_serializer.serialize(<span class="kw-2">&amp;</span>context.get_peer_id(), <span class="kw-2">&amp;mut </span>buf) {
-                <span class="macro">warn!</span>(<span class="string">&quot;{}&quot;</span>, err.to_string());
+                <span class="macro">warn!</span>(<span class="string">"{}"</span>, err.to_string());
                 <span class="kw">return</span>;
             }
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = version_serializer
                 .serialize(<span class="kw-2">&amp;</span>version, <span class="kw-2">&amp;mut </span>buf)
                 .map_err(|err| {
                     PeerNetError::HandshakeError.error(
-                        <span class="string">&quot;Massa Handshake&quot;</span>,
+                        <span class="string">"Massa Handshake"</span>,
                         <span class="prelude-val">Some</span>(<span class="macro">format!</span>(
-                            <span class="string">&quot;Failed serialize version, Err: {:?}&quot;</span>,
+                            <span class="string">"Failed serialize version, Err: {:?}"</span>,
                             err.to_string()
                         )),
                     )
                 })
             {
-                <span class="macro">warn!</span>(<span class="string">&quot;{}&quot;</span>, err.to_string());
+                <span class="macro">warn!</span>(<span class="string">"{}"</span>, err.to_string());
                 <span class="kw">return</span>;
             }
             buf.push(<span class="number">1</span>);
             <span class="kw">let </span>msg = PeerManagementMessage::ListPeers(peers_to_send).into();
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = serializer.serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>buf) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Failed to serialize message: {}&quot;</span>, err);
+                <span class="macro">warn!</span>(<span class="string">"Failed to serialize message: {}"</span>, err);
                 <span class="kw">return</span>;
             }
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
                 endpoint.send_timeout::&lt;PeerId&gt;(buf.as_slice(), Duration::from_millis(<span class="number">200</span>))
             {
-                <span class="macro">warn!</span>(<span class="string">&quot;Failed to send message: {}&quot;</span>, err);
+                <span class="macro">warn!</span>(<span class="string">"Failed to send message: {}"</span>, err);
                 <span class="kw">return</span>;
             }
             endpoint.shutdown();
@@ -1417,10 +1419,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_handshake_working_behaviour() {
-        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_blocks&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_endorsements&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_operations&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_peers&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_blocks"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_endorsements"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_operations"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_peers"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         <span class="kw">let </span><span class="kw-2">mut </span>handshake = <span class="kw">super</span>::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         <span class="kw">let </span>our_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
@@ -1435,13 +1437,13 @@
             sender_peers,
         };
         <span class="kw">let </span>(local_sender, remote_receiver) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_local_to_remote&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_local_to_remote"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>(remote_sender, local_receiver) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_remote_to_local&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_remote_to_local"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>endpoint = Endpoint::MockEndpoint((
             (<span class="kw-2">*</span>local_sender.deref()).clone(),
             (<span class="kw-2">*</span>local_receiver.deref()).clone(),
-            <span class="string">&quot;127.0.0.1:0&quot;</span>.parse().unwrap(),
+            <span class="string">"127.0.0.1:0"</span>.parse().unwrap(),
         ));
         <span class="kw">let </span>context = Context { our_keypair };
         <span class="kw">let </span>thread = std::thread::spawn({
@@ -1454,7 +1456,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>endpoint = Endpoint::MockEndpoint((
                 (<span class="kw-2">*</span>remote_sender.deref()).clone(),
                 (<span class="kw-2">*</span>remote_receiver.deref()).clone(),
-                <span class="string">&quot;127.0.0.1:0&quot;</span>.parse().unwrap(),
+                <span class="string">"127.0.0.1:0"</span>.parse().unwrap(),
             ));
             <span class="kw">move </span>|| {
                 <span class="kw">let </span>res = handshake.perform_handshake(
@@ -1478,10 +1480,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_handshake_wrong_data_received() {
-        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_blocks&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_endorsements&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_operations&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_peers&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_blocks"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_endorsements"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_operations"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_peers"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         <span class="kw">let </span><span class="kw-2">mut </span>handshake = <span class="kw">super</span>::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         <span class="kw">let </span>our_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
@@ -1496,13 +1498,13 @@
             sender_peers,
         };
         <span class="kw">let </span>(local_sender, <span class="kw">_</span>) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_local_to_remote&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_local_to_remote"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>(remote_sender, local_receiver) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_remote_to_local&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_remote_to_local"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>endpoint = Endpoint::MockEndpoint((
             (<span class="kw-2">*</span>local_sender.deref()).clone(),
             (<span class="kw-2">*</span>local_receiver.deref()).clone(),
-            <span class="string">&quot;127.0.0.1:0&quot;</span>.parse().unwrap(),
+            <span class="string">"127.0.0.1:0"</span>.parse().unwrap(),
         ));
         <span class="kw">let </span>context = Context { our_keypair };
         <span class="kw">let </span>thread = std::thread::spawn({
@@ -1523,10 +1525,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_handshake_connection_closed() {
-        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_blocks&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_endorsements&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_operations&quot;</span>), <span class="prelude-val">None</span>);
-        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">&quot;test_peers&quot;</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_blocks, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_blocks"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_endorsements, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_endorsements"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_operations, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_operations"</span>), <span class="prelude-val">None</span>);
+        <span class="kw">let </span>(sender_peers, <span class="kw">_</span>) = MassaChannel::new(String::from(<span class="string">"test_peers"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>shared_peer_db = Arc::new(RwLock::new(PeerDB::default()));
         <span class="kw">let </span><span class="kw-2">mut </span>handshake = <span class="kw">super</span>::MassaHandshake::new(shared_peer_db, ProtocolConfig::default());
         <span class="kw">let </span>our_keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
@@ -1541,13 +1543,13 @@
             sender_peers,
         };
         <span class="kw">let </span>(local_sender, <span class="kw">_</span>) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_local_to_remote&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_local_to_remote"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span>(remote_sender, local_receiver) =
-            MassaChannel::new(String::from(<span class="string">&quot;Test_transport_remote_to_local&quot;</span>), <span class="prelude-val">None</span>);
+            MassaChannel::new(String::from(<span class="string">"Test_transport_remote_to_local"</span>), <span class="prelude-val">None</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>endpoint = Endpoint::MockEndpoint((
             (<span class="kw-2">*</span>local_sender.deref()).clone(),
             (<span class="kw-2">*</span>local_receiver.deref()).clone(),
-            <span class="string">&quot;127.0.0.1:0&quot;</span>.parse().unwrap(),
+            <span class="string">"127.0.0.1:0"</span>.parse().unwrap(),
         ));
         <span class="kw">let </span>context = Context { our_keypair };
         drop(remote_sender);

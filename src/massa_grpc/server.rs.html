@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-grpc/src/server.rs`."><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_grpc/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-grpc/src/server.rs`."><title>server.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_grpc" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -413,7 +413,7 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub </span>version: massa_models::version::Version,
     <span class="doccomment">/// white/black list of bootstrap
-    </span><span class="kw">pub </span>bs_white_black_list: <span class="prelude-ty">Option</span>&lt;SharedWhiteBlackList&lt;<span class="lifetime">&#39;static</span>&gt;&gt;,
+    </span><span class="kw">pub </span>bs_white_black_list: <span class="prelude-ty">Option</span>&lt;SharedWhiteBlackList&lt;<span class="lifetime">'static</span>&gt;&gt;,
 }
 
 <span class="kw">impl </span>MassaPrivateGrpc {
@@ -424,13 +424,13 @@
             .max_encoding_message_size(config.max_encoding_message_size);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(encoding) = <span class="kw-2">&amp;</span>config.accept_compressed {
-            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">&quot;Gzip&quot;</span>) {
+            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">"Gzip"</span>) {
                 service = service.accept_compressed(CompressionEncoding::Gzip);
             };
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(encoding) = <span class="kw-2">&amp;</span>config.send_compressed {
-            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">&quot;Gzip&quot;</span>) {
+            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">"Gzip"</span>) {
                 service = service.send_compressed(CompressionEncoding::Gzip);
             };
         }
@@ -480,13 +480,13 @@
             .max_encoding_message_size(config.max_encoding_message_size);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(encoding) = <span class="kw-2">&amp;</span>config.accept_compressed {
-            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">&quot;Gzip&quot;</span>) {
+            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">"Gzip"</span>) {
                 service = service.accept_compressed(CompressionEncoding::Gzip);
             };
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(encoding) = <span class="kw-2">&amp;</span>config.send_compressed {
-            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">&quot;Gzip&quot;</span>) {
+            <span class="kw">if </span>encoding.eq_ignore_ascii_case(<span class="string">"Gzip"</span>) {
                 service = service.send_compressed(CompressionEncoding::Gzip);
             };
         }
@@ -503,9 +503,9 @@
     <span class="doccomment">/// stop the gRPC API gracefully
     </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = <span class="self">self</span>.stop_cmd_sender.send(()) {
-            <span class="macro">warn!</span>(<span class="string">&quot;gRPC API thread panicked: {:?}&quot;</span>, e);
+            <span class="macro">warn!</span>(<span class="string">"gRPC API thread panicked: {:?}"</span>, e);
         } <span class="kw">else </span>{
-            <span class="macro">info!</span>(<span class="string">&quot;gRPC API stop signal sent successfully&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">"gRPC API stop signal sent successfully"</span>);
         }
     }
 }
@@ -525,8 +525,8 @@
         + NamedService
         + Clone
         + Send
-        + <span class="lifetime">&#39;static</span>,
-    S::Future: Send + <span class="lifetime">&#39;static</span>,
+        + <span class="lifetime">'static</span>,
+    S::Future: Send + <span class="lifetime">'static</span>,
 {
     <span class="kw">let </span>(shutdown_send, shutdown_recv) = oneshot::channel::&lt;()&gt;();
 
@@ -546,17 +546,17 @@
     <span class="kw">if </span>config.enable_tls {
         <span class="kw">if </span>config.generate_self_signed_certificates {
             <span class="kw">if </span>Path::new(<span class="kw-2">&amp;</span>config.certificate_authority_root_path).exists() {
-                <span class="macro">warn!</span>(<span class="string">&quot;Certificate authority root already exists, remove the file if you want to generate new certificates. Skipping self signed certificates generation.&quot;</span>);
+                <span class="macro">warn!</span>(<span class="string">"Certificate authority root already exists, remove the file if you want to generate new certificates. Skipping self signed certificates generation."</span>);
             } <span class="kw">else </span>{
-                <span class="macro">info!</span>(<span class="string">&quot;Generating self signed certificates&quot;</span>);
+                <span class="macro">info!</span>(<span class="string">"Generating self signed certificates"</span>);
                 generate_self_signed_certificates(config);
             }
         }
 
         <span class="kw">let </span>cert = std::fs::read_to_string(config.server_certificate_path.clone())
-            .expect(<span class="string">&quot;error, failed to read server certificat&quot;</span>);
+            .expect(<span class="string">"error, failed to read server certificat"</span>);
         <span class="kw">let </span>key = std::fs::read_to_string(config.server_private_key_path.clone())
-            .expect(<span class="string">&quot;error, failed to read server private key&quot;</span>);
+            .expect(<span class="string">"error, failed to read server private key"</span>);
 
         <span class="kw">let </span>server_identity = Identity::from_pem(cert, key);
         <span class="kw">let </span>tls = ServerTlsConfig::new().identity(server_identity);
@@ -564,21 +564,21 @@
         <span class="kw">if </span>config.enable_mtls {
             <span class="kw">let </span>client_ca_cert =
                 std::fs::read_to_string(config.client_certificate_authority_root_path.clone())
-                    .expect(<span class="string">&quot;error, failed to read client certificate authority root&quot;</span>);
+                    .expect(<span class="string">"error, failed to read client certificate authority root"</span>);
             <span class="kw">let </span>client_ca_cert = Certificate::from_pem(client_ca_cert);
 
             <span class="kw">let </span>tls = tls.client_ca_root(client_ca_cert);
 
             server_builder = server_builder
                 .tls_config(tls)
-                .expect(<span class="string">&quot;error, failed to setup mTLS&quot;</span>);
+                .expect(<span class="string">"error, failed to setup mTLS"</span>);
 
-            <span class="macro">info!</span>(<span class="string">&quot;gRPC mTLS enabled&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">"gRPC mTLS enabled"</span>);
         } <span class="kw">else </span>{
             server_builder = server_builder
                 .tls_config(tls)
-                .expect(<span class="string">&quot;error, failed to setup TLS&quot;</span>);
-            <span class="macro">info!</span>(<span class="string">&quot;gRPC TLS enabled&quot;</span>);
+                .expect(<span class="string">"error, failed to setup TLS"</span>);
+            <span class="macro">info!</span>(<span class="string">"gRPC TLS enabled"</span>);
         }
     }
 
@@ -602,7 +602,7 @@
             .set_serving::&lt;PublicServiceServer&lt;MassaPublicGrpc&gt;&gt;()
             .<span class="kw">await</span>;
         tokio::spawn(massa_service_status(health_reporter.clone()));
-        <span class="macro">info!</span>(<span class="string">&quot;gRPC health service enabled&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">"gRPC health service enabled"</span>);
         <span class="prelude-val">Some</span>(health_service)
     } <span class="kw">else </span>{
         <span class="prelude-val">None
@@ -656,42 +656,42 @@
 
 <span class="comment">// Generate self signed certificates
 </span><span class="kw">fn </span>generate_self_signed_certificates(config: <span class="kw-2">&amp;</span>GrpcConfig) {
-    <span class="kw">let </span>ca_cert = gen_cert_for_ca().expect(<span class="string">&quot;error, failed to generate CA cert&quot;</span>);
+    <span class="kw">let </span>ca_cert = gen_cert_for_ca().expect(<span class="string">"error, failed to generate CA cert"</span>);
     <span class="kw">let </span>ca_cert_pem = ca_cert
         .serialize_pem()
-        .expect(<span class="string">&quot;error: failed to convert certificate authority to UTF-8&quot;</span>);
+        .expect(<span class="string">"error: failed to convert certificate authority to UTF-8"</span>);
 
     <span class="kw">if </span>config.enable_mtls {
         std::fs::write(
             config.client_certificate_authority_root_path.clone(),
             ca_cert_pem.clone(),
         )
-        .expect(<span class="string">&quot;error, failed to write client certificate authority root&quot;</span>);
+        .expect(<span class="string">"error, failed to write client certificate authority root"</span>);
 
         <span class="kw">let </span>(client_cert_pem, client_private_key_pem) =
             gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-                .expect(<span class="string">&quot;error, failed to generate cert&quot;</span>);
+                .expect(<span class="string">"error, failed to generate cert"</span>);
         std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect(<span class="string">&quot;error, failed to write client certificat&quot;</span>);
+            .expect(<span class="string">"error, failed to write client certificat"</span>);
         std::fs::write(
             config.client_private_key_path.clone(),
             client_private_key_pem,
         )
-        .expect(<span class="string">&quot;error, failed to write client private key&quot;</span>);
+        .expect(<span class="string">"error, failed to write client private key"</span>);
     }
 
     std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect(<span class="string">&quot;error, failed to write certificat authority root&quot;</span>);
+        .expect(<span class="string">"error, failed to write certificat authority root"</span>);
 
     <span class="kw">let </span>(cert_pem, server_private_key_pem) =
         gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-            .expect(<span class="string">&quot;error, failed to generate server certificat&quot;</span>);
+            .expect(<span class="string">"error, failed to generate server certificat"</span>);
     std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect(<span class="string">&quot;error, failed to write server certificat&quot;</span>);
+        .expect(<span class="string">"error, failed to write server certificat"</span>);
     std::fs::write(
         config.server_private_key_path.clone(),
         server_private_key_pem,
     )
-    .expect(<span class="string">&quot;error, failed to write server private key&quot;</span>);
+    .expect(<span class="string">"error, failed to write server private key"</span>);
 }
 </code></pre></div></section></main></body></html>
