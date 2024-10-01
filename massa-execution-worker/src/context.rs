@@ -308,7 +308,6 @@ impl ExecutionContext {
         self.created_addr_index = snapshot.created_addr_index;
         self.created_event_index = snapshot.created_event_index;
         self.created_message_index = snapshot.created_message_index;
-        self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
 
@@ -323,6 +322,8 @@ impl ExecutionContext {
             serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
             true,
         ));
+        // Reset address stack after emitting the error event.
+        self.stack = snapshot.stack;
     }
 
     /// Create a new `ExecutionContext` for read-only execution
