@@ -8,10 +8,10 @@
     pub content_creator_address: <a class="enum" href="../address/enum.Address.html" title="enum massa_models::address::Address">Address</a>,
     pub id: ID,
 }</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Packages type T such that it can be securely sent and received in a trust-free network</p>
-<p>If the internal content is mutated, then it must be re-wrapped, as the assosciated
+<p>If the internal content is mutated, then it must be re-wrapped, as the associated
 signature, serialized data, etc. would no longer be in sync</p>
-</div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.content" class="structfield section-header"><a href="#structfield.content" class="anchor field">§</a><code>content: T</code></span><div class="docblock"><p>Reference contents. Not required for the the security protocols.</p>
-<p>Use the Lightweight equivilant structures when you need verifiable
+</div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.content" class="structfield section-header"><a href="#structfield.content" class="anchor field">§</a><code>content: T</code></span><div class="docblock"><p>Reference contents. Not required for the security protocols.</p>
+<p>Use the Lightweight equivalent structures when you need verifiable
 serialized data, but do not need to read the values directly (such as when sending)</p>
 </div><span id="structfield.serialized_data" class="structfield section-header"><a href="#structfield.serialized_data" class="anchor field">§</a><code>serialized_data: <a class="struct" href="https://doc.rust-lang.org/1.81.0/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.u8.html">u8</a>&gt;</code></span><div class="docblock"><p>Content in sharable, deserializable form. Is used in the secure verification protocols.</p>
 </div><span id="structfield.signature" class="structfield section-header"><a href="#structfield.signature" class="anchor field">§</a><code>signature: <a class="enum" href="../../massa_signature/signature_impl/enum.Signature.html" title="enum massa_signature::signature_impl::Signature">Signature</a></code></span><div class="docblock"><p>A cryptographically generated value using <code>serialized_data</code> and a public key.</p>

@@ -1621,8 +1621,8 @@
 <span class="kw">use </span>massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN,
-    MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
     MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
@@ -2016,8 +2016,8 @@
         max_tables_count: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_TABLE),
         max_memories_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_MEMORIES),
         max_globals_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
-        max_custom_sections_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN),
-        max_custom_sections_data_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN),
+        max_custom_sections_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN),
+        max_custom_sections_data_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN),
     };
 
     <span class="kw">let </span>block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
@@ -2961,7 +2961,7 @@
         <span class="kw-2">*</span>sig_int_toggled_clone
             .<span class="number">0
             </span>.lock()
-            .expect(<span class="string">"double-lock on interupt bool in ctrl-c handler"</span>) = <span class="bool-val">true</span>;
+            .expect(<span class="string">"double-lock on interrupt bool in ctrl-c handler"</span>) = <span class="bool-val">true</span>;
         sig_int_toggled_clone.<span class="number">1</span>.notify_all();
     })
     .expect(<span class="string">"Error setting Ctrl-C handler"</span>);
@@ -3013,11 +3013,11 @@
             </span><span class="kw">let </span>int_sig = sig_int_toggled
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">"double-lock() on interupted signal mutex"</span>);
+                .expect(<span class="string">"double-lock() on interrupted signal mutex"</span>);
             <span class="kw">let </span>wake = sig_int_toggled
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
-                .expect(<span class="string">"interupt signal mutex poisoned"</span>);
+                .expect(<span class="string">"interrupt signal mutex poisoned"</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="macro">info!</span>(<span class="string">"interrupt signal received"</span>);
                 <span class="kw">break </span><span class="bool-val">false</span>;
