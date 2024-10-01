@@ -1087,7 +1087,7 @@ mod test {
         // assert!(dump_column(db_.clone(), "versioning").is_empty());
         assert!(dump_column(db.clone(), "versioning").is_empty());
 
-        // Add some datas then remove using prefix
+        // Add some data then remove using prefix
         batch.clear();
         db.read()
             .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);

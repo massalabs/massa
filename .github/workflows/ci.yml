@@ -27,6 +27,8 @@ concurrency:
 # Swatinem/rust-cache: https://github.com/Swatinem/rust-cache
 # dtolnay/rust-toolchain: https://github.com/dtolnay/rust-toolchain
 # codecov/codecov-action: https://github.com/codecov/codecov-action
+# JamesIves/github-pages-deploy-action: https://github.com/JamesIves/github-pages-deploy-action
+# typos: https://github.com/crate-ci/typos/blob/master/docs/github-action.md
 
 jobs:
   # Quick tests on each commit/PR
@@ -102,6 +104,17 @@ jobs:
           submodules: "recursive"
       # - uses: actions-rust-lang/audit@v1
       #   name: Audit Rust Dependencies
+
+  typos:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: crate-ci/typos@master
 
   # Full cross-platform tests required to merge on main branch
   full:

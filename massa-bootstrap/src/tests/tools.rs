@@ -783,7 +783,7 @@ impl BootstrapServerMessage {
                     "Error in the code of the test for faulty_part 4"
                 );
             }
-            // No limit on the size of this except the u64 boundery
+            // No limit on the size of this except the u64 boundary
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
             if faulty_part == BootstrapServerMessageFaultyPart::StateChangeIdThreadOverflow {
@@ -830,7 +830,7 @@ impl BootstrapServerMessage {
                 new_elements.insert(key, value);
                 new_elements_size += key_len + value_len;
             }
-            // No limit on the size of this except the u64 boundery
+            // No limit on the size of this except the u64 boundary
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
             if faulty_part == BootstrapServerMessageFaultyPart::VersioningChangeIdThreadOverflow {
@@ -1020,7 +1020,7 @@ impl BootstrapServerMessage {
                 },
             ) => {
                 let state_equal = stream_batch_equal(state1, state2);
-                let versionning_equal = stream_batch_equal(v1, v2);
+                let versioning_equal = stream_batch_equal(v1, v2);
                 let mut consensus_equal = true;
                 if c1.final_blocks.len() != c2.final_blocks.len() {
                     return false;
@@ -1034,7 +1034,7 @@ impl BootstrapServerMessage {
                 }
                 (s1 == s2)
                     && state_equal
-                    && versionning_equal
+                    && versioning_equal
                     && consensus_equal
                     && (co1 == co2)
                     && (lp1 == lp2)

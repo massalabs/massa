@@ -206,7 +206,7 @@ where
         }
 
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
-            .expect("error, failed to read server certificat");
+            .expect("error, failed to read server certificate");
         let key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect("error, failed to read server private key");
 
@@ -324,7 +324,7 @@ fn generate_self_signed_certificates(config: &GrpcConfig) {
             gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
                 .expect("error, failed to generate cert");
         std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect("error, failed to write client certificat");
+            .expect("error, failed to write client certificate");
         std::fs::write(
             config.client_private_key_path.clone(),
             client_private_key_pem,
@@ -333,13 +333,13 @@ fn generate_self_signed_certificates(config: &GrpcConfig) {
     }
 
     std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect("error, failed to write certificat authority root");
+        .expect("error, failed to write certificate authority root");
 
     let (cert_pem, server_private_key_pem) =
         gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
-            .expect("error, failed to generate server certificat");
+            .expect("error, failed to generate server certificate");
     std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect("error, failed to write server certificat");
+        .expect("error, failed to write server certificate");
     std::fs::write(
         config.server_private_key_path.clone(),
         server_private_key_pem,

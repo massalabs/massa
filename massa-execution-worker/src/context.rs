@@ -1022,7 +1022,7 @@ impl ExecutionContext {
         // Set the event index
         event.context.index_in_slot = self.created_event_index;
 
-        // Increment the event counter fot this slot
+        // Increment the event counter for this slot
         self.created_event_index += 1;
 
         // Add the event to the context store

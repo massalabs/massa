@@ -108,11 +108,11 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// channels with informations broadcasted by the consensus
+    /// channels with information broadcasted by the consensus
     pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// channels with informations broadcasted by the pool
+    /// channels with information broadcasted by the pool
     pub pool_broadcasts: PoolBroadcasts,
     /// API settings
     pub api_settings: APIConfig,
