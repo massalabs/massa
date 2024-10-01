@@ -262,7 +262,7 @@ jobs:
           version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo doc --no-deps --document-private-items
-      - uses: JamesIves/github-pages-deploy-action@4.1.7
+      - uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: target/doc
