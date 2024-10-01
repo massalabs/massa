@@ -82,7 +82,7 @@ pub enum Style {
     Wallet,
     /// For any secret information
     Secret,
-    /// To separate some informations on the screen by barely visible characters
+    /// To separate some information on the screen by barely visible characters
     Separator,
     /// When displaying a timestamp or date
     Time,

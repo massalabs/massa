@@ -88,8 +88,8 @@ use massa_models::config::constants::{
 use massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN,
-    MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
     MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
@@ -483,8 +483,8 @@ async fn launch(
         max_tables_count: Some(MAX_RUNTIME_MODULE_TABLE),
         max_memories_len: Some(MAX_RUNTIME_MODULE_MEMORIES),
         max_globals_len: Some(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
-        max_custom_sections_len: Some(MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN),
-        max_custom_sections_data_len: Some(MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN),
+        max_custom_sections_len: Some(MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN),
+        max_custom_sections_data_len: Some(MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN),
     };
 
     let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
@@ -1428,7 +1428,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         *sig_int_toggled_clone
             .0
             .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+            .expect("double-lock on interrupt bool in ctrl-c handler") = true;
         sig_int_toggled_clone.1.notify_all();
     })
     .expect("Error setting Ctrl-C handler");
@@ -1480,11 +1480,11 @@ async fn run(args: Args) -> anyhow::Result<()> {
             let int_sig = sig_int_toggled
                 .0
                 .lock()
-                .expect("double-lock() on interupted signal mutex");
+                .expect("double-lock() on interrupted signal mutex");
             let wake = sig_int_toggled
                 .1
                 .wait_timeout(int_sig, Duration::from_millis(100))
-                .expect("interupt signal mutex poisoned");
+                .expect("interrupt signal mutex poisoned");
             if *wake.0 {
                 info!("interrupt signal received");
                 break false;

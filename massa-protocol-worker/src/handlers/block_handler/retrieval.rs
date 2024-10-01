@@ -409,7 +409,7 @@ impl RetrievalThread {
             BlockInfoReply::Operations(operations) => {
                 // Send operations to pool,
                 // before performing the below checks,
-                // and wait for them to have been procesed(i.e. added to storage).
+                // and wait for them to have been processed (i.e. added to storage).
                 self.on_block_full_operations_received(from_peer_id, block_id, operations);
             }
             BlockInfoReply::NotFound => {

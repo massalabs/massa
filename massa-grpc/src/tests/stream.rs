@@ -42,14 +42,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {
@@ -69,14 +69,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {

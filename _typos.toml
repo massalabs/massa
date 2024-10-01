@@ -2,6 +2,7 @@
 extend-exclude = [
     "lcov.info",
     "massa-node/base_config/*.json",
+    "massa-node/src/tests/config.toml",
     "*.patch"
 ]
 
@@ -12,7 +13,7 @@ extend-ignore-re = [
     # Secret key (S): 18 - 62 characters
     # Public key (P): 18 - 62 characters
     # NodeId (N)
-    "(AU|AS|N|S|P)\\d\\w{18,62}"
+    "(AU|AS|N|S|P)\\d\\w{18,62}",
 ]
 
 [default.extend-words]
@@ -22,3 +23,5 @@ ser = "ser"
 der = "der"
 # short: numerator
 numer = "numer"
+# WONTFIX: grpc_model::operation_type::Type::ExecutSc
+Execut = "Execut"

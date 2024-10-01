@@ -13,13 +13,13 @@
 //! Shares an `Arc<RwLock>>` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
-//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
-//! under the hood, making write contention virtually non-existant.
+//! Assuming no errors in code, this is the only write occurrence, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existent.
 //!
 //! # Worker loop
 //!
 //! 1. Checks if the stopper has been invoked.
-//! 2. Checks if the client is permited under the white/black list rules
+//! 2. Checks if the client is permitted under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
@@ -101,7 +101,7 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        // TODO: Refactor the waker so that its existence is tied to the life of the event-loop
         if self.listener_stopper.stop().is_err() {
             warn!("bootstrap server already dropped");
         }

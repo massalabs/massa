@@ -223,9 +223,9 @@ pub const MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = 256;
 /// Maximum length for the name of a smart contract
 pub const MAX_RUNTIME_MODULE_NAME_LEN: usize = 256;
 /// Maximum number of custom section data
-pub const MAX_RUNTIME_MODULE_CUSTON_SECTION_LEN: usize = 1;
+pub const MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN: usize = 1;
 /// Maximum length for the custom section data
-pub const MAX_RUNTIME_MODULE_CUSTON_SECTION_DATA_LEN: usize = 1_000_000;
+pub const MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN: usize = 1_000_000;
 /// Maximum number of functions a module can import
 const MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = 256;
 /// Maximum number of memory a module can import
