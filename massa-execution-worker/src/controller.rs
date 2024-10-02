@@ -535,7 +535,7 @@ pub struct ExecutionManagerImpl {
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
-        info!("Stopping Execution controller...");
+        info!("stopping Execution controller...");
         // notify the worker thread to stop
         {
             let mut input_wlock = self.input_data.1.lock();
@@ -544,10 +544,8 @@ impl ExecutionManager for ExecutionManagerImpl {
         }
         // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
-            join_handle
-                .join()
-                .expect("Execution controller thread panicked");
+            join_handle.join().expect("VM controller thread panicked");
         }
-        info!("Execution controller stopped");
+        info!("execution controller stopped");
     }
 }
