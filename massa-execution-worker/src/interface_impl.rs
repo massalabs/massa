@@ -1341,7 +1341,11 @@ impl Interface for InterfaceImpl {
     ///
     /// # Returns
     /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
-    fn deferred_call_quote(&self, target_slot: (u64, u8), gas_limit: u64) -> Result<(bool, u64)> {
+    fn get_deferred_call_quote(
+        &self,
+        target_slot: (u64, u8),
+        gas_limit: u64,
+    ) -> Result<(bool, u64)> {
         // write-lock context
 
         let context = context_guard!(self);
@@ -1398,7 +1402,7 @@ impl Interface for InterfaceImpl {
         }
 
         // check fee, slot, gas
-        let (available, fee_raw) = self.deferred_call_quote(target_slot, max_gas)?;
+        let (available, fee_raw) = self.get_deferred_call_quote(target_slot, max_gas)?;
         if !available {
             bail!("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
         }
