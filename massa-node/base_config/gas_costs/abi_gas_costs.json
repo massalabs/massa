@@ -14,7 +14,7 @@
   "assembly_script_delete_data_for": 220,
   "assembly_script_deferred_call_cancel": 11,
   "assembly_script_deferred_call_exists": 11,
-  "assembly_script_deferred_call_quote": 11,
+  "assembly_script_get_deferred_call_quote": 11,
   "assembly_script_deferred_call_register": 11,
   "assembly_script_function_exists": 575,
   "assembly_script_generate_event": 172,
