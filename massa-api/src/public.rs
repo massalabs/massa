@@ -1166,15 +1166,9 @@ impl MassaRpcServer for API<Public> {
 
         let queries: Vec<ExecutionQueryRequestItem> = req
             .into_iter()
-            .map(|call| {
-                // add the gas cost of vm allocation
-                let effective_gas_request = call
-                    .max_gas_request
-                    .saturating_add(self.0.api_settings.deferred_calls_config.call_cst_gas_cost);
-                ExecutionQueryRequestItem::DeferredCallQuote {
-                    target_slot: call.target_slot,
-                    max_gas_request: effective_gas_request,
-                }
+            .map(|call| ExecutionQueryRequestItem::DeferredCallQuote {
+                target_slot: call.target_slot,
+                max_gas_request: call.max_gas_request,
             })
             .collect();
 
