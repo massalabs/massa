@@ -67,8 +67,10 @@ impl SpeculativeExecutedOps {
             HistorySearchResult::Present(_) => {
                 return true;
             }
+            HistorySearchResult::Absent => {
+                return false;
+            }
             HistorySearchResult::NoInfo => {}
-            HistorySearchResult::Absent => unreachable!(), // fetch_executed_op does not return Absent
         }
 
         // check in the final state

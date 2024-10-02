@@ -250,7 +250,7 @@ impl ActiveHistory {
             return SlotIndexPosition::Past; // too old
         }
         let index: usize = match slot.slots_since(first_slot, thread_count) {
-            Err(_) => return SlotIndexPosition::Past, // overflow
+            Err(_) => return SlotIndexPosition::Future, // overflow
             Ok(d) => {
                 match d.try_into() {
                     Ok(d) => d,
