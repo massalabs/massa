@@ -553,6 +553,105 @@ impl SpeculativeDeferredCallRegistry {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_worker::MassaDB;
+    use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
+    use massa_final_state::MockFinalStateController;
+    use massa_models::{config::THREAD_COUNT, slot::Slot};
+    use parking_lot::RwLock;
+    use tempfile::TempDir;
+
+    use super::SpeculativeDeferredCallRegistry;
+
     #[test]
-    fn test_compute_call_fee() {}
+    fn test_compute_call_fee() {
+        let disk_ledger = TempDir::new().expect("cannot create temp directory");
+        let db_config = MassaDBConfig {
+            path: disk_ledger.path().to_path_buf(),
+            max_history_length: 10,
+            max_final_state_elements_size: 100_000,
+            max_versioning_elements_size: 100_000,
+            thread_count: THREAD_COUNT,
+            max_ledger_backups: 10,
+        };
+
+        let db = Arc::new(RwLock::new(
+            Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
+        ));
+        let mock_final_state = Arc::new(RwLock::new(MockFinalStateController::new()));
+
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default());
+
+        mock_final_state
+            .write()
+            .expect_get_deferred_call_registry()
+            .return_const(deferred_call_registry);
+        let config = DeferredCallsConfig::default();
+
+        let mut speculative = SpeculativeDeferredCallRegistry::new(
+            mock_final_state,
+            Arc::new(Default::default()),
+            config.clone(),
+        );
+
+        let max_period = config.max_future_slots / THREAD_COUNT as u64;
+
+        let slot_too_far = Slot {
+            period: max_period + 2,
+            thread: 1,
+        };
+
+        let good_slot = Slot {
+            period: 10,
+            thread: 1,
+        };
+
+        // slot to far in the future
+        assert!(speculative
+            .compute_call_fee(
+                slot_too_far,
+                1_000_000,
+                Slot {
+                    period: 1,
+                    thread: 1,
+                },
+            )
+            .is_err());
+
+        // slot is in the past
+        assert!(speculative
+            .compute_call_fee(
+                Slot {
+                    period: 2,
+                    thread: 1,
+                },
+                1_000_000,
+                Slot {
+                    period: 5,
+                    thread: 1,
+                },
+            )
+            .is_err());
+
+        // gas too high
+        speculative
+            .deferred_calls_changes
+            .set_effective_slot_gas(good_slot, 999_000_000);
+
+        assert!(speculative
+            .compute_call_fee(
+                good_slot,
+                1_100_000,
+                Slot {
+                    period: 1,
+                    thread: 1,
+                },
+            )
+            .is_err());
+
+        // TODO : add more tests with different values and check the results of the fee
+    }
 }
