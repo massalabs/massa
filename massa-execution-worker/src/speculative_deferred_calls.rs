@@ -458,10 +458,7 @@ impl SpeculativeDeferredCallRegistry {
 
         // Global overbooking fee
         // TODO check if this is correct
-        let global_occupancy = self
-            .deferred_calls_changes
-            .get_effective_total_gas()
-            .unwrap_or_default();
+        let global_occupancy = self.get_effective_total_gas();
         let global_overbooking_fee = Self::overbooking_fee(
             (self.config.max_gas as u128).saturating_mul(self.config.max_future_slots as u128),
             (self.config.max_future_slots as u128).saturating_mul(TARGET_BOOKING),
