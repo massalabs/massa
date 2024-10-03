@@ -594,7 +594,7 @@ mod tests {
         let mut speculative = SpeculativeDeferredCallRegistry::new(
             mock_final_state,
             Arc::new(Default::default()),
-            config.clone(),
+            config,
         );
 
         let max_period = config.max_future_slots / THREAD_COUNT as u64;
