@@ -1251,7 +1251,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>speculative = SpeculativeDeferredCallRegistry::new(
             mock_final_state,
             Arc::new(Default::default()),
-            config.clone(),
+            config,
         );
 
         <span class="kw">let </span>max_period = config.max_future_slots / THREAD_COUNT <span class="kw">as </span>u64;
