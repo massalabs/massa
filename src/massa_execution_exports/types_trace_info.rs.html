@@ -236,7 +236,7 @@
         <span class="kw">while </span>!to_process.is_empty() {
             <span class="kw">let </span>t = to_process.pop_front();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(trace) = t {
-                <span class="kw">if </span>abi_names.iter().find(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name).is_some() {
+                <span class="kw">if </span>abi_names.iter().any(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name) {
                     <span class="comment">// filtered.extend(&amp;trace)
                     </span>filtered.push(trace);
                 }
