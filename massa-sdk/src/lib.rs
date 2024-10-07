@@ -650,7 +650,7 @@ fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpB
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&http_config.client_config.headers));
 
-    // Note: use_*_rustls() are not available anymore 
+    // Note: use_*_rustls() are not available anymore
     //       keep the config for compatibility reason but this will be unused
     /*
     match http_config.client_config.certificate_store.as_str() {
@@ -676,10 +676,9 @@ where
         .id_format(get_id_kind(ws_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&ws_config.client_config.headers))
         .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
-        .max_redirections(ws_config.max_redirections)
-        ;
+        .max_redirections(ws_config.max_redirections);
 
-    // Note: use_*_rustls() are not available anymore 
+    // Note: use_*_rustls() are not available anymore
     //       keep the config for compatibility reason but this will be unused
     /*
     match ws_config.client_config.certificate_store.as_str() {

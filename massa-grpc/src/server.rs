@@ -242,7 +242,7 @@ where
             .register_encoded_file_descriptor_set(file_descriptor_set)
             //.build()?;
             .build_v1()?;
-        
+
         Some(reflection_service)
     } else {
         None
