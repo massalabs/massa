@@ -3,6 +3,7 @@
 //! This file defines a configuration structure containing all settings for final state management
 
 use massa_async_pool::AsyncPoolConfig;
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_ledger_exports::LedgerConfig;
 use massa_pos_exports::PoSConfig;
@@ -16,6 +17,8 @@ pub struct FinalStateConfig {
     pub ledger_config: LedgerConfig,
     /// asynchronous pool configuration
     pub async_pool_config: AsyncPoolConfig,
+    /// config for deferred calls
+    pub deferred_calls_config: DeferredCallsConfig,
     /// proof-of-stake configuration
     pub pos_config: PoSConfig,
     /// executed operations configuration

@@ -3,16 +3,16 @@
 //! This file provides structures representing changes to ledger entries
 
 use crate::ledger_entry::{LedgerEntry, LedgerEntryDeserializer, LedgerEntrySerializer};
-use crate::types::{
-    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
-    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
-};
 use massa_models::address::{Address, AddressDeserializer, AddressSerializer};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 use massa_models::prehash::PreHashMap;
 use massa_models::serialization::{VecU8Deserializer, VecU8Serializer};
+use massa_models::types::{
+    Applicable, SetOrDelete, SetOrDeleteDeserializer, SetOrDeleteSerializer, SetOrKeep,
+    SetOrKeepDeserializer, SetOrKeepSerializer, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
+};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };

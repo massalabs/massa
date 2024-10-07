@@ -10,6 +10,7 @@ use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
@@ -560,7 +561,8 @@ mod tests {
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::HashXof;
-    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
+    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    use massa_models::types::SetOrKeep;
     use massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},
