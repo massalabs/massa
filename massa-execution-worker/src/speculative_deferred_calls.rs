@@ -12,7 +12,10 @@ use massa_models::{
     slot::Slot,
 };
 use parking_lot::RwLock;
-use std::{cmp::max, sync::Arc};
+use std::{
+    cmp::{max, min},
+    sync::Arc,
+};
 
 const TARGET_BOOKING: u128 = (MAX_ASYNC_GAS / 2) as u128;
 
@@ -172,6 +175,7 @@ impl SpeculativeDeferredCallRegistry {
         let mut slot_calls = self.get_calls_by_slot(current_slot);
         let total_booked_gas_before = self.get_effective_total_gas();
 
+        // get the previous average booking rate per slot
         let avg_booked_gas =
             total_booked_gas_before.saturating_div(self.config.max_future_slots as u128);
         // select the slot that is newly made available and set its base fee
@@ -183,29 +187,40 @@ impl SpeculativeDeferredCallRegistry {
             .get_prev_slot(self.config.thread_count)
             .expect("cannot get prev slot");
 
-        let prev_slot_base_fee = self.get_slot_base_fee(&prev_slot);
+        let prev_slot_base_fee = {
+            let temp_slot_fee = self.get_slot_base_fee(&prev_slot);
+            if temp_slot_fee.eq(&Amount::zero()) {
+                Amount::from_raw(self.config.min_gas_cost)
+            } else {
+                temp_slot_fee
+            }
+        };
 
         let new_slot_base_fee = match avg_booked_gas.cmp(&TARGET_BOOKING) {
+            // the previous booking rate was exactly the expected one: do not adjust the base fee
             std::cmp::Ordering::Equal => prev_slot_base_fee,
+            // more gas was booked than expected: increase the base fee
             std::cmp::Ordering::Greater => {
                 let gas_used_delta = avg_booked_gas.saturating_sub(TARGET_BOOKING);
 
-                let factor = gas_used_delta as u64
-                    / TARGET_BOOKING as u64
-                    / self.config.base_fee_max_max_change_denominator as u64;
+                let factor = gas_used_delta
+                    .saturating_div(TARGET_BOOKING)
+                    .saturating_div(self.config.base_fee_max_max_change_denominator as u128)
+                    as u64;
 
-                max(
-                    prev_slot_base_fee
-                        .saturating_add(prev_slot_base_fee.saturating_mul_u64(factor)),
+                prev_slot_base_fee.saturating_add(max(
+                    prev_slot_base_fee.saturating_mul_u64(factor),
                     Amount::from_raw(self.config.min_gas_increment),
-                )
+                ))
             }
+            // less gas was booked than expected: decrease the base fee
             std::cmp::Ordering::Less => {
-                let gas_used_delta = TARGET_BOOKING.saturating_sub(total_booked_gas_before);
+                let gas_used_delta = TARGET_BOOKING.saturating_sub(avg_booked_gas);
 
-                let factor = gas_used_delta as u64
-                    / TARGET_BOOKING as u64
-                    / self.config.base_fee_max_max_change_denominator as u64;
+                let factor = gas_used_delta
+                    .saturating_div(TARGET_BOOKING)
+                    .saturating_div(self.config.base_fee_max_max_change_denominator as u128)
+                    as u64;
 
                 max(
                     prev_slot_base_fee
@@ -387,23 +402,18 @@ impl SpeculativeDeferredCallRegistry {
             return Err(ExecutionError::DeferredCallsError(
                 "Denominator is zero on overbooking fee".into(),
             ));
-            // OR
-            //   return Ok(Amount::from_raw(0));
         }
 
         // compute using the raw fee and u128 to avoid u64 overflows
         let raw_max_penalty = max_penalty.to_raw() as u128;
 
-        let raw_fee = (raw_max_penalty * relu_occupancy_after / denominator * relu_occupancy_after
-            / denominator)
-            .saturating_sub(
-                raw_max_penalty * relu_occupancy_before / denominator * relu_occupancy_before
-                    / denominator,
-            );
-
-        Ok(Amount::from_raw(
-            std::cmp::min(raw_fee, u64::MAX as u128) as u64
+        let raw_fee = (raw_max_penalty.saturating_mul(
+            (relu_occupancy_after.saturating_mul(relu_occupancy_after))
+                .saturating_sub(relu_occupancy_before.saturating_mul(relu_occupancy_before)),
         ))
+        .saturating_div(denominator.saturating_mul(denominator));
+
+        Ok(Amount::from_raw(min(raw_fee, u64::MAX as u128) as u64))
     }
 
     /// Compute call fee
@@ -457,23 +467,22 @@ impl SpeculativeDeferredCallRegistry {
         // A fee that linearly depends on the total load over `deferred_call_max_future_slots` slots but only when the average load is above `target_async_gas` to not penalize normal use. Booking all the gas from all slots within the booking period requires using the whole initial coin supply.
 
         // Global overbooking fee
-        // TODO check if this is correct
         let global_occupancy = self.get_effective_total_gas();
         let global_overbooking_fee = Self::overbooking_fee(
-            (self.config.max_gas as u128).saturating_mul(self.config.max_future_slots as u128),
-            (self.config.max_future_slots as u128).saturating_mul(TARGET_BOOKING),
-            global_occupancy,
-            max_gas_request as u128,
-            self.config.global_overbooking_penalty, // total_supply
+            (self.config.max_gas as u128).saturating_mul(self.config.max_future_slots as u128), // total available async gas during the booking period
+            (self.config.max_future_slots as u128).saturating_mul(TARGET_BOOKING), // target a 50% async gas usage over the booking period
+            global_occupancy, // total amount of async gas currently booked in the booking period
+            max_gas_request as u128, // amount of gas to book
+            self.config.global_overbooking_penalty, // fully booking all slots of the booking period requires spending the whole initial supply of coins
         )?;
 
         // Finally, a per-slot proportional fee is also added to prevent attackers from denying significant ranges of consecutive slots within the long booking period.
         // Slot overbooking fee
         let slot_overbooking_fee = Self::overbooking_fee(
-            self.config.max_gas as u128,
-            TARGET_BOOKING,
-            slot_occupancy as u128,
-            max_gas_request as u128,
+            self.config.max_gas as u128, // total available async gas during the target slot
+            TARGET_BOOKING,              //  target a 50% async gas usage during the target slot
+            slot_occupancy as u128, // total amount of async gas currently booked in the target slot
+            max_gas_request as u128, // amount of gas to book in the target slot
             self.config.slot_overbooking_penalty, //   total_initial_coin_supply/10000
         )?;
 
