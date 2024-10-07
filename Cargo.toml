@@ -206,3 +206,4 @@ unsigned-varint = "0.8"
 variant_count = "1.1"
 walkdir = "2.3"
 zeroize = { version = "1.7", features = ["derive"] }
+prost = { version = "=0.13" }

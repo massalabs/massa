@@ -48,7 +48,7 @@ impl DenunciationPool {
     pub fn _contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()
-            .any(|(_, de_st)| match *de_st {
+            .any(|(_, de_st)| match de_st {
                 DenunciationStatus::Accumulating(_) => false,
                 DenunciationStatus::DenunciationEmitted(de) => de == denunciation,
             })
