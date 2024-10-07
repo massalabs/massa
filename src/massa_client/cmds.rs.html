@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><title>cmds.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_client/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-client/src/cmds.rs`."><title>cmds.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_client" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1496,289 +1496,289 @@
 <span class="doccomment">/// All the client commands
 /// the order they are defined is the order they are displayed in so be careful
 /// Maybe it would be worth renaming some of them for consistency
-/// Use props(pwd_not_needed = &quot;true&quot;) if the command does not need an access to the wallet, to avoid unnecessary
+/// Use props(pwd_not_needed = "true") if the command does not need an access to the wallet, to avoid unnecessary
 /// prompting of the user.
 </span><span class="attr">#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, EnumMessage, EnumString, EnumProperty, Display)]
 </span><span class="kw">pub enum </span>Command {
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;display this help&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"display this help"
     </span>)]
     </span>help,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;exit the prompt&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"exit the prompt"
     </span>)]
     </span>exit,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;IpAddr1 IpAddr2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;unban given IP address(es)&quot;
+        props(args = <span class="string">"IpAddr1 IpAddr2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"unban given IP address(es)"
     </span>)]
     </span>node_unban_by_ip,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Id1 Id2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;unban given id(s)&quot;
+        props(args = <span class="string">"Id1 Id2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"unban given id(s)"
     </span>)]
     </span>node_unban_by_id,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;IpAddr1 IpAddr2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;ban given IP address(es)&quot;
+        props(args = <span class="string">"IpAddr1 IpAddr2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"ban given IP address(es)"
     </span>)]
     </span>node_ban_by_ip,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Id1 Id2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;ban given id(s)&quot;
+        props(args = <span class="string">"Id1 Id2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"ban given id(s)"
     </span>)]
     </span>node_ban_by_id,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;stops the node&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"stops the node"
     </span>)]
     </span>node_stop,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show staking addresses&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"show staking addresses"
     </span>)]
     </span>node_get_staking_addresses,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;starts staking with the given addresses&quot;
+        props(args = <span class="string">"Address1 Address2 ..."</span>),
+        message = <span class="string">"starts staking with the given addresses"
     </span>)]
     </span>node_start_staking,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;stops staking with the given addresses&quot;
+        props(args = <span class="string">"Address1 Address2 ..."</span>),
+        message = <span class="string">"stops staking with the given addresses"
     </span>)]
     </span>node_stop_staking,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address discord_id&quot;</span>),
-        message = <span class="string">&quot;generate the testnet rewards program node/staker ownership proof&quot;
+        props(args = <span class="string">"Address discord_id"</span>),
+        message = <span class="string">"generate the testnet rewards program node/staker ownership proof"
     </span>)]
     </span>node_testnet_rewards_program_ownership_proof,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;(add, remove or allow-all) [IpAddr]&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;Manage bootstrap whitelist IP address(es). No args returns the bootstrap whitelist&quot;
+        props(args = <span class="string">"(add, remove or allow-all) [IpAddr]"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"Manage bootstrap whitelist IP address(es). No args returns the bootstrap whitelist"
     </span>)]
     </span>node_bootstrap_whitelist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;(add or remove) [IpAddr]&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;Manage bootstrap blacklist IP address(es). No args returns the bootstrap blacklist&quot;
+        props(args = <span class="string">"(add or remove) [IpAddr]"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"Manage bootstrap blacklist IP address(es). No args returns the bootstrap blacklist"
     </span>)]
     </span>node_bootstrap_blacklist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;(add or remove) [IpAddr]&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;Manage peers whitelist IP address(es). No args returns the peers whitelist&quot;
+        props(args = <span class="string">"(add or remove) [IpAddr]"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"Manage peers whitelist IP address(es). No args returns the peers whitelist"
     </span>)]
     </span>node_peers_whitelist,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"show the status of the node (reachable? number of peers connected, consensus, version, config parameter summary...)"
     </span>)]
     </span>get_status,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;get info about a list of addresses (balances, block creation, ...)&quot;
+        props(args = <span class="string">"Address1 Address2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"get info about a list of addresses (balances, block creation, ...)"
     </span>)]
     </span>get_addresses,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address Key&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;get a datastore entry (key must be UTF-8)&quot;
+        props(args = <span class="string">"Address Key"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"get a datastore entry (key must be UTF-8)"
     </span>)]
     </span>get_datastore_entry,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;BlockId&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show info about a block (content, finality ...)&quot;
+        props(args = <span class="string">"BlockId"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"show info about a block (content, finality ...)"
     </span>)]
     </span>get_blocks,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;EndorsementId1 EndorsementId2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show info about a list of endorsements (content, finality ...)&quot;
+        props(args = <span class="string">"EndorsementId1 EndorsementId2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"show info about a list of endorsements (content, finality ...)"
     </span>)]
     </span>get_endorsements,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;OperationId1 OperationId2 ...&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;show info about a list of operations(content, finality ...) &quot;
+        props(args = <span class="string">"OperationId1 OperationId2 ..."</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"show info about a list of operations(content, finality ...) "
     </span>)]
     </span>get_operations,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;start=slot_period,slot_thread end=slot_period,slot_thread emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool&quot;</span>,
-            pwd_not_needed = <span class="string">&quot;true&quot;
+            args = <span class="string">"start=slot_period,slot_thread end=slot_period,slot_thread emitter_address=Address caller_address=Address operation_id=OperationId is_final=bool is_error=bool"</span>,
+            pwd_not_needed = <span class="string">"true"
         </span>),
-        message = <span class="string">&quot;show events emitted by smart contracts with various filters&quot;
+        message = <span class="string">"show events emitted by smart contracts with various filters"
     </span>)]
     </span>get_filtered_sc_output_event,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;show-all-keys&quot;</span>),
-        message = <span class="string">&quot;show wallet info (addresses, balances ...)&quot;
+        props(args = <span class="string">"show-all-keys"</span>),
+        message = <span class="string">"show wallet info (addresses, balances ...)"
     </span>)]
     </span>wallet_info,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ..&quot;</span>),
-        message = <span class="string">&quot;get public key of the given addresses&quot;
+        props(args = <span class="string">"Address1 Address2 .."</span>),
+        message = <span class="string">"get public key of the given addresses"
     </span>)]
     </span>wallet_get_public_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;get secret key of the given addresses&quot;
+        props(args = <span class="string">"Address1 Address2 ..."</span>),
+        message = <span class="string">"get secret key of the given addresses"
     </span>)]
     </span>wallet_get_secret_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        message = <span class="string">&quot;generate a secret key and add it into the wallet&quot;
+        message = <span class="string">"generate a secret key and add it into the wallet"
     </span>)]
     </span>wallet_generate_secret_key,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SecretKey1 SecretKey2 ...&quot;</span>),
-        message = <span class="string">&quot;add a list of secret keys to the wallet&quot;
+        props(args = <span class="string">"SecretKey1 SecretKey2 ..."</span>),
+        message = <span class="string">"add a list of secret keys to the wallet"
     </span>)]
     </span>wallet_add_secret_keys,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address1 Address2 ...&quot;</span>),
-        message = <span class="string">&quot;remove a list of addresses from the wallet&quot;
+        props(args = <span class="string">"Address1 Address2 ..."</span>),
+        message = <span class="string">"remove a list of addresses from the wallet"
     </span>)]
     </span>wallet_remove_addresses,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address string&quot;</span>),
-        message = <span class="string">&quot;sign provided string with given address (address must be in the wallet)&quot;
+        props(args = <span class="string">"Address string"</span>),
+        message = <span class="string">"sign provided string with given address (address must be in the wallet)"
     </span>)]
     </span>wallet_sign,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>),
-        message = <span class="string">&quot;buy rolls with wallet address&quot;
+        props(args = <span class="string">"Address RollCount Fee"</span>),
+        message = <span class="string">"buy rolls with wallet address"
     </span>)]
     </span>buy_rolls,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;Address RollCount Fee&quot;</span>),
-        message = <span class="string">&quot;sell rolls with wallet address&quot;
+        props(args = <span class="string">"Address RollCount Fee"</span>),
+        message = <span class="string">"sell rolls with wallet address"
     </span>)]
     </span>sell_rolls,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress ReceiverAddress Amount Fee&quot;</span>),
-        message = <span class="string">&quot;send coins from a wallet address&quot;
+        props(args = <span class="string">"SenderAddress ReceiverAddress Amount Fee"</span>),
+        message = <span class="string">"send coins from a wallet address"
     </span>)]
     </span>send_transaction,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress PathToBytecode MaxGas MaxCoins Fee&quot;</span>),
-        message = <span class="string">&quot;create and send an operation containing byte code&quot;
+        props(args = <span class="string">"SenderAddress PathToBytecode MaxGas MaxCoins Fee"</span>),
+        message = <span class="string">"create and send an operation containing byte code"
     </span>)]
     </span>execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee&quot;</span>),
-        message = <span class="string">&quot;create and send an operation to call a function of a smart contract&quot;
+        props(args = <span class="string">"SenderAddress TargetAddress FunctionName Parameter MaxGas Coins Fee"</span>),
+        message = <span class="string">"create and send an operation to call a function of a smart contract"
     </span>)]
     </span>call_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(args = <span class="string">&quot;PathToBytecode MaxGas Address Fee&quot;</span>, pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;execute byte code, address is optional, fee is optional. Nothing is really executed on chain&quot;
+        props(args = <span class="string">"PathToBytecode MaxGas Address Fee"</span>, pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"execute byte code, address is optional, fee is optional. Nothing is really executed on chain"
     </span>)]
     </span>read_only_execute_smart_contract,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
         props(
-            args = <span class="string">&quot;TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee&quot;</span>,
-            pwd_not_needed = <span class="string">&quot;true&quot;
+            args = <span class="string">"TargetAddress TargetFunction Parameter MaxGas SenderAddress Coins Fee"</span>,
+            pwd_not_needed = <span class="string">"true"
         </span>),
-        message = <span class="string">&quot;call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain&quot;
+        message = <span class="string">"call a smart contract function, sender address, coins and fee are optional. Nothing is really executed on chain"
     </span>)]
     </span>read_only_call,
 
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        props(pwd_not_needed = <span class="string">&quot;true&quot;</span>),
-        message = <span class="string">&quot;tells you when moon&quot;
+        props(pwd_not_needed = <span class="string">"true"</span>),
+        message = <span class="string">"tells you when moon"
     </span>)]
     </span>when_moon,
 }
 
 <span class="attr">#[derive(Debug, Display, EnumString, EnumIter)]
-#[strum(serialize_all = <span class="string">&quot;snake_case&quot;</span>)]
+#[strum(serialize_all = <span class="string">"snake_case"</span>)]
 </span><span class="kw">pub enum </span>ListOperation {
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        message = <span class="string">&quot;add&quot;</span>,
-        detailed_message = <span class="string">&quot;add(s) the given value(s) to the target&quot;
+        message = <span class="string">"add"</span>,
+        detailed_message = <span class="string">"add(s) the given value(s) to the target"
     </span>)]
     </span>Add,
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        serialize = <span class="string">&quot;allow-all&quot;</span>,
-        message = <span class="string">&quot;allow-all&quot;</span>,
-        detailed_message = <span class="string">&quot;allow all in the target if exists&quot;
+        serialize = <span class="string">"allow-all"</span>,
+        message = <span class="string">"allow-all"</span>,
+        detailed_message = <span class="string">"allow all in the target if exists"
     </span>)]
     </span>AllowAll,
     <span class="attr">#[strum(
         ascii_case_insensitive,
-        message = <span class="string">&quot;remove&quot;</span>,
-        detailed_message = <span class="string">&quot;remove(s) the given value(s) from the target if exists&quot;
+        message = <span class="string">"remove"</span>,
+        detailed_message = <span class="string">"remove(s) the given value(s) from the target if exists"
     </span>)]
     </span>Remove,
 }
@@ -1796,13 +1796,13 @@
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>ExtendedWalletEntry {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">if </span><span class="self">self</span>.show_keys {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;Secret key: {}&quot;</span>, <span class="self">self</span>.keypair)<span class="question-mark">?</span>;
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;Public key: {}&quot;</span>, <span class="self">self</span>.keypair.get_public_key())<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"Secret key: {}"</span>, <span class="self">self</span>.keypair)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"Public key: {}"</span>, <span class="self">self</span>.keypair.get_public_key())<span class="question-mark">?</span>;
         }
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.address_info)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;\n=====\n&quot;</span>)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.address_info)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"\n=====\n"</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -1822,7 +1822,7 @@
                     <span class="kw">let </span>keypair = wallet
                         .keys
                         .get(<span class="kw-2">&amp;</span>x.address)
-                        .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;missing key&quot;</span>))<span class="question-mark">?</span>;
+                        .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"missing key"</span>))<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((
                         x.address,
                         ExtendedWalletEntry {
@@ -1838,13 +1838,13 @@
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>ExtendedWallet {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">if </span><span class="self">self</span>.<span class="number">0</span>.is_empty() {
-            <span class="macro">client_warning!</span>(<span class="string">&quot;your wallet does not contain any key, use &#39;wallet_generate_secret_key&#39; to generate a new key and add it to your wallet&quot;</span>);
+            <span class="macro">client_warning!</span>(<span class="string">"your wallet does not contain any key, use 'wallet_generate_secret_key' to generate a new key and add it to your wallet"</span>);
         }
 
         <span class="kw">for </span>entry <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.values() {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, entry)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, entry)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1855,17 +1855,17 @@
     /// with fancy colors and so on
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>help(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(
-            <span class="string">&quot;- {} {}: {}{}&quot;</span>,
+            <span class="string">"- {} {}: {}{}"</span>,
             style(<span class="self">self</span>.to_string()).green(),
-            <span class="kw">if </span><span class="self">self</span>.get_str(<span class="string">&quot;args&quot;</span>).is_some() {
-                style(<span class="self">self</span>.get_str(<span class="string">&quot;args&quot;</span>).unwrap_or(<span class="string">&quot;&quot;</span>)).yellow()
+            <span class="kw">if </span><span class="self">self</span>.get_str(<span class="string">"args"</span>).is_some() {
+                style(<span class="self">self</span>.get_str(<span class="string">"args"</span>).unwrap_or(<span class="string">""</span>)).yellow()
             } <span class="kw">else </span>{
-                style(<span class="string">&quot;no args&quot;</span>).color256(<span class="number">8</span>).italic() <span class="comment">// grey
+                style(<span class="string">"no args"</span>).color256(<span class="number">8</span>).italic() <span class="comment">// grey
             </span>},
-            <span class="kw">if </span><span class="self">self</span>.get_str(<span class="string">&quot;todo&quot;</span>).is_some() {
-                style(<span class="self">self</span>.get_str(<span class="string">&quot;todo&quot;</span>).unwrap_or(<span class="string">&quot;[not yet implemented] &quot;</span>)).red()
+            <span class="kw">if </span><span class="self">self</span>.get_str(<span class="string">"todo"</span>).is_some() {
+                style(<span class="self">self</span>.get_str(<span class="string">"todo"</span>).unwrap_or(<span class="string">"[not yet implemented] "</span>)).red()
             } <span class="kw">else </span>{
-                style(<span class="string">&quot;&quot;</span>)
+                style(<span class="string">""</span>)
             },
             <span class="self">self</span>.get_message().unwrap()
         )
@@ -1873,8 +1873,8 @@
 
     <span class="doccomment">/// Returns true if the command needs wallet access
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>is_pwd_needed(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        !(<span class="self">self</span>.get_str(<span class="string">&quot;pwd_not_needed&quot;</span>).is_some()
-            &amp;&amp; <span class="self">self</span>.get_str(<span class="string">&quot;pwd_not_needed&quot;</span>).unwrap() == <span class="string">&quot;true&quot;</span>)
+        !(<span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>).is_some()
+            &amp;&amp; <span class="self">self</span>.get_str(<span class="string">"pwd_not_needed"</span>).unwrap() == <span class="string">"true"</span>)
     }
 
     <span class="doccomment">/// run a given command
@@ -1884,7 +1884,7 @@
     /// - wallet_opt: an optional access to the wallet
     /// - parameters: the parsed parameters
     /// - json: true if --json was passed as an option
-    ///     it means that we don&#39;t want to print anything we just want the json output
+    ///     it means that we don't want to print anything we just want the json output
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         client: <span class="kw-2">&amp;mut </span>Client,
@@ -1894,7 +1894,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(node_status) = client.public.get_status().<span class="kw">await </span>{
             <span class="kw">if </span>node_status.chain_id != client.chain_id {
-                <span class="macro">client_warning!</span>(<span class="string">&quot;the chain id of the node is different from the one of the client&quot;</span>);
+                <span class="macro">client_warning!</span>(<span class="string">"the chain id of the node is different from the one of the client"</span>);
             }
         }
 
@@ -1906,7 +1906,7 @@
                             c.help();
                         } <span class="kw">else </span>{
                             <span class="macro">println!</span>(
-                                <span class="string">&quot;Command not found!\ntype \&quot;help\&quot; to get the list of commands&quot;
+                                <span class="string">"Command not found!\ntype \"help\" to get the list of commands"
                             </span>);
                             help();
                         }
@@ -1922,7 +1922,7 @@
                 <span class="kw">match </span>client.private.node_unban_by_ip(ips).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Request of unbanning successfully sent!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Request of unbanning successfully sent!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -1935,7 +1935,7 @@
                 <span class="kw">match </span>client.private.node_unban_by_id(ids).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Request of unbanning successfully sent!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Request of unbanning successfully sent!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -1948,7 +1948,7 @@
                 <span class="kw">match </span>client.private.node_ban_by_ip(ips).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Request of banning successfully sent!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Request of banning successfully sent!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -1961,7 +1961,7 @@
                 <span class="kw">match </span>client.private.node_ban_by_id(ids).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Request of banning successfully sent!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Request of banning successfully sent!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -1973,7 +1973,7 @@
                 <span class="kw">match </span>client.private.stop_node().<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Request of stopping the Node successfully sent&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Request of stopping the Node successfully sent"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -1992,7 +1992,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="comment">// parse
                 </span><span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
@@ -2004,10 +2004,10 @@
                         <span class="comment">// print concatenation
                         </span><span class="prelude-val">Ok</span>(node_sig) =&gt; {
                             <span class="kw">if </span>!json {
-                                <span class="macro">println!</span>(<span class="string">&quot;Enter the following in discord:&quot;</span>);
+                                <span class="macro">println!</span>(<span class="string">"Enter the following in discord:"</span>);
                             }
                             <span class="prelude-val">Ok</span>(Box::new(<span class="macro">format!</span>(
-                                <span class="string">&quot;{}/{}/{}/{}&quot;</span>,
+                                <span class="string">"{}/{}/{}/{}"</span>,
                                 node_sig.public_key,
                                 node_sig.signature,
                                 addr_sig.public_key,
@@ -2017,7 +2017,7 @@
                         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
                     }
                 } <span class="kw">else </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;address not found&quot;</span>)
+                    <span class="macro">bail!</span>(<span class="string">"address not found"</span>)
                 }
             }
 
@@ -2036,7 +2036,7 @@
 
             Command::get_datastore_entry =&gt; {
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;invalid number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"invalid number of parameters"</span>);
                 }
                 <span class="kw">let </span>address = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>key = parameters[<span class="number">1</span>].as_bytes().to_vec();
@@ -2052,7 +2052,7 @@
 
             Command::get_blocks =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong param numbers, expecting at least one block id&quot;</span>)
+                    <span class="macro">bail!</span>(<span class="string">"wrong param numbers, expecting at least one block id"</span>)
                 }
                 <span class="kw">let </span>block_ids = parse_vec::&lt;BlockId&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>client.public.get_blocks(block_ids).<span class="kw">await </span>{
@@ -2079,21 +2079,21 @@
 
             Command::get_filtered_sc_output_event =&gt; {
                 <span class="kw">let </span>p_list: [<span class="kw-2">&amp;</span>str; <span class="number">7</span>] = [
-                    <span class="string">&quot;start&quot;</span>,
-                    <span class="string">&quot;end&quot;</span>,
-                    <span class="string">&quot;emitter_address&quot;</span>,
-                    <span class="string">&quot;caller_address&quot;</span>,
-                    <span class="string">&quot;operation_id&quot;</span>,
-                    <span class="string">&quot;is_final&quot;</span>,
-                    <span class="string">&quot;is_error&quot;</span>,
+                    <span class="string">"start"</span>,
+                    <span class="string">"end"</span>,
+                    <span class="string">"emitter_address"</span>,
+                    <span class="string">"caller_address"</span>,
+                    <span class="string">"operation_id"</span>,
+                    <span class="string">"is_final"</span>,
+                    <span class="string">"is_error"</span>,
                 ];
                 <span class="kw">let </span><span class="kw-2">mut </span>p: HashMap&lt;<span class="kw-2">&amp;</span>str, <span class="kw-2">&amp;</span>str&gt; = HashMap::new();
                 <span class="kw">for </span>v <span class="kw">in </span>parameters {
-                    <span class="kw">let </span>s: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = v.split(<span class="string">&#39;=&#39;</span>).collect();
+                    <span class="kw">let </span>s: Vec&lt;<span class="kw-2">&amp;</span>str&gt; = v.split(<span class="string">'='</span>).collect();
                     <span class="kw">if </span>s.len() == <span class="number">2 </span>&amp;&amp; p_list.contains(<span class="kw-2">&amp;</span>s[<span class="number">0</span>]) {
                         p.insert(s[<span class="number">0</span>], s[<span class="number">1</span>]);
                     } <span class="kw">else </span>{
-                        <span class="macro">bail!</span>(<span class="string">&quot;invalid parameter: {}, type \&quot;help get_filtered_sc_output_event\&quot; to get the list of valid parameters&quot;</span>, v);
+                        <span class="macro">bail!</span>(<span class="string">"invalid parameter: {}, type \"help get_filtered_sc_output_event\" to get the list of valid parameters"</span>, v);
                     }
                 }
                 <span class="kw">let </span>filter = EventFilter {
@@ -2112,12 +2112,12 @@
             }
 
             Command::wallet_info =&gt; {
-                <span class="kw">let </span>show_keys = parameters.len() == <span class="number">1 </span>&amp;&amp; parameters[<span class="number">0</span>] == <span class="string">&quot;show-all-keys&quot;</span>;
+                <span class="kw">let </span>show_keys = parameters.len() == <span class="number">1 </span>&amp;&amp; parameters[<span class="number">0</span>] == <span class="string">"show-all-keys"</span>;
 
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json &amp;&amp; show_keys {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your secret key&quot;</span>);
+                    <span class="macro">client_warning!</span>(<span class="string">"do not share your secret key"</span>);
                 }
                 <span class="kw">match </span>client
                     .public
@@ -2138,7 +2138,7 @@
 
             Command::wallet_get_public_key =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
@@ -2162,12 +2162,12 @@
 
             Command::wallet_get_secret_key =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>!json {
-                    <span class="macro">client_warning!</span>(<span class="string">&quot;do not share your secret key&quot;</span>);
+                    <span class="macro">client_warning!</span>(<span class="string">"do not share your secret key"</span>);
                 }
 
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
@@ -2190,7 +2190,7 @@
 
             Command::node_start_staking =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
@@ -2202,13 +2202,13 @@
                 <span class="kw">let </span>secret_str = secret
                     .iter()
                     .filter(|a| a.is_some())
-                    .map(|s| <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, s.unwrap()))
+                    .map(|s| <span class="macro">format!</span>(<span class="string">"{}"</span>, s.unwrap()))
                     .collect();
 
                 <span class="kw">match </span>client.private.add_staking_secret_keys(secret_str).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Keys successfully added!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Keys successfully added!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -2218,13 +2218,13 @@
 
             Command::node_stop_staking =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>client.private.remove_staking_addresses(addresses).<span class="kw">await </span>{
                     <span class="prelude-val">Ok</span>(()) =&gt; {
                         <span class="kw">if </span>!json {
-                            <span class="macro">println!</span>(<span class="string">&quot;Addresses successfully removed!&quot;</span>)
+                            <span class="macro">println!</span>(<span class="string">"Addresses successfully removed!"</span>)
                         }
                     }
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">rpc_error!</span>(e),
@@ -2242,15 +2242,15 @@
                 //       This will allow to generate keypair on hardware ledger / computer without internet...
 
                 </span><span class="kw">let </span>keypair_version: u64 = <span class="number">0</span>;
-                <span class="kw">let </span>key = KeyPair::generate(keypair_version).expect(<span class="string">&quot;Unable to generate key pair&quot;</span>);
+                <span class="kw">let </span>key = KeyPair::generate(keypair_version).expect(<span class="string">"Unable to generate key pair"</span>);
 
                 <span class="kw">let </span>ad = wallet.add_keypairs(<span class="macro">vec!</span>[key])<span class="question-mark">?</span>[<span class="number">0</span>];
                 <span class="kw">if </span>json {
                     <span class="prelude-val">Ok</span>(Box::new(ad.to_string()))
                 } <span class="kw">else </span>{
-                    <span class="macro">println!</span>(<span class="string">&quot;Generated {} address and added it to the wallet&quot;</span>, ad);
+                    <span class="macro">println!</span>(<span class="string">"Generated {} address and added it to the wallet"</span>, ad);
                     <span class="macro">println!</span>(
-                        <span class="string">&quot;Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking &lt;your address&gt;` to start staking.\n&quot;
+                        <span class="string">"Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking &lt;your address&gt;` to start staking.\n"
                     </span>);
                     <span class="prelude-val">Ok</span>(Box::new(()))
                 }
@@ -2258,7 +2258,7 @@
 
             Command::wallet_add_secret_keys =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
@@ -2268,34 +2268,34 @@
                     <span class="kw">return </span><span class="prelude-val">Ok</span>(Box::new(addresses));
                 } <span class="kw">else </span>{
                     <span class="kw">for </span>address <span class="kw">in </span>addresses {
-                        <span class="macro">println!</span>(<span class="string">&quot;Derived and added address {} to the wallet.&quot;</span>, address);
+                        <span class="macro">println!</span>(<span class="string">"Derived and added address {} to the wallet."</span>, address);
                     }
-                    <span class="macro">println!</span>(<span class="string">&quot;Type `node_start_staking &lt;address&gt;` to start staking with the corresponding key.\n&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">"Type `node_start_staking &lt;address&gt;` to start staking with the corresponding key.\n"</span>);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
 
             Command::wallet_remove_addresses =&gt; {
                 <span class="kw">if </span>parameters.is_empty() {
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
-                <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">&quot;&quot;</span>.to_string();
+                <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="string">""</span>.to_string();
                 <span class="kw">let </span>addresses = parse_vec::&lt;Address&gt;(parameters)<span class="question-mark">?</span>;
                 <span class="kw">match </span>wallet.remove_addresses(<span class="kw-2">&amp;</span>addresses) {
                     <span class="prelude-val">Ok</span>(changed) =&gt; {
                         <span class="kw">if </span>changed {
                             wallet.save()<span class="question-mark">?</span>;
                         }
-                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Addresses removed from the wallet&quot;</span>);
+                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">"Addresses removed from the wallet"</span>);
                     }
                     <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">&quot;Wallet error while removing addresses&quot;</span>);
+                        <span class="kw">let _ </span>= <span class="macro">writeln!</span>(res, <span class="string">"Wallet error while removing addresses"</span>);
                     }
                 }
                 <span class="kw">if </span>!json {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, res);
+                    <span class="macro">println!</span>(<span class="string">"{}"</span>, res);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
@@ -2304,7 +2304,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">3 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>roll_count = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
@@ -2312,7 +2312,7 @@
 
                 <span class="kw">if </span>!json {
                     <span class="kw">let </span>roll_price = <span class="kw">match </span>client.public.get_status().<span class="kw">await </span>{
-                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, e),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">"RpcError: {}"</span>, e),
                         <span class="prelude-val">Ok</span>(status) =&gt; status.config.roll_price,
                     };
                     <span class="kw">match </span>roll_price
@@ -2323,25 +2323,25 @@
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
                                 client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await
                             </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                                <span class="kw">match </span>addresses_info.first() {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
                                         <span class="kw">if </span>info.candidate_balance &lt; total {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                            <span class="macro">client_warning!</span>(<span class="string">"this operation may be rejected due to insufficient balance"</span>);
                                         }
                                     }
                                     <span class="prelude-val">None </span>=&gt; {
-                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr))
+                                        <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">"address {} not found"</span>, addr))
                                     }
                                 }
                             }
                         }
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will be rejected&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">"the total amount hit the limit overflow, operation will be rejected"</span>);
                         }
                     }
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(staked_keys) = client.private.get_staking_addresses().<span class="kw">await </span>{
                         <span class="kw">if </span>!staked_keys.contains(<span class="kw-2">&amp;</span>addr) {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;You are buying rolls with an address not registered for staking. Don&#39;t forget to run &#39;node_start_staking &lt;address&gt;&#39;&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">"You are buying rolls with an address not registered for staking. Don't forget to run 'node_start_staking &lt;address&gt;'"</span>);
                         }
                     }
                 }
@@ -2360,7 +2360,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">3 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>roll_count = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
@@ -2368,15 +2368,15 @@
 
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee
                                     || roll_count &gt; info.candidate_roll_count
                                 {
-                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance or roll count&quot;</span>);
+                                    <span class="macro">client_warning!</span>(<span class="string">"this operation may be rejected due to insufficient balance or roll count"</span>);
                                 }
                             }
-                            <span class="prelude-val">None </span>=&gt; <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr)),
+                            <span class="prelude-val">None </span>=&gt; <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">"address {} not found"</span>, addr)),
                         }
                     }
                 }
@@ -2396,7 +2396,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">4 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>recipient_address = parameters[<span class="number">1</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
@@ -2405,14 +2405,14 @@
 
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee {
-                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                    <span class="macro">client_warning!</span>(<span class="string">"this operation may be rejected due to insufficient balance"</span>);
                                 }
                             }
                             <span class="prelude-val">None </span>=&gt; {
-                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr))
+                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">"address {} not found"</span>, addr))
                             }
                         }
                     }
@@ -2432,9 +2432,9 @@
                 .<span class="kw">await
             </span>}
             Command::when_moon =&gt; {
-                <span class="kw">let </span>res = <span class="string">&quot;At night 🌔.&quot;</span>;
+                <span class="kw">let </span>res = <span class="string">"At night 🌔."</span>;
                 <span class="kw">if </span>!json {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, res);
+                    <span class="macro">println!</span>(<span class="string">"{}"</span>, res);
                 }
                 <span class="prelude-val">Ok</span>(Box::new(()))
             }
@@ -2442,7 +2442,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">5 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>path = parameters[<span class="number">1</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
@@ -2451,14 +2451,14 @@
                 <span class="kw">let </span>fee = parameters[<span class="number">4</span>].parse::&lt;Amount&gt;()<span class="question-mark">?</span>;
                 <span class="kw">if </span>!json {
                     <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) = client.public.get_addresses(<span class="macro">vec!</span>[addr]).<span class="kw">await </span>{
-                        <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                        <span class="kw">match </span>addresses_info.first() {
                             <span class="prelude-val">Some</span>(info) =&gt; {
                                 <span class="kw">if </span>info.candidate_balance &lt; fee.saturating_add(max_coins) {
-                                    <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                    <span class="macro">client_warning!</span>(<span class="string">"this operation may be rejected due to insufficient balance"</span>);
                                 }
                             }
                             <span class="prelude-val">None </span>=&gt; {
-                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">&quot;address {} not found&quot;</span>, addr));
+                                <span class="macro">client_warning!</span>(<span class="macro">format!</span>(<span class="string">"address {} not found"</span>, addr));
                             }
                         }
                     }
@@ -2467,10 +2467,10 @@
                 <span class="kw">if </span>!json {
                     <span class="kw">let </span>max_block_size = <span class="kw">match </span>client.public.get_status().<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(node_status) =&gt; node_status.config.max_block_size,
-                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;RpcError: {}&quot;</span>, e),
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">bail!</span>(<span class="string">"RpcError: {}"</span>, e),
                     };
                     <span class="kw">if </span>data.len() &gt; max_block_size <span class="kw">as </span>usize {
-                        <span class="macro">client_warning!</span>(<span class="string">&quot;bytecode size exceeded the maximum size of a block, operation will be rejected&quot;</span>);
+                        <span class="macro">client_warning!</span>(<span class="string">"bytecode size exceeded the maximum size of a block, operation will be rejected"</span>);
                     }
                 }
                 <span class="kw">let </span>datastore = BTreeMap::new();
@@ -2494,7 +2494,7 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">7 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>target_addr = parameters[<span class="number">1</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
@@ -2509,15 +2509,15 @@
                             <span class="kw">if let </span><span class="prelude-val">Ok</span>(addresses_info) =
                                 client.public.get_addresses(<span class="macro">vec!</span>[target_addr]).<span class="kw">await
                             </span>{
-                                <span class="kw">match </span>addresses_info.get(<span class="number">0</span>) {
+                                <span class="kw">match </span>addresses_info.first() {
                                     <span class="prelude-val">Some</span>(info) =&gt; {
                                         <span class="kw">if </span>info.candidate_balance &lt; total {
-                                            <span class="macro">client_warning!</span>(<span class="string">&quot;this operation may be rejected due to insufficient balance&quot;</span>);
+                                            <span class="macro">client_warning!</span>(<span class="string">"this operation may be rejected due to insufficient balance"</span>);
                                         }
                                     }
                                     <span class="prelude-val">None </span>=&gt; {
                                         <span class="macro">client_warning!</span>(<span class="macro">format!</span>(
-                                            <span class="string">&quot;address {} not found&quot;</span>,
+                                            <span class="string">"address {} not found"</span>,
                                             target_addr
                                         ));
                                     }
@@ -2525,7 +2525,7 @@
                             }
                         }
                         <span class="prelude-val">None </span>=&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;the total amount hit the limit overflow, operation will be rejected&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">"the total amount hit the limit overflow, operation will be rejected"</span>);
                         }
                     }
                 };
@@ -2549,19 +2549,19 @@
                 <span class="kw">let </span>wallet = wallet_opt.as_mut().unwrap();
 
                 <span class="kw">if </span>parameters.len() != <span class="number">2 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>addr = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>msg = parameters[<span class="number">1</span>].clone();
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(signed) = wallet.sign_message(<span class="kw-2">&amp;</span>addr, msg.into_bytes()) {
                     <span class="prelude-val">Ok</span>(Box::new(signed))
                 } <span class="kw">else </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;Missing public key&quot;</span>)
+                    <span class="macro">bail!</span>(<span class="string">"Missing public key"</span>)
                 }
             }
             Command::read_only_execute_smart_contract =&gt; {
                 <span class="kw">if </span>parameters.len() &lt; <span class="number">2 </span>|| parameters.len() &gt; <span class="number">4 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
                 <span class="kw">let </span>path = parameters[<span class="number">0</span>].parse::&lt;PathBuf&gt;()<span class="question-mark">?</span>;
                 <span class="kw">let </span>max_gas = parameters[<span class="number">1</span>].parse::&lt;u64&gt;()<span class="question-mark">?</span>;
@@ -2592,7 +2592,7 @@
             }
             Command::read_only_call =&gt; {
                 <span class="kw">if </span>parameters.len() &lt; <span class="number">4 </span>|| parameters.len() &gt; <span class="number">7 </span>{
-                    <span class="macro">bail!</span>(<span class="string">&quot;wrong number of parameters&quot;</span>);
+                    <span class="macro">bail!</span>(<span class="string">"wrong number of parameters"</span>);
                 }
 
                 <span class="kw">let </span>target_address = parameters[<span class="number">0</span>].parse::&lt;Address&gt;()<span class="question-mark">?</span>;
@@ -2636,12 +2636,12 @@
                     <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
                         <span class="prelude-val">Ok</span>(op) =&gt; op,
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
-                            <span class="string">&quot;failed to parse operation, supported operations are: [add, remove]&quot;
+                            <span class="string">"failed to parse operation, supported operations are: [add, remove]"
                         </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">if </span>args.is_empty() {
-                        <span class="macro">bail!</span>(<span class="string">&quot;[IpAddr] parameter shouldn&#39;t be empty&quot;</span>);
+                        <span class="macro">bail!</span>(<span class="string">"[IpAddr] parameter shouldn't be empty"</span>);
                     }
                     <span class="kw">let </span>ips = parse_vec::&lt;IpAddr&gt;(args)<span class="question-mark">?</span>;
                     <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; = <span class="kw">match </span>cli_op {
@@ -2650,7 +2650,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootstrap blacklisting successfully sent!&quot;
+                                            <span class="string">"Request of bootstrap blacklisting successfully sent!"
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
@@ -2666,7 +2666,7 @@
                             </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootstrap blacklist successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">"Request of remove from bootstrap blacklist successfully sent!"</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2674,7 +2674,7 @@
                             }
                         }
                         ListOperation::AllowAll =&gt; {
-                            <span class="macro">bail!</span>(<span class="string">&quot;\&quot;allow-all\&quot; command is not implemented&quot;</span>)
+                            <span class="macro">bail!</span>(<span class="string">"\"allow-all\" command is not implemented"</span>)
                         }
                     };
                     res
@@ -2685,7 +2685,7 @@
                     <span class="kw">match </span>client.private.node_bootstrap_whitelist().<span class="kw">await </span>{
                         <span class="prelude-val">Ok</span>(bootstraplist_ips) =&gt; <span class="prelude-val">Ok</span>(Box::new(bootstraplist_ips)),
                         <span class="prelude-val">Err</span>(e) =&gt; {
-                            <span class="macro">client_warning!</span>(<span class="string">&quot;if bootstrap whitelist configuration file does&#39;t exists, bootstrap is allowed for everyone !!!&quot;</span>);
+                            <span class="macro">client_warning!</span>(<span class="string">"if bootstrap whitelist configuration file does't exists, bootstrap is allowed for everyone !!!"</span>);
                             <span class="macro">rpc_error!</span>(e)
                         }
                     }
@@ -2693,14 +2693,14 @@
                     <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
                         <span class="prelude-val">Ok</span>(op) =&gt; op,
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
-                            <span class="string">&quot;failed to parse operation, supported operations are: [add, remove, allow-all]&quot;
+                            <span class="string">"failed to parse operation, supported operations are: [add, remove, allow-all]"
                         </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; = <span class="kw">match </span>cli_op {
                         ListOperation::Add =&gt; {
                             <span class="kw">if </span>args.is_empty() {
-                                <span class="macro">bail!</span>(<span class="string">&quot;[IpAddr] parameter shouldn&#39;t be empty&quot;</span>);
+                                <span class="macro">bail!</span>(<span class="string">"[IpAddr] parameter shouldn't be empty"</span>);
                             }
                             <span class="kw">match </span>client
                                 .private
@@ -2710,7 +2710,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootstrap whitelisting successfully sent!&quot;
+                                            <span class="string">"Request of bootstrap whitelisting successfully sent!"
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
@@ -2720,7 +2720,7 @@
                         }
                         ListOperation::Remove =&gt; {
                             <span class="kw">if </span>args.is_empty() {
-                                <span class="macro">bail!</span>(<span class="string">&quot;[IpAddr] parameter shouldn&#39;t be empty&quot;</span>);
+                                <span class="macro">bail!</span>(<span class="string">"[IpAddr] parameter shouldn't be empty"</span>);
                             }
                             <span class="kw">match </span>client
                                 .private
@@ -2729,7 +2729,7 @@
                             </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from bootstrap whitelist successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">"Request of remove from bootstrap whitelist successfully sent!"</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2741,7 +2741,7 @@
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
                                         <span class="macro">println!</span>(
-                                            <span class="string">&quot;Request of bootstrap whitelisting everyone successfully sent!&quot;
+                                            <span class="string">"Request of bootstrap whitelisting everyone successfully sent!"
                                         </span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
@@ -2763,12 +2763,12 @@
                     <span class="kw">let </span>cli_op = <span class="kw">match </span>parameters[<span class="number">0</span>].parse::&lt;ListOperation&gt;() {
                         <span class="prelude-val">Ok</span>(op) =&gt; op,
                         <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">bail!</span>(
-                            <span class="string">&quot;failed to parse operation, supported operations are: [add, remove]&quot;
+                            <span class="string">"failed to parse operation, supported operations are: [add, remove]"
                         </span>),
                     };
                     <span class="kw">let </span>args = <span class="kw-2">&amp;</span>parameters[<span class="number">1</span>..];
                     <span class="kw">if </span>args.is_empty() {
-                        <span class="macro">bail!</span>(<span class="string">&quot;[IpAddr] parameter shouldn&#39;t be empty&quot;</span>);
+                        <span class="macro">bail!</span>(<span class="string">"[IpAddr] parameter shouldn't be empty"</span>);
                     }
                     <span class="kw">let </span>ips = parse_vec::&lt;IpAddr&gt;(args)<span class="question-mark">?</span>;
                     <span class="kw">let </span>res: <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>Output&gt;&gt; = <span class="kw">match </span>cli_op {
@@ -2776,7 +2776,7 @@
                             <span class="kw">match </span>client.private.node_add_to_peers_whitelist(ips).<span class="kw">await </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of peers whitelisting successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">"Request of peers whitelisting successfully sent!"</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2787,7 +2787,7 @@
                             <span class="kw">match </span>client.private.node_remove_from_peers_whitelist(ips).<span class="kw">await </span>{
                                 <span class="prelude-val">Ok</span>(()) =&gt; {
                                     <span class="kw">if </span>!json {
-                                        <span class="macro">println!</span>(<span class="string">&quot;Request of remove from peers whitelist successfully sent!&quot;</span>)
+                                        <span class="macro">println!</span>(<span class="string">"Request of remove from peers whitelist successfully sent!"</span>)
                                     }
                                     <span class="prelude-val">Ok</span>(Box::new(()))
                                 }
@@ -2795,7 +2795,7 @@
                             }
                         }
                         ListOperation::AllowAll =&gt; {
-                            <span class="macro">bail!</span>(<span class="string">&quot;\&quot;allow-all\&quot; command is not implemented&quot;</span>)
+                            <span class="macro">bail!</span>(<span class="string">"\"allow-all\" command is not implemented"</span>)
                         }
                     };
                     res
@@ -2825,7 +2825,7 @@
     <span class="comment">// check if the fee is higher than the minimal fees of the node
     </span><span class="kw">if </span>fee.checked_sub(status.minimal_fees).is_none() {
         <span class="macro">bail!</span>(<span class="macro">format!</span>(
-            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+            <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
             fee, status.minimal_fees
         ));
     }
@@ -2861,7 +2861,7 @@
     </span>{
         <span class="prelude-val">Ok</span>(operation_ids) =&gt; {
             <span class="kw">if </span>!json {
-                <span class="macro">println!</span>(<span class="string">&quot;Sent operation IDs:&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">"Sent operation IDs:"</span>);
             }
             <span class="prelude-val">Ok</span>(Box::new(operation_ids))
         }
@@ -2878,7 +2878,7 @@
     args.iter()
         .map(|x| {
             x.parse::&lt;T&gt;()
-                .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">&quot;failed to parse \&quot;{}\&quot; due to: {}&quot;</span>, x, e))
+                .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"failed to parse \"{}\" due to: {}"</span>, x, e))
         })
         .collect()
 }
@@ -2901,7 +2901,7 @@
             .<span class="number">1
             </span>.parse::&lt;T&gt;()
             .map(Option::Some)
-            .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">&quot;failed to parse \&quot;{}\&quot; due to: {}&quot;</span>, value.<span class="number">1</span>, e))
+            .map_err(|e| <span class="macro">anyhow!</span>(<span class="string">"failed to parse \"{}\" due to: {}"</span>, value.<span class="number">1</span>, e))
     } <span class="kw">else </span>{
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
     }
@@ -2909,7 +2909,7 @@
 
 <span class="doccomment">/// Display the help of all commands
 </span><span class="kw">pub fn </span>help() {
-    <span class="macro">println!</span>(<span class="string">&quot;HELP of Massa client (list of available commands):&quot;</span>);
+    <span class="macro">println!</span>(<span class="string">"HELP of Massa client (list of available commands):"</span>);
     Command::iter().map(|c| c.help()).collect()
 }
 </code></pre></div></section></main></body></html>
