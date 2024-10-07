@@ -88,7 +88,6 @@ async fn max_request_size() {
 
     let response_str = response.unwrap_err().to_string();
     assert!(response_str.contains("Request rejected `413`"));
-    
 
     api_handle.stop().await;
 }
