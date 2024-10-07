@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/slot_sequencer.rs`."><title>slot_sequencer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/slot_sequencer.rs`."><title>slot_sequencer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -893,7 +893,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="kw-2">*</span>initial_consensus_final_blocks
             .keys()
             .min()
-            .expect(<span class="string">&quot;init call should be done with non-empty new_consensus_final_blocks&quot;</span>);
+            .expect(<span class="string">"init call should be done with non-empty new_consensus_final_blocks"</span>);
 
         <span class="comment">// Compute the maximal slot until which the slot sequence is useful.
         // This is the max between the latest CSS-final slot, the latest blockclique slot,
@@ -903,7 +903,7 @@
                 </span>.latest_consensus_final_slots
                 .iter()
                 .max()
-                .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
+                .expect(<span class="string">"latest_consensus_final_slots is empty"</span>),
             initial_blockclique
                 .keys()
                 .max()
@@ -911,10 +911,10 @@
                 .unwrap_or_else(|| Slot::new(<span class="self">self</span>.config.last_start_period, <span class="number">0</span>)),
         );
 
-        <span class="comment">// slot-replayer doesn&#39;t need the &quot;latest slot to be executed in time&quot;
+        <span class="comment">// slot-replayer doesn't need the "latest slot to be executed in time"
         // as it replays blocks in known period of time. Moreover this may
         // introduce huge performance loss.
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="attr">#[cfg(not(feature = <span class="string">"slot-replayer"</span>))]
         </span><span class="kw">let </span>max_slot = std::cmp::max(max_slot, <span class="self">self</span>.get_time_cursor());
 
         <span class="comment">// Iterate from the starting slot to the `max_slot` to build the slot sequence.
@@ -936,10 +936,10 @@
                     <span class="comment">// A block was found for that slot (not a miss)
                     </span>(
                         b_id,
-                        <span class="comment">// The block&#39;s storage should be in `blocks_storage`
+                        <span class="comment">// The block's storage should be in `blocks_storage`
                         </span>blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;block metadata missing in execution init&quot;</span>),
+                            .expect(<span class="string">"block metadata missing in execution init"</span>),
                     )
                 });
 
@@ -954,14 +954,14 @@
             <span class="comment">// Increment slot for the next loop iteration
             </span>slot = slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow in slot iteration"</span>);
         }
         <span class="comment">// Explicitly consume tainted containers to prevent mistakes caused by using them later.
         </span><span class="kw">if </span>initial_consensus_final_blocks.into_iter().next().is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in consensus_final_blocks after slot sequencing&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"remaining elements in consensus_final_blocks after slot sequencing"</span>);
         }
         <span class="kw">if </span>initial_blockclique.into_iter().next().is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in blockclique after slot sequencing&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"remaining elements in blockclique after slot sequencing"</span>);
         }
         std::mem::drop(blocks_metadata);
 
@@ -982,12 +982,12 @@
             <span class="self">self</span>.config.genesis_timestamp,
             shifted_now,
         )
-        .expect(<span class="string">&quot;could not get latest block slot at shifted execution time&quot;</span>)
+        .expect(<span class="string">"could not get latest block slot at shifted execution time"</span>)
         .unwrap_or_else(|| Slot::new(<span class="self">self</span>.config.last_start_period, <span class="number">0</span>))
     }
 
     <span class="doccomment">/// Notify the sequencer of incoming changes: CSS-finalized blocks and changes in the blockclique.
-    /// This function is also called on time slots to ensure new slots are taken into account even if they don&#39;t contain a block.
+    /// This function is also called on time slots to ensure new slots are taken into account even if they don't contain a block.
     ///
     /// # Arguments
     /// * `new_consensus_final_blocks`: new CSS-finalized blocks
@@ -996,13 +996,13 @@
     </span><span class="kw">pub fn </span>update(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>new_consensus_final_blocks: HashMap&lt;Slot, BlockId&gt;,
-        <span class="attr">#[cfg_attr(feature = <span class="string">&quot;slot-replayer&quot;</span>, allow(unused_assignments))]
+        <span class="attr">#[cfg_attr(feature = <span class="string">"slot-replayer"</span>, allow(unused_assignments))]
         </span><span class="kw-2">mut </span>new_blockclique: <span class="prelude-ty">Option</span>&lt;HashMap&lt;Slot, BlockId&gt;&gt;,
         <span class="kw-2">mut </span>new_blocks_metadata: PreHashMap&lt;BlockId, ExecutionBlockMetadata&gt;,
     ) {
-        <span class="comment">// The slot-replay don&#39;t care about speculative execution. We clear
+        <span class="comment">// The slot-replay don't care about speculative execution. We clear
         // them.
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;slot-replayer&quot;</span>)]
+        </span><span class="attr">#[cfg(feature = <span class="string">"slot-replayer"</span>)]
         </span>{
             new_blockclique = <span class="prelude-val">None</span>;
         }
@@ -1036,7 +1036,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>slot = <span class="self">self
             </span>.sequence
             .front()
-            .expect(<span class="string">&quot;slot sequence should not be empty&quot;</span>)
+            .expect(<span class="string">"slot sequence should not be empty"</span>)
             .slot;
 
         <span class="comment">// Get the latest useful slot until which we build the new sequence.
@@ -1050,7 +1050,7 @@
                     </span>.latest_consensus_final_slots
                     .iter()
                     .max()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots is empty&quot;</span>),
+                    .expect(<span class="string">"latest_consensus_final_slots is empty"</span>),
                 new_blockclique
                     .as_ref()
                     .and_then(|bq| bq.keys().max().copied())
@@ -1058,14 +1058,14 @@
             ),
             <span class="self">self</span>.sequence
                 .back()
-                .expect(<span class="string">&quot;slot sequence cannot be empty&quot;</span>)
+                .expect(<span class="string">"slot sequence cannot be empty"</span>)
                 .slot,
         );
 
         <span class="comment">// Preallocate the new sequence of slots
         </span><span class="kw">let </span>new_seq_len = max_slot
             .slots_since(<span class="kw-2">&amp;</span>slot, <span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;error computing new sequence length&quot;</span>)
+            .expect(<span class="string">"error computing new sequence length"</span>)
             .saturating_add(<span class="number">1</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>new_sequence: VecDeque&lt;SlotInfo&gt; = VecDeque::with_capacity(new_seq_len <span class="kw">as </span>usize);
 
@@ -1081,7 +1081,7 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>new_consensus_final =
                 slot &lt;= <span class="self">self</span>.latest_consensus_final_slots[slot.thread <span class="kw">as </span>usize];
 
-            <span class="comment">// the slot S is also CSS-final if there is any CSS-final slot S&#39; in any thread so that t(S&#39;) &gt;= t(S) + t0
+            <span class="comment">// the slot S is also CSS-final if there is any CSS-final slot S' in any thread so that t(S') &gt;= t(S) + t0
             </span><span class="kw">if </span>!new_consensus_final {
                 new_consensus_final =
                     <span class="self">self</span>.latest_consensus_final_slots
@@ -1108,7 +1108,7 @@
             </span><span class="kw">let </span>prev_item = <span class="self">self</span>.sequence.pop_front();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(prev_info) = prev_item.as_ref() {
                 <span class="kw">if </span>prev_info.slot != slot {
-                    <span class="macro">panic!</span>(<span class="string">&quot;slot sequencing mismatch&quot;</span>);
+                    <span class="macro">panic!</span>(<span class="string">"slot sequencing mismatch"</span>);
                 }
             }
 
@@ -1142,24 +1142,24 @@
             </span><span class="kw">if </span>seq_item_overwrites_history &amp;&amp; <span class="self">self</span>.latest_executed_candidate_slot &gt;= slot {
                 <span class="self">self</span>.latest_executed_candidate_slot = slot
                     .get_prev_slot(<span class="self">self</span>.config.thread_count)
-                    .expect(<span class="string">&quot;could not rollback speculative execution cursor&quot;</span>);
+                    .expect(<span class="string">"could not rollback speculative execution cursor"</span>);
             }
 
             <span class="comment">// Increment slot for the next loop iteration.
             </span>slot = slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow on slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow on slot iteration"</span>);
         }
         <span class="comment">// Explicitly consume tainted containers to prevent mistakes caused by using them later.
         </span><span class="kw">if </span>!<span class="self">self</span>.sequence.is_empty() {
-            <span class="macro">panic!</span>(<span class="string">&quot;some items of the old slot sequence have been unexpectedly not processed&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"some items of the old slot sequence have been unexpectedly not processed"</span>);
         }
         <span class="kw">if </span>new_consensus_final_blocks.into_iter().next().is_some() {
-            <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in new_consensus_final_blocks after slot sequencing&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"remaining elements in new_consensus_final_blocks after slot sequencing"</span>);
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(bq) = new_blockclique {
             <span class="kw">if </span>!bq.is_empty() {
-                <span class="macro">panic!</span>(<span class="string">&quot;remaining elements in new_blockclique after slot sequencing&quot;</span>);
+                <span class="macro">panic!</span>(<span class="string">"remaining elements in new_blockclique after slot sequencing"</span>);
             }
         }
         std::mem::drop(new_blocks_metadata);
@@ -1237,10 +1237,10 @@
                 </span>prev_slot_info.content = new_consensus_final_block.map(|b_id| {
                     (
                         b_id,
-                        <span class="comment">// Can&#39;t recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
+                        <span class="comment">// Can't recycle any old Storage because of the mismatch: get it from `new_blocks_metadata`.
                         </span>new_blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;new css final block metadata absent from new_blocks_metadata&quot;</span>),
+                            .expect(<span class="string">"new css final block metadata absent from new_blocks_metadata"</span>),
                     )
                 });
 
@@ -1267,9 +1267,9 @@
             </span>prev_slot_info.content = new_blockclique_block.map(|b_id| {
                 (
                     b_id,
-                    <span class="comment">// Can&#39;t recycle any old metadata because of the mismatch: get it from `new_blocks_metadata`.
+                    <span class="comment">// Can't recycle any old metadata because of the mismatch: get it from `new_blocks_metadata`.
                     </span>new_blocks_metadata.remove(<span class="kw-2">&amp;</span>b_id).expect(
-                        <span class="string">&quot;new css blockclique block metadata absent from new_blocks_metadata&quot;</span>,
+                        <span class="string">"new css blockclique block metadata absent from new_blocks_metadata"</span>,
                     ),
                 )
             });
@@ -1298,7 +1298,7 @@
                         <span class="comment">// Get the block Storage from `new_blocks_metadata` as this slot is new to the sequencer.
                         </span>new_blocks_metadata
                             .remove(<span class="kw-2">&amp;</span>b_id)
-                            .expect(<span class="string">&quot;new css final block metadata absent from new_blocks_metadata&quot;</span>),
+                            .expect(<span class="string">"new css final block metadata absent from new_blocks_metadata"</span>),
                     )
                 }),
             };
@@ -1322,7 +1322,7 @@
                 (
                     b_id,
                     new_blocks_metadata.remove(<span class="kw-2">&amp;</span>b_id).expect(
-                        <span class="string">&quot;new css blockclique block metadata absent from new_blocks_metadata&quot;</span>,
+                        <span class="string">"new css blockclique block metadata absent from new_blocks_metadata"</span>,
                     ),
                 )
             }),
@@ -1337,16 +1337,16 @@
         <span class="kw">let </span>first_slot = <span class="kw-2">&amp;</span><span class="self">self
             </span>.sequence
             .front()
-            .expect(<span class="string">&quot;slot sequence should never be empty&quot;</span>)
+            .expect(<span class="string">"slot sequence should never be empty"</span>)
             .slot;
         <span class="kw">if </span>slot &lt; first_slot {
             <span class="kw">return </span><span class="prelude-val">None</span>; <span class="comment">// underflow
         </span>}
         <span class="kw">let </span>index: usize = slot
             .slots_since(first_slot, <span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;could not compute slots_since first slot in sequence&quot;</span>)
+            .expect(<span class="string">"could not compute slots_since first slot in sequence"</span>)
             .try_into()
-            .expect(<span class="string">&quot;usize overflow in sequence index&quot;</span>);
+            .expect(<span class="string">"usize overflow in sequence index"</span>);
         <span class="kw">if </span>index &gt;= <span class="self">self</span>.sequence.len() {
             <span class="kw">return </span><span class="prelude-val">None</span>; <span class="comment">// overflow
         </span>}
@@ -1372,7 +1372,7 @@
             </span><span class="kw">let </span>next_execution_final_slot = <span class="self">self
                 </span>.latest_executed_final_slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow in slot iteration"</span>);
             <span class="comment">// Read whether that slot is present in the slot sequence and is marked as SCE-final.
             </span><span class="kw">let </span>finalization_task_available = <span class="self">self
                 </span>.get_slot(<span class="kw-2">&amp;</span>next_execution_final_slot)
@@ -1384,14 +1384,14 @@
         }
 
         <span class="comment">// Check if the next candidate slot is available for execution.
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="attr">#[cfg(not(feature = <span class="string">"slot-replayer"</span>))]
         </span><span class="comment">// slot-replayer only replay final slot
         </span>{
             <span class="comment">// Get the slot just after the last executed candidate slot.
             </span><span class="kw">let </span>next_candidate_slot = <span class="self">self
                 </span>.latest_executed_candidate_slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow in slot iteration"</span>);
             <span class="comment">// The candidate slot is considered ready for execution
             // if it is later (or at) the current time cursor.
             // In the case in which it is absent from the sequence,
@@ -1422,7 +1422,7 @@
                     </span>.latest_consensus_final_slots
                     .iter()
                     .min()
-                    .expect(<span class="string">&quot;latest_consensus_final_slots should not be empty&quot;</span>),
+                    .expect(<span class="string">"latest_consensus_final_slots should not be empty"</span>),
                 <span class="self">self</span>.latest_execution_final_slot,
             ),
             std::cmp::min(
@@ -1468,7 +1468,7 @@
             </span><span class="kw">let </span>slot = <span class="self">self
                 </span>.latest_executed_final_slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow in slot iteration"</span>);
             <span class="comment">// Check whether that slot is in the sequence and marked as SCE-final.
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(SlotInfo {
                 execution_final,
@@ -1503,14 +1503,14 @@
         <span class="comment">// Here we know that there are no SCE-final slots to execute.
 
         // Low priority: execute the next candidate slot that is available for execution, if any.
-        </span><span class="attr">#[cfg(not(feature = <span class="string">&quot;slot-replayer&quot;</span>))]
+        </span><span class="attr">#[cfg(not(feature = <span class="string">"slot-replayer"</span>))]
         </span><span class="comment">// slot-replayer does not care about spectulative execution
         </span>{
             <span class="comment">// Get the slot just after the latest executed speculative slot.
             </span><span class="kw">let </span>slot = <span class="self">self
                 </span>.latest_executed_candidate_slot
                 .get_next_slot(<span class="self">self</span>.config.thread_count)
-                .expect(<span class="string">&quot;overflow in slot iteration&quot;</span>);
+                .expect(<span class="string">"overflow in slot iteration"</span>);
 
             <span class="comment">// Check if that slot is before (or equal to) the time cursor, and available in the sequence.
             </span><span class="kw">if </span><span class="self">self</span>.get_time_cursor() &gt;= slot {
@@ -1553,7 +1553,7 @@
         </span><span class="kw">let </span>next_slot = <span class="self">self
             </span>.get_time_cursor()
             .get_next_slot(<span class="self">self</span>.config.thread_count)
-            .expect(<span class="string">&quot;slot overflow in slot deadline computation&quot;</span>);
+            .expect(<span class="string">"slot overflow in slot deadline computation"</span>);
 
         <span class="comment">// Return the timestamp of that slot, shifted by the cursor delay.
         </span>get_block_slot_timestamp(
@@ -1562,7 +1562,7 @@
             <span class="self">self</span>.config.genesis_timestamp,
             next_slot,
         )
-        .expect(<span class="string">&quot;could not compute slot timestamp&quot;</span>)
+        .expect(<span class="string">"could not compute slot timestamp"</span>)
         .saturating_add(<span class="self">self</span>.config.cursor_delay)
     }
 }
