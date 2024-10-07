@@ -12,8 +12,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use crate::config::{GrpcConfig, ServiceName};
 use crate::error::GrpcError;
 use futures_util::FutureExt;
-use hyper::service::Service;
-use hyper::{Body, Method, Request, Response};
+use hyper::{Method, Request, Response};
 use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolBroadcasts, PoolController};
@@ -31,7 +30,7 @@ use massa_wallet::Wallet;
 use tokio::sync::oneshot;
 use tonic::body::BoxBody;
 use tonic::codegen::CompressionEncoding;
-use tonic::transport::NamedService;
+use tonic::server::NamedService;
 use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
@@ -173,7 +172,7 @@ async fn massa_service_status(mut reporter: HealthReporter) {
 // Configure and start the gRPC API with the given service
 async fn serve<S>(service: S, config: &GrpcConfig) -> Result<StopHandle, GrpcError>
 where
-    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+    S: tower_service::Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
         + NamedService
         + Clone
         + Send
@@ -241,8 +240,9 @@ where
         };
         let reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(file_descriptor_set)
-            .build()?;
-
+            //.build()?;
+            .build_v1()?;
+        
         Some(reflection_service)
     } else {
         None
