@@ -89,7 +89,6 @@ tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 schnellru = { workspace = true }
-# prost = { version = "=0.13", optional = true }
 prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
