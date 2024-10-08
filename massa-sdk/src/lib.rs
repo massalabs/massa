@@ -643,7 +643,7 @@ impl RpcClientV2 {
 }
 
 fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpBackend> {
-    let mut builder = HttpClientBuilder::default()
+    let builder = HttpClientBuilder::default()
         .max_request_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         // FIXME: the field max_concurrent_requests is private (jsonrpsee 0.24.6)
