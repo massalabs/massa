@@ -21,6 +21,7 @@ tonic-web = { workspace = true }
 tonic-reflection = { workspace = true }
 tonic-health = { workspace = true }
 tower-http = { workspace = true, "features" = ["cors"] }
+tower-service = { workspace = true }
 hyper = { workspace = true }
 futures-util = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }

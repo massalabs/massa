@@ -8,7 +8,7 @@ use std::{
 };
 
 use jsonrpsee::{
-    core::{client::ClientT, Error},
+    core::{client::ClientT, client::Error},
     http_client::HttpClientBuilder,
     rpc_params,
 };

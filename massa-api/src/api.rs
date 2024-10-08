@@ -7,7 +7,7 @@ use crate::{ApiServer, ApiV2, StopHandle, API};
 use async_trait::async_trait;
 use futures::future::{self, Either};
 use futures::StreamExt;
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult, SubscriptionResult};
+use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult, SubscriptionResult};
 use jsonrpsee::{PendingSubscriptionSink, SubscriptionMessage};
 use massa_api_exports::config::APIConfig;
 use massa_api_exports::error::ApiError;
