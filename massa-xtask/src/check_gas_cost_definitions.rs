@@ -35,8 +35,17 @@ pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
     }
 
     let diff_2 = massa_node_gas_costs_abi_defined.difference(&gas_costs_abi_defined);
+    let exclude_list = HashSet::from([
+        "cl_compilation",
+        "launch",
+        "sp_compilation",
+        "launch_wasmv1",
+        "max_instance"
+    ]);
     for x2 in diff_2 {
-        println!("Found in json but not in default(): {x2}");
+        if !exclude_list.contains(x2.as_str()) {
+            println!("Found in json but not in default(): {x2}");
+        }
     }
 
     if found_diff {
