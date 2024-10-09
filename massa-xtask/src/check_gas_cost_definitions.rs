@@ -40,7 +40,7 @@ pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
         "launch",
         "sp_compilation",
         "launch_wasmv1",
-        "max_instance"
+        "max_instance",
     ]);
     for x2 in diff_2 {
         if !exclude_list.contains(x2.as_str()) {
