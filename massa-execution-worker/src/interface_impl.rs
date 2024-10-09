@@ -883,10 +883,7 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(
-            public_key_,
-            None,
-        )?;
+        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -900,8 +897,7 @@ impl Interface for InterfaceImpl {
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // see test_evm_verify for an example of its usage
-        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?
-            .into();
+        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
         // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
         //       restrict to only 27 & 28 (=> 0 & 1)
         if recovery_id != 0 && recovery_id != 1 {
@@ -913,7 +909,9 @@ impl Interface for InterfaceImpl {
             // Ensuring that v is within the expected range is crucial
             // for correctly recovering the public key.
             // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-            return Err(anyhow!("invalid recovery id value (v = {recovery_id}) in evm_signature_verify"));
+            return Err(anyhow!(
+                "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+            ));
         }
 
         let mut signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;

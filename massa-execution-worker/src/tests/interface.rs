@@ -20,7 +20,6 @@ fn test_hash_sha256() {
 
 #[test]
 fn test_evm_signature_verify() {
-
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
