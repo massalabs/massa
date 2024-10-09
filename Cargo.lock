@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/inconsistent_gas_entries#ac13d6f23b8ac5170c71cc10889df771a83c6aa4"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/inconsistent_gas_entries#2fd17e79575d3f4f722d61248a5bb2f45da367c2"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3645,6 +3645,7 @@ dependencies = [
 name = "massa_xtask"
 version = "2.3.0"
 dependencies = [
+ "massa-sc-runtime",
  "massa_models",
  "toml_edit 0.21.0",
  "walkdir",
