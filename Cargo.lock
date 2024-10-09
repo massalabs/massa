@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=next_breaking_update#2081855e026cbb8e19ced6b0e2aae67b0de379f1"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/inconsistent_gas_entries#ac13d6f23b8ac5170c71cc10889df771a83c6aa4"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
