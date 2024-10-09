@@ -2307,6 +2307,8 @@
 <a href="#2307" id="2307">2307</a>
 <a href="#2308" id="2308">2308</a>
 <a href="#2309" id="2309">2309</a>
+<a href="#2310" id="2310">2310</a>
+<a href="#2311" id="2311">2311</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2768,6 +2770,11 @@
                 .saturating_sub(operation.get_max_spending(<span class="self">self</span>.config.roll_price)),
         );
 
+        <span class="comment">// set the context origin operation ID
+        // Note: set operation ID early as if context.transfer_coins fails, event_create will use
+        // operation ID in the event message
+        </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
+
         <span class="comment">// debit the fee from the operation sender
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
@@ -2786,9 +2793,6 @@
 
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
-
-        <span class="comment">// set the context origin operation ID
-        </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
 
         <span class="prelude-val">Ok</span>(context_snapshot)
     }
