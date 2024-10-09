@@ -459,6 +459,11 @@ impl ExecutionState {
                 .saturating_sub(operation.get_max_spending(self.config.roll_price)),
         );
 
+        // set the context origin operation ID
+        // Note: set operation ID early as if context.transfer_coins fails, event_create will use
+        // operation ID in the event message
+        context.origin_operation_id = Some(operation_id);
+
         // debit the fee from the operation sender
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
@@ -477,9 +482,6 @@ impl ExecutionState {
 
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
-
-        // set the context origin operation ID
-        context.origin_operation_id = Some(operation_id);
 
         Ok(context_snapshot)
     }
