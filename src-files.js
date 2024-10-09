@@ -39,6 +39,6 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_time",["",[],["error.rs","lib.rs","mapping_grpc.rs"]]],\
 ["massa_versioning",["",[],["address_factory.rs","grpc_mapping.rs","keypair_factory.rs","lib.rs","mips.rs","versioning.rs","versioning_factory.rs","versioning_ser_der.rs"]]],\
 ["massa_wallet",["",[],["error.rs","lib.rs"]]],\
-["massa_xtask",["",[],["check_gas_cost_definitions.rs","main.rs","update_package_versions.rs"]]]\
+["massa_xtask",["",[],["main.rs","update_package_versions.rs"]]]\
 ]'));
 createSrcSidebar();

@@ -2092,6 +2092,28 @@
 <a href="#2092" id="2092">2092</a>
 <a href="#2093" id="2093">2093</a>
 <a href="#2094" id="2094">2094</a>
+<a href="#2095" id="2095">2095</a>
+<a href="#2096" id="2096">2096</a>
+<a href="#2097" id="2097">2097</a>
+<a href="#2098" id="2098">2098</a>
+<a href="#2099" id="2099">2099</a>
+<a href="#2100" id="2100">2100</a>
+<a href="#2101" id="2101">2101</a>
+<a href="#2102" id="2102">2102</a>
+<a href="#2103" id="2103">2103</a>
+<a href="#2104" id="2104">2104</a>
+<a href="#2105" id="2105">2105</a>
+<a href="#2106" id="2106">2106</a>
+<a href="#2107" id="2107">2107</a>
+<a href="#2108" id="2108">2108</a>
+<a href="#2109" id="2109">2109</a>
+<a href="#2110" id="2110">2110</a>
+<a href="#2111" id="2111">2111</a>
+<a href="#2112" id="2112">2112</a>
+<a href="#2113" id="2113">2113</a>
+<a href="#2114" id="2114">2114</a>
+<a href="#2115" id="2115">2115</a>
+<a href="#2116" id="2116">2116</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2977,10 +2999,7 @@
         }
 
         <span class="comment">// parse the public key
-        </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(
-            public_key_,
-            <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
-        )<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// build the message
         </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">"\x19Ethereum Signed Message:\n{}"</span>, message_.len());
@@ -2993,9 +3012,34 @@
         // r is the R.x value of the signature's R point (32 bytes)
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
-        // we ignore the recovery parameter here
         // see test_evm_verify for an example of its usage
-        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>.into();
+        <span class="comment">// Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+        //       restrict to only 27 &amp; 28 (=&gt; 0 &amp; 1)
+        </span><span class="kw">if </span>recovery_id != <span class="number">0 </span>&amp;&amp; recovery_id != <span class="number">1 </span>{
+            <span class="comment">// Note:
+            // The v value in an EVM signature serves as a recovery ID,
+            // aiding in the recovery of the public key from the signature.
+            // Typically, v should be either 27 or 28
+            // (or sometimes 0 or 1, depending on the implementation).
+            // Ensuring that v is within the expected range is crucial
+            // for correctly recovering the public key.
+            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+            </span>));
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+
+        <span class="comment">// Note:
+        // The s value in an EVM signature should be in the lower half of the elliptic curve
+        // in order to prevent malleability attacks.
+        // If s is in the high-order range, it can be converted to its low-order equivalent,
+        // which should be enforced during signature verification.
+        </span><span class="kw">if </span>signature.s.is_high() {
+            signature.s = -signature.s;
+        }
 
         <span class="comment">// verify the signature
         </span><span class="prelude-val">Ok</span>(libsecp256k1::verify(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>public_key))
