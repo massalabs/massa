@@ -82,5 +82,4 @@ fn test_evm_get_pubkey_from_signature() {
     signature_[64] ^= 1;
     let result = interface.evm_get_pubkey_from_signature(&full_hash, &signature_);
     assert!(result.is_err());
-
 }
