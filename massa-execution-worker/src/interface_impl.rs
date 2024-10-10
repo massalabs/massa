@@ -963,16 +963,33 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the message
-        let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        let message = libsecp256k1::Message::parse_slice(hash_)?;
 
         // parse the signature as being (r, s, v) use only r and s
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+        // Note:
+        // See evm_signature_verify explanation
+        if signature.s.is_high() {
+            return Err(anyhow!(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            ));
+        }
 
         // parse v as a recovery id
-        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
+
+        let recovery_id_: u8 = recovery_id.into();
+        if recovery_id_ != 0 && recovery_id_ != 1 {
+            // Note:
+            // See evm_signature_verify explanation
+            return Err(anyhow!(
+                "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+            ));
+        }
 
         // recover the public key
-        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
 
         // return its serialized value
         Ok(recovered.serialize().to_vec())
