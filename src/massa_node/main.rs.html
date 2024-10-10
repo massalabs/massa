@@ -1528,9 +1528,6 @@
 <a href="#1528" id="1528">1528</a>
 <a href="#1529" id="1529">1529</a>
 <a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
-<a href="#1532" id="1532">1532</a>
-<a href="#1533" id="1533">1533</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1995,11 +1992,8 @@
     };
 
     <span class="comment">// gas costs
-    </span><span class="kw">let </span>gas_costs = GasCosts::new(
-        SETTINGS.execution.abi_gas_costs_file.clone(),
-        SETTINGS.execution.wasm_gas_costs_file.clone(),
-    )
-    .expect(<span class="string">"Failed to load gas costs"</span>);
+    </span><span class="kw">let </span>gas_costs = GasCosts::new(SETTINGS.execution.abi_gas_costs_file.clone())
+        .expect(<span class="string">"Failed to load gas costs"</span>);
 
     <span class="comment">// Limits imposed to wasm files so the compilation phase is smooth
     </span><span class="kw">let </span>condom_limits = CondomLimits {
