@@ -914,7 +914,7 @@ impl Interface for InterfaceImpl {
             ));
         }
 
-        let mut signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
 
         // Note:
         // The s value in an EVM signature should be in the lower half of the elliptic curve
@@ -922,7 +922,9 @@ impl Interface for InterfaceImpl {
         // If s is in the high-order range, it can be converted to its low-order equivalent,
         // which should be enforced during signature verification.
         if signature.s.is_high() {
-            signature.s = -signature.s;
+            return Err(anyhow!(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            ));
         }
 
         // verify the signature
