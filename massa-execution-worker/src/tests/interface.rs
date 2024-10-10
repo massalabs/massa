@@ -43,7 +43,7 @@ fn test_evm_signature_verify() {
 
     // Invalid v
     {
-        let mut signature_2_ = signature_.clone();
+        let mut signature_2_ = signature_;
         signature_2_[64] ^= 1;
         let result =
             interface.evm_signature_verify(message_, &signature_2_, &public_key.serialize());
@@ -88,7 +88,7 @@ fn test_evm_get_pubkey_from_signature() {
 
     // Invalid v
     {
-        let mut signature_2_ = signature_.clone();
+        let mut signature_2_ = signature_;
         signature_2_[64] ^= 1;
         let result = interface.evm_get_pubkey_from_signature(&full_hash, &signature_2_);
         assert!(result.is_err());
