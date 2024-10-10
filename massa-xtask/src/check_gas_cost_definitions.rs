@@ -17,7 +17,6 @@ pub(crate) fn check_gas_cost_definitions() -> Result<(), String> {
         // SETTINGS.execution.abi_gas_costs_file.clone(),
         // SETTINGS.execution.wasm_gas_costs_file.clone(),
         "massa-node/base_config/gas_costs/abi_gas_costs.json".into(),
-        "massa-node/base_config/gas_costs/wasm_gas_costs.json".into(),
     )
     .expect("Failed to load gas costs");
 

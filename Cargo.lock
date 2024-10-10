@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/inconsistent_gas_entries#0555ff2ae5a88c96100b4f9caf55ba15bb6839a2"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/operator_gas_costs#2f3de9238c23d5c520e3fdf9664ccbe715ed3d2f"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -4465,8 +4465,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.5.0",
- "itertools 0.10.5",
+ "heck 0.4.1",
+ "itertools 0.12.0",
  "log",
  "multimap",
  "once_cell",
@@ -4486,7 +4486,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9552f850d5f0964a4e4d0bf306459ac29323ddfbae05e35a7c0d35cb0803cc5"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.0",
  "proc-macro2 1.0.86",
  "quote 1.0.37",
  "syn 2.0.75",

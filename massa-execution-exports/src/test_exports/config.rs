@@ -56,11 +56,6 @@ impl Default for ExecutionConfig {
                     "/../massa-node/base_config/gas_costs/abi_gas_costs.json"
                 )
                 .into(),
-                concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../massa-node/base_config/gas_costs/wasm_gas_costs.json"
-                )
-                .into(),
             )
             .unwrap(),
             base_operation_gas_cost: BASE_OPERATION_GAS_COST,
