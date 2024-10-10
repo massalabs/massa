@@ -2114,6 +2114,23 @@
 <a href="#2114" id="2114">2114</a>
 <a href="#2115" id="2115">2115</a>
 <a href="#2116" id="2116">2116</a>
+<a href="#2117" id="2117">2117</a>
+<a href="#2118" id="2118">2118</a>
+<a href="#2119" id="2119">2119</a>
+<a href="#2120" id="2120">2120</a>
+<a href="#2121" id="2121">2121</a>
+<a href="#2122" id="2122">2122</a>
+<a href="#2123" id="2123">2123</a>
+<a href="#2124" id="2124">2124</a>
+<a href="#2125" id="2125">2125</a>
+<a href="#2126" id="2126">2126</a>
+<a href="#2127" id="2127">2127</a>
+<a href="#2128" id="2128">2128</a>
+<a href="#2129" id="2129">2129</a>
+<a href="#2130" id="2130">2130</a>
+<a href="#2131" id="2131">2131</a>
+<a href="#2132" id="2132">2132</a>
+<a href="#2133" id="2133">2133</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -3079,16 +3096,33 @@
         }
 
         <span class="comment">// parse the message
-        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_)<span class="question-mark">?</span>;
 
         <span class="comment">// parse the signature as being (r, s, v) use only r and s
-        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>]).unwrap();
+        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+
+        <span class="comment">// Note:
+        // See evm_signature_verify explanation
+        </span><span class="kw">if </span>signature.s.is_high() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            </span>));
+        }
 
         <span class="comment">// parse v as a recovery id
-        </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>]).unwrap();
+        </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>recovery_id_: u8 = recovery_id.into();
+        <span class="kw">if </span>recovery_id_ != <span class="number">0 </span>&amp;&amp; recovery_id_ != <span class="number">1 </span>{
+            <span class="comment">// Note:
+            // See evm_signature_verify explanation
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+            </span>));
+        }
 
         <span class="comment">// recover the public key
-        </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id).unwrap();
+        </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id)<span class="question-mark">?</span>;
 
         <span class="comment">// return its serialized value
         </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
