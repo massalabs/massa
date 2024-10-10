@@ -2131,6 +2131,8 @@
 <a href="#2131" id="2131">2131</a>
 <a href="#2132" id="2132">2132</a>
 <a href="#2133" id="2133">2133</a>
+<a href="#2134" id="2134">2134</a>
+<a href="#2135" id="2135">2135</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -3047,7 +3049,7 @@
             </span>));
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+        <span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
 
         <span class="comment">// Note:
         // The s value in an EVM signature should be in the lower half of the elliptic curve
@@ -3055,7 +3057,9 @@
         // If s is in the high-order range, it can be converted to its low-order equivalent,
         // which should be enforced during signature verification.
         </span><span class="kw">if </span>signature.s.is_high() {
-            signature.s = -signature.s;
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            </span>));
         }
 
         <span class="comment">// verify the signature
