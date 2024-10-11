@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=feature/operator_gas_costs#2f3de9238c23d5c520e3fdf9664ccbe715ed3d2f"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=next_breaking_update#e8040e69f3f4f31b7ab57c30af4aa87820788950"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
