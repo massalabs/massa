@@ -27,7 +27,6 @@ pub struct ExecutionSettings {
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
-    pub wasm_gas_costs_file: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,

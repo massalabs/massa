@@ -462,11 +462,8 @@ async fn launch(
     };
 
     // gas costs
-    let gas_costs = GasCosts::new(
-        SETTINGS.execution.abi_gas_costs_file.clone(),
-        SETTINGS.execution.wasm_gas_costs_file.clone(),
-    )
-    .expect("Failed to load gas costs");
+    let gas_costs = GasCosts::new(SETTINGS.execution.abi_gas_costs_file.clone())
+        .expect("Failed to load gas costs");
 
     // Limits imposed to wasm files so the compilation phase is smooth
     let condom_limits = CondomLimits {
