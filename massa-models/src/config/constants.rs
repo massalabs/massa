@@ -311,7 +311,7 @@ pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / 
 /// Maximum event size in bytes
 pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
 /// Maximum number of recursion for calls
-pub const MAX_RECURSIVE_CALLS_DEPTH: usize = 50;
+pub const MAX_RECURSIVE_CALLS_DEPTH: usize = 25;
 
 //
 // Constants used in network
