@@ -301,6 +301,7 @@ impl ExecutionContext {
         self.stack = snapshot.stack;
         self.unsafe_rng = snapshot.unsafe_rng;
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
+        self.recursion_counter = snapshot.recursion_counter;
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
