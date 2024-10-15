@@ -461,7 +461,7 @@ fn test_nested_call_gas_usage() {
 fn test_nested_call_recursion_limit_reached() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        max_recursive_calls_depth: 1,
+        max_recursive_calls_depth: 0,
         ..Default::default()
     };
 
