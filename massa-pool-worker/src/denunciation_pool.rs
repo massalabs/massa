@@ -48,11 +48,10 @@ impl DenunciationPool {
     pub fn _contains(&self, denunciation: &Denunciation) -> bool {
         self.denunciations_cache
             .iter()
-            .find(|(_, de_st)| match *de_st {
+            .any(|(_, de_st)| match de_st {
                 DenunciationStatus::Accumulating(_) => false,
                 DenunciationStatus::DenunciationEmitted(de) => de == denunciation,
             })
-            .is_some()
     }
 
     /// Add a denunciation precursor to the pool - can lead to a Denunciation creation

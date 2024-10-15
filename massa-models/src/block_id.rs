@@ -285,7 +285,7 @@ mod test {
 
     #[test]
     fn test_block_id_errors() {
-        let actual_error = BlockId::from_str("SomeUnvalidBlockId")
+        let actual_error = BlockId::from_str("SomeInvalidBlockId")
             .unwrap_err()
             .to_string();
         let expected_error = "block id parsing error".to_string();

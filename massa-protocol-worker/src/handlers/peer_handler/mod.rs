@@ -56,6 +56,7 @@ mod tester;
 
 pub(crate) use messages::{PeerManagementMessage, PeerManagementMessageSerializer};
 
+#[allow(dead_code)]
 pub struct PeerManagementHandler {
     pub peer_db: SharedPeerDB,
     pub thread_join: Option<JoinHandle<()>>,

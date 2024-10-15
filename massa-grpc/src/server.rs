@@ -12,8 +12,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use crate::config::{GrpcConfig, ServiceName};
 use crate::error::GrpcError;
 use futures_util::FutureExt;
-use hyper::service::Service;
-use hyper::{Body, Method, Request, Response};
+use hyper::{Method, Request, Response};
 use massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 use massa_execution_exports::{ExecutionChannels, ExecutionController};
 use massa_pool_exports::{PoolBroadcasts, PoolController};
@@ -31,7 +30,7 @@ use massa_wallet::Wallet;
 use tokio::sync::oneshot;
 use tonic::body::BoxBody;
 use tonic::codegen::CompressionEncoding;
-use tonic::transport::NamedService;
+use tonic::server::NamedService;
 use tonic::transport::{Certificate, Identity, ServerTlsConfig};
 use tonic_health::server::HealthReporter;
 use tonic_web::GrpcWebLayer;
@@ -173,7 +172,7 @@ async fn massa_service_status(mut reporter: HealthReporter) {
 // Configure and start the gRPC API with the given service
 async fn serve<S>(service: S, config: &GrpcConfig) -> Result<StopHandle, GrpcError>
 where
-    S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+    S: tower_service::Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
         + NamedService
         + Clone
         + Send
@@ -206,7 +205,7 @@ where
         }
 
         let cert = std::fs::read_to_string(config.server_certificate_path.clone())
-            .expect("error, failed to read server certificat");
+            .expect("error, failed to read server certificate");
         let key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect("error, failed to read server private key");
 
@@ -241,7 +240,8 @@ where
         };
         let reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(file_descriptor_set)
-            .build()?;
+            //.build()?;
+            .build_v1()?;
 
         Some(reflection_service)
     } else {
@@ -324,7 +324,7 @@ fn generate_self_signed_certificates(config: &GrpcConfig) {
             gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
                 .expect("error, failed to generate cert");
         std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect("error, failed to write client certificat");
+            .expect("error, failed to write client certificate");
         std::fs::write(
             config.client_private_key_path.clone(),
             client_private_key_pem,
@@ -333,13 +333,13 @@ fn generate_self_signed_certificates(config: &GrpcConfig) {
     }
 
     std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect("error, failed to write certificat authority root");
+        .expect("error, failed to write certificate authority root");
 
     let (cert_pem, server_private_key_pem) =
         gen_signed_cert(&ca_cert, config.subject_alt_names.clone())
-            .expect("error, failed to generate server certificat");
+            .expect("error, failed to generate server certificate");
     std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect("error, failed to write server certificat");
+        .expect("error, failed to write server certificate");
     std::fs::write(
         config.server_private_key_path.clone(),
         server_private_key_pem,

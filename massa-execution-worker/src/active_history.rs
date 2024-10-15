@@ -211,7 +211,7 @@ impl ActiveHistory {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub(crate) fn get_adress_deferred_credit_for(
+    pub(crate) fn get_address_deferred_credit_for(
         &self,
         addr: &Address,
         slot: &Slot,

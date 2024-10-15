@@ -20,5 +20,5 @@ pub mod send_blocks;
 pub mod send_endorsements;
 /// send operations
 pub mod send_operations;
-/// subscribe tx througput
+/// subscribe tx throughput
 pub mod tx_throughput;
