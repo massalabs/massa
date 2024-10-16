@@ -93,7 +93,7 @@ pub struct ExecutionContextSnapshot {
     pub gas_remaining_before_subexecution: Option<u64>,
 
     /// recursion counter, incremented for each new nested call
-    pub recursion_counter: usize,
+    pub recursion_counter: u16,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -184,7 +184,7 @@ pub struct ExecutionContext {
     pub gas_remaining_before_subexecution: Option<u64>,
 
     /// recursion counter, incremented for each new nested call
-    pub recursion_counter: usize,
+    pub recursion_counter: u16,
 }
 
 impl ExecutionContext {
