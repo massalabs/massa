@@ -103,6 +103,7 @@ pub struct ExecutionConfig {
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
     /// Max recursive calls depth in SC
+    /// Used to limit the recursion_counter value in the context, to avoid stack overflow issues.
     pub max_recursive_calls_depth: u16,
     /// Runtime condom middleware limits
     pub condom_limits: CondomLimits,

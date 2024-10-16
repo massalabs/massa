@@ -93,6 +93,8 @@ pub struct ExecutionContextSnapshot {
     pub gas_remaining_before_subexecution: Option<u64>,
 
     /// recursion counter, incremented for each new nested call
+    /// This is used to avoid stack overflow issues in the VM (that would crash the node instead of failing the call),
+    /// by limiting the depth of recursion contracts can have with the max_recursive_calls_depth value.
     pub recursion_counter: u16,
 }
 
