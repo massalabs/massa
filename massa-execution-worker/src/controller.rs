@@ -236,7 +236,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::OpExecutionStatusCandidate(id) => {
                     let (speculative_v, _final_v) = execution_lock
                         .get_ops_exec_status(&[id])
-                        .get(0)
+                        .first()
                         .map(|(s_v, f_v)| (*s_v, *f_v))
                         .expect("expected one return value");
                     match speculative_v {
@@ -254,7 +254,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::OpExecutionStatusFinal(id) => {
                     let (_speculative_v, final_v) = execution_lock
                         .get_ops_exec_status(&[id])
-                        .get(0)
+                        .first()
                         .map(|(s_v, f_v)| (*s_v, *f_v))
                         .expect("expected one return value");
                     match final_v {
@@ -535,7 +535,7 @@ pub struct ExecutionManagerImpl {
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
-        info!("stopping Execution controller...");
+        info!("Stopping Execution controller...");
         // notify the worker thread to stop
         {
             let mut input_wlock = self.input_data.1.lock();
@@ -546,6 +546,6 @@ impl ExecutionManager for ExecutionManagerImpl {
         if let Some(join_handle) = self.thread_handle.take() {
             join_handle.join().expect("VM controller thread panicked");
         }
-        info!("execution controller stopped");
+        info!("Execution controller stopped");
     }
 }

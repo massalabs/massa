@@ -42,14 +42,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {
@@ -69,14 +69,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {
@@ -1280,7 +1280,7 @@ async fn send_operations_low_fee() {
     let keypair = KeyPair::generate(0).unwrap();
     // Note: expire_period is set to be higher than current slot (which is computed from config genesis timestamp)
     //       CHeck send_operation.rs where last_slot value is computed
-    let op2 = create_operation_with_expire_period(&keypair, 1950000);
+    let op2 = create_operation_with_expire_period(&keypair, 11950000);
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
         .serialize(&op2, &mut buffer)
@@ -1412,7 +1412,7 @@ async fn send_operations() {
 
     // Note: expire_period is set to be higher than current slot (which is computed from config genesis timestamp)
     //       CHeck send_operation.rs where last_slot value is computed
-    let op2 = create_operation_with_expire_period(&keypair, 1950000);
+    let op2 = create_operation_with_expire_period(&keypair, 11950000);
     let mut buffer: Vec<u8> = Vec::new();
     SecureShareSerializer::new()
         .serialize(&op2, &mut buffer)

@@ -2,7 +2,7 @@ use crate::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
 use massa_hash::Hash;
-use massa_sc_runtime::{GasCosts, RuntimeModule};
+use massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
@@ -137,7 +137,12 @@ impl HDCache {
     }
 
     /// Retrieve a module
-    pub fn get(&self, hash: Hash, gas_costs: GasCosts) -> Option<ModuleInfo> {
+    pub fn get(
+        &self,
+        hash: Hash,
+        gas_costs: GasCosts,
+        condom_limits: CondomLimits,
+    ) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
@@ -153,9 +158,13 @@ impl HDCache {
                 if let ModuleMetadata::Invalid(err_msg) = metadata {
                     return Some(ModuleInfo::Invalid(err_msg));
                 }
-                let module =
-                    RuntimeModule::deserialize(&ser_module, gas_costs.max_instance_cost, gas_costs)
-                        .expect(MOD_DESER_ERROR);
+                let module = RuntimeModule::deserialize(
+                    &ser_module,
+                    gas_costs.max_instance_cost,
+                    gas_costs,
+                    condom_limits,
+                )
+                .expect(MOD_DESER_ERROR);
                 let result = match metadata {
                     ModuleMetadata::Invalid(err_msg) => ModuleInfo::Invalid(err_msg),
                     ModuleMetadata::NotExecuted => ModuleInfo::Module(module),
@@ -233,7 +242,13 @@ mod tests {
             0x70, 0x30,
         ];
         ModuleInfo::Module(
-            RuntimeModule::new(&bytecode, GasCosts::default(), Compiler::CL).unwrap(),
+            RuntimeModule::new(
+                &bytecode,
+                GasCosts::default(),
+                Compiler::CL,
+                CondomLimits::default(),
+            )
+            .unwrap(),
         )
     }
 
@@ -251,18 +266,23 @@ mod tests {
 
         let init_cost = 100;
         let gas_costs = GasCosts::default();
+        let condom_limits = CondomLimits::default();
 
         cache.insert(hash, module);
-        let cached_module_v1 = cache.get(hash, gas_costs.clone()).unwrap();
+        let cached_module_v1 = cache
+            .get(hash, gas_costs.clone(), condom_limits.clone())
+            .unwrap();
         assert!(matches!(cached_module_v1, ModuleInfo::Module(_)));
 
         cache.set_init_cost(hash, init_cost);
-        let cached_module_v2 = cache.get(hash, gas_costs.clone()).unwrap();
+        let cached_module_v2 = cache
+            .get(hash, gas_costs.clone(), condom_limits.clone())
+            .unwrap();
         assert!(matches!(cached_module_v2, ModuleInfo::ModuleAndDelta(_)));
 
         let err_msg = "test_error".to_string();
         cache.set_invalid(hash, err_msg.clone());
-        let cached_module_v3 = cache.get(hash, gas_costs).unwrap();
+        let cached_module_v3 = cache.get(hash, gas_costs, condom_limits.clone()).unwrap();
         let ModuleInfo::Invalid(res_err) = cached_module_v3 else {
             panic!("expected ModuleInfo::Invalid");
         };
@@ -299,6 +319,7 @@ mod tests {
         let module = make_default_module_info();
 
         let gas_costs = GasCosts::default();
+        let condom_limits = CondomLimits::default();
 
         for count in 0..cache.max_entry_count {
             let key = Hash::compute_from(count.to_string().as_bytes());
@@ -309,7 +330,7 @@ mod tests {
             let mut rbytes = [0u8; 16];
             thread_rng().fill_bytes(&mut rbytes);
             let get_key = Hash::compute_from(&rbytes);
-            let cached_module = cache.get(get_key, gas_costs.clone());
+            let cached_module = cache.get(get_key, gas_costs.clone(), condom_limits.clone());
             assert!(cached_module.is_none());
         }
     }

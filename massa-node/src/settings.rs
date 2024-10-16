@@ -27,7 +27,6 @@ pub struct ExecutionSettings {
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
-    pub wasm_gas_costs_file: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
@@ -91,6 +90,7 @@ pub struct FactorySettings {
 }
 
 /// Pool configuration, read from a file configuration
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 pub struct PoolSettings {
     pub max_operation_pool_size: usize,
@@ -194,6 +194,7 @@ pub struct MetricsSettings {
 }
 
 /// Protocol Configuration, read from toml user configuration file
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Clone)]
 pub struct ProtocolSettings {
     /// after `ask_block_timeout` milliseconds we try to ask a block to another node

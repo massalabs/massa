@@ -15,9 +15,7 @@ use massa_consensus_exports::bootstrapable_graph::BootstrapableGraph;
 use massa_final_state::FinalStateController;
 use massa_protocol_exports::BootstrapPeers;
 use parking_lot::RwLock;
-use std::io::{self, ErrorKind};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 mod bindings;
 mod client;
@@ -65,7 +63,7 @@ impl GlobalBootstrapState {
         }
     }
 }
-
+/*
 trait BindingReadExact: io::Read {
     /// similar to std::io::Read::read_exact, but with a timeout that is function-global instead of per-individual-read
     fn read_exact_timeout(
@@ -112,3 +110,4 @@ trait BindingReadExact: io::Read {
     /// Internal helper
     fn set_read_timeout(&mut self, deadline: Option<Duration>) -> Result<(), std::io::Error>;
 }
+*/

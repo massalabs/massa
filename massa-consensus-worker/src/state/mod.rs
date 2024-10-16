@@ -37,6 +37,7 @@ mod stats;
 mod tick;
 mod verifications;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct ConsensusState {
     /// Configuration
@@ -70,7 +71,7 @@ pub struct ConsensusState {
     pub new_final_blocks: PreHashSet<BlockId>,
     /// Newly stale block mapped to creator and slot
     pub new_stale_blocks: PreHashMap<BlockId, (Address, Slot)>,
-    /// time at which the node was launched (used for desynchronization detection)
+    /// time at which the node was launched (used for de-synchronization detection)
     pub launch_time: MassaTime,
     /// Final block stats `(time, creator, is_from_protocol)`
     pub final_block_stats: VecDeque<(MassaTime, Address, bool)>,
@@ -80,7 +81,7 @@ pub struct ConsensusState {
     pub stale_block_stats: VecDeque<MassaTime>,
     /// the time span considered for stats
     pub stats_history_timespan: MassaTime,
-    /// the time span considered for desynchronization detection
+    /// the time span considered for de-synchronization detection
     pub stats_desync_detection_timespan: MassaTime,
     /// blocks we want
     pub wishlist: PreHashMap<BlockId, Option<SecuredHeader>>,
@@ -333,7 +334,7 @@ impl ConsensusState {
         &self,
         end_slot: Option<Slot>,
     ) -> Result<PreHashSet<BlockId>, ConsensusError> {
-        // if an end_slot is provided compute the lastest final block for that given slot
+        // if an end_slot is provided compute the latest final block for that given slot
         // if not use the latest_final_blocks_periods
         let effective_latest_finals: Vec<(BlockId, u64)> = if let Some(slot) = end_slot {
             self.list_latest_final_blocks_at(slot)?

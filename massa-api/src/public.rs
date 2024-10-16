@@ -4,7 +4,7 @@
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use itertools::{izip, Itertools};
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockInfoContent, BlockSummary},

@@ -334,7 +334,7 @@ mod tests {
                 assert!(msg.can_be_executed);
             }
             _ => {
-                panic!("Unexpect value");
+                panic!("Unexpected value");
             }
         }
 

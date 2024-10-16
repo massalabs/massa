@@ -168,13 +168,7 @@ impl Deserializer<MipInfo> for MipInfoDeserializer {
                         tuple((
                             context("Failed component deserialization", |input| {
                                 let (rem, component_) = self.u32_deserializer.deserialize(input)?;
-                                let component =
-                                    MipComponent::try_from(component_).map_err(|_| {
-                                        nom::Err::Error(ParseError::from_error_kind(
-                                            input,
-                                            nom::error::ErrorKind::Fail,
-                                        ))
-                                    })?;
+                                let component = MipComponent::from(component_);
                                 IResult::Ok((rem, component))
                             }),
                             context("Failed component version deserialization", |input| {
@@ -674,7 +668,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
                 ))
             })?;
 
-        let (rem3, latest_annoucements_) = context(
+        let (rem3, latest_announcements_) = context(
             "Failed MipStoreStats latest announcements der",
             length_count(
                 context("Failed latest announcements count der", |input| {
@@ -720,7 +714,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
             rem4,
             MipStoreStats {
                 config: self.config.clone(),
-                latest_announcements: latest_annoucements_.into_iter().collect(),
+                latest_announcements: latest_announcements_.into_iter().collect(),
                 network_version_counters: network_version_counters.into_iter().collect(),
             },
         ))

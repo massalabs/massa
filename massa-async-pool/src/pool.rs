@@ -1284,7 +1284,7 @@ mod tests {
             .write_batch(batch, versioning_batch, Some(slot_1));
 
         let content = dump_column(pool.db.clone(), "state");
-        assert_eq!(content.len(), 26); // 2 entries added, splitted in 13 prefix
+        assert_eq!(content.len(), 26); // 2 entries added, split in 13 prefix
 
         let mut batch2 = DBBatch::new();
         pool.delete_entry(&message_id, &mut batch2);

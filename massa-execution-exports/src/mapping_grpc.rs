@@ -117,13 +117,13 @@ pub fn to_querystate_filter(
             }
             //TODO to be checked
             exec::RequestItem::CycleInfos(value) => {
-                let addreses = value
+                let addresses = value
                     .restrict_to_addresses
                     .into_iter()
                     .map(|address| Address::from_str(&address))
                     .collect::<Result<Vec<_>, _>>()?;
-                let mut addresses_set = PreHashSet::with_capacity(addreses.len());
-                addresses_set.extend(addreses);
+                let mut addresses_set = PreHashSet::with_capacity(addresses.len());
+                addresses_set.extend(addresses);
                 Ok(ExecutionQueryRequestItem::CycleInfos {
                     cycle: value.cycle,
                     restrict_to_addresses: Some(addresses_set),

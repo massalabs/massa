@@ -62,7 +62,7 @@ pub struct FilledBlock {
     pub operations: Vec<(OperationId, Option<SecureShareOperation>)>,
 }
 
-/// Block with assosciated meta-data and interfaces allowing trust of data in untrusted network
+/// Block with associated meta-data and interfaces allowing trust of data in untrusted network
 pub type SecureShareBlock = SecureShare<Block, BlockId>;
 
 impl SecureShareContent for Block {
