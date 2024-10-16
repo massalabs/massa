@@ -2796,7 +2796,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=add_recursion_counter#8ad1dc93e43662e2338fe977251d50b497583f5f"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=next_breaking_update#095d6253bf6c31e725f056c79b4df9994f39380e"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
