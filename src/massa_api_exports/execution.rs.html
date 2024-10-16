@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api-exports/src/execution.rs`."><title>execution.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api-exports/src/execution.rs`."><title>execution.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_api_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -121,9 +121,53 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span>massa_final_state::StateChanges;
+</span><span class="kw">use </span>massa_deferred_calls::DeferredCall;
+<span class="kw">use </span>massa_final_state::StateChanges;
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
     output_event::SCOutputEvent, slot::Slot,
@@ -156,22 +200,22 @@
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>ExecuteReadOnlyResponse {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">writeln!</span>(f, <span class="string">"Executed at slot: {}"</span>, <span class="self">self</span>.executed_at)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Executed at slot: {}&quot;</span>, <span class="self">self</span>.executed_at)<span class="question-mark">?</span>;
         <span class="macro">writeln!</span>(
             f,
-            <span class="string">"Result: {}"</span>,
+            <span class="string">&quot;Result: {}&quot;</span>,
             <span class="kw">match </span><span class="kw-2">&amp;</span><span class="self">self</span>.result {
                 ReadOnlyResult::Error(e) =&gt;
-                    <span class="macro">format!</span>(<span class="string">"an error occurred during the execution: {}"</span>, e),
-                ReadOnlyResult::Ok(ret) =&gt; <span class="macro">format!</span>(<span class="string">"success, returned value: {:?}"</span>, ret),
+                    <span class="macro">format!</span>(<span class="string">&quot;an error occurred during the execution: {}&quot;</span>, e),
+                ReadOnlyResult::Ok(ret) =&gt; <span class="macro">format!</span>(<span class="string">&quot;success, returned value: {:?}&quot;</span>, ret),
             }
         )<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">"Gas cost: {}"</span>, <span class="self">self</span>.gas_cost)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">&quot;Gas cost: {}&quot;</span>, <span class="self">self</span>.gas_cost)<span class="question-mark">?</span>;
         <span class="kw">if </span>!<span class="self">self</span>.output_events.is_empty() {
-            <span class="macro">writeln!</span>(f, <span class="string">"Generated events:"</span>,)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">&quot;Generated events:&quot;</span>,)<span class="question-mark">?</span>;
             <span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.output_events.iter() {
-                <span class="macro">writeln!</span>(f, <span class="string">"{}"</span>, event)<span class="question-mark">?</span>; <span class="comment">// id already displayed in event
+                <span class="macro">writeln!</span>(f, <span class="string">&quot;{}&quot;</span>, event)<span class="question-mark">?</span>; <span class="comment">// id already displayed in event
             </span>}
         }
         <span class="prelude-val">Ok</span>(())
@@ -185,7 +229,7 @@
     </span><span class="kw">pub </span>max_gas: u64,
     <span class="doccomment">/// byte code
     </span><span class="kw">pub </span>bytecode: Vec&lt;u8&gt;,
-    <span class="doccomment">/// caller's address, optional
+    <span class="doccomment">/// caller&#39;s address, optional
     </span><span class="kw">pub </span>address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
     <span class="doccomment">/// Operation datastore, optional
     </span><span class="kw">pub </span>operation_datastore: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
@@ -204,7 +248,7 @@
     </span><span class="kw">pub </span>target_function: String,
     <span class="doccomment">/// function parameter
     </span><span class="kw">pub </span>parameter: Vec&lt;u8&gt;,
-    <span class="doccomment">/// caller's address, optional
+    <span class="doccomment">/// caller&#39;s address, optional
     </span><span class="kw">pub </span>caller_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
     <span class="doccomment">/// coins
     </span><span class="kw">pub </span>coins: <span class="prelude-ty">Option</span>&lt;Amount&gt;,
@@ -214,12 +258,12 @@
 
 <span class="doccomment">/// Context of the transfer
 </span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(rename_all = <span class="string">"snake_case"</span>)]
+#[serde(rename_all = <span class="string">&quot;snake_case&quot;</span>)]
 </span><span class="kw">pub enum </span>TransferContext {
-    <span class="attr">#[serde(rename = <span class="string">"operation_id"</span>)]
+    <span class="attr">#[serde(rename = <span class="string">&quot;operation_id&quot;</span>)]
     </span><span class="doccomment">/// Transfer made in an operation
     </span>Operation(OperationId),
-    <span class="attr">#[serde(rename = <span class="string">"asc_index"</span>)]
+    <span class="attr">#[serde(rename = <span class="string">&quot;asc_index&quot;</span>)]
     </span><span class="doccomment">/// Transfer made in an asynchronous call
     </span>ASC(u64),
 }
@@ -243,5 +287,47 @@
     </span><span class="kw">pub </span>block_id: BlockId,
     <span class="doccomment">/// Context
     </span><span class="kw">pub </span>context: TransferContext,
+}
+
+<span class="doccomment">/// request for deferred call quote
+</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>DeferredCallsQuoteRequest {
+    <span class="doccomment">/// The slot at which the deferred call is to be executed.
+    </span><span class="kw">pub </span>target_slot: Slot,
+    <span class="doccomment">/// The maximum gas requested.
+    </span><span class="kw">pub </span>max_gas_request: u64,
+    <span class="doccomment">/// Size of parameters
+    </span><span class="kw">pub </span>params_size: u64,
+}
+
+<span class="doccomment">/// The response to a request for a deferred call quote.
+</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>DeferredCallsQuoteResponse {
+    <span class="doccomment">/// The slot at which the deferred call is to be executed.
+    </span><span class="kw">pub </span>target_slot: Slot,
+    <span class="doccomment">/// The maximum gas requested.
+    </span><span class="kw">pub </span>max_gas_request: u64,
+    <span class="doccomment">/// if the slot is bookable
+    </span><span class="kw">pub </span>available: bool,
+    <span class="doccomment">/// the cost for booking the call
+    </span><span class="kw">pub </span>price: Amount,
+}
+
+<span class="doccomment">/// response for deferred call
+</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>DeferredCallResponse {
+    <span class="doccomment">/// deferred call id
+    </span><span class="kw">pub </span>call_id: String,
+    <span class="doccomment">/// deferred call
+    </span><span class="kw">pub </span>call: DeferredCall,
+}
+
+<span class="doccomment">/// response for deferred calls by slot
+</span><span class="attr">#[derive(Clone, Debug, Deserialize, Serialize)]
+</span><span class="kw">pub struct </span>DeferredCallsSlotResponse {
+    <span class="doccomment">/// deferred calls
+    </span><span class="kw">pub </span>slot: Slot,
+    <span class="doccomment">/// deferred calls
+    </span><span class="kw">pub </span>call_ids: Vec&lt;String&gt;,
 }
 </code></pre></div></section></main></body></html>
