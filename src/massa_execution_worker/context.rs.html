@@ -1267,7 +1267,7 @@
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
     <span class="doccomment">/// recursion counter, incremented for each new nested call
-    </span><span class="kw">pub </span>recursion_counter: usize,
+    </span><span class="kw">pub </span>recursion_counter: u16,
 }
 
 <span class="doccomment">/// An execution context that needs to be initialized before executing bytecode,
@@ -1358,7 +1358,7 @@
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
     <span class="doccomment">/// recursion counter, incremented for each new nested call
-    </span><span class="kw">pub </span>recursion_counter: usize,
+    </span><span class="kw">pub </span>recursion_counter: u16,
 }
 
 <span class="kw">impl </span>ExecutionContext {
