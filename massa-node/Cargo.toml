@@ -35,9 +35,7 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-execution-info = [
-    "execution-trace"
-]
+execution-info = ["execution-trace"]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
@@ -64,6 +62,7 @@ massa_bootstrap = { workspace = true }
 massa_channel = { workspace = true }
 massa_consensus_exports = { workspace = true }
 massa_consensus_worker = { workspace = true }
+massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
 massa_execution_worker = { workspace = true }

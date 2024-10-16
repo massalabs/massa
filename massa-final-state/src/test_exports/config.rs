@@ -4,11 +4,13 @@
 
 use std::path::PathBuf;
 
+use massa_deferred_calls::config::DeferredCallsConfig;
 use num::rational::Ratio;
 
 use crate::{FinalState, FinalStateConfig};
 use massa_async_pool::{AsyncPool, AsyncPoolConfig};
 use massa_db_exports::ShareableMassaDBController;
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsConfig, ExecutedOps, ExecutedOpsConfig,
 };
@@ -34,6 +36,10 @@ impl FinalState {
         FinalState {
             ledger: Box::new(FinalLedger::new(config.ledger_config.clone(), db.clone())),
             async_pool: AsyncPool::new(config.async_pool_config.clone(), db.clone()),
+            deferred_call_registry: DeferredCallRegistry::new(
+                db.clone(),
+                config.deferred_calls_config,
+            ),
             pos_state,
             executed_ops: ExecutedOps::new(config.executed_ops_config.clone(), db.clone()),
             executed_denunciations: ExecutedDenunciations::new(
@@ -62,6 +68,7 @@ impl Default for FinalStateConfig {
         FinalStateConfig {
             ledger_config: LedgerConfig::default(),
             async_pool_config: AsyncPoolConfig::default(),
+            deferred_calls_config: DeferredCallsConfig::default(),
             executed_ops_config: ExecutedOpsConfig {
                 thread_count: THREAD_COUNT,
                 keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,

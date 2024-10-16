@@ -69,6 +69,7 @@ criterion = { workspace = true, "optional" = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
 massa_channel = { workspace = true }
+massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
 massa_models = { workspace = true }
