@@ -130,6 +130,8 @@ pub struct DeferredCallsQuoteRequest {
     pub target_slot: Slot,
     /// The maximum gas requested.
     pub max_gas_request: u64,
+    /// Size of parameters
+    pub params_size: u64,
 }
 
 /// The response to a request for a deferred call quote.

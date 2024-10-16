@@ -1345,6 +1345,7 @@ impl Interface for InterfaceImpl {
         &self,
         target_slot: (u64, u8),
         gas_limit: u64,
+        params_size: u64,
     ) -> Result<(bool, u64)> {
         // write-lock context
 
@@ -1357,7 +1358,12 @@ impl Interface for InterfaceImpl {
         let gas_request =
             gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
 
-        match context.deferred_calls_compute_call_fee(target_slot, gas_request, current_slot) {
+        match context.deferred_calls_compute_call_fee(
+            target_slot,
+            gas_request,
+            current_slot,
+            params_size,
+        ) {
             Ok(fee) => Ok((true, fee.to_raw())),
             Err(_) => Ok((false, 0)),
         }
@@ -1402,7 +1408,8 @@ impl Interface for InterfaceImpl {
         }
 
         // check fee, slot, gas
-        let (available, fee_raw) = self.get_deferred_call_quote(target_slot, max_gas)?;
+        let (available, fee_raw) =
+            self.get_deferred_call_quote(target_slot, max_gas, params.len() as u64)?;
         if !available {
             bail!("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
         }

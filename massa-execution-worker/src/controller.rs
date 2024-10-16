@@ -334,8 +334,13 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::DeferredCallQuote {
                     target_slot,
                     max_gas_request,
+                    params_size,
                 } => {
-                    let result = execution_lock.deferred_call_quote(target_slot, max_gas_request);
+                    let result = execution_lock.deferred_call_quote(
+                        target_slot,
+                        max_gas_request,
+                        params_size,
+                    );
                     Ok(ExecutionQueryResponseItem::DeferredCallQuote(
                         result.0, result.1, result.2, result.3,
                     ))

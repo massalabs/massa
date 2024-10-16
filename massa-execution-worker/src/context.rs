@@ -1140,15 +1140,20 @@ impl ExecutionContext {
         self.speculative_deferred_calls.advance_slot(current_slot)
     }
 
-    /// Get the price it would cost to reserve "gas" at target slot "slot".
+    /// Get the price it would cost to reserve "gas" with params at target slot "slot".
     pub fn deferred_calls_compute_call_fee(
         &self,
         target_slot: Slot,
         max_gas_request: u64,
         current_slot: Slot,
+        params_size: u64,
     ) -> Result<Amount, ExecutionError> {
-        self.speculative_deferred_calls
-            .compute_call_fee(target_slot, max_gas_request, current_slot)
+        self.speculative_deferred_calls.compute_call_fee(
+            target_slot,
+            max_gas_request,
+            current_slot,
+            params_size,
+        )
     }
 
     pub fn deferred_call_register(

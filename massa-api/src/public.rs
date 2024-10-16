@@ -1169,6 +1169,7 @@ impl MassaRpcServer for API<Public> {
             .map(|call| ExecutionQueryRequestItem::DeferredCallQuote {
                 target_slot: call.target_slot,
                 max_gas_request: call.max_gas_request,
+                params_size: call.params_size,
             })
             .collect();
 

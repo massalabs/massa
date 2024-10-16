@@ -142,7 +142,8 @@ pub fn to_querystate_filter(
                             "target slot is required".to_string(),
                         ))?
                         .into(),
-                    max_gas_request: value.max_gas_request,
+                    max_gas_request: value.max_gas,
+                    params_size: value.params_size,
                 })
             }
             exec::RequestItem::DeferredCallInfo(info) => {

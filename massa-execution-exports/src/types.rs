@@ -108,6 +108,8 @@ pub enum ExecutionQueryRequestItem {
         target_slot: Slot,
         /// gas request
         max_gas_request: u64,
+        /// params size
+        params_size: u64,
     },
     /// get info of deferred calls
     DeferredCallInfo(DeferredCallId),

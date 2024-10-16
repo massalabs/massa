@@ -5,7 +5,7 @@ use massa_models::{
         DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
         DEFERRED_CALL_MAX_FUTURE_SLOTS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
         DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-        MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
+        LEDGER_COST_PER_BYTE, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, THREAD_COUNT,
     },
 };
 use serde::Deserialize;
@@ -37,6 +37,8 @@ pub struct DeferredCallsConfig {
     pub max_pool_changes: u64,
 
     pub max_gas: u64,
+
+    pub ledger_cost_per_byte: Amount,
 }
 
 impl Default for DeferredCallsConfig {
@@ -54,6 +56,7 @@ impl Default for DeferredCallsConfig {
             global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
             slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
             call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
+            ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
         }
     }
 }

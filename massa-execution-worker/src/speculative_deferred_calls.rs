@@ -422,6 +422,7 @@ impl SpeculativeDeferredCallRegistry {
         target_slot: Slot,
         max_gas_request: u64,
         current_slot: Slot,
+        params_size: u64,
     ) -> Result<Amount, ExecutionError> {
         // Check that the slot is not in the past
         if target_slot <= current_slot {
@@ -447,6 +448,12 @@ impl SpeculativeDeferredCallRegistry {
         if slot_occupancy.saturating_add(max_gas_request) > self.config.max_gas {
             return Err(ExecutionError::DeferredCallsError(
                 "Not enough gas available in the target slot.".into(),
+            ));
+        }
+
+        if params_size > self.config.max_parameter_size.into() {
+            return Err(ExecutionError::DeferredCallsError(
+                "Parameters size is too big.".into(),
             ));
         }
 
@@ -486,10 +493,22 @@ impl SpeculativeDeferredCallRegistry {
             self.config.slot_overbooking_penalty, //   total_initial_coin_supply/10000
         )?;
 
+        // Storage cost for the parameters
+        let storage_cost = self
+            .config
+            .ledger_cost_per_byte
+            .checked_mul_u64(params_size)
+            .ok_or_else(|| {
+                ExecutionError::DeferredCallsError(
+                    "overflow when calculating storage cost".to_string(),
+                )
+            })?;
+
         // return the fee
         Ok(integral_fee
             .saturating_add(global_overbooking_fee)
-            .saturating_add(slot_overbooking_fee))
+            .saturating_add(slot_overbooking_fee)
+            .saturating_add(storage_cost))
     }
 
     /// Register a new call
@@ -562,13 +581,13 @@ impl SpeculativeDeferredCallRegistry {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
 
     use massa_db_exports::{MassaDBConfig, MassaDBController};
     use massa_db_worker::MassaDB;
     use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
     use massa_final_state::MockFinalStateController;
-    use massa_models::{config::THREAD_COUNT, slot::Slot};
+    use massa_models::{amount::Amount, config::THREAD_COUNT, slot::Slot};
     use parking_lot::RwLock;
     use tempfile::TempDir;
 
@@ -627,6 +646,7 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
+                1_000
             )
             .is_err());
 
@@ -642,6 +662,7 @@ mod tests {
                     period: 5,
                     thread: 1,
                 },
+                1000
             )
             .is_err());
 
@@ -658,8 +679,54 @@ mod tests {
                     period: 1,
                     thread: 1,
                 },
+                1000
             )
             .is_err());
+
+        // params too big
+        assert!(speculative
+            .compute_call_fee(
+                good_slot,
+                1_000_000,
+                Slot {
+                    period: 1,
+                    thread: 1,
+                },
+                50_000_000
+            )
+            .is_err());
+
+        // no params
+        assert_eq!(
+            speculative
+                .compute_call_fee(
+                    good_slot,
+                    200_000,
+                    Slot {
+                        period: 1,
+                        thread: 1,
+                    },
+                    0,
+                )
+                .unwrap(),
+            Amount::from_str("0.000000079").unwrap()
+        );
+
+        // 10Ko params size
+        assert_eq!(
+            speculative
+                .compute_call_fee(
+                    good_slot,
+                    200_000,
+                    Slot {
+                        period: 1,
+                        thread: 1,
+                    },
+                    10_000,
+                )
+                .unwrap(),
+            Amount::from_str("1.000000079").unwrap()
+        );
 
         // TODO : add more tests with different values and check the results of the fee
     }

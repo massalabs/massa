@@ -2155,13 +2155,17 @@
                 "type": "object",
                 "required": [
                     "target_slot",
-                    "max_gas_request"
+                    "max_gas_request",
+                    "params_size"
                 ],
                 "properties": {
                     "target_slot": {
                         "$ref": "#/components/schemas/Slot"
                     },
                     "max_gas_request": {
+                        "type": "number"
+                    },
+                    "params_size": {
                         "type": "number"
                     }
                 }

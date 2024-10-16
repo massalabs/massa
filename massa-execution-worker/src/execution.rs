@@ -2442,12 +2442,18 @@ impl ExecutionState {
         &self,
         target_slot: Slot,
         max_request_gas: u64,
+        params_size: u64,
     ) -> (Slot, u64, bool, Amount) {
         let gas_request =
             max_request_gas.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
         let context = context_guard!(self);
 
-        match context.deferred_calls_compute_call_fee(target_slot, gas_request, context.slot) {
+        match context.deferred_calls_compute_call_fee(
+            target_slot,
+            gas_request,
+            context.slot,
+            params_size,
+        ) {
             Ok(fee) => (target_slot, gas_request, true, fee),
             Err(_) => (target_slot, gas_request, false, Amount::zero()),
         }

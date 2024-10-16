@@ -208,6 +208,7 @@ async fn launch(
         global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
         slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
         call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
+        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
     };
     let final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
