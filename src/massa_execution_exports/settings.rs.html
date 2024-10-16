@@ -107,6 +107,7 @@
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -212,6 +213,7 @@
     <span class="doccomment">/// Where to dump blocks
     </span><span class="kw">pub </span>block_dump_folder_path: PathBuf,
     <span class="doccomment">/// Max recursive calls depth in SC
+    /// Used to limit the recursion_counter value in the context, to avoid stack overflow issues.
     </span><span class="kw">pub </span>max_recursive_calls_depth: u16,
     <span class="doccomment">/// Runtime condom middleware limits
     </span><span class="kw">pub </span>condom_limits: CondomLimits,

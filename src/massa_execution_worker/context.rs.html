@@ -1172,6 +1172,8 @@
 <a href="#1172" id="1172">1172</a>
 <a href="#1173" id="1173">1173</a>
 <a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1267,6 +1269,8 @@
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
     <span class="doccomment">/// recursion counter, incremented for each new nested call
+    /// This is used to avoid stack overflow issues in the VM (that would crash the node instead of failing the call),
+    /// by limiting the depth of recursion contracts can have with the max_recursive_calls_depth value.
     </span><span class="kw">pub </span>recursion_counter: u16,
 }
 
