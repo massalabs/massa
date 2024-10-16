@@ -451,17 +451,13 @@ fn test_nested_call_gas_usage() {
 
 /// Test the recursion depth limit in nested calls using call SC operation
 ///
-/// Create a smart contract and send it in the blockclique.
-/// This smart contract have his sources in the sources folder.
-/// It calls the test function that have a sub-call to the receive function and send it to the blockclique.
-/// We are checking that the gas is going down through the execution even in sub-calls.
-///
-/// This test can fail if the gas is going up in the execution
+/// We call a smart contract that has a nested function call, while setting the max_recursive_calls_depth to 0.
+/// We expect the execution of the smart contract call to fail with a message that the recursion depth limit was reached.
 #[test]
 fn test_nested_call_recursion_limit_reached() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        max_recursive_calls_depth: 0,
+        max_recursive_calls_depth: 0, // This limit will be reached
         ..Default::default()
     };
 
@@ -531,7 +527,7 @@ fn test_nested_call_recursion_limit_reached() {
     );
     finalized_waitpoint.wait();
 
-    // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
+    // Get the events of the smart contract execution. We expect the call to have failed, so we check for the error message.
     let events = universe
         .module_controller
         .get_filtered_sc_output_event(EventFilter {
@@ -545,17 +541,13 @@ fn test_nested_call_recursion_limit_reached() {
 
 /// Test the recursion depth limit in nested calls using call SC operation
 ///
-/// Create a smart contract and send it in the blockclique.
-/// This smart contract have his sources in the sources folder.
-/// It calls the test function that have a sub-call to the receive function and send it to the blockclique.
-/// We are checking that the gas is going down through the execution even in sub-calls.
-///
-/// This test can fail if the gas is going up in the execution
+/// We call a smart contract that has a nested function call, while setting the max_recursive_calls_depth to 2.
+/// We expect the execution of the smart contract call to succeed as the recursion depth limit was not reached.
 #[test]
 fn test_nested_call_recursion_limit_not_reached() {
     // setup the period duration
     let exec_cfg = ExecutionConfig {
-        max_recursive_calls_depth: 2,
+        max_recursive_calls_depth: 2, // This limit will not be reached
         ..Default::default()
     };
 
@@ -625,7 +617,9 @@ fn test_nested_call_recursion_limit_not_reached() {
     );
     finalized_waitpoint.wait();
 
-    // Get the events that give us the gas usage (refer to source in ts) without fetching the first slot because it emit a event with an address.
+    // Get the events. We expect the call to have succeeded, so we check for the length of the events.
+    // The smart contract emits 4 events in total, (to check gas usage), so we expect at least 4 events,
+    // and none of them should contain the error message.
     let events = universe
         .module_controller
         .get_filtered_sc_output_event(EventFilter {
@@ -633,6 +627,9 @@ fn test_nested_call_recursion_limit_not_reached() {
             ..Default::default()
         });
     assert!(events.len() >= 4);
+    for event in events.iter() {
+        assert!(!event.data.contains("recursion depth limit reached"));
+    }
 }
 
 /// Test the ABI get call coins
