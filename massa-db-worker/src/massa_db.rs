@@ -446,6 +446,7 @@ where
 
         if reset_history {
             self.change_history.clear();
+            self.change_history_versioning.clear();
         }
 
         while self.change_history.len() > self.config.max_history_length {
@@ -722,6 +723,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
+        self.change_history_versioning.clear();
     }
 
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
