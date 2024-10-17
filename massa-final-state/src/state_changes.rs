@@ -217,6 +217,8 @@ impl StateChanges {
         self.pos_changes.extend(changes.pos_changes);
         self.executed_ops_changes
             .extend(changes.executed_ops_changes);
+        self.executed_denunciations_changes
+            .extend(changes.executed_denunciations_changes);
         self.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);
     }
