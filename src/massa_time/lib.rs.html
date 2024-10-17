@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-time/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_time" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_time/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-time/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_time" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -556,11 +556,11 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(time, time_deser);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], MassaTime, E&gt; {
-        context(<span class="string">&quot;Failed MassaTime deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], MassaTime, E&gt; {
+        context(<span class="string">"Failed MassaTime deserialization"</span>, |input| {
             <span class="self">self</span>.u64_deserializer
                 .deserialize(input)
                 .map(|(rest, res)| (rest, MassaTime::from_millis(res)))
@@ -569,8 +569,8 @@
 }
 
 <span class="kw">impl </span>fmt::Display <span class="kw">for </span>MassaTime {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.as_millis())
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.as_millis())
     }
 }
 
@@ -618,10 +618,10 @@
     </span><span class="kw">pub fn </span>now() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>now_millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .expect(<span class="string">&quot;could not get duration since UNIX_EPOCH&quot;</span>)
+            .expect(<span class="string">"could not get duration since UNIX_EPOCH"</span>)
             .as_millis()
             .try_into()
-            .expect(<span class="string">&quot;could fit current time into its underlying representation&quot;</span>);
+            .expect(<span class="string">"could fit current time into its underlying representation"</span>);
         MassaTime::from_millis(now_millis)
     }
 
@@ -706,7 +706,7 @@
     </span><span class="kw">pub fn </span>checked_sub(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_sub(t.<span class="number">0</span>)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;subtraction error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"subtraction error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -720,7 +720,7 @@
     </span><span class="kw">pub fn </span>checked_add(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_add(t.<span class="number">0</span>)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;addition error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"addition error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -734,7 +734,7 @@
     </span><span class="kw">pub fn </span>checked_div_time(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;u64, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_div(t.<span class="number">0</span>)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;division error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"division error"</span>.to_string()))
     }
 
     <span class="doccomment">/// ```
@@ -746,7 +746,7 @@
     </span><span class="kw">pub fn </span>checked_div_u64(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;MassaTime, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_div(n)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;division error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"division error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -770,7 +770,7 @@
     </span><span class="kw">pub fn </span>checked_mul(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_mul(n)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;multiplication error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"multiplication error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -784,7 +784,7 @@
     </span><span class="kw">pub fn </span>checked_rem_time(<span class="self">self</span>, t: MassaTime) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_rem(t.<span class="number">0</span>)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;remainder error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"remainder error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -797,7 +797,7 @@
     </span><span class="kw">pub fn </span>checked_rem_u64(<span class="self">self</span>, n: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, TimeError&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.checked_rem(n)
-            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">&quot;remainder error&quot;</span>.to_string()))
+            .ok_or_else(|| TimeError::CheckedOperationError(<span class="string">"remainder error"</span>.to_string()))
             .map(MassaTime)
     }
 
@@ -817,7 +817,7 @@
     <span class="doccomment">/// ```
     /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from_millis(1_640_995_200_000);
-    /// assert_eq!(massa_time.format_instant(), String::from(&quot;2022-01-01T00:00:00Z&quot;))
+    /// assert_eq!(massa_time.format_instant(), String::from("2022-01-01T00:00:00Z"))
     /// ```
     </span><span class="kw">pub fn </span>format_instant(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         OffsetDateTime::from_unix_timestamp((<span class="self">self</span>.as_millis() / <span class="number">1000</span>) <span class="kw">as </span>i64)
@@ -828,12 +828,12 @@
     <span class="doccomment">/// ```
     /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from_millis(1000*( 8 * 24*60*60 + 1 * 60*60 + 3 * 60 + 6 ));
-    /// assert_eq!(massa_time.format_duration().unwrap(), String::from(&quot;8 days, 1 hours, 3 minutes, 6 seconds&quot;))
+    /// assert_eq!(massa_time.format_duration().unwrap(), String::from("8 days, 1 hours, 3 minutes, 6 seconds"))
     /// ```
     </span><span class="kw">pub fn </span>format_duration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;String, TimeError&gt; {
         <span class="kw">let </span>(days, hours, mins, secs) = <span class="self">self</span>.days_hours_mins_secs()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
-            <span class="string">&quot;{} days, {} hours, {} minutes, {} seconds&quot;</span>,
+            <span class="string">"{} days, {} hours, {} minutes, {} seconds"</span>,
             days, hours, mins, secs
         ))
     }
@@ -841,7 +841,7 @@
     <span class="doccomment">/// ```
     /// # use massa_time::*;
     /// let massa_time : MassaTime = MassaTime::from_utc_ymd_hms(2022, 2, 5, 22, 50, 40).unwrap();
-    /// assert_eq!(massa_time.format_instant(), String::from(&quot;2022-02-05T22:50:40Z&quot;))
+    /// assert_eq!(massa_time.format_instant(), String::from("2022-02-05T22:50:40Z"))
     /// ```
     </span><span class="kw">pub fn </span>from_utc_ymd_hms(
         year: i32,
