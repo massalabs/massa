@@ -8,7 +8,7 @@ use std::{
 };
 
 use jsonrpsee::{
-    core::{client::ClientT, Error},
+    core::{client::ClientT, client::Error},
     http_client::HttpClientBuilder,
     rpc_params,
 };
@@ -984,7 +984,7 @@ async fn get_datastore_entries() {
         .await
         .unwrap();
 
-    let entry = response.get(0).unwrap();
+    let entry = response.first().unwrap();
 
     assert_eq!(
         entry.candidate_value.as_ref().unwrap(),

@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "2.2.0"
+version = "2.3.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -90,7 +90,7 @@ tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 schnellru = { workspace = true }
-prost = { version = "=0.12", optional = true }
+prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
 

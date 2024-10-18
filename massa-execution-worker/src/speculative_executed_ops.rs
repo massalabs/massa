@@ -57,7 +57,7 @@ impl SpeculativeExecutedOps {
 
     /// Checks if an operation was executed previously
     pub fn is_op_executed(&self, op_id: &OperationId) -> bool {
-        // check in the curent changes
+        // check in the current changes
         if self.executed_ops.contains_key(op_id) {
             return true;
         }
@@ -67,10 +67,8 @@ impl SpeculativeExecutedOps {
             HistorySearchResult::Present(_) => {
                 return true;
             }
-            HistorySearchResult::Absent => {
-                return false;
-            }
             HistorySearchResult::NoInfo => {}
+            HistorySearchResult::Absent => unreachable!(), // fetch_executed_op does not return Absent
         }
 
         // check in the final state

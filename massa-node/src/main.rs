@@ -34,7 +34,8 @@ use massa_db_worker::MassaDB;
 use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 use massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+    CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
+    StorageCostsConstants,
 };
 use massa_execution_worker::start_execution_worker;
 #[cfg(all(
@@ -92,8 +93,14 @@ use massa_models::config::{
     DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
     KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
     MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE,
-    POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE, POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE,
-    POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
+    MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
+    MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
+    MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
+    MAX_RUNTIME_MODULE_TABLE_INITIALIZER, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -476,11 +483,27 @@ async fn launch(
     };
 
     // gas costs
-    let gas_costs = GasCosts::new(
-        SETTINGS.execution.abi_gas_costs_file.clone(),
-        SETTINGS.execution.wasm_gas_costs_file.clone(),
-    )
-    .expect("Failed to load gas costs");
+    let gas_costs = GasCosts::new(SETTINGS.execution.abi_gas_costs_file.clone())
+        .expect("Failed to load gas costs");
+
+    // Limits imposed to wasm files so the compilation phase is smooth
+    let condom_limits = CondomLimits {
+        max_exports: Some(MAX_RUNTIME_MODULE_EXPORTS),
+        max_functions: Some(MAX_RUNTIME_MODULE_FUNCTIONS),
+        max_signature_len: Some(MAX_RUNTIME_MODULE_SIGNATURE_LEN),
+        max_name_len: Some(MAX_RUNTIME_MODULE_NAME_LEN),
+        max_imports_len: Some(MAX_RUNTIME_MODULE_IMPORTS),
+        max_table_initializers_len: Some(MAX_RUNTIME_MODULE_TABLE_INITIALIZER),
+        max_passive_elements_len: Some(MAX_RUNTIME_MODULE_PASSIVE_ELEMENT),
+        max_passive_data_len: Some(MAX_RUNTIME_MODULE_PASSIVE_DATA),
+        max_global_initializers_len: Some(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_function_names_len: Some(MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN),
+        max_tables_count: Some(MAX_RUNTIME_MODULE_TABLE),
+        max_memories_len: Some(MAX_RUNTIME_MODULE_MEMORIES),
+        max_globals_len: Some(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_custom_sections_len: Some(MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN),
+        max_custom_sections_data_len: Some(MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN),
+    };
 
     let block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     if !block_dump_folder_path.exists() {
@@ -539,6 +562,8 @@ async fn launch(
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
+        max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
+        condom_limits,
         deferred_calls_config,
     };
 
@@ -1424,7 +1449,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
         *sig_int_toggled_clone
             .0
             .lock()
-            .expect("double-lock on interupt bool in ctrl-c handler") = true;
+            .expect("double-lock on interrupt bool in ctrl-c handler") = true;
         sig_int_toggled_clone.1.notify_all();
     })
     .expect("Error setting Ctrl-C handler");
@@ -1476,11 +1501,11 @@ async fn run(args: Args) -> anyhow::Result<()> {
             let int_sig = sig_int_toggled
                 .0
                 .lock()
-                .expect("double-lock() on interupted signal mutex");
+                .expect("double-lock() on interrupted signal mutex");
             let wake = sig_int_toggled
                 .1
                 .wait_timeout(int_sig, Duration::from_millis(100))
-                .expect("interupt signal mutex poisoned");
+                .expect("interrupt signal mutex poisoned");
             if *wake.0 {
                 info!("interrupt signal received");
                 break false;

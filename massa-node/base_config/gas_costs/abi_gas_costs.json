@@ -129,5 +129,11 @@
   "abi_unsafe_random": 402,
   "abi_verify_signature": 1192,
   "abi_chain_id": 301,
-  "launch_wasmv1": 18641
+  "launch_wasmv1": 18641,
+  "assembly_script_console_log": 171,
+  "assembly_script_console_info": 171,
+  "assembly_script_console_debug": 171,
+  "assembly_script_console_warn": 171,
+  "assembly_script_console_error": 171,
+  "assembly_script_trace": 171
 }

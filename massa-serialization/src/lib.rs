@@ -487,7 +487,7 @@ mod tests {
     use num::rational::Ratio;
     use paste::paste;
 
-    // This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
+    // This macro creates a suite of tests for all types of numbers declared as parameters. This list of the
     // tests for each type :
     // - Test with a normal case that everything works
     // - Test with a normal case but a more bigger number that everything works

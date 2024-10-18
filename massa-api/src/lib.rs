@@ -5,11 +5,11 @@
 #![warn(unused_crate_dependencies)]
 
 use api_trait::MassaApiServer;
-use hyper::Method;
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use http::Method;
+use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::server::middleware::HostFilterLayer;
-use jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
+use jsonrpsee::server::middleware::http::HostFilterLayer;
+use jsonrpsee::server::{BatchRequestConfig, PingConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
 use massa_api_exports::execution::{
     DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
@@ -111,11 +111,11 @@ pub struct Private {
 pub struct ApiV2 {
     /// link to the consensus component
     pub consensus_controller: Box<dyn ConsensusController>,
-    /// channels with informations broadcasted by the consensus
+    /// channels with information broadcasted by the consensus
     pub consensus_broadcasts: ConsensusBroadcasts,
     /// link to the execution component
     pub execution_controller: Box<dyn ExecutionController>,
-    /// channels with informations broadcasted by the pool
+    /// channels with information broadcasted by the pool
     pub pool_broadcasts: PoolBroadcasts,
     /// API settings
     pub api_settings: APIConfig,
@@ -153,6 +153,7 @@ async fn serve<T>(
     url: &SocketAddr,
     api_config: &APIConfig,
 ) -> Result<StopHandle, JsonRpseeError> {
+    let ping_config = PingConfig::new().ping_interval(api_config.ping_interval.to_duration());
     let mut server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
@@ -162,7 +163,7 @@ async fn serve<T>(
         } else {
             BatchRequestConfig::Disabled
         })
-        .ping_interval(api_config.ping_interval.to_duration());
+        .enable_ws_ping(ping_config);
 
     if api_config.enable_http && !api_config.enable_ws {
         server_builder = server_builder.http_only();
@@ -177,7 +178,7 @@ async fn serve<T>(
         .allow_methods([Method::POST, Method::OPTIONS])
         // Allow requests from any origin
         .allow_origin(Any)
-        .allow_headers([hyper::header::CONTENT_TYPE]);
+        .allow_headers([http::header::CONTENT_TYPE]);
 
     let hosts = if api_config.allow_hosts.is_empty() {
         vec!["*:*"]
@@ -196,7 +197,7 @@ async fn serve<T>(
         .layer(allowed_hosts);
 
     let server = server_builder
-        .set_middleware(middleware)
+        .set_http_middleware(middleware)
         .build(url)
         .await
         .expect("failed to build server");
