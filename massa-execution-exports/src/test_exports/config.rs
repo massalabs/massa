@@ -3,6 +3,7 @@
 //! This file defines testing tools related to the configuration
 
 use crate::{ExecutionConfig, StorageCostsConstants};
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::config::*;
 use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
@@ -94,6 +95,7 @@ impl Default for ExecutionConfig {
                 max_custom_sections_len: Some(100),
                 max_custom_sections_data_len: Some(1_000_000),
             },
+            deferred_calls_config: DeferredCallsConfig::default(),
         }
     }
 }

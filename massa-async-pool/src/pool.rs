@@ -13,8 +13,8 @@ use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_models::address::Address;
+use massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,

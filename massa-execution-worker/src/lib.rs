@@ -87,6 +87,7 @@ mod interface_impl;
 mod request_queue;
 mod slot_sequencer;
 mod speculative_async_pool;
+mod speculative_deferred_calls;
 mod speculative_executed_denunciations;
 mod speculative_executed_ops;
 mod speculative_ledger;
