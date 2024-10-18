@@ -34,6 +34,9 @@ lazy_static! {
         static ref DEFERRED_CALL_REGISTERED: IntGauge = register_int_gauge!(
         "deferred_calls_registered", "number of deferred calls registered" ).unwrap();
 
+        static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
+            "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
+
 }
 
 pub fn dec_deferred_calls_registered() {
@@ -46,6 +49,10 @@ pub fn inc_deferred_calls_registered() {
 
 pub fn set_deferred_calls_registered(val: usize) {
     DEFERRED_CALL_REGISTERED.set(val as i64);
+}
+
+pub fn set_deferred_calls_total_gas(val: u128) {
+    DEFERRED_CALLS_TOTAL_GAS.set(val as i64);
 }
 
 pub fn get_deferred_calls_registered() -> i64 {
@@ -197,7 +204,6 @@ pub struct MassaMetrics {
     // deferred calls metrics
     deferred_calls_executed: IntCounter,
     deferred_calls_failed: IntCounter,
-    deferred_calls_total_gas: IntGauge,
 }
 
 impl MassaMetrics {
@@ -442,9 +448,6 @@ impl MassaMetrics {
         let deferred_calls_failed =
             IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
 
-        let deferred_calls_total_gas =
-            IntGauge::new("deferred_total_gas", "total gas used by deferred calls").unwrap();
-
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -499,7 +502,6 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
-                let _ = prometheus::register(Box::new(deferred_calls_total_gas.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -558,7 +560,6 @@ impl MassaMetrics {
                 tick_delay,
                 deferred_calls_executed,
                 deferred_calls_failed,
-                deferred_calls_total_gas,
             },
             stopper,
         )
@@ -753,10 +754,6 @@ impl MassaMetrics {
 
     pub fn inc_deferred_calls_failed(&self) {
         self.deferred_calls_failed.inc();
-    }
-
-    pub fn set_deferred_calls_total_gas(&self, gas: u128) {
-        self.deferred_calls_total_gas.set(gas as i64);
     }
 
     /// Update the bandwidth metrics for all peers

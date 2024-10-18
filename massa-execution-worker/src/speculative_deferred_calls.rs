@@ -244,6 +244,8 @@ impl SpeculativeDeferredCallRegistry {
 
         slot_calls.effective_total_gas = total_gas_after;
 
+        massa_metrics::set_deferred_calls_total_gas(slot_calls.effective_total_gas);
+
         // delete call in the current slot
         let mut nb_call_to_execute = 0;
         for (id, call) in &slot_calls.slot_calls {
@@ -494,21 +496,18 @@ impl SpeculativeDeferredCallRegistry {
         )?;
 
         // Storage cost for the parameters
-        let storage_cost = self
-            .config
-            .ledger_cost_per_byte
-            .checked_mul_u64(params_size)
-            .ok_or_else(|| {
-                ExecutionError::DeferredCallsError(
-                    "overflow when calculating storage cost".to_string(),
-                )
-            })?;
+        let storage_cost = self.get_storage_cost_by_size(params_size);
 
         // return the fee
         Ok(integral_fee
             .saturating_add(global_overbooking_fee)
             .saturating_add(slot_overbooking_fee)
             .saturating_add(storage_cost))
+    }
+
+    /// Get the storage cost for a given size
+    pub fn get_storage_cost_by_size(&self, size: u64) -> Amount {
+        self.config.ledger_cost_per_byte.saturating_mul_u64(size)
     }
 
     /// Register a new call
