@@ -347,14 +347,12 @@
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
 <a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
-<span class="kw">use </span>massa_ledger_exports::{
-    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
+<span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
