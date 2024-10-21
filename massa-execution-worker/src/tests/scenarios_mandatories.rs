@@ -1681,45 +1681,44 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            dbg!(&changes);
             // assert sender was debited ( -10 coins) and -5.25 for fees
-            // match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
-            //     SetUpdateOrDelete::Update(change_sc_update) => {
-            //         assert_eq!(
-            //             change_sc_update.balance,
-            //             SetOrKeep::Set(Amount::from_str("85.77").unwrap())
-            //         );
-            //     }
-            //     _ => panic!("wrong change type"),
-            // };
+            match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("75.398235312").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            };
 
-            // {
-            //     // manually write the deferred call to the db
-            //     // then in the next slot (1,1) we will find and execute it
-            //     let reg =
-            //         DeferredCallRegistry::new(db_lock.clone(), DeferredCallsConfig::default());
-            //     let mut batch = DBBatch::default();
-            //     reg.apply_changes_to_batch(changes.deferred_call_changes.clone(), &mut batch);
-            //     db_lock
-            //         .write()
-            //         .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
-            // }
+            {
+                // manually write the deferred call to the db
+                // then in the next slot (1,1) we will find and execute it
+                let reg =
+                    DeferredCallRegistry::new(db_lock.clone(), DeferredCallsConfig::default());
+                let mut batch = DBBatch::default();
+                reg.apply_changes_to_batch(changes.deferred_call_changes.clone(), &mut batch);
+                db_lock
+                    .write()
+                    .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
+            }
 
-            // let slot_changes = changes
-            //     .deferred_call_changes
-            //     .slots_change
-            //     .get(&Slot::new(1, 1))
-            //     .unwrap();
-            // let _call = slot_changes.calls.first_key_value().unwrap().1;
+            let slot_changes = changes
+                .deferred_call_changes
+                .slots_change
+                .get(&Slot::new(1, 1))
+                .unwrap();
+            let _call = slot_changes.calls.first_key_value().unwrap().1;
 
-            // // assert total gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
-            // assert_eq!(
-            //     changes.deferred_call_changes.effective_total_gas,
-            //     SetOrKeep::Set(1050000)
-            // );
+            // assert total gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(1050000)
+            );
 
-            // //gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
-            // assert_eq!(slot_changes.get_effective_slot_gas().unwrap(), 1050000);
+            //gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
+            assert_eq!(slot_changes.get_effective_slot_gas().unwrap(), 1050000);
 
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -1732,42 +1731,41 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            dbg!(&changes);
-            // match changes
-            //     .ledger_changes
-            //     .0
-            //     .get(
-            //         &Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
-            //             .unwrap(),
-            //     )
-            //     .unwrap()
-            // {
-            //     SetUpdateOrDelete::Update(change_sc_update) => {
-            //         assert_eq!(
-            //             change_sc_update.balance,
-            //             SetOrKeep::Set(Amount::from_str("110").unwrap())
-            //         );
-            //     }
-            //     _ => panic!("wrong change type"),
-            // }
+            match changes
+                .ledger_changes
+                .0
+                .get(
+                    &Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+                        .unwrap(),
+                )
+                .unwrap()
+            {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("110").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
 
-            // assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
-            // let (_slot, slot_change) = changes
-            //     .deferred_call_changes
-            //     .slots_change
-            //     .first_key_value()
-            //     .unwrap();
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            let (_slot, slot_change) = changes
+                .deferred_call_changes
+                .slots_change
+                .first_key_value()
+                .unwrap();
 
-            // let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
 
-            // // call was executed and then deleted
-            // assert_eq!(set_delete, &SetOrDelete::Delete);
+            // call was executed and then deleted
+            assert_eq!(set_delete, &SetOrDelete::Delete);
 
-            // // assert total gas was set to 0
-            // assert_eq!(
-            //     changes.deferred_call_changes.effective_total_gas,
-            //     SetOrKeep::Set(0)
-            // );
+            // assert total gas was set to 0
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(0)
+            );
             finalized_waitpoint_trigger_handle2.trigger();
         });
 
@@ -2197,6 +2195,70 @@ fn deferred_call_exists() {
         });
 
     assert_eq!(events[1].data, "true");
+}
+
+#[test]
+fn deferred_call_quote() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 1),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+
+    finalized_waitpoint.wait();
+
+    // block 1,1
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 1),
+        include_bytes!("./wasm/deferred_call_quote.wasm"),
+        include_bytes!("./wasm/deferred_call_quote.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+
+    assert_eq!(events[0].data, "100000000");
 }
 
 /// Context
