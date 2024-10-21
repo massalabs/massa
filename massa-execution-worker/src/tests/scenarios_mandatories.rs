@@ -4075,6 +4075,7 @@ fn execution_trace() {
         None,
         None,
         None,
+        None,
     );
 
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -4191,6 +4192,7 @@ fn execution_trace_nested() {
         None,
         None,
         None,
+        None,
     );
 
     // let rt = tokio::runtime::Runtime::new().unwrap();
@@ -4300,6 +4302,7 @@ fn test_dump_block() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
