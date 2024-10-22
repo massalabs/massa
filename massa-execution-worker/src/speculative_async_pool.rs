@@ -9,8 +9,9 @@ use massa_async_pool::{
     AsyncPoolChanges,
 };
 use massa_final_state::FinalStateController;
-use massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::slot::Slot;
+use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap},

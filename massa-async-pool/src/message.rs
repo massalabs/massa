@@ -2,12 +2,12 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use massa_ledger_exports::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::amount::{AmountDeserializer, AmountSerializer};
 use massa_models::config::GENESIS_KEY;
 use massa_models::serialization::{StringDeserializer, StringSerializer};
 use massa_models::slot::{SlotDeserializer, SlotSerializer};
+use massa_models::types::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -1006,7 +1006,7 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessageInfo {
 
 #[cfg(test)]
 mod tests {
-    use massa_ledger_exports::{Applicable, SetOrKeep};
+    use massa_models::types::{Applicable, SetOrKeep};
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
     use num::rational::Ratio;
 

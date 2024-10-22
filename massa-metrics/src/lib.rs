@@ -30,6 +30,33 @@ lazy_static! {
         register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge =
         register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
+
+        static ref DEFERRED_CALL_REGISTERED: IntGauge = register_int_gauge!(
+        "deferred_calls_registered", "number of deferred calls registered" ).unwrap();
+
+        static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
+            "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
+
+}
+
+pub fn dec_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.dec();
+}
+
+pub fn inc_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_deferred_calls_registered(val: usize) {
+    DEFERRED_CALL_REGISTERED.set(val as i64);
+}
+
+pub fn set_deferred_calls_total_gas(val: u128) {
+    DEFERRED_CALLS_TOTAL_GAS.set(val as i64);
+}
+
+pub fn get_deferred_calls_registered() -> i64 {
+    DEFERRED_CALL_REGISTERED.get()
 }
 
 pub fn set_blocks_counter(val: usize) {
@@ -173,6 +200,10 @@ pub struct MassaMetrics {
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 
     pub tick_delay: Duration,
+
+    // deferred calls metrics
+    deferred_calls_executed: IntCounter,
+    deferred_calls_failed: IntCounter,
 }
 
 impl MassaMetrics {
@@ -198,6 +229,8 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
+        set_deferred_calls_registered(0);
 
         // set available processors
         let process_available_processors =
@@ -406,6 +439,15 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let deferred_calls_executed = IntCounter::new(
+            "deferred_calls_executed",
+            "number of deferred calls executed",
+        )
+        .unwrap();
+
+        let deferred_calls_failed =
+            IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -458,6 +500,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_period.clone()));
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -514,6 +558,8 @@ impl MassaMetrics {
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 tick_delay,
+                deferred_calls_executed,
+                deferred_calls_failed,
             },
             stopper,
         )
@@ -700,6 +746,14 @@ impl MassaMetrics {
 
     pub fn set_block_slot_delay(&self, delay: f64) {
         self.block_slot_delay.observe(delay);
+    }
+
+    pub fn inc_deferred_calls_executed(&self) {
+        self.deferred_calls_executed.inc();
+    }
+
+    pub fn inc_deferred_calls_failed(&self) {
+        self.deferred_calls_failed.inc();
     }
 
     /// Update the bandwidth metrics for all peers
