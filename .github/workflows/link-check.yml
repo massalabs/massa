@@ -11,11 +11,11 @@ jobs:
   markdown-link-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Use Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 18
       - name: Install markdown-link-check
         run: npm install -g markdown-link-check
       - name: Check links in markdown files

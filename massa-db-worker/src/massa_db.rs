@@ -446,6 +446,7 @@ where
 
         if reset_history {
             self.change_history.clear();
+            self.change_history_versioning.clear();
         }
 
         while self.change_history.len() > self.config.max_history_length {
@@ -722,6 +723,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     fn reset(&mut self, slot: Slot) {
         self.set_initial_change_id(slot);
         self.change_history.clear();
+        self.change_history_versioning.clear();
     }
 
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
@@ -1087,7 +1089,7 @@ mod test {
         // assert!(dump_column(db_.clone(), "versioning").is_empty());
         assert!(dump_column(db.clone(), "versioning").is_empty());
 
-        // Add some datas then remove using prefix
+        // Add some data then remove using prefix
         batch.clear();
         db.read()
             .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);

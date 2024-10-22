@@ -59,7 +59,7 @@ impl BootstrapClientBinder {
     }
     pub(crate) fn test_default_config() -> BootstrapClientConfig {
         BootstrapClientConfig {
-            rate_limit: std::u64::MAX,
+            rate_limit: u64::MAX,
             max_listeners_per_peer: MAX_LISTENERS_PER_PEER as u32,
             endorsement_count: ENDORSEMENT_COUNT,
             max_advertise_length: MAX_ADVERTISE_LENGTH,
@@ -131,7 +131,7 @@ fn init_server_client_pair() -> (BootstrapServerBinder, BootstrapClientBinder) {
         server.0,
         server_keypair.clone(),
         BootstrapSrvBindCfg {
-            rate_limit: std::u64::MAX,
+            rate_limit: u64::MAX,
             thread_count: THREAD_COUNT,
             max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
             randomness_size_bytes: BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
@@ -248,7 +248,7 @@ fn test_binders_simple() {
 // This test uses exactly the same principle as the `test_binders_simple` one
 // Except instead of passing a pair of (ServerMessage, ClientMessage), it will pass a
 //    (bool, Vec<ServerMessage>, Vec<ClientMessage>)
-// - The boolean defines wether the server or the client will transmit data first, or receive first
+// - The boolean defines whether the server or the client will transmit data first, or receive first
 // - The first vector is a list of server messages generated that the server has to send
 // - The second vector is a list of client messages generated that the client has to send
 // Because the direction of the first message is randomly assigned, and the number of messages are random,

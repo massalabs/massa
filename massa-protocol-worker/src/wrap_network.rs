@@ -118,6 +118,7 @@ impl ActiveConnectionsTrait for SharedActiveConnections<PeerId> {
     }
 }
 
+#[allow(dead_code)]
 #[cfg_attr(test, mockall::automock)]
 pub trait NetworkController: Send + Sync {
     fn get_active_connections(&self) -> Box<dyn ActiveConnectionsTrait>;
