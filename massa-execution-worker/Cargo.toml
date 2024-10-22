@@ -109,3 +109,5 @@ massa_test_framework = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
+assert_matches = { workspace = true }
+
