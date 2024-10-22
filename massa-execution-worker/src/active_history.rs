@@ -359,12 +359,12 @@ mod test {
     use std::fmt::Formatter;
     use std::str::FromStr;
     // third-party
-    use num::rational::Ratio;
     use assert_matches::assert_matches;
+    use num::rational::Ratio;
     // internal
+    use super::*;
     use massa_async_pool::AsyncPoolChanges;
     use massa_final_state::StateChanges;
-    use super::*;
 
     impl<T: std::fmt::Debug> std::fmt::Debug for HistorySearchResult<T> {
         fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -378,7 +378,6 @@ mod test {
 
     #[test]
     fn test_fetch_message() {
-
         // Unit testing ActiveHistory.fetch_msg
 
         // Setup some objects
@@ -391,18 +390,10 @@ mod test {
         // Setup ActiveHistory
 
         let rev: Reverse<Ratio<u64>> = Default::default();
-        let message_id: AsyncMessageId = (
-            rev,
-            Slot::new(1, 0),
-            1u64
-        );
+        let message_id: AsyncMessageId = (rev, Slot::new(1, 0), 1u64);
         let emission_slot_2 = Slot::new(1, 0);
         let emission_index_2 = 2;
-        let message_id_2: AsyncMessageId = (
-            rev,
-            emission_slot_2,
-            emission_index_2
-        );
+        let message_id_2: AsyncMessageId = (rev, emission_slot_2, emission_index_2);
         let msg_2 = AsyncMessage::new(
             emission_slot_2,
             emission_index_2,
@@ -416,16 +407,12 @@ mod test {
             Slot::new(4, 0),
             vec![],
             None,
-            None
+            None,
         );
 
         let emission_slot_3 = Slot::new(2, 0);
         let emission_index_3 = 3;
-        let message_id_3: AsyncMessageId = (
-            rev,
-            emission_slot_3,
-            emission_index_3
-        );
+        let message_id_3: AsyncMessageId = (rev, emission_slot_3, emission_index_3);
         let msg_3_function_new_1 = "send_max_fee_to".to_string();
         let msg_update_3_1 = {
             let mut up = AsyncMessageUpdate::default();
@@ -445,13 +432,17 @@ mod test {
             0: BTreeMap::from([
                 (message_id.clone(), SetUpdateOrDelete::Delete),
                 (message_id_2.clone(), SetUpdateOrDelete::Set(msg_2.clone())),
-                (message_id_3.clone(), SetUpdateOrDelete::Update(msg_update_3_1.clone())),
-            ])
+                (
+                    message_id_3.clone(),
+                    SetUpdateOrDelete::Update(msg_update_3_1.clone()),
+                ),
+            ]),
         };
         let async_pool_changes_2 = AsyncPoolChanges {
-            0: BTreeMap::from([
-                (message_id_3.clone(), SetUpdateOrDelete::Update(msg_update_3_2.clone()))
-            ])
+            0: BTreeMap::from([(
+                message_id_3.clone(),
+                SetUpdateOrDelete::Update(msg_update_3_2.clone()),
+            )]),
         };
 
         let state_changes_1 = StateChanges {
@@ -498,28 +489,29 @@ mod test {
             auto_sell_execution: vec![],
         };
 
-        let active_history = ActiveHistory { 0: VecDeque::from([exec_output_1, exec_output_2]) };
+        let active_history = ActiveHistory {
+            0: VecDeque::from([exec_output_1, exec_output_2]),
+        };
 
         // Test fetch_message with message_id (expect HistorySearchResult::Absent)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history
-                .fetch_message(&message_id, current_updates)
-                ;
+            let fetched = active_history.fetch_message(&message_id, current_updates);
             assert_matches!(fetched, HistorySearchResult::Absent);
         }
 
         // Test fetch_message with message_id_2 (expect HistorySearchResult::Set)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history
-                .fetch_message(&message_id_2, current_updates)
-                ;
+            let fetched = active_history.fetch_message(&message_id_2, current_updates);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 assert_eq!(msg, msg_2);
             } else {
-                panic!("Expected a HistorySearchRestul::Set(...) and not: {:?}", fetched)
+                panic!(
+                    "Expected a HistorySearchRestul::Set(...) and not: {:?}",
+                    fetched
+                )
             }
         }
 
@@ -543,24 +535,23 @@ mod test {
                 trigger: Default::default(),
                 can_be_executed: Default::default(),
             };
-            let fetched = active_history
-                .fetch_message(&message_id_2, current_updates)
-                ;
+            let fetched = active_history.fetch_message(&message_id_2, current_updates);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 assert_ne!(msg, msg_2);
                 assert_eq!(msg.validity_end, Slot::new(5, 0));
             } else {
-                panic!("Expected a HistorySearchRestul::Set(...) and not: {:?}", fetched)
+                panic!(
+                    "Expected a HistorySearchRestul::Set(...) and not: {:?}",
+                    fetched
+                )
             }
         }
 
         // Test fetch_message with message_id_3 (expect HistorySearchResult::Present)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history
-                .fetch_message(&message_id_3, current_updates)
-                ;
+            let fetched = active_history.fetch_message(&message_id_3, current_updates);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Update(msg_up)) = fetched {
                 // Note that there should be to async message update & we ensure that the latest
@@ -572,6 +563,5 @@ mod test {
                 panic!("Expected a HistorySearchRestul::Set(SetUpdateOrDelete::Update(...)) and not: {:?}", fetched)
             }
         }
-
     }
 }
