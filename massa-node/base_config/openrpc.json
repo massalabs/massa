@@ -272,8 +272,8 @@
                 "name": "DataStoreEntryOutputs"
             },
             "name": "get_datastore_entries",
-            "summary": "Get a data entry both at the latest final and active executed slots for the given addresses.",
-            "description": "Get a data entry both at the latest final and active executed slots for the given addresses.\n\nIf an existing final entry (final_value) is found in the active history, it will return its final value in active_value field. If it was deleted in the active history, it will return null in active_value field."
+            "summary": "Get datastore entries for the given key/addresses pair.",
+            "description": "Get datastore entries for the given key/addresses pair.\n\n Return both final and candidate value. If key does not exist, return null value."
         },
         {
             "tags": [
@@ -1982,10 +1982,13 @@
                 "type": "object",
                 "properties": {
                     "candidate_value": {
-                        "description": "",
+                        "description": "The candidate datastore entry value bytes",
                         "oneOf": [
                             {
-                                "type": "string"
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
                             },
                             {
                                 "type": "null"
@@ -1993,10 +1996,13 @@
                         ]
                     },
                     "final_value": {
-                        "description": "",
+                        "description": "The final datastore entry value bytes",
                         "oneOf": [
                             {
-                                "type": "string"
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
                             },
                             {
                                 "type": "null"
