@@ -211,7 +211,7 @@
         <span class="comment">// Note on lifetimes:
         // 'a -&gt; is the lifetime for self -&gt; because the iterator returns items from self
         // 'b -&gt; is the lifetime for filter -&gt; because the returning iterator captures filter
-        // and we hve lifetime 'a &gt; 'b because filter can live less than self
+        // and we have lifetime 'a &gt; 'b because filter can live less than self
 
         </span><span class="self">self</span>.<span class="number">0</span>.iter().filter(|x| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = filter.start {
