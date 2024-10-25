@@ -128,19 +128,6 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents an event store allowing to store, search and retrieve
@@ -198,61 +185,48 @@
     /// * operation id
     /// * is final
     </span><span class="kw">pub fn </span>get_filtered_sc_output_events(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; VecDeque&lt;SCOutputEvent&gt; {
-        <span class="self">self</span>.get_filtered_sc_output_events_iter(filter)
+        <span class="self">self</span>.<span class="number">0
+            </span>.iter()
+            .filter(|x| {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = filter.start {
+                    <span class="kw">if </span>x.context.slot &lt; start {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
+                    }
+                }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = filter.end {
+                    <span class="kw">if </span>x.context.slot &gt;= end {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
+                    }
+                }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(is_final) = filter.is_final {
+                    <span class="kw">if </span>x.context.is_final != is_final {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
+                    }
+                }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(is_error) = filter.is_error {
+                    <span class="kw">if </span>x.context.is_error != is_error {
+                        <span class="kw">return </span><span class="bool-val">false</span>;
+                    }
+                }
+                <span class="kw">match </span>(filter.original_caller_address, x.context.call_stack.front()) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
+                }
+                <span class="kw">match </span>(filter.emitter_address, x.context.call_stack.back()) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
+                }
+                <span class="kw">match </span>(filter.original_operation_id, x.context.origin_operation_id) {
+                    (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+                    <span class="kw">_ </span>=&gt; (),
+                }
+                <span class="bool-val">true
+            </span>})
             .cloned()
             .collect()
-    }
-
-    <span class="doccomment">/// Get events iterator optionally filtered by given EventFilter
-    </span><span class="kw">pub fn </span>get_filtered_sc_output_events_iter&lt;<span class="lifetime">'b</span>, <span class="lifetime">'a</span>: <span class="lifetime">'b</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
-        filter: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>EventFilter,
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SCOutputEvent&gt; + <span class="lifetime">'b </span>{
-        <span class="comment">// Note on lifetimes:
-        // 'a -&gt; is the lifetime for self -&gt; because the iterator returns items from self
-        // 'b -&gt; is the lifetime for filter -&gt; because the returning iterator captures filter
-        // and we have lifetime 'a &gt; 'b because filter can live less than self
-
-        </span><span class="self">self</span>.<span class="number">0</span>.iter().filter(|x| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = filter.start {
-                <span class="kw">if </span>x.context.slot &lt; start {
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                }
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = filter.end {
-                <span class="kw">if </span>x.context.slot &gt;= end {
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                }
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_final) = filter.is_final {
-                <span class="kw">if </span>x.context.is_final != is_final {
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                }
-            }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_error) = filter.is_error {
-                <span class="kw">if </span>x.context.is_error != is_error {
-                    <span class="kw">return </span><span class="bool-val">false</span>;
-                }
-            }
-
-            <span class="kw">match </span>(filter.original_caller_address, x.context.call_stack.front()) {
-                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                <span class="kw">_ </span>=&gt; (),
-            }
-            <span class="kw">match </span>(filter.emitter_address, x.context.call_stack.back()) {
-                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                <span class="kw">_ </span>=&gt; (),
-            }
-            <span class="kw">match </span>(filter.original_operation_id, x.context.origin_operation_id) {
-                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != addr2 =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
-                <span class="kw">_ </span>=&gt; (),
-            }
-
-            <span class="bool-val">true
-        </span>})
     }
 }
 
