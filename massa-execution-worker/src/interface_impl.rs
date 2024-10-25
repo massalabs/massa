@@ -88,6 +88,7 @@ impl InterfaceImpl {
     pub fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
+        config: Option<ExecutionConfig>
     ) -> InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
@@ -101,7 +102,7 @@ impl InterfaceImpl {
         use parking_lot::RwLock;
         use tempfile::TempDir;
 
-        let config = ExecutionConfig::default();
+        let config = config.unwrap_or_default();
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
@@ -1802,7 +1803,7 @@ mod tests {
     #[test]
     fn test_get_keys() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         interface
             .set_ds_value_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
@@ -1831,7 +1832,7 @@ mod tests {
         operation_datastore.insert(b"k2".to_vec(), b"v2".to_vec());
         operation_datastore.insert(b"l3".to_vec(), b"v3".to_vec());
 
-        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore));
+        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore), None);
 
         let op_keys = interface.get_op_keys_wasmv1(b"k").unwrap();
 
@@ -1843,7 +1844,7 @@ mod tests {
     #[test]
     fn test_native_amount() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let amount1 = interface.native_amount_from_str_wasmv1("100").unwrap();
         let amount2 = interface.native_amount_from_str_wasmv1("100").unwrap();
@@ -1921,7 +1922,7 @@ mod tests {
     #[test]
     fn test_base58_check_to_form() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let data = "helloworld";
         let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
@@ -1932,7 +1933,7 @@ mod tests {
     #[test]
     fn test_comparison_function() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         // address
         let addr1 =

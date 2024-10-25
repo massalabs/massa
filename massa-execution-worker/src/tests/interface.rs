@@ -7,7 +7,7 @@ use sha2::Digest;
 
 use massa_models::address::Address;
 use massa_sc_runtime::Interface;
-
+use massa_execution_exports::ExecutionConfig;
 use crate::interface_impl::InterfaceImpl;
 
 #[test]
@@ -15,6 +15,7 @@ fn test_hash_sha256() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
+        None
     );
     let actual_hash = interface.hash_sha256(b"something").unwrap();
     let expected_hash =
@@ -27,6 +28,7 @@ fn test_evm_signature_verify() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
+        None
     );
 
     let _address = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
@@ -56,6 +58,7 @@ fn test_evm_get_pubkey_from_signature() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
+        None
     );
 
     // let _address = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
@@ -92,5 +95,53 @@ fn test_evm_get_pubkey_from_signature() {
         signature_2_[64] ^= 1;
         let result = interface.evm_get_pubkey_from_signature(&full_hash, &signature_2_);
         assert!(result.is_err());
+    }
+}
+
+#[test]
+fn test_emit_event() {
+
+    // emit 2 events and check that the 2nd event is rejected (because the limit is reached)
+    
+    let mut config = ExecutionConfig::default();
+    config.max_event_per_operation = 1;
+
+    let interface = InterfaceImpl::new_default(
+        Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+        None,
+        Some(config)
+    );
+
+    let res = interface.generate_event("foo".to_string());
+    assert!(res.is_ok());
+    let res_2 = interface.generate_event("foo".to_string());
+    assert!(res_2.is_err());
+    println!("res_2: {:?}", res_2);
+    if let Err(e) = res_2 {
+        assert!(e.to_string().contains("Too many event for this operation"));
+    }
+}
+
+#[test]
+fn test_emit_event_too_large() {
+
+    // emit 2 events and check that the 2nd event is rejected (because the msg is too large)
+
+    let mut config = ExecutionConfig::default();
+    config.max_event_size = 10;
+    
+    let interface = InterfaceImpl::new_default(
+        Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+        None,
+        Some(config.clone())
+    );
+
+    let res = interface.generate_event("a".repeat(config.max_event_size).to_string());
+    assert!(res.is_ok());
+    let res_2 = interface.generate_event("b".repeat(config.max_event_size + 1).to_string());
+    assert!(res_2.is_err());
+    println!("res_2: {:?}", res_2);
+    if let Err(e) = res_2 {
+        assert!(e.to_string().contains("Event data size is too large"));
     }
 }
