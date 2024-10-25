@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/verifications.rs`."><title>verifications.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/verifications.rs`."><title>verifications.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -511,9 +511,9 @@
 <span class="doccomment">/// Possible output of a header check
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>HeaderCheckOutcome {
-    <span class="doccomment">/// it&#39;s ok and here are some useful values
+    <span class="doccomment">/// it's ok and here are some useful values
     </span>Proceed {
-        <span class="doccomment">/// one (parent block id, parent&#39;s period) per thread
+        <span class="doccomment">/// one (parent block id, parent's period) per thread
         </span>parents_hash_period: Vec&lt;(BlockId, u64)&gt;,
         <span class="doccomment">/// blocks that header is incompatible with
         </span>incompatibilities: PreHashSet&lt;BlockId&gt;,
@@ -548,8 +548,8 @@
 }
 
 <span class="kw">impl </span>ConsensusState {
-    <span class="comment">// Verify that we haven&#39;t already received 2 blocks for this slot
-    // If the block isn&#39;t already present two times we save it and return false
+    <span class="comment">// Verify that we haven't already received 2 blocks for this slot
+    // If the block isn't already present two times we save it and return false
     // If the block is already present two times we return true
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>detect_multistake(<span class="kw-2">&amp;mut </span><span class="self">self</span>, header: <span class="kw-2">&amp;</span>SecuredHeader) -&gt; bool {
         <span class="kw">let </span>entry = <span class="self">self
@@ -559,7 +559,7 @@
         <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>header.id) {
             <span class="kw">if </span>entry.len() &gt; <span class="number">1 </span>&amp;&amp; !<span class="self">self</span>.wishlist.contains_key(<span class="kw-2">&amp;</span>header.id) {
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;received more than 2 blocks for slot {}&quot;</span>,
+                    <span class="string">"received more than 2 blocks for slot {}"</span>,
                     header.content.slot
                 );
                 <span class="kw">return </span><span class="bool-val">true</span>;
@@ -587,8 +587,8 @@
                 </span><span class="kw">let </span><span class="kw-2">mut </span>dependencies = PreHashSet::&lt;BlockId&gt;::default();
                 dependencies.insert(block_id); <span class="comment">// add self as unsatisfied
                 </span><span class="macro">massa_trace!</span>(
-                    <span class="string">&quot;consensus.block_graph.process.incoming_header.waiting_for_self&quot;</span>,
-                    { <span class="string">&quot;block_id&quot;</span>: block_id }
+                    <span class="string">"consensus.block_graph.process.incoming_header.waiting_for_self"</span>,
+                    { <span class="string">"block_id"</span>: block_id }
                 );
                 <span class="prelude-val">Some</span>(BlockStatus::WaitingForDependencies {
                     header_or_block: HeaderOrBlock::Header(header),
@@ -633,7 +633,7 @@
         header: SecuredHeader,
     ) -&gt; BlockStatus {
         <span class="self">self</span>.maybe_note_attack_attempt(<span class="kw-2">&amp;</span>reason, <span class="kw-2">&amp;</span>block_id);
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.process.incoming_header.discarded&quot;</span>, {<span class="string">&quot;block_id&quot;</span>: block_id, <span class="string">&quot;reason&quot;</span>: reason});
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.process.incoming_header.discarded"</span>, {<span class="string">"block_id"</span>: block_id, <span class="string">"reason"</span>: reason});
         <span class="comment">// count stales
         </span><span class="kw">if </span>reason == DiscardReason::Stale {
             <span class="self">self</span>.new_stale_blocks.insert(
@@ -658,7 +658,7 @@
     /// - Slot above 0.
     /// - Valid thread.
     /// - Check that the block is older than the latest final one in thread.
-    /// - Check if it was the creator&#39;s turn to create this block.
+    /// - Check if it was the creator's turn to create this block.
     /// - Check parents are present.
     /// - Check the topological consistency of the parents.
     /// - Check endorsements.
@@ -672,8 +672,8 @@
         header: <span class="kw-2">&amp;</span>SecuredHeader,
         current_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; HeaderCheckOutcome {
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.check_header&quot;</span>, {
-            <span class="string">&quot;block_id&quot;</span>: block_id
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.check_header"</span>, {
+            <span class="string">"block_id"</span>: block_id
         });
         <span class="kw">let </span><span class="kw-2">mut </span>parents: Vec&lt;(BlockId, u64)&gt; =
             Vec::with_capacity(<span class="self">self</span>.config.thread_count <span class="kw">as </span>usize);
@@ -689,7 +689,7 @@
             <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Stale);
         }
 
-        <span class="comment">// check if it was the creator&#39;s turn to create this block
+        <span class="comment">// check if it was the creator's turn to create this block
         // (step 1 in consensus/pos.md)
         </span><span class="kw">let </span>slot_draw_address = <span class="kw">match </span><span class="self">self
             </span>.channels
@@ -700,9 +700,9 @@
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span>HeaderCheckOutcome::WaitForSlot, <span class="comment">// TODO properly handle PoS errors
         </span>};
         <span class="kw">if </span>creator_addr != slot_draw_address {
-            <span class="comment">// it was not the creator&#39;s turn to create a block for this slot
+            <span class="comment">// it was not the creator's turn to create a block for this slot
             </span><span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(<span class="macro">format!</span>(
-                <span class="string">&quot;Bad creator turn for the slot:{}&quot;</span>,
+                <span class="string">"Bad creator turn for the slot:{}"</span>,
                 header.content.slot
             )));
         }
@@ -726,7 +726,7 @@
                     <span class="comment">// parent is discarded
                     </span><span class="kw">return </span>HeaderCheckOutcome::Discard(<span class="kw">match </span>reason {
                         DiscardReason::Invalid(invalid_reason) =&gt; DiscardReason::Invalid(<span class="macro">format!</span>(
-                            <span class="string">&quot;discarded because a parent was discarded for the following reason: {}&quot;</span>,
+                            <span class="string">"discarded because a parent was discarded for the following reason: {}"</span>,
                             invalid_reason
                         )),
                         r =&gt; r.clone(),
@@ -740,7 +740,7 @@
                     // check that the parent is from an earlier slot in the right thread
                     </span><span class="kw">if </span>parent.slot.thread != parent_thread || parent.slot &gt;= header.content.slot {
                         <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(<span class="macro">format!</span>(
-                            <span class="string">&quot;Bad parent {} in thread:{} or slot:{} for {}.&quot;</span>,
+                            <span class="string">"Bad parent {} in thread:{} or slot:{} for {}."</span>,
                             parent_hash, parent_thread, parent.slot, header.content.slot
                         )));
                     }
@@ -750,7 +750,7 @@
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(p_incomp) = <span class="self">self</span>.gi_head.get(<span class="kw-2">&amp;</span>parent_hash) {
                         <span class="kw">if </span>!p_incomp.is_disjoint(<span class="kw-2">&amp;</span>parent_set) {
                             <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                                <span class="string">&quot;Parent not mutually compatible&quot;</span>.to_string(),
+                                <span class="string">"Parent not mutually compatible"</span>.to_string(),
                             ));
                         }
                         incomp.extend(p_incomp);
@@ -782,7 +782,7 @@
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block,
                     <span class="kw">_ </span>=&gt; {
                         <span class="macro">panic!</span>(
-                            <span class="string">&quot;inconsistency inside block statuses searching parent {} of block {}&quot;</span>,
+                            <span class="string">"inconsistency inside block statuses searching parent {} of block {}"</span>,
                             parent_h, block_id
                         )
                     }
@@ -790,7 +790,7 @@
                 <span class="kw">if </span>parent_period &lt; gp_max_slots[parent_i <span class="kw">as </span>usize] {
                     <span class="comment">// a parent is earlier than a block known by another parent in that thread
                     </span><span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                        <span class="string">&quot;a parent is earlier than a block known by another parent in that thread&quot;
+                        <span class="string">"a parent is earlier than a block known by another parent in that thread"
                             </span>.to_string(),
                     ));
                 }
@@ -814,7 +814,7 @@
                             <span class="kw">if </span>gp.slot.period &gt; gp_max_slots[gp_i <span class="kw">as </span>usize] {
                                 <span class="kw">if </span>gp_i &lt; parent_i {
                                     <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                                        <span class="string">&quot;grandpa error: gp_i &lt; parent_i&quot;</span>.to_string(),
+                                        <span class="string">"grandpa error: gp_i &lt; parent_i"</span>.to_string(),
                                     ));
                                 }
                                 gp_max_slots[gp_i <span class="kw">as </span>usize] = gp.slot.period;
@@ -885,7 +885,7 @@
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block,
                     <span class="kw">_ </span>=&gt; {
                         <span class="macro">panic!</span>(
-                            <span class="string">&quot;inconsistency inside block statuses searching traversed {} of block {}&quot;</span>,
+                            <span class="string">"inconsistency inside block statuses searching traversed {} of block {}"</span>,
                             traversed_id, block_id
                         )
                     }
@@ -908,7 +908,7 @@
                             .content
                             .slot
                             .slots_since(<span class="kw-2">&amp;</span>traversed_block.slot, <span class="self">self</span>.config.thread_count)
-                            .expect(<span class="string">&quot;arithmetic overflow on slots while checking incompatibilities&quot;</span>)
+                            .expect(<span class="string">"arithmetic overflow on slots while checking incompatibilities"</span>)
                             &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
                     }
                     <span class="comment">// the time interval between the traversed block and the incoming block is higher or equal to t0 =&gt; they are incompatible
@@ -916,7 +916,7 @@
                         traversed_block
                             .slot
                             .slots_since(<span class="kw-2">&amp;</span>header.content.slot, <span class="self">self</span>.config.thread_count)
-                            .expect(<span class="string">&quot;arithmetic overflow on slots while checking incompatibilities&quot;</span>)
+                            .expect(<span class="string">"arithmetic overflow on slots while checking incompatibilities"</span>)
                             &gt;= <span class="self">self</span>.config.thread_count <span class="kw">as </span>u64
                     }
                 };
@@ -934,7 +934,7 @@
         <span class="comment">// check if the block is incompatible with a parent
         </span><span class="kw">if </span>!incomp.is_disjoint(<span class="kw-2">&amp;</span>parents.iter().map(|(h, _p)| <span class="kw-2">*</span>h).collect()) {
             <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Invalid(
-                <span class="string">&quot;Block incompatible with a parent&quot;</span>.to_string(),
+                <span class="string">"Block incompatible with a parent"</span>.to_string(),
             ));
         }
 
@@ -956,8 +956,8 @@
         ) {
             <span class="kw">return </span>HeaderCheckOutcome::Discard(DiscardReason::Stale);
         }
-        <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.check_header.ok&quot;</span>, {
-            <span class="string">&quot;block_id&quot;</span>: block_id
+        <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.check_header.ok"</span>, {
+            <span class="string">"block_id"</span>: block_id
         });
 
         HeaderCheckOutcome::Proceed {
@@ -987,7 +987,7 @@
                 != endorsement_draws[endorsement.content.index <span class="kw">as </span>usize]
             {
                 <span class="kw">return </span>EndorsementsCheckOutcome::Discard(DiscardReason::Invalid(<span class="macro">format!</span>(
-                    <span class="string">&quot;endorser draw mismatch for header in slot: {}&quot;</span>,
+                    <span class="string">"endorser draw mismatch for header in slot: {}"</span>,
                     header.content.slot
                 )));
             }
@@ -995,8 +995,8 @@
             <span class="comment">// note that the following aspects are checked in protocol
             // * signature
             // * index reuse
-            // * slot matching the block&#39;s
-            // * the endorsed block is the containing block&#39;s parent
+            // * slot matching the block's
+            // * the endorsed block is the containing block's parent
         </span>}
 
         EndorsementsCheckOutcome::Proceed

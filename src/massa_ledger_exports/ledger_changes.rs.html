@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_changes.rs`."><title>ledger_changes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_ledger_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_ledger_exports/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-ledger-exports/src/ledger_changes.rs`."><title>ledger_changes.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_ledger_exports" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1053,7 +1053,7 @@
     <span class="doccomment">/// change the executable bytecode
     </span><span class="kw">pub </span>bytecode: SetOrKeep&lt;Bytecode&gt;,
     <span class="doccomment">/// change datastore entries
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(_, _)&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Vec&lt;(_, _)&gt;"</span>)]
     </span><span class="kw">pub </span>datastore: BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;,
 }
 
@@ -1102,7 +1102,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>entry_count: u64 = value.len().try_into().map_err(|err| {
             SerializeError::GeneralError(<span class="macro">format!</span>(
-                <span class="string">&quot;too many entries in ConsensusLedgerSubset: {}&quot;</span>,
+                <span class="string">"too many entries in ConsensusLedgerSubset: {}"</span>,
                 err
             ))
         })<span class="question-mark">?</span>;
@@ -1164,22 +1164,22 @@
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized, datastore);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BTreeMap&lt;Vec&lt;u8&gt;, SetOrDelete&lt;Vec&lt;u8&gt;&gt;&gt;, E&gt; {
         context(
-            <span class="string">&quot;Failed Datastore deserialization&quot;</span>,
+            <span class="string">"Failed Datastore deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
                 |input| {
                     tuple((
-                        context(<span class="string">&quot;Failed key deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed key deserialization"</span>, |input| {
                             <span class="self">self</span>.key_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed value deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed value deserialization"</span>, |input| {
                             <span class="self">self</span>.value_deserializer.deserialize(input)
                         }),
                     ))(input)
@@ -1224,10 +1224,10 @@
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer};
     ///
-    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -1292,10 +1292,10 @@
     /// use std::collections::BTreeMap;
     /// use massa_ledger_exports::{SetOrDelete, SetOrKeep, LedgerEntryUpdate, LedgerEntryUpdateSerializer, LedgerEntryUpdateDeserializer};
     ///
-    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::default();
     /// datastore.insert(key, SetOrDelete::Set(vec![1, 2, 3]));
-    /// let amount = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let amount = Amount::from_str("1").unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntryUpdate {
     ///    balance: SetOrKeep::Keep,
@@ -1310,20 +1310,20 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(ledger_entry, ledger_entry_deser);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerEntryUpdate, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], LedgerEntryUpdate, E&gt; {
         context(
-            <span class="string">&quot;Failed LedgerEntryUpdate deserialization&quot;</span>,
+            <span class="string">"Failed LedgerEntryUpdate deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed balance deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed balance deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed bytecode deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed bytecode deserialization"</span>, |input| {
                     <span class="self">self</span>.bytecode_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed datastore deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed datastore deserialization"</span>, |input| {
                     <span class="self">self</span>.datastore_deserializer.deserialize(input)
                 }),
             )),
@@ -1393,10 +1393,10 @@
     /// use std::collections::BTreeMap;
     /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
     ///
-    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
@@ -1406,14 +1406,14 @@
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();
     /// ```
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>LedgerChanges, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>entry_count: u64 = value.<span class="number">0</span>.len().try_into().map_err(|err| {
-            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;too many entries in LedgerChanges: {}&quot;</span>, err))
+            SerializeError::GeneralError(<span class="macro">format!</span>(<span class="string">"too many entries in LedgerChanges: {}"</span>, err))
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>entry_count, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>(address, data) <span class="kw">in </span>value.<span class="number">0</span>.iter() {
@@ -1475,10 +1475,10 @@
     /// use std::collections::BTreeMap;
     /// use massa_models::{amount::Amount, address::Address, bytecode::Bytecode};
     ///
-    /// let key = &quot;hello world&quot;.as_bytes().to_vec();
+    /// let key = "hello world".as_bytes().to_vec();
     /// let mut datastore = BTreeMap::new();
     /// datastore.insert(key, vec![1, 2, 3]);
-    /// let balance = Amount::from_str(&quot;1&quot;).unwrap();
+    /// let balance = Amount::from_str("1").unwrap();
     /// let bytecode = Bytecode(vec![1, 2, 3]);
     /// let ledger_entry = LedgerEntry {
     ///    balance,
@@ -1488,7 +1488,7 @@
     /// let mut serialized = Vec::new();
     /// let mut changes = LedgerChanges::default();
     /// changes.0.insert(
-    ///    Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///    Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///    SetUpdateOrDelete::Set(ledger_entry),
     /// );
     /// LedgerChangesSerializer::new().serialize(&amp;changes, &amp;mut serialized).unwrap();
@@ -1496,21 +1496,21 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(changes, changes_deser);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], LedgerChanges, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], LedgerChanges, E&gt; {
         context(
-            <span class="string">&quot;Failed LedgerChanges deserialization&quot;</span>,
+            <span class="string">"Failed LedgerChanges deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
                 tuple((
-                    context(<span class="string">&quot;Failed address deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed address deserialization"</span>, |input| {
                         <span class="self">self</span>.address_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed entry deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed entry deserialization"</span>, |input| {
                         <span class="self">self</span>.entry_deserializer.deserialize(input)
                     }),
                 )),
@@ -1580,7 +1580,7 @@
     }
 
     <span class="doccomment">/// Tries to return the balance of an entry
-    /// or gets it from a function if the entry&#39;s status is unknown.
+    /// or gets it from a function if the entry's status is unknown.
     ///
     /// This function is used as an optimization:
     /// if the value can be deduced unambiguously from the `LedgerChanges`,
@@ -1625,7 +1625,7 @@
     }
 
     <span class="doccomment">/// Tries to return the executable bytecode of an entry
-    /// or gets it from a function if the entry&#39;s status is unknown.
+    /// or gets it from a function if the entry's status is unknown.
     ///
     /// This function is used as an optimization:
     /// if the value can be deduced unambiguously from the `LedgerChanges`,
@@ -1671,7 +1671,7 @@
     }
 
     <span class="doccomment">/// Tries to return whether an entry exists
-    /// or gets the information from a function if the entry&#39;s status is unknown.
+    /// or gets the information from a function if the entry's status is unknown.
     ///
     /// This function is used as an optimization:
     /// if the result can be deduced unambiguously from the `LedgerChanges`,
@@ -1684,7 +1684,7 @@
     /// # Returns
     /// * true if the entry exists
     /// * false if the value is absent
-    /// * f() if the value&#39;s existence is unknown
+    /// * f() if the value's existence is unknown
     </span><span class="kw">pub fn </span>entry_exists_or_else&lt;F: FnOnce() -&gt; bool&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, f: F) -&gt; bool {
         <span class="comment">// Get the changes for the provided address
         </span><span class="kw">match </span><span class="self">self</span>.<span class="number">0</span>.get(addr) {
@@ -1692,10 +1692,10 @@
             </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
 
             <span class="comment">// The entry is being updated:
-            // assume it exists because it will be created on update if it doesn&#39;t
+            // assume it exists because it will be created on update if it doesn't
             </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
 
-            <span class="comment">// The entry is being deleted: it doesn&#39;t exist anymore
+            <span class="comment">// The entry is being deleted: it doesn't exist anymore
             </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="bool-val">false</span>,
 
             <span class="comment">// This entry is not being changed.
@@ -1706,7 +1706,7 @@
     }
 
     <span class="doccomment">/// Set the balance of an address.
-    /// If the address doesn&#39;t exist, its ledger entry is created.
+    /// If the address doesn't exist, its ledger entry is created.
     ///
     /// # Arguments
     /// * `addr`: target address
@@ -1753,7 +1753,7 @@
     }
 
     <span class="doccomment">/// Set the executable bytecode of an address.
-    /// If the address doesn&#39;t exist, its ledger entry is created.
+    /// If the address doesn't exist, its ledger entry is created.
     ///
     /// # Parameters
     /// * `addr`: target address
@@ -1800,7 +1800,7 @@
     }
 
     <span class="doccomment">/// Tries to return a datastore entry for a given address,
-    /// or gets it from a function if the value&#39;s status is unknown.
+    /// or gets it from a function if the value's status is unknown.
     ///
     /// This function is used as an optimization:
     /// if the result can be deduced unambiguously from the `LedgerChanges`,
@@ -1855,12 +1855,12 @@
     }
 
     <span class="doccomment">/// Tries to return whether the ledger changes contain a write for the given address
-    /// and optionally if a datastore key write also exists in the address&#39;s datastore.
+    /// and optionally if a datastore key write also exists in the address's datastore.
     /// Notes:
     /// - A ledger entry could be written to without any changes on the values associated,
-    /// for example if the value was changed multiple times in the same slot.
+    ///   for example if the value was changed multiple times in the same slot.
     /// - This code assumes Delete cannot be shadowed by Set operations in the same slot, which may not be the case
-    /// when / if we allow full entry Delete given the current LedgerChanges::Delete handling. In that case, a rework may be necessary.
+    ///   when / if we allow full entry Delete given the current LedgerChanges::Delete handling. In that case, a rework may be necessary.
     ///
     /// # Arguments
     /// * `addr`: target address
@@ -1890,7 +1890,7 @@
     }
 
     <span class="doccomment">/// Tries to return whether a datastore entry exists for a given address,
-    /// or gets it from a function if the datastore entry&#39;s status is unknown.
+    /// or gets it from a function if the datastore entry's status is unknown.
     ///
     /// This function is used as an optimization:
     /// if the result can be deduced unambiguously from the `LedgerChanges`,
@@ -1924,7 +1924,7 @@
                     <span class="comment">// A new datastore value is being set: the datastore entry exists
                     </span><span class="prelude-val">Some</span>(SetOrDelete::Set(<span class="kw">_</span>)) =&gt; <span class="bool-val">true</span>,
 
-                    <span class="comment">// The datastore entry is being deletes: it doesn&#39;t exist anymore
+                    <span class="comment">// The datastore entry is being deletes: it doesn't exist anymore
                     </span><span class="prelude-val">Some</span>(SetOrDelete::Delete) =&gt; <span class="bool-val">false</span>,
 
                     <span class="comment">// There are no changes to this particular datastore entry.
@@ -1945,7 +1945,7 @@
     }
 
     <span class="doccomment">/// Set a datastore entry for a given address.
-    /// If the address doesn&#39;t exist, its ledger entry is created.
+    /// If the address doesn't exist, its ledger entry is created.
     /// If the datastore entry exists, its value is replaced, otherwise it is created.
     ///
     /// # Arguments

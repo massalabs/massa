@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-metrics/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_metrics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_metrics/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-metrics/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_metrics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -782,17 +782,17 @@
 
 <span class="kw">mod </span>server;
 
-<span class="macro">lazy_static! </span>{
+<span class="macro">lazy_static!</span> {
     <span class="comment">// use lazy_static for these metrics because they are used in storage which implement default
     </span><span class="kw">static </span><span class="kw-2">ref </span>OPERATIONS_COUNTER: IntGauge = <span class="macro">register_int_gauge!</span>(
-        <span class="string">&quot;operations_storage_counter&quot;</span>,
-        <span class="string">&quot;operations storage counter len&quot;
+        <span class="string">"operations_storage_counter"</span>,
+        <span class="string">"operations storage counter len"
     </span>)
     .unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>BLOCKS_COUNTER: IntGauge =
-        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;blocks_storage_counter&quot;</span>, <span class="string">&quot;blocks storage counter len&quot;</span>).unwrap();
+        <span class="macro">register_int_gauge!</span>(<span class="string">"blocks_storage_counter"</span>, <span class="string">"blocks storage counter len"</span>).unwrap();
     <span class="kw">static </span><span class="kw-2">ref </span>ENDORSEMENTS_COUNTER: IntGauge =
-        <span class="macro">register_int_gauge!</span>(<span class="string">&quot;endorsements_storage_counter&quot;</span>, <span class="string">&quot;endorsements storage counter len&quot;</span>).unwrap();
+        <span class="macro">register_int_gauge!</span>(<span class="string">"endorsements_storage_counter"</span>, <span class="string">"endorsements storage counter len"</span>).unwrap();
 }
 
 <span class="kw">pub fn </span>set_blocks_counter(val: usize) {
@@ -817,12 +817,12 @@
     <span class="kw">pub fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(stopper) = <span class="self">self</span>.stopper.take() {
             <span class="kw">if </span>stopper.send(()).is_err() {
-                <span class="macro">warn!</span>(<span class="string">&quot;failed to send stop signal to metrics server&quot;</span>);
+                <span class="macro">warn!</span>(<span class="string">"failed to send stop signal to metrics server"</span>);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = <span class="self">self</span>.stop_handle.take() {
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(_e) = handle.join() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;failed to join metrics server thread&quot;</span>);
+                    <span class="macro">warn!</span>(<span class="string">"failed to join metrics server thread"</span>);
                 }
             }
         }
@@ -950,11 +950,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>consensus_vec = <span class="macro">vec!</span>[];
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..nb_thread {
             <span class="kw">let </span>gauge = Gauge::new(
-                <span class="macro">format!</span>(<span class="string">&quot;consensus_thread_{}&quot;</span>, i),
-                <span class="string">&quot;consensus thread actual period&quot;</span>,
+                <span class="macro">format!</span>(<span class="string">"consensus_thread_{}"</span>, i),
+                <span class="string">"consensus thread actual period"</span>,
             )
-            .expect(<span class="string">&quot;Failed to create gauge&quot;</span>);
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+            .expect(<span class="string">"Failed to create gauge"</span>);
+            <span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
             </span>{
                 <span class="kw">let _ </span>= prometheus::register(Box::new(gauge.clone()));
             }
@@ -964,206 +964,206 @@
 
         <span class="comment">// set available processors
         </span><span class="kw">let </span>process_available_processors =
-            IntGauge::new(<span class="string">&quot;process_available_processors&quot;</span>, <span class="string">&quot;number of processors&quot;</span>)
-                .expect(<span class="string">&quot;Failed to create available_processors counter&quot;</span>);
+            IntGauge::new(<span class="string">"process_available_processors"</span>, <span class="string">"number of processors"</span>)
+                .expect(<span class="string">"Failed to create available_processors counter"</span>);
 
         <span class="comment">// stakers
-        </span><span class="kw">let </span>stakers = IntGauge::new(<span class="string">&quot;stakers&quot;</span>, <span class="string">&quot;number of stakers&quot;</span>).unwrap();
-        <span class="kw">let </span>rolls = IntGauge::new(<span class="string">&quot;rolls&quot;</span>, <span class="string">&quot;number of rolls&quot;</span>).unwrap();
+        </span><span class="kw">let </span>stakers = IntGauge::new(<span class="string">"stakers"</span>, <span class="string">"number of stakers"</span>).unwrap();
+        <span class="kw">let </span>rolls = IntGauge::new(<span class="string">"rolls"</span>, <span class="string">"number of rolls"</span>).unwrap();
 
         <span class="kw">let </span>current_time_period =
-            IntGauge::new(<span class="string">&quot;current_time_period&quot;</span>, <span class="string">&quot;period of actual slot&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"current_time_period"</span>, <span class="string">"period of actual slot"</span>).unwrap();
 
         <span class="kw">let </span>current_time_thread =
-            IntGauge::new(<span class="string">&quot;current_time_thread&quot;</span>, <span class="string">&quot;thread of actual slot&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"current_time_thread"</span>, <span class="string">"thread of actual slot"</span>).unwrap();
 
         <span class="kw">let </span>executed_final_slot =
-            IntCounter::new(<span class="string">&quot;executed_final_slot&quot;</span>, <span class="string">&quot;number of executed final slot&quot;</span>).unwrap();
+            IntCounter::new(<span class="string">"executed_final_slot"</span>, <span class="string">"number of executed final slot"</span>).unwrap();
         <span class="kw">let </span>executed_final_slot_with_block = IntCounter::new(
-            <span class="string">&quot;executed_final_slot_with_block&quot;</span>,
-            <span class="string">&quot;number of executed final slot with block (not miss)&quot;</span>,
+            <span class="string">"executed_final_slot_with_block"</span>,
+            <span class="string">"number of executed final slot with block (not miss)"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>protocol_tester_success = IntCounter::new(
-            <span class="string">&quot;protocol_tester_success&quot;</span>,
-            <span class="string">&quot;number of times we successfully tested someone&quot;</span>,
+            <span class="string">"protocol_tester_success"</span>,
+            <span class="string">"number of times we successfully tested someone"</span>,
         )
         .unwrap();
         <span class="kw">let </span>protocol_tester_failed = IntCounter::new(
-            <span class="string">&quot;protocol_tester_failed&quot;</span>,
-            <span class="string">&quot;number of times we failed to test someone&quot;</span>,
+            <span class="string">"protocol_tester_failed"</span>,
+            <span class="string">"number of times we failed to test someone"</span>,
         )
         .unwrap();
 
         <span class="comment">// pool
         </span><span class="kw">let </span>operations_pool = IntGauge::new(
-            <span class="string">&quot;operations_pool&quot;</span>,
-            <span class="string">&quot;number of operations in the operation pool&quot;</span>,
+            <span class="string">"operations_pool"</span>,
+            <span class="string">"number of operations in the operation pool"</span>,
         )
         .unwrap();
         <span class="kw">let </span>endorsements_pool = IntGauge::new(
-            <span class="string">&quot;endorsements_pool&quot;</span>,
-            <span class="string">&quot;number of endorsements in the endorsement pool&quot;</span>,
+            <span class="string">"endorsements_pool"</span>,
+            <span class="string">"number of endorsements in the endorsement pool"</span>,
         )
         .unwrap();
         <span class="kw">let </span>denunciations_pool = IntGauge::new(
-            <span class="string">&quot;denunciations_pool&quot;</span>,
-            <span class="string">&quot;number of elements in the denunciation pool&quot;</span>,
+            <span class="string">"denunciations_pool"</span>,
+            <span class="string">"number of elements in the denunciation pool"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>async_message_pool_size = IntGauge::new(
-            <span class="string">&quot;async_message_pool_size&quot;</span>,
-            <span class="string">&quot;number of autonomous SCs messages in pool&quot;</span>,
+            <span class="string">"async_message_pool_size"</span>,
+            <span class="string">"number of autonomous SCs messages in pool"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>sc_messages_final = IntCounter::new(
-            <span class="string">&quot;sc_messages_final&quot;</span>,
-            <span class="string">&quot;number of autonomous SC messages executed as final&quot;</span>,
+            <span class="string">"sc_messages_final"</span>,
+            <span class="string">"number of autonomous SC messages executed as final"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>bootstrap_counter = IntCounter::new(
-            <span class="string">&quot;bootstrap_counter&quot;</span>,
-            <span class="string">&quot;number of times our node (re-)bootstrapped&quot;</span>,
+            <span class="string">"bootstrap_counter"</span>,
+            <span class="string">"number of times our node (re-)bootstrapped"</span>,
         )
         .unwrap();
         <span class="kw">let </span>bootstrap_success = IntCounter::new(
-            <span class="string">&quot;bootstrap_peers_success&quot;</span>,
-            <span class="string">&quot;number of times we successfully bootstrapped someone&quot;</span>,
+            <span class="string">"bootstrap_peers_success"</span>,
+            <span class="string">"number of times we successfully bootstrapped someone"</span>,
         )
         .unwrap();
         <span class="kw">let </span>bootstrap_failed = IntCounter::new(
-            <span class="string">&quot;bootstrap_peers_failed&quot;</span>,
-            <span class="string">&quot;number of times we failed/refused to bootstrap someone&quot;</span>,
+            <span class="string">"bootstrap_peers_failed"</span>,
+            <span class="string">"number of times we failed/refused to bootstrap someone"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>active_history = IntGauge::new(
-            <span class="string">&quot;active_history&quot;</span>,
-            <span class="string">&quot;number of elements in the active_history of execution&quot;</span>,
+            <span class="string">"active_history"</span>,
+            <span class="string">"number of elements in the active_history of execution"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>know_peers =
-            IntGauge::new(<span class="string">&quot;protocol_known_peers&quot;</span>, <span class="string">&quot;number of known peers in protocol&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"protocol_known_peers"</span>, <span class="string">"number of known peers in protocol"</span>).unwrap();
         <span class="kw">let </span>banned_peers = IntGauge::new(
-            <span class="string">&quot;protocol_banned_peers&quot;</span>,
-            <span class="string">&quot;number of banned peers in protocol&quot;</span>,
+            <span class="string">"protocol_banned_peers"</span>,
+            <span class="string">"number of banned peers in protocol"</span>,
         )
         .unwrap();
 
         <span class="comment">// active cursor
         </span><span class="kw">let </span>active_cursor_thread =
-            IntGauge::new(<span class="string">&quot;active_cursor_thread&quot;</span>, <span class="string">&quot;execution active cursor thread&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"active_cursor_thread"</span>, <span class="string">"execution active cursor thread"</span>).unwrap();
         <span class="kw">let </span>active_cursor_period =
-            IntGauge::new(<span class="string">&quot;active_cursor_period&quot;</span>, <span class="string">&quot;execution active cursor period&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"active_cursor_period"</span>, <span class="string">"execution active cursor period"</span>).unwrap();
 
         <span class="comment">// final cursor
         </span><span class="kw">let </span>final_cursor_thread =
-            IntGauge::new(<span class="string">&quot;final_cursor_thread&quot;</span>, <span class="string">&quot;execution final cursor thread&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"final_cursor_thread"</span>, <span class="string">"execution final cursor thread"</span>).unwrap();
         <span class="kw">let </span>final_cursor_period =
-            IntGauge::new(<span class="string">&quot;final_cursor_period&quot;</span>, <span class="string">&quot;execution final cursor period&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"final_cursor_period"</span>, <span class="string">"execution final cursor period"</span>).unwrap();
 
         <span class="comment">// active connections IN
         </span><span class="kw">let </span>active_in_connections =
-            IntGauge::new(<span class="string">&quot;active_in_connections&quot;</span>, <span class="string">&quot;active connections IN len&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"active_in_connections"</span>, <span class="string">"active connections IN len"</span>).unwrap();
 
         <span class="comment">// active connections OUT
         </span><span class="kw">let </span>active_out_connections =
-            IntGauge::new(<span class="string">&quot;active_out_connections&quot;</span>, <span class="string">&quot;active connections OUT len&quot;</span>).unwrap();
+            IntGauge::new(<span class="string">"active_out_connections"</span>, <span class="string">"active connections OUT len"</span>).unwrap();
 
         <span class="comment">// block cache
         </span><span class="kw">let </span>block_cache_checked_headers_size = IntGauge::new(
-            <span class="string">&quot;block_cache_checked_headers_size&quot;</span>,
-            <span class="string">&quot;size of BlockCache checked_headers&quot;</span>,
+            <span class="string">"block_cache_checked_headers_size"</span>,
+            <span class="string">"size of BlockCache checked_headers"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>block_cache_blocks_known_by_peer = IntGauge::new(
-            <span class="string">&quot;block_cache_blocks_known_by_peer_size&quot;</span>,
-            <span class="string">&quot;size of BlockCache blocks_known_by_peer&quot;</span>,
+            <span class="string">"block_cache_blocks_known_by_peer_size"</span>,
+            <span class="string">"size of BlockCache blocks_known_by_peer"</span>,
         )
         .unwrap();
 
         <span class="comment">// operation cache
         </span><span class="kw">let </span>operation_cache_checked_operations = IntGauge::new(
-            <span class="string">&quot;operation_cache_checked_operations&quot;</span>,
-            <span class="string">&quot;size of OperationCache checked_operations&quot;</span>,
+            <span class="string">"operation_cache_checked_operations"</span>,
+            <span class="string">"size of OperationCache checked_operations"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>operation_cache_checked_operations_prefix = IntGauge::new(
-            <span class="string">&quot;operation_cache_checked_operations_prefix&quot;</span>,
-            <span class="string">&quot;size of OperationCache checked_operations_prefix&quot;</span>,
+            <span class="string">"operation_cache_checked_operations_prefix"</span>,
+            <span class="string">"size of OperationCache checked_operations_prefix"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>operation_cache_ops_know_by_peer = IntGauge::new(
-            <span class="string">&quot;operation_cache_ops_know_by_peer&quot;</span>,
-            <span class="string">&quot;size of OperationCache operation_cache_ops_know_by_peer&quot;</span>,
+            <span class="string">"operation_cache_ops_know_by_peer"</span>,
+            <span class="string">"size of OperationCache operation_cache_ops_know_by_peer"</span>,
         )
         .unwrap();
 
         <span class="comment">// consensus state from tick.rs
         </span><span class="kw">let </span>consensus_state_active_index = IntGauge::new(
-            <span class="string">&quot;consensus_state_active_index&quot;</span>,
-            <span class="string">&quot;consensus state active index size&quot;</span>,
+            <span class="string">"consensus_state_active_index"</span>,
+            <span class="string">"consensus state active index size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>consensus_state_active_index_without_ops = IntGauge::new(
-            <span class="string">&quot;consensus_state_active_index_without_ops&quot;</span>,
-            <span class="string">&quot;consensus state active index without ops size&quot;</span>,
+            <span class="string">"consensus_state_active_index_without_ops"</span>,
+            <span class="string">"consensus state active index without ops size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>consensus_state_incoming_index = IntGauge::new(
-            <span class="string">&quot;consensus_state_incoming_index&quot;</span>,
-            <span class="string">&quot;consensus state incoming index size&quot;</span>,
+            <span class="string">"consensus_state_incoming_index"</span>,
+            <span class="string">"consensus state incoming index size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>consensus_state_discarded_index = IntGauge::new(
-            <span class="string">&quot;consensus_state_discarded_index&quot;</span>,
-            <span class="string">&quot;consensus state discarded index size&quot;</span>,
+            <span class="string">"consensus_state_discarded_index"</span>,
+            <span class="string">"consensus state discarded index size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>consensus_state_block_statuses = IntGauge::new(
-            <span class="string">&quot;consensus_state_block_statuses&quot;</span>,
-            <span class="string">&quot;consensus state block statuses size&quot;</span>,
+            <span class="string">"consensus_state_block_statuses"</span>,
+            <span class="string">"consensus state block statuses size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>endorsement_cache_checked_endorsements = IntGauge::new(
-            <span class="string">&quot;endorsement_cache_checked_endorsements&quot;</span>,
-            <span class="string">&quot;endorsement cache checked endorsements size&quot;</span>,
+            <span class="string">"endorsement_cache_checked_endorsements"</span>,
+            <span class="string">"endorsement cache checked endorsements size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>endorsement_cache_known_by_peer = IntGauge::new(
-            <span class="string">&quot;endorsement_cache_known_by_peer&quot;</span>,
-            <span class="string">&quot;endorsement cache know by peer size&quot;</span>,
+            <span class="string">"endorsement_cache_known_by_peer"</span>,
+            <span class="string">"endorsement cache know by peer size"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>peernet_total_bytes_received = IntCounter::new(
-            <span class="string">&quot;peernet_total_bytes_received&quot;</span>,
-            <span class="string">&quot;total byte received by peernet&quot;</span>,
+            <span class="string">"peernet_total_bytes_received"</span>,
+            <span class="string">"total byte received by peernet"</span>,
         )
         .unwrap();
 
         <span class="kw">let </span>peernet_total_bytes_sent =
-            IntCounter::new(<span class="string">&quot;peernet_total_bytes_sent&quot;</span>, <span class="string">&quot;total byte sent by peernet&quot;</span>).unwrap();
+            IntCounter::new(<span class="string">"peernet_total_bytes_sent"</span>, <span class="string">"total byte sent by peernet"</span>).unwrap();
 
         <span class="kw">let </span>operations_final_counter =
-            IntCounter::new(<span class="string">&quot;operations_final_counter&quot;</span>, <span class="string">&quot;total final operations&quot;</span>).unwrap();
+            IntCounter::new(<span class="string">"operations_final_counter"</span>, <span class="string">"total final operations"</span>).unwrap();
 
         <span class="kw">let </span>block_slot_delay = Histogram::with_opts(
-            prometheus::HistogramOpts::new(<span class="string">&quot;block_slot_delay&quot;</span>, <span class="string">&quot;block slot delay&quot;</span>).buckets(<span class="macro">vec!</span>[
+            prometheus::HistogramOpts::new(<span class="string">"block_slot_delay"</span>, <span class="string">"block slot delay"</span>).buckets(<span class="macro">vec!</span>[
                 <span class="number">0.100</span>, <span class="number">0.250</span>, <span class="number">0.500</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, <span class="number">7.0</span>, <span class="number">8.0</span>,
             ]),
         )
@@ -1172,7 +1172,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;test-exports&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
             </span>{
                 <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_thread.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(final_cursor_period.clone()));
@@ -1482,11 +1482,11 @@
                 <span class="comment">// remove peer and unregister metrics
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>((tx, rx)) = write.remove(<span class="kw-2">&amp;</span>key) {
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(tx)) {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Failed to unregister tx metricfor peer {} : {}&quot;</span>, key, e);
+                        <span class="macro">warn!</span>(<span class="string">"Failed to unregister tx metricfor peer {} : {}"</span>, key, e);
                     }
 
                     <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(rx)) {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Failed to unregister rx metric for peer {} : {}&quot;</span>, key, e);
+                        <span class="macro">warn!</span>(<span class="string">"Failed to unregister rx metric for peer {} : {}"</span>, key, e);
                     }
                 }
             }
@@ -1503,14 +1503,14 @@
                     rx_metric.inc_by(to_add);
                 } <span class="kw">else </span>{
                     <span class="comment">// peer metrics does not exist
-                    </span><span class="kw">let </span>label_rx = <span class="macro">format!</span>(<span class="string">&quot;peer_total_bytes_receive_{}&quot;</span>, k);
-                    <span class="kw">let </span>label_tx = <span class="macro">format!</span>(<span class="string">&quot;peer_total_bytes_sent_{}&quot;</span>, k);
+                    </span><span class="kw">let </span>label_rx = <span class="macro">format!</span>(<span class="string">"peer_total_bytes_receive_{}"</span>, k);
+                    <span class="kw">let </span>label_tx = <span class="macro">format!</span>(<span class="string">"peer_total_bytes_sent_{}"</span>, k);
 
                     <span class="kw">let </span>peer_total_bytes_receive =
-                        IntCounter::new(label_rx, <span class="string">&quot;total byte received by the peer&quot;</span>).unwrap();
+                        IntCounter::new(label_rx, <span class="string">"total byte received by the peer"</span>).unwrap();
 
                     <span class="kw">let </span>peer_total_bytes_sent =
-                        IntCounter::new(label_tx, <span class="string">&quot;total byte sent by the peer&quot;</span>).unwrap();
+                        IntCounter::new(label_tx, <span class="string">"total byte sent by the peer"</span>).unwrap();
 
                     peer_total_bytes_sent.inc_by(tx_peernet);
                     peer_total_bytes_receive.inc_by(rx_peernet);

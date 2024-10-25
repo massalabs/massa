@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/denunciation.rs`."><title>denunciation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/denunciation.rs`."><title>denunciation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1549,7 +1549,7 @@
 //!
 //! Currently, nothing prevents a user from producing multiple blocks (for the same Slot) or endorsing a block multiple times.
 //! If an invalid Denunciation will just be ignored, a valid Denunciation will slash some locked rolls.
-//! Note that this proposal aims at dissuading &#39;rational&#39; users from causing damage but does help against &#39;byzantine&#39; actors
+//! Note that this proposal aims at dissuading 'rational' users from causing damage but does help against 'byzantine' actors
 //! that just want to disturb or break the blockclique (at any cost).
 //!
 //! Denunciation structure
@@ -1571,7 +1571,7 @@
 //! Denunciation execution
 //!
 //! When a Denunciation is proven valid, we then need to ensure that the user has sufficient funds. If we cannot deduct the funds on node
-//! balance or staked rolls, we will use &#39;locked&#39; rolls` (or Deferred credits).
+//! balance or staked rolls, we will use 'locked' rolls` (or Deferred credits).
 //! Selling a roll will lock it for some time (== 4 cycles). Note that it restricts the time,
 //! a denunciation can be produced (A constant value will be defined for this).
 
@@ -1893,7 +1893,7 @@
             || s_e1.id == s_e2.id
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput(<span class="macro">format!</span>(
-                <span class="string">&quot;Not the same slot, index or public key or same hash for {:?} &amp; {:?}&quot;</span>,
+                <span class="string">"Not the same slot, index or public key or same hash for {:?} &amp; {:?}"</span>,
                 s_e1, s_e2
             )));
         }
@@ -1944,7 +1944,7 @@
             || s_bh1.id == s_bh2.id
         {
             <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput(<span class="macro">format!</span>(
-                <span class="string">&quot;Not the same slot or public key or same hash for {:?} &amp; {:?}&quot;</span>,
+                <span class="string">"Not the same slot or public key or same hash for {:?} &amp; {:?}"</span>,
                 s_bh1, s_bh2
             )));
         }
@@ -2002,11 +2002,11 @@
 </span><span class="attr">#[allow(missing_docs)]
 #[derive(Error, Debug)]
 </span><span class="kw">pub enum </span>DenunciationError {
-    <span class="attr">#[error(<span class="string">&quot;Invalid endorsements or block headers, cannot create denunciation: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"Invalid endorsements or block headers, cannot create denunciation: {0}"</span>)]
     </span>InvalidInput(String),
-    <span class="attr">#[error(<span class="string">&quot;signature error: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"signature error: {0}"</span>)]
     </span>Signature(<span class="attr">#[from] </span>MassaSignatureError),
-    <span class="attr">#[error(<span class="string">&quot;serialization error: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">"serialization error: {0}"</span>)]
     </span>Serialization(<span class="attr">#[from] </span>SerializeError),
 }
 
@@ -2082,32 +2082,32 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;EndorsementDenunciation&gt; <span class="kw">for </span>EndorsementDenunciationDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], EndorsementDenunciation, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], EndorsementDenunciation, E&gt; {
         context(
-            <span class="string">&quot;Failed Endorsement Denunciation deserialization&quot;</span>,
+            <span class="string">"Failed Endorsement Denunciation deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed public key deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed public key deserialization"</span>, |input| {
                     <span class="self">self</span>.pubkey_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed slot deserialization"</span>, |input| {
                     <span class="self">self</span>.index_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed hash 1 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed hash 1 deserialization"</span>, |input| {
                     <span class="self">self</span>.hash_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed hash 2 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed hash 2 deserialization"</span>, |input| {
                     <span class="self">self</span>.hash_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed signature 1 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed signature 1 deserialization"</span>, |input| {
                     <span class="self">self</span>.signature_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed signature 2 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed signature 2 deserialization"</span>, |input| {
                     <span class="self">self</span>.signature_deserializer.deserialize(input)
                 }),
             )),
@@ -2191,29 +2191,29 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;BlockHeaderDenunciation&gt; <span class="kw">for </span>BlockHeaderDenunciationDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], BlockHeaderDenunciation, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], BlockHeaderDenunciation, E&gt; {
         context(
-            <span class="string">&quot;Failed BlockHeader Denunciation deserialization&quot;</span>,
+            <span class="string">"Failed BlockHeader Denunciation deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed public key deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed public key deserialization"</span>, |input| {
                     <span class="self">self</span>.pubkey_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed hash 1 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed hash 1 deserialization"</span>, |input| {
                     <span class="self">self</span>.hash_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed hash 2 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed hash 2 deserialization"</span>, |input| {
                     <span class="self">self</span>.hash_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed signature 1 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed signature 1 deserialization"</span>, |input| {
                     <span class="self">self</span>.signature_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed signature 2 deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed signature 2 deserialization"</span>, |input| {
                     <span class="self">self</span>.signature_deserializer.deserialize(input)
                 }),
             )),
@@ -2300,11 +2300,11 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;Denunciation&gt; <span class="kw">for </span>DenunciationDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Denunciation, E&gt; {
-        <span class="kw">let </span>(rem, de_type_id_) = context(<span class="string">&quot;Failed Denunciation type id deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Denunciation, E&gt; {
+        <span class="kw">let </span>(rem, de_type_id_) = context(<span class="string">"Failed Denunciation type id deserialization"</span>, |input| {
             <span class="self">self</span>.type_id_deserializer.deserialize(input)
         })
         .parse(buffer)<span class="question-mark">?</span>;
@@ -2531,10 +2531,10 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;DenunciationIndex&gt; <span class="kw">for </span>DenunciationIndexDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], DenunciationIndex, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], DenunciationIndex, E&gt; {
         <span class="kw">let </span>(input, id) = <span class="self">self</span>.id_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
         <span class="kw">let </span>id = DenunciationIndexTypeId::try_from(id).map_err(|<span class="kw">_</span>| {
             nom::Err::Error(ParseError::from_error_kind(
@@ -2545,7 +2545,7 @@
 
         <span class="kw">match </span>id {
             DenunciationIndexTypeId::BlockHeader =&gt; {
-                context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 })
                 .map(|slot| DenunciationIndex::BlockHeader { slot })
@@ -2553,12 +2553,12 @@
                 </span>.parse(input)
             }
             DenunciationIndexTypeId::Endorsement =&gt; context(
-                <span class="string">&quot;Failed Endorsement denunciation index&quot;</span>,
+                <span class="string">"Failed Endorsement denunciation index"</span>,
                 tuple((
-                    context(<span class="string">&quot;Failed slot deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed slot deserialization"</span>, |input| {
                         <span class="self">self</span>.slot_deserializer.deserialize(input)
                     }),
-                    context(<span class="string">&quot;Failed index deserialization&quot;</span>, |input| {
+                    context(<span class="string">"Failed index deserialization"</span>, |input| {
                         <span class="self">self</span>.index_deserializer.deserialize(input)
                     }),
                 )),
@@ -2670,7 +2670,7 @@
                     || de_p_blkh_1.hash == de_p_blkh_2.hash
                 {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput(
-                        <span class="macro">format!</span>(<span class="string">&quot;Not the same slot or public key or same hash for de precursor: {:?} &amp; {:?}&quot;</span>, de_p_blkh_1, de_p_blkh_2)
+                        <span class="macro">format!</span>(<span class="string">"Not the same slot or public key or same hash for de precursor: {:?} &amp; {:?}"</span>, de_p_blkh_1, de_p_blkh_2)
                     ));
                 }
 
@@ -2713,7 +2713,7 @@
                     || de_p_endo_1.hash == de_p_endo_2.hash
                 {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput(
-                        <span class="macro">format!</span>(<span class="string">&quot;Not the same slot, index or public key or same hash for de precursor: {:?} &amp; {:?}&quot;</span>, de_p_endo_1, de_p_endo_2)
+                        <span class="macro">format!</span>(<span class="string">"Not the same slot, index or public key or same hash for de precursor: {:?} &amp; {:?}"</span>, de_p_endo_1, de_p_endo_2)
                     ));
                 }
 
@@ -2751,7 +2751,7 @@
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// Different enum variants - this is invalid
                 </span><span class="prelude-val">Err</span>(DenunciationError::InvalidInput(
-                    <span class="string">&quot;Mixed endorsement and block header denunciation precursors&quot;</span>.to_string(),
+                    <span class="string">"Mixed endorsement and block header denunciation precursors"</span>.to_string(),
                 ))
             }
         }
@@ -2762,12 +2762,12 @@
 
 // test-exports
 
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">&quot;test-exports&quot;</span>))]
+</span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
 </span><span class="kw">impl </span>Denunciation {
     <span class="doccomment">/// Used under testing conditions to validate an instance of Self
     </span><span class="kw">pub fn </span>check_invariants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
         <span class="kw">if </span>!<span class="self">self</span>.is_valid() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">&quot;Denunciation is invalid: {:?}&quot;</span>, <span class="self">self</span>).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">format!</span>(<span class="string">"Denunciation is invalid: {:?}"</span>, <span class="self">self</span>).into());
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -2811,7 +2811,7 @@
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
             slot,
             index: <span class="number">9</span>,
-            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">"foo"</span>.as_bytes())),
         };
         <span class="kw">let </span>s_endorsement_4 = Endorsement::new_verifiable(
             endorsement_4,
@@ -2851,7 +2851,7 @@
         </span><span class="kw">let </span>endorsement_4 = Endorsement {
             slot,
             index: <span class="number">9</span>,
-            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;foo&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">"foo"</span>.as_bytes())),
         };
         <span class="kw">let </span>s_endorsement_4 = Endorsement::new_verifiable(
             endorsement_4,
@@ -2893,7 +2893,7 @@
         <span class="kw">let </span>endorsement_1 = Endorsement {
             slot: slot_1,
             index: <span class="number">0</span>,
-            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk1&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">"blk1"</span>.as_bytes())),
         };
 
         <span class="kw">let </span>s_endorsement_1: SecureShareEndorsement = Endorsement::new_verifiable(
@@ -2907,7 +2907,7 @@
         <span class="kw">let </span>endorsement_2 = Endorsement {
             slot: slot_2,
             index: <span class="number">0</span>,
-            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">&quot;blk2&quot;</span>.as_bytes())),
+            endorsed_block: BlockId::generate_from_hash(Hash::compute_from(<span class="string">"blk2"</span>.as_bytes())),
         };
 
         <span class="kw">let </span>s_endorsement_2: SecureShareEndorsement = Endorsement::new_verifiable(
