@@ -107,4 +107,6 @@ pub struct ExecutionConfig {
     pub max_recursive_calls_depth: u16,
     /// Runtime condom middleware limits
     pub condom_limits: CondomLimits,
+    /// Maximum number of event that an operation can emit
+    pub max_event_per_operation: usize,
 }

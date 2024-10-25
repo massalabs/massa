@@ -309,7 +309,9 @@ pub const ASYNC_MSG_CST_GAS_COST: u64 = 750_000;
 /// Gas used by a base operation (transaction, roll buy, roll sell)
 pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes
-pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
+pub const MAX_EVENT_DATA_SIZE: usize = 512;
+/// Maximum event number that can be emitted for an operation
+pub const MAX_EVENT_PER_OPERATION: usize = 25;
 /// Maximum number of recursion for calls
 pub const MAX_RECURSIVE_CALLS_DEPTH: u16 = 25;
 
