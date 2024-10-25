@@ -5,17 +5,17 @@ use std::str::FromStr;
 use hex_literal::hex;
 use sha2::Digest;
 
+use crate::interface_impl::InterfaceImpl;
+use massa_execution_exports::ExecutionConfig;
 use massa_models::address::Address;
 use massa_sc_runtime::Interface;
-use massa_execution_exports::ExecutionConfig;
-use crate::interface_impl::InterfaceImpl;
 
 #[test]
 fn test_hash_sha256() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
-        None
+        None,
     );
     let actual_hash = interface.hash_sha256(b"something").unwrap();
     let expected_hash =
@@ -28,7 +28,7 @@ fn test_evm_signature_verify() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
-        None
+        None,
     );
 
     let _address = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
@@ -58,7 +58,7 @@ fn test_evm_get_pubkey_from_signature() {
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
-        None
+        None,
     );
 
     // let _address = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
@@ -100,16 +100,15 @@ fn test_evm_get_pubkey_from_signature() {
 
 #[test]
 fn test_emit_event() {
-
     // emit 2 events and check that the 2nd event is rejected (because the limit is reached)
-    
+
     let mut config = ExecutionConfig::default();
     config.max_event_per_operation = 1;
 
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
-        Some(config)
+        Some(config),
     );
 
     let res = interface.generate_event("foo".to_string());
@@ -124,16 +123,15 @@ fn test_emit_event() {
 
 #[test]
 fn test_emit_event_too_large() {
-
     // emit 2 events and check that the 2nd event is rejected (because the msg is too large)
 
     let mut config = ExecutionConfig::default();
     config.max_event_size = 10;
-    
+
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
-        Some(config.clone())
+        Some(config.clone()),
     );
 
     let res = interface.generate_event("a".repeat(config.max_event_size).to_string());

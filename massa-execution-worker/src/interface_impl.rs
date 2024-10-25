@@ -88,7 +88,7 @@ impl InterfaceImpl {
     pub fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
-        config: Option<ExecutionConfig>
+        config: Option<ExecutionConfig>,
     ) -> InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
