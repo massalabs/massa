@@ -414,36 +414,35 @@ mod test {
         let emission_index_3 = 3;
         let message_id_3: AsyncMessageId = (rev, emission_slot_3, emission_index_3);
         let msg_3_function_new_1 = "send_max_fee_to".to_string();
-        let msg_update_3_1 = {
-            let mut up = AsyncMessageUpdate::default();
-            up.function = SetOrKeep::Set(msg_3_function_new_1.clone());
-            up
+        let msg_update_3_1 = AsyncMessageUpdate {
+            function: SetOrKeep::Set(msg_3_function_new_1.clone()),
+            .. Default::default()
         };
+        
         let msg_3_function_new_2 = "send_max_fee_to_v2".to_string();
         let msg_3_coins_new = Amount::from_raw(1000);
-        let msg_update_3_2 = {
-            let mut up = AsyncMessageUpdate::default();
-            up.coins = SetOrKeep::Set(msg_3_coins_new);
-            up.function = SetOrKeep::Set(msg_3_function_new_2.clone());
-            up
+        let msg_update_3_2 = AsyncMessageUpdate {
+            coins: SetOrKeep::Set(msg_3_coins_new),
+            function: SetOrKeep::Set(msg_3_function_new_2.clone()),
+            .. Default::default()
         };
 
-        let async_pool_changes_1 = AsyncPoolChanges {
-            0: BTreeMap::from([
-                (message_id.clone(), SetUpdateOrDelete::Delete),
-                (message_id_2.clone(), SetUpdateOrDelete::Set(msg_2.clone())),
+        let async_pool_changes_1 = AsyncPoolChanges(
+            BTreeMap::from([
+                (message_id, SetUpdateOrDelete::Delete),
+                (message_id_2, SetUpdateOrDelete::Set(msg_2.clone())),
                 (
-                    message_id_3.clone(),
-                    SetUpdateOrDelete::Update(msg_update_3_1.clone()),
+                    message_id_3,
+                    SetUpdateOrDelete::Update(msg_update_3_1),
                 ),
             ]),
-        };
-        let async_pool_changes_2 = AsyncPoolChanges {
-            0: BTreeMap::from([(
-                message_id_3.clone(),
+        );
+        let async_pool_changes_2 = AsyncPoolChanges(
+            BTreeMap::from([(
+                message_id_3,
                 SetUpdateOrDelete::Update(msg_update_3_2.clone()),
             )]),
-        };
+        );
 
         let state_changes_1 = StateChanges {
             ledger_changes: Default::default(),
@@ -489,9 +488,9 @@ mod test {
             auto_sell_execution: vec![],
         };
 
-        let active_history = ActiveHistory {
-            0: VecDeque::from([exec_output_1, exec_output_2]),
-        };
+        let active_history = ActiveHistory(
+            VecDeque::from([exec_output_1, exec_output_2]),
+        );
 
         // Test fetch_message with message_id (expect HistorySearchResult::Absent)
         {
