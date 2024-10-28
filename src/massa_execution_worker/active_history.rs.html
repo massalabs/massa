@@ -555,15 +555,6 @@
 <a href="#555" id="555">555</a>
 <a href="#556" id="556">556</a>
 <a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{
@@ -982,33 +973,26 @@
         <span class="kw">let </span>msg_3_function_new_1 = <span class="string">"send_max_fee_to"</span>.to_string();
         <span class="kw">let </span>msg_update_3_1 = AsyncMessageUpdate {
             function: SetOrKeep::Set(msg_3_function_new_1.clone()),
-            .. Default::default()
+            ..Default::default()
         };
-        
+
         <span class="kw">let </span>msg_3_function_new_2 = <span class="string">"send_max_fee_to_v2"</span>.to_string();
         <span class="kw">let </span>msg_3_coins_new = Amount::from_raw(<span class="number">1000</span>);
         <span class="kw">let </span>msg_update_3_2 = AsyncMessageUpdate {
             coins: SetOrKeep::Set(msg_3_coins_new),
             function: SetOrKeep::Set(msg_3_function_new_2.clone()),
-            .. Default::default()
+            ..Default::default()
         };
 
-        <span class="kw">let </span>async_pool_changes_1 = AsyncPoolChanges(
-            BTreeMap::from([
-                (message_id, SetUpdateOrDelete::Delete),
-                (message_id_2, SetUpdateOrDelete::Set(msg_2.clone())),
-                (
-                    message_id_3,
-                    SetUpdateOrDelete::Update(msg_update_3_1),
-                ),
-            ]),
-        );
-        <span class="kw">let </span>async_pool_changes_2 = AsyncPoolChanges(
-            BTreeMap::from([(
-                message_id_3,
-                SetUpdateOrDelete::Update(msg_update_3_2.clone()),
-            )]),
-        );
+        <span class="kw">let </span>async_pool_changes_1 = AsyncPoolChanges(BTreeMap::from([
+            (message_id, SetUpdateOrDelete::Delete),
+            (message_id_2, SetUpdateOrDelete::Set(msg_2.clone())),
+            (message_id_3, SetUpdateOrDelete::Update(msg_update_3_1)),
+        ]));
+        <span class="kw">let </span>async_pool_changes_2 = AsyncPoolChanges(BTreeMap::from([(
+            message_id_3,
+            SetUpdateOrDelete::Update(msg_update_3_2.clone()),
+        )]));
 
         <span class="kw">let </span>state_changes_1 = StateChanges {
             ledger_changes: Default::default(),
@@ -1054,9 +1038,7 @@
             auto_sell_execution: <span class="macro">vec!</span>[],
         };
 
-        <span class="kw">let </span>active_history = ActiveHistory(
-            VecDeque::from([exec_output_1, exec_output_2]),
-        );
+        <span class="kw">let </span>active_history = ActiveHistory(VecDeque::from([exec_output_1, exec_output_2]));
 
         <span class="comment">// Test fetch_message with message_id (expect HistorySearchResult::Absent)
         </span>{
