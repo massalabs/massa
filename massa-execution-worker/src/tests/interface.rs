@@ -102,9 +102,11 @@ fn test_evm_get_pubkey_from_signature() {
 fn test_emit_event() {
     // emit 2 events and check that the 2nd event is rejected (because the limit is reached)
 
-    let mut config = ExecutionConfig::default();
-    config.max_event_per_operation = 1;
-
+    let config = ExecutionConfig {
+        max_event_per_operation: 1,
+        ..Default::default()
+    };
+    
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
@@ -125,8 +127,10 @@ fn test_emit_event() {
 fn test_emit_event_too_large() {
     // emit 2 events and check that the 2nd event is rejected (because the msg is too large)
 
-    let mut config = ExecutionConfig::default();
-    config.max_event_size = 10;
+    let config = ExecutionConfig {
+        max_event_size: 10,
+        ..Default::default()
+    };
 
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
