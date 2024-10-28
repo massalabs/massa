@@ -685,7 +685,7 @@
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) =&gt; {
                     current_changes.entry(message_id).and_modify(|e| {
-                        <span class="kw-2">*</span>e = msg_update.clone();
+                        e.apply(msg_update.clone());
                     });
                     <span class="kw">return </span><span class="bool-val">true</span>;
                 }
