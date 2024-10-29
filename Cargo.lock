@@ -3059,6 +3059,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_event_cache"
+version = "0.1.0"
+dependencies = [
+ "massa_models",
+ "massa_serialization",
+ "more-asserts 0.3.1",
+ "nom",
+ "rand",
+ "rocksdb",
+ "serial_test",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "massa_executed_ops"
 version = "2.4.0"
 dependencies = [
