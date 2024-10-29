@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CRUD_ERROR","OPEN_ERROR"],"struct":["EventCache"]};
