@@ -292,26 +292,27 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
-<a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::Bound::{Excluded, Included};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="comment">// third-party
 </span><span class="kw">use </span>nom::{
-    error::{context, ContextError, ParseError},
-    IResult, Parser,
-    sequence::tuple,
-    multi::length_count,
     bytes::complete::take,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
 <span class="comment">// internal
-</span><span class="kw">use </span>massa_models::output_event::{EventExecutionContext, SCOutputEvent};
-<span class="kw">use </span>massa_models::serialization::{StringDeserializer, StringSerializer};
-<span class="kw">use </span>massa_models::slot::{SlotDeserializer, SlotSerializer};
-<span class="kw">use </span>massa_models::address::{AddressDeserializer, AddressSerializer};
+</span><span class="kw">use </span>massa_models::address::{AddressDeserializer, AddressSerializer};
 <span class="kw">use </span>massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 <span class="kw">use </span>massa_models::operation::{OperationId, OperationIdDeserializer, OperationIdSerializer};
-<span class="kw">use </span>massa_serialization::{Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer};
+<span class="kw">use </span>massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+<span class="kw">use </span>massa_models::serialization::{StringDeserializer, StringSerializer};
+<span class="kw">use </span>massa_models::slot::{SlotDeserializer, SlotSerializer};
+<span class="kw">use </span>massa_serialization::{
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 
 <span class="doccomment">/// Metadata serializer
 </span><span class="kw">pub struct </span>SCOutputEventSerializer {
@@ -345,16 +346,13 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;SCOutputEvent&gt; <span class="kw">for </span>SCOutputEventSerializer {
-    <span class="kw">fn </span>serialize(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        value: <span class="kw-2">&amp;</span>SCOutputEvent,
-        buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
+    <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>SCOutputEvent, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="comment">// context
         </span><span class="self">self</span>.slot_ser.serialize(<span class="kw-2">&amp;</span>value.context.slot, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.block_id_ser.serialize(<span class="kw-2">&amp;</span>value.context.block, buffer)<span class="question-mark">?</span>;
         buffer.push(u8::from(value.context.read_only));
-        <span class="self">self</span>.u64_ser.serialize(<span class="kw-2">&amp;</span>value.context.index_in_slot, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.u64_ser
+            .serialize(<span class="kw-2">&amp;</span>value.context.index_in_slot, buffer)<span class="question-mark">?</span>;
         <span class="comment">// Components
         </span><span class="kw">let </span>call_stack_len_ = value.context.call_stack.len();
         <span class="kw">let </span>call_stack_len = u32::try_from(call_stack_len_).map_err(|<span class="kw">_</span>| {
@@ -368,7 +366,8 @@
         <span class="kw">for </span>address <span class="kw">in </span>value.context.call_stack.iter() {
             <span class="self">self</span>.addr_ser.serialize(address, buffer)<span class="question-mark">?</span>;
         }
-        <span class="self">self</span>.op_id_ser.serialize(<span class="kw-2">&amp;</span>value.context.origin_operation_id, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.op_id_ser
+            .serialize(<span class="kw-2">&amp;</span>value.context.origin_operation_id, buffer)<span class="question-mark">?</span>;
         buffer.push(u8::from(value.context.is_final));
         buffer.push(u8::from(value.context.is_error));
 
@@ -403,8 +402,8 @@
             block_id_deser: OptionDeserializer::new(BlockIdDeserializer::new()),
             op_id_deser: OptionDeserializer::new(OperationIdDeserializer::new()),
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
-                 Included(<span class="number">0</span>),
-                 Included(u64::MAX)
+                Included(<span class="number">0</span>),
+                Included(u64::MAX),
             )),
         }
     }
@@ -425,7 +424,6 @@
                     <span class="self">self</span>.block_id_deser.deserialize(input)
                 }),
                 context(<span class="string">"Failed read_only deserialization"</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
-
                     <span class="kw">let </span>(rem, read_only) = take(<span class="number">1usize</span>)(input)<span class="question-mark">?</span>;
                     <span class="kw">let </span>read_only = <span class="kw">match </span>read_only.first() {
                         <span class="prelude-val">None </span>=&gt; {
@@ -433,7 +431,7 @@
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; <span class="bool-val">false</span>,
                         <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
                     };
@@ -454,7 +452,6 @@
                     <span class="self">self</span>.op_id_deser.deserialize(input)
                 }),
                 context(<span class="string">"Failed is_final deserialization"</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
-
                     <span class="kw">let </span>(rem, read_only) = take(<span class="number">1usize</span>)(input)<span class="question-mark">?</span>;
                     <span class="kw">let </span>read_only = <span class="kw">match </span>read_only.first() {
                         <span class="prelude-val">None </span>=&gt; {
@@ -462,14 +459,13 @@
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; <span class="bool-val">false</span>,
                         <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
                     };
                     IResult::Ok((rem, read_only))
                 }),
                 context(<span class="string">"Failed is_error deserialization"</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
-
                     <span class="kw">let </span>(rem, read_only) = take(<span class="number">1usize</span>)(input)<span class="question-mark">?</span>;
                     <span class="kw">let </span>read_only = <span class="kw">match </span>read_only.first() {
                         <span class="prelude-val">None </span>=&gt; {
@@ -477,7 +473,7 @@
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         <span class="prelude-val">Some</span>(<span class="number">0</span>) =&gt; <span class="bool-val">false</span>,
                         <span class="kw">_ </span>=&gt; <span class="bool-val">true</span>,
                     };
@@ -486,9 +482,10 @@
                 context(<span class="string">"Failed data deserialization"</span>, |input| {
                     <span class="self">self</span>.data_deser.deserialize(input)
                 }),
-            ))
+            )),
         )
-            .map(|(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
+        .map(
+            |(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
                 SCOutputEvent {
                     context: EventExecutionContext {
                         slot,
@@ -502,11 +499,11 @@
                     },
                     data,
                 }
-            })
-            .parse(buffer)
+            },
+        )
+        .parse(buffer)
     }
 }
-
 
 <span class="doccomment">/// SCOutputEvent deserializer args
 </span><span class="attr">#[allow(missing_docs)]
@@ -517,9 +514,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>serial_test::serial;
     <span class="kw">use </span>massa_models::slot::Slot;
     <span class="kw">use </span>massa_serialization::DeserializeError;
+    <span class="kw">use </span>serial_test::serial;
 
     <span class="attr">#[test]
     #[serial]
@@ -541,14 +538,15 @@
         };
 
         <span class="kw">let </span>event_ser = SCOutputEventSerializer::new();
-        <span class="kw">let </span>event_deser = SCOutputEventDeserializer::new(
-            SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>}
-        );
+        <span class="kw">let </span>event_deser =
+            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>});
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>buffer).unwrap();
 
-        <span class="kw">let </span>(rem, event_new) = event_deser.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer).unwrap();
+        <span class="kw">let </span>(rem, event_new) = event_deser
+            .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
+            .unwrap();
 
         <span class="macro">assert_eq!</span>(event.context, event_new.context);
         <span class="macro">assert_eq!</span>(event.data, event_new.data);
@@ -558,7 +556,6 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_sc_output_event_ser_der_err() {
-
         <span class="comment">// Test serialization / deserialization with a slot with thread too high
 
         </span><span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">99</span>);
@@ -578,9 +575,8 @@
         };
 
         <span class="kw">let </span>event_ser = SCOutputEventSerializer::new();
-        <span class="kw">let </span>event_deser = SCOutputEventDeserializer::new(
-            SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>}
-        );
+        <span class="kw">let </span>event_deser =
+            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>});
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>buffer).unwrap();
@@ -589,4 +585,5 @@
         <span class="comment">// Expect deserialization to fail (slot thread too high)
         </span><span class="macro">assert!</span>(res.is_err());
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

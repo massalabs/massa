@@ -2309,6 +2309,17 @@
 <a href="#2309" id="2309">2309</a>
 <a href="#2310" id="2310">2310</a>
 <a href="#2311" id="2311">2311</a>
+<a href="#2312" id="2312">2312</a>
+<a href="#2313" id="2313">2313</a>
+<a href="#2314" id="2314">2314</a>
+<a href="#2315" id="2315">2315</a>
+<a href="#2316" id="2316">2316</a>
+<a href="#2317" id="2317">2317</a>
+<a href="#2318" id="2318">2318</a>
+<a href="#2319" id="2319">2319</a>
+<a href="#2320" id="2320">2320</a>
+<a href="#2321" id="2321">2321</a>
+<a href="#2322" id="2322">2322</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2327,10 +2338,10 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
-    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionError,
+    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
@@ -2338,6 +2349,8 @@
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 
+<span class="kw">use </span>massa_event_cache::config::EventCacheConfig;
+<span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -2420,7 +2433,8 @@
     <span class="comment">// a cursor pointing to the highest executed final slot
     </span><span class="kw">pub </span>final_cursor: Slot,
     <span class="comment">// store containing execution events that became final
-    </span>final_events: EventStore,
+    // final_events: EventStore,
+    </span>final_events_cache: EventCacheController,
     <span class="comment">// final state with atomic R/W access
     </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     <span class="comment">// execution context (see documentation in context.rs)
@@ -2509,6 +2523,14 @@
             execution_context.clone(),
         ));
 
+        <span class="kw">let </span>event_cache_controller = EventCacheController::new(EventCacheConfig {
+            event_cache_path: config.event_cache_path.clone(),
+            event_cache_size: config.event_cache_size,
+            snip_amount: config.event_snip_amount,
+            max_event_length: config.event_max_len,
+            thread_count: config.thread_count,
+        });
+
         <span class="comment">// build the execution state
         </span>ExecutionState {
             final_state,
@@ -2517,7 +2539,8 @@
             <span class="comment">// empty execution output history: it is not recovered through bootstrap
             </span>active_history,
             <span class="comment">// empty final event store: it is not recovered through bootstrap
-            </span>final_events: Default::default(),
+            // final_events: Default::default(),
+            </span>final_events_cache: event_cache_controller,
             <span class="comment">// no active slots executed yet: set active_cursor to the last final block
             </span>active_cursor: last_final_slot,
             final_cursor: last_final_slot,
@@ -2606,8 +2629,9 @@
 
         <span class="comment">// append generated events to the final event store
         </span>exec_out.events.finalize();
-        <span class="self">self</span>.final_events.extend(exec_out.events);
-        <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
+        <span class="kw">let </span>final_events_count = exec_out.events.<span class="number">0</span>.len();
+        <span class="self">self</span>.final_events_cache
+            .save_events(exec_out.events.<span class="number">0</span>.into_iter(), <span class="prelude-val">Some</span>(final_events_count));
 
         <span class="comment">// update the prometheus metrics
         </span><span class="self">self</span>.massa_metrics
@@ -4405,9 +4429,8 @@
     </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
         <span class="kw">match </span>filter.is_final {
             <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="self">self
-                </span>.final_events
+                </span>.final_events_cache
                 .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
-                .into_iter()
                 .collect(),
             <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="self">self
                 </span>.active_history
@@ -4417,9 +4440,8 @@
                 .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter))
                 .collect(),
             <span class="prelude-val">None </span>=&gt; <span class="self">self
-                </span>.final_events
+                </span>.final_events_cache
                 .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
-                .into_iter()
                 .chain(
                     <span class="self">self</span>.active_history
                         .read()

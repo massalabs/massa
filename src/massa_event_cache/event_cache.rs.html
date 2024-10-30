@@ -245,18 +245,236 @@
 <a href="#245" id="245">245</a>
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
-</pre></div><pre class="rust"><code><span class="comment">// std
-</span><span class="kw">use </span>std::path::PathBuf;
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::max;
+<span class="comment">// std
+</span><span class="kw">use </span>nom::AsBytes;
+<span class="kw">use </span>std::path::PathBuf;
 <span class="comment">// third-party
-</span><span class="kw">use </span>rocksdb::{
-    DBIterator, IteratorMode, WriteBatch, DB};
-<span class="kw">use </span>tracing::debug;
+</span><span class="kw">use </span><span class="kw">crate</span>::ser_deser::{
+    SCOutputEventDeserializer, SCOutputEventDeserializerArgs, SCOutputEventSerializer,
+};
+<span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
-<span class="kw">use </span>massa_serialization::Serializer;
-<span class="kw">use </span><span class="kw">crate</span>::ser_deser::{SCOutputEventDeserializer, SCOutputEventDeserializerArgs, SCOutputEventSerializer};
+<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+<span class="kw">use </span>rocksdb::{DBIterator, IteratorMode, WriteBatch, DB};
+<span class="kw">use </span>tracing::debug;
 
 <span class="kw">const </span>OPEN_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb open operation failed"</span>;
 <span class="kw">const </span>CRUD_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb crud operation failed"</span>;
+<span class="kw">const </span>EVENT_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: event deserialization failed"</span>;
 
 <span class="doccomment">/// Module key formatting macro
 </span><span class="attr">#[macro_export]
@@ -285,7 +503,12 @@
 
 <span class="kw">impl </span>EventCache {
     <span class="doccomment">/// Create a new EventCache
-    </span><span class="kw">pub fn </span>new(path: PathBuf, max_entry_count: usize, snip_amount: usize, thread_count: u8) -&gt; <span class="self">Self </span>{
+    </span><span class="kw">pub fn </span>new(
+        path: PathBuf,
+        max_entry_count: usize,
+        snip_amount: usize,
+        thread_count: u8,
+    ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>db = DB::open_default(path).expect(OPEN_ERROR);
         <span class="kw">let </span>entry_count = db.iterator(IteratorMode::Start).count();
 
@@ -295,29 +518,27 @@
             max_entry_count,
             snip_amount,
             event_ser: SCOutputEventSerializer::new(),
-            event_deser: SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count }),
+            event_deser: SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
+                thread_count,
+            }),
         }
     }
-    
-    <span class="doccomment">/// Insert a new event in the cache
+
+    <span class="attr">#[allow(dead_code)]
+    </span><span class="doccomment">/// Insert a new event in the cache
     </span><span class="kw">pub fn </span>insert(<span class="kw-2">&amp;mut </span><span class="self">self</span>, event: SCOutputEvent) {
-        
         <span class="kw">if </span><span class="self">self</span>.entry_count &gt;= <span class="self">self</span>.max_entry_count {
-            <span class="self">self</span>.snip();
+            <span class="self">self</span>.snip(<span class="prelude-val">None</span>);
         }
 
         <span class="kw">let </span>event_key = {
-            <span class="kw">let </span><span class="kw-2">mut </span>event_key = event
-                .context
-                .slot
-                .to_bytes_key()
-                .to_vec();
+            <span class="kw">let </span><span class="kw-2">mut </span>event_key = event.context.slot.to_bytes_key().to_vec();
             event_key.extend(event.context.index_in_slot.to_be_bytes());
             event_key
         };
         <span class="kw">let </span><span class="kw-2">mut </span>event_buffer = Vec::new();
         <span class="self">self</span>.event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>event_buffer).unwrap();
-        
+
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         batch.put(event_key, event_buffer);
         <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
@@ -326,27 +547,118 @@
         <span class="macro">debug!</span>(<span class="string">"(Event insert) entry_count is: {}"</span>, <span class="self">self</span>.entry_count);
     }
 
+    <span class="doccomment">/// Insert new events in the cache
+    ///
+    /// For performance reason, pass events_len to avoid cloning the iterator
+    </span><span class="kw">pub fn </span>insert_multi_it(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        events: <span class="kw">impl </span>Iterator&lt;Item = SCOutputEvent&gt; + Clone,
+        events_len: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    ) {
+        <span class="kw">let </span>events_len = events_len.unwrap_or_else(|| events.clone().count());
+
+        <span class="kw">if </span><span class="self">self</span>.entry_count + events_len &gt;= <span class="self">self</span>.max_entry_count {
+            <span class="kw">let </span>snip_amount = max(<span class="self">self</span>.snip_amount, events_len);
+            <span class="self">self</span>.snip(<span class="prelude-val">Some</span>(snip_amount));
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
+        <span class="kw">for </span>event <span class="kw">in </span>events {
+            <span class="kw">let </span>event_key = {
+                <span class="kw">let </span><span class="kw-2">mut </span>event_key = event.context.slot.to_bytes_key().to_vec();
+                event_key.extend(event.context.index_in_slot.to_be_bytes());
+                event_key
+            };
+            <span class="kw">let </span><span class="kw-2">mut </span>event_buffer = Vec::new();
+            <span class="self">self</span>.event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>event_buffer).unwrap();
+
+            batch.put(event_key, event_buffer);
+        }
+        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
+        <span class="self">self</span>.entry_count = <span class="self">self</span>.entry_count.saturating_add(events_len);
+
+        <span class="macro">debug!</span>(<span class="string">"(Events insert) entry_count is: {}"</span>, <span class="self">self</span>.entry_count);
+    }
+
     <span class="kw">fn </span>db_iter(<span class="kw-2">&amp;</span><span class="self">self</span>, mode: <span class="prelude-ty">Option</span>&lt;IteratorMode&gt;) -&gt; DBIterator {
         <span class="self">self</span>.db.iterator(mode.unwrap_or(IteratorMode::Start))
     }
 
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_filtered_sc_output_events&lt;<span class="lifetime">'b</span>, <span class="lifetime">'a</span>: <span class="lifetime">'b</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
+        filter: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>EventFilter,
+    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = SCOutputEvent&gt; + <span class="lifetime">'b </span>{
+        <span class="self">self</span>.db_iter(<span class="prelude-val">Some</span>(IteratorMode::Start)).filter_map(|kvb| {
+            <span class="kw">let </span>kvb = kvb.unwrap();
+            <span class="kw">let </span>(_rem, event) = <span class="self">self
+                </span>.event_deser
+                .deserialize::&lt;DeserializeError&gt;(kvb.<span class="number">1</span>.as_bytes())
+                .expect(EVENT_DESER_ERROR);
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(start) = filter.start {
+                <span class="kw">if </span>event.context.slot &lt; start {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+            }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = filter.end {
+                <span class="kw">if </span>event.context.slot &gt;= end {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+            }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_final) = filter.is_final {
+                <span class="kw">if </span>event.context.is_final != is_final {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+            }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_error) = filter.is_error {
+                <span class="kw">if </span>event.context.is_error != is_error {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+            }
+            <span class="kw">match </span>(
+                filter.original_caller_address,
+                event.context.call_stack.front(),
+            ) {
+                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+            <span class="kw">match </span>(filter.emitter_address, event.context.call_stack.back()) {
+                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != <span class="kw-2">*</span>addr2 =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+            <span class="kw">match </span>(
+                filter.original_operation_id,
+                event.context.origin_operation_id,
+            ) {
+                (<span class="prelude-val">Some</span>(addr1), <span class="prelude-val">Some</span>(addr2)) <span class="kw">if </span>addr1 != addr2 =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="kw">return </span><span class="prelude-val">None</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+            <span class="prelude-val">Some</span>(event)
+        })
+    }
+
     <span class="doccomment">/// Try to remove as much as `self.amount_to_snip` entries from the db
-    </span><span class="kw">fn </span>snip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    </span><span class="kw">fn </span>snip(<span class="kw-2">&amp;mut </span><span class="self">self</span>, snip_amount: <span class="prelude-ty">Option</span>&lt;usize&gt;) {
         <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator(IteratorMode::Start);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         <span class="kw">let </span><span class="kw-2">mut </span>snipped_count: usize = <span class="number">0</span>;
-        
-        <span class="kw">while </span>snipped_count &lt; <span class="self">self</span>.snip_amount {
+        <span class="kw">let </span>snip_amount = snip_amount.unwrap_or(<span class="self">self</span>.snip_amount);
+
+        <span class="kw">while </span>snipped_count &lt; snip_amount {
             <span class="kw">let </span>key_value = iter.next();
             <span class="kw">if </span>key_value.is_none() {
                 <span class="kw">break</span>;
             }
-            <span class="comment">// safe to unwrap as we just tested it
-            </span><span class="kw">let </span>kvb = key_value.unwrap().unwrap();
+            <span class="kw">let </span>kvb = key_value
+                .unwrap() <span class="comment">// safe to unwrap - just tested it
+                </span>.expect(EVENT_DESER_ERROR);
             batch.delete(kvb.<span class="number">0</span>);
             snipped_count += <span class="number">1</span>;
         }
-        
+
         <span class="comment">// delete the key and reduce entry_count
         </span><span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
         <span class="self">self</span>.entry_count -= snipped_count;
@@ -357,14 +669,14 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="comment">// third-party
-    </span><span class="kw">use </span>tempfile::TempDir;
-    <span class="kw">use </span>serial_test::serial;
-    <span class="kw">use </span>more_asserts::assert_gt;
-    <span class="kw">use </span>rand::thread_rng;
+    </span><span class="kw">use </span>more_asserts::assert_gt;
     <span class="kw">use </span>rand::seq::SliceRandom;
+    <span class="kw">use </span>rand::thread_rng;
+    <span class="kw">use </span>serial_test::serial;
+    <span class="kw">use </span>tempfile::TempDir;
     <span class="comment">// internal
-    </span><span class="kw">use </span>massa_models::output_event::EventExecutionContext;
-    <span class="kw">use </span>massa_models::config::THREAD_COUNT;
+    </span><span class="kw">use </span>massa_models::config::THREAD_COUNT;
+    <span class="kw">use </span>massa_models::output_event::EventExecutionContext;
     <span class="kw">use </span>massa_models::slot::Slot;
 
     <span class="kw">fn </span>setup() -&gt; EventCache {
@@ -375,9 +687,8 @@
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_db_insert_order() {
-        
         <span class="comment">// Test that the data will be correctly ordered (when iterated from start) in db
-        
+
         </span><span class="kw">let </span><span class="kw-2">mut </span>cache = setup();
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
         <span class="kw">let </span>index_1_0 = <span class="number">0</span>;
@@ -403,7 +714,7 @@
                 event
             })
             .collect::&lt;Vec&lt;SCOutputEvent&gt;&gt;();
-        
+
         <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span>event_slot_2 = {
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
@@ -411,7 +722,7 @@
             event.context.index_in_slot = <span class="number">0u64</span>;
             event
         };
-        <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>; 
+        <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
         <span class="kw">let </span>event_slot_2_2 = {
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
@@ -420,13 +731,13 @@
         };
         events.push(event_slot_2.clone());
         events.push(event_slot_2_2.clone());
-        <span class="comment">// Randomize the events so we insert in random orders in DB 
+        <span class="comment">// Randomize the events so we insert in random orders in DB
         </span>events.shuffle(<span class="kw-2">&amp;mut </span>thread_rng());
 
         <span class="kw">for </span>event <span class="kw">in </span>events {
             cache.insert(event);
         }
-        
+
         <span class="comment">// Now check that we are going to iter in correct order
         </span><span class="kw">let </span>db_it = cache.db_iter(<span class="prelude-val">Some</span>(IteratorMode::Start));
         <span class="kw">let </span><span class="kw-2">mut </span>prev_slot = <span class="prelude-val">None</span>;
@@ -438,7 +749,7 @@
                 <span class="kw">let </span>event_index = u64::from_be_bytes(bytes[<span class="number">9</span>..].try_into().unwrap());
                 <span class="kw">if </span>prev_slot.is_some() &amp;&amp; prev_event_index.is_some() {
                     <span class="macro">assert_gt!</span>(
-                        (slot, event_index), 
+                        (slot, event_index),
                         (prev_slot.unwrap(), prev_event_index.unwrap())
                     );
                 } <span class="kw">else </span>{
@@ -449,17 +760,16 @@
                 prev_event_index = <span class="prelude-val">Some</span>(event_index);
             }
         }
-        
+
         <span class="macro">assert_eq!</span>(prev_slot, <span class="prelude-val">Some</span>(slot_2));
         <span class="macro">assert_eq!</span>(prev_event_index, <span class="prelude-val">Some</span>(index_2_2));
     }
-    
+
     <span class="attr">#[test]
     #[serial]
     </span><span class="kw">fn </span>test_insert_more_than_max_entry() {
+        <span class="comment">// Test insert (and snip) so we do no store too much event in cache
 
-        <span class="comment">// Test insert (and snip) so we do no store too much event in cache 
-        
         </span><span class="kw">let </span><span class="kw-2">mut </span>cache = setup();
         <span class="kw">let </span>event = SCOutputEvent {
             context: EventExecutionContext {
@@ -474,7 +784,7 @@
             },
             data: <span class="string">"message foo bar"</span>.to_string(),
         };
-        
+
         <span class="comment">// fill the db: add cache.max_entry_count entries
         </span><span class="kw">for </span>count <span class="kw">in </span><span class="number">0</span>..cache.max_entry_count {
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
@@ -484,11 +794,128 @@
         <span class="macro">assert_eq!</span>(cache.entry_count, cache.max_entry_count);
 
         <span class="comment">// insert one more entry
-        </span>cache.insert(event.clone());
+        </span><span class="kw">let </span><span class="kw-2">mut </span>event_last = event.clone();
+        event_last.context.index_in_slot = u64::MAX;
+        cache.insert(event_last);
         <span class="macro">assert_eq!</span>(
             cache.entry_count,
             cache.max_entry_count - cache.snip_amount + <span class="number">1
         </span>);
         <span class="macro">dbg!</span>(cache.entry_count);
     }
-}</code></pre></div></section></main></body></html>
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_insert_more_than_max_entry_2() {
+        <span class="comment">// Test insert_multi_it (and snip) so we do no store too much event in cache
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>cache = setup();
+        <span class="kw">let </span>event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(<span class="number">1</span>, <span class="number">0</span>),
+                block: <span class="prelude-val">None</span>,
+                read_only: <span class="bool-val">false</span>,
+                index_in_slot: <span class="number">0</span>,
+                call_stack: Default::default(),
+                origin_operation_id: <span class="prelude-val">None</span>,
+                is_final: <span class="bool-val">true</span>,
+                is_error: <span class="bool-val">false</span>,
+            },
+            data: <span class="string">"message foo bar"</span>.to_string(),
+        };
+
+        <span class="kw">let </span>it = (<span class="number">0</span>..cache.max_entry_count).map(|i| {
+            <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
+            event.context.index_in_slot = i <span class="kw">as </span>u64;
+            event
+        });
+        cache.insert_multi_it(it, <span class="prelude-val">Some</span>(cache.max_entry_count));
+
+        <span class="macro">assert_eq!</span>(cache.entry_count, cache.max_entry_count);
+
+        <span class="comment">// insert one more entry
+        </span><span class="kw">let </span><span class="kw-2">mut </span>event_last = event.clone();
+        event_last.context.index_in_slot = u64::MAX;
+        cache.insert(event_last);
+        <span class="macro">assert_eq!</span>(
+            cache.entry_count,
+            cache.max_entry_count - cache.snip_amount + <span class="number">1
+        </span>);
+        <span class="macro">dbg!</span>(cache.entry_count);
+    }
+
+    <span class="attr">#[test]
+    #[serial]
+    </span><span class="kw">fn </span>test_event_filter() {
+        <span class="comment">// Test that the data will be correctly ordered (when iterated from start) in db
+
+        </span><span class="kw">let </span><span class="kw-2">mut </span>cache = setup();
+        <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
+        <span class="kw">let </span>index_1_0 = <span class="number">0</span>;
+        <span class="kw">let </span>event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: slot_1,
+                block: <span class="prelude-val">None</span>,
+                read_only: <span class="bool-val">false</span>,
+                index_in_slot: index_1_0,
+                call_stack: Default::default(),
+                origin_operation_id: <span class="prelude-val">None</span>,
+                is_final: <span class="bool-val">true</span>,
+                is_error: <span class="bool-val">false</span>,
+            },
+            data: <span class="string">"message foo bar"</span>.to_string(),
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>events = (<span class="number">0</span>..cache.max_entry_count - <span class="number">5</span>)
+            .into_iter()
+            .map(|i| {
+                <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
+                event.context.index_in_slot = i <span class="kw">as </span>u64;
+                event
+            })
+            .collect::&lt;Vec&lt;SCOutputEvent&gt;&gt;();
+
+        <span class="kw">let </span>slot_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
+        <span class="kw">let </span>index_2_1 = <span class="number">0u64</span>;
+        <span class="kw">let </span>event_slot_2 = {
+            <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_1;
+            event
+        };
+        <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
+        <span class="kw">let </span>event_slot_2_2 = {
+            <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_2;
+            event
+        };
+        events.push(event_slot_2.clone());
+        events.push(event_slot_2_2.clone());
+        <span class="comment">// Randomize the events so we insert in random orders in DB
+        </span>events.shuffle(<span class="kw-2">&amp;mut </span>thread_rng());
+
+        <span class="kw">let </span>events_len = events.len();
+        cache.insert_multi_it(events.into_iter(), <span class="prelude-val">Some</span>(events_len));
+
+        <span class="kw">let </span>filter_1 = EventFilter {
+            start: <span class="prelude-val">Some</span>(Slot::new(<span class="number">2</span>, <span class="number">0</span>)),
+            end: <span class="prelude-val">None</span>,
+            emitter_address: <span class="prelude-val">None</span>,
+            original_caller_address: <span class="prelude-val">None</span>,
+            original_operation_id: <span class="prelude-val">None</span>,
+            is_final: <span class="prelude-val">None</span>,
+            is_error: <span class="prelude-val">None</span>,
+        };
+        <span class="kw">let </span>filtered_events_1 = cache
+            .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1)
+            .collect::&lt;Vec&lt;SCOutputEvent&gt;&gt;();
+
+        <span class="macro">assert_eq!</span>(filtered_events_1.len(), <span class="number">2</span>);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.slot, slot_2);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.index_in_slot, index_2_1);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">1</span>].context.slot, slot_2);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">1</span>].context.index_in_slot, index_2_2);
+    }
+}
+</code></pre></div></section></main></body></html>
