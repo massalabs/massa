@@ -401,7 +401,7 @@ pub const DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
 pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 8;
 /// deferred call min gas increment (1 nanomassa)
 pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
-/// deferred call max gas cost (10 nanomassa)
+/// deferred call min gas cost (10 nanomassa)
 pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
 /// deferred call global overbooking penalty
 pub const DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000);
