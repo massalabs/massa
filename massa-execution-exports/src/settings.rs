@@ -118,6 +118,4 @@ pub struct ExecutionConfig {
     pub event_cache_size: usize,
     /// Amount of entries removed when `event_cache_size` is reached
     pub event_snip_amount: usize,
-    /// Max event data (msg) length for 1 event
-    pub event_max_len: u64,
 }

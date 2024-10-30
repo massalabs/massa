@@ -566,10 +566,9 @@ async fn launch(
         condom_limits,
         deferred_calls_config,
         max_event_per_operation: MAX_EVENT_PER_OPERATION,
-        event_cache_path: Default::default(),
-        event_cache_size: 0,
-        event_snip_amount: 0,
-        event_max_len: 0,
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        event_cache_size: SETTINGS.execution.event_cache_size,
+        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     let execution_channels = ExecutionChannels {

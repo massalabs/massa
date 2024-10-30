@@ -36,6 +36,10 @@ pub struct ExecutionSettings {
     /// slot execution traces channel capacity
     pub broadcast_slot_execution_traces_channel_capacity: usize,
     pub execution_traces_limit: usize,
+
+    pub event_cache_path: PathBuf,
+    pub event_cache_size: usize,
+    pub event_snip_amount: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]

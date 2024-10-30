@@ -109,7 +109,6 @@ impl Default for ExecutionConfig {
             event_cache_path,
             event_cache_size: 100,
             event_snip_amount: 10,
-            event_max_len: 512,
         }
     }
 }

@@ -209,7 +209,7 @@ impl ExecutionState {
             event_cache_path: config.event_cache_path.clone(),
             event_cache_size: config.event_cache_size,
             snip_amount: config.event_snip_amount,
-            max_event_length: config.event_max_len,
+            max_event_length: config.max_event_size as u64,
             thread_count: config.thread_count,
         });
 
