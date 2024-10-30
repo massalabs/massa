@@ -544,6 +544,9 @@ async fn launch(
         max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
         condom_limits,
         max_event_per_operation: MAX_EVENT_PER_OPERATION,
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        event_cache_size: SETTINGS.execution.event_cache_size,
+        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     let execution_channels = ExecutionChannels {
