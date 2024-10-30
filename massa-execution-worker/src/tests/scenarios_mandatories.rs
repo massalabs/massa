@@ -1681,12 +1681,12 @@ fn deferred_call_register() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // assert sender was debited ( -10 coins) and -5.25 for fees
+            // assert sender was debited ( -10 coins) and -5.2866 for fees
             match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("75.398235312").unwrap())
+                        SetOrKeep::Set(Amount::from_str("75.361635312").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -1743,7 +1743,7 @@ fn deferred_call_register() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("110").unwrap())
+                        SetOrKeep::Set(Amount::from_str("110.1111").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -2258,7 +2258,7 @@ fn deferred_call_quote() {
         .module_controller
         .get_filtered_sc_output_event(EventFilter::default());
 
-    assert_eq!(events[0].data, "100000000");
+    assert_eq!(events[0].data, "136600000");
 }
 
 /// Context

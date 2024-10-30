@@ -496,18 +496,17 @@ impl SpeculativeDeferredCallRegistry {
         )?;
 
         // Storage cost for the parameters
-        let storage_cost = self.get_storage_cost_by_size(params_size);
+        let storage_cost = DeferredCall::get_storage_cost(
+            self.config.ledger_cost_per_byte,
+            params_size,
+            self.config.max_function_name_length,
+        );
 
         // return the fee
         Ok(integral_fee
             .saturating_add(global_overbooking_fee)
             .saturating_add(slot_overbooking_fee)
             .saturating_add(storage_cost))
-    }
-
-    /// Get the storage cost for a given size
-    pub fn get_storage_cost_by_size(&self, size: u64) -> Amount {
-        self.config.ledger_cost_per_byte.saturating_mul_u64(size)
     }
 
     /// Register a new call
@@ -708,7 +707,7 @@ mod tests {
                     0,
                 )
                 .unwrap(),
-            Amount::from_str("0.000000079").unwrap()
+            Amount::from_str("0.036600079").unwrap()
         );
 
         // 10Ko params size
@@ -724,9 +723,7 @@ mod tests {
                     10_000,
                 )
                 .unwrap(),
-            Amount::from_str("1.000000079").unwrap()
+            Amount::from_str("1.036600079").unwrap()
         );
-
-        // TODO : add more tests with different values and check the results of the fee
     }
 }

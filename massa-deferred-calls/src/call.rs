@@ -74,6 +74,19 @@ impl DeferredCall {
     pub fn get_effective_gas(&self, alloc_gas_cost: u64) -> u64 {
         self.max_gas.saturating_add(alloc_gas_cost)
     }
+
+    /// Get the storage cost for a call
+    pub fn get_storage_cost(
+        cost_per_byte: Amount,
+        params_size: u64,
+        max_function_name_length: u16,
+    ) -> Amount {
+        // 35 (sender_address) + 16 (target_slot) + 35 (target_address) + target_function.len() + params_size + 8 (coins) + 8 (max_gas) + 8 (fee) + 1 (cancelled)
+        let total_size = params_size
+            .saturating_add(max_function_name_length as u64)
+            .saturating_add(111); // 35 + 16 + 35 + 8 + 8 + 8 + 1
+        cost_per_byte.saturating_mul_u64(total_size)
+    }
 }
 
 impl From<DeferredCall> for grpc_api::DeferredCallInfoEntry {

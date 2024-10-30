@@ -1251,12 +1251,14 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             // refund the sender for the storage costs
-            let amount = self
-                .config
-                .storage_costs_constants
-                .ledger_cost_per_byte
-                .saturating_mul_u64(call.parameters.len() as u64);
-            context.transfer_coins(None, Some(call.sender_address), amount, false)?;
+            let amount = DeferredCall::get_storage_cost(
+                self.config.storage_costs_constants.ledger_cost_per_byte,
+                call.parameters.len() as u64,
+                self.config.max_function_length,
+            );
+            context
+                .transfer_coins(None, Some(call.sender_address), amount, false)
+                .expect("Error refunding storage costs");
 
             context.get_snapshot()
         };

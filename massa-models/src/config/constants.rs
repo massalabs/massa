@@ -196,7 +196,7 @@ pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
 /// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
 /// Maximum length function name in call SC
-pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
+pub const MAX_FUNCTION_NAME_LENGTH: u16 = 255;
 /// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
