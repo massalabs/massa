@@ -106,7 +106,7 @@ fn test_emit_event() {
         max_event_per_operation: 1,
         ..Default::default()
     };
-    
+
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
