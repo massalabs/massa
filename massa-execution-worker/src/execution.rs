@@ -16,10 +16,10 @@ use crate::stats::ExecutionStatsCounter;
 use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
 use massa_execution_exports::{
-    ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
-    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionError,
+    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
