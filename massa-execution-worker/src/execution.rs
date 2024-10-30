@@ -17,7 +17,7 @@ use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
 use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
+    ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
     ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
     ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
     ReadOnlyExecutionTarget, SlotExecutionOutput,
@@ -28,6 +28,8 @@ use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
 use massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 
+use massa_event_cache::config::EventCacheConfig;
+use massa_event_cache::controller::EventCacheController;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -113,7 +115,8 @@ pub(crate) struct ExecutionState {
     // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
     // store containing execution events that became final
-    final_events: EventStore,
+    // final_events: EventStore,
+    final_events_cache: EventCacheController,
     // final state with atomic R/W access
     final_state: Arc<RwLock<dyn FinalStateController>>,
     // execution context (see documentation in context.rs)
@@ -202,6 +205,14 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
+        let event_cache_controller = EventCacheController::new(EventCacheConfig {
+            event_cache_path: config.event_cache_path.clone(),
+            event_cache_size: config.event_cache_size,
+            snip_amount: config.event_snip_amount,
+            max_event_length: config.event_max_len,
+            thread_count: config.thread_count,
+        });
+
         // build the execution state
         ExecutionState {
             final_state,
@@ -210,7 +221,8 @@ impl ExecutionState {
             // empty execution output history: it is not recovered through bootstrap
             active_history,
             // empty final event store: it is not recovered through bootstrap
-            final_events: Default::default(),
+            // final_events: Default::default(),
+            final_events_cache: event_cache_controller,
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
@@ -299,8 +311,9 @@ impl ExecutionState {
 
         // append generated events to the final event store
         exec_out.events.finalize();
-        self.final_events.extend(exec_out.events);
-        self.final_events.prune(self.config.max_final_events);
+        let final_events_count = exec_out.events.0.len();
+        self.final_events_cache
+            .save_events(exec_out.events.0.into_iter(), Some(final_events_count));
 
         // update the prometheus metrics
         self.massa_metrics
@@ -2271,9 +2284,8 @@ impl ExecutionState {
     pub fn get_filtered_sc_output_event(&self, filter: EventFilter) -> Vec<SCOutputEvent> {
         match filter.is_final {
             Some(true) => self
-                .final_events
+                .final_events_cache
                 .get_filtered_sc_output_events(&filter)
-                .into_iter()
                 .collect(),
             Some(false) => self
                 .active_history
@@ -2283,9 +2295,8 @@ impl ExecutionState {
                 .flat_map(|item| item.events.get_filtered_sc_output_events(&filter))
                 .collect(),
             None => self
-                .final_events
+                .final_events_cache
                 .get_filtered_sc_output_events(&filter)
-                .into_iter()
                 .chain(
                     self.active_history
                         .read()

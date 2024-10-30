@@ -3282,6 +3282,7 @@ dependencies = [
  "massa_db_exports",
  "massa_db_worker",
  "massa_deferred_calls",
+ "massa_event_cache",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",

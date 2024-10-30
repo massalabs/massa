@@ -2,20 +2,23 @@ use std::collections::Bound::{Excluded, Included};
 use std::collections::VecDeque;
 // third-party
 use nom::{
-    error::{context, ContextError, ParseError},
-    IResult, Parser,
-    sequence::tuple,
-    multi::length_count,
     bytes::complete::take,
+    error::{context, ContextError, ParseError},
+    multi::length_count,
+    sequence::tuple,
+    IResult, Parser,
 };
 // internal
-use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
-use massa_models::serialization::{StringDeserializer, StringSerializer};
-use massa_models::slot::{SlotDeserializer, SlotSerializer};
 use massa_models::address::{AddressDeserializer, AddressSerializer};
 use massa_models::block_id::{BlockId, BlockIdDeserializer, BlockIdSerializer};
 use massa_models::operation::{OperationId, OperationIdDeserializer, OperationIdSerializer};
-use massa_serialization::{Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer};
+use massa_models::output_event::{EventExecutionContext, SCOutputEvent};
+use massa_models::serialization::{StringDeserializer, StringSerializer};
+use massa_models::slot::{SlotDeserializer, SlotSerializer};
+use massa_serialization::{
+    Deserializer, OptionDeserializer, OptionSerializer, SerializeError, Serializer,
+    U32VarIntDeserializer, U32VarIntSerializer, U64VarIntDeserializer, U64VarIntSerializer,
+};
 
 /// Metadata serializer
 pub struct SCOutputEventSerializer {
@@ -49,16 +52,13 @@ impl Default for SCOutputEventSerializer {
 }
 
 impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
-    fn serialize(
-        &self,
-        value: &SCOutputEvent,
-        buffer: &mut Vec<u8>,
-    ) -> Result<(), SerializeError> {
+    fn serialize(&self, value: &SCOutputEvent, buffer: &mut Vec<u8>) -> Result<(), SerializeError> {
         // context
         self.slot_ser.serialize(&value.context.slot, buffer)?;
         self.block_id_ser.serialize(&value.context.block, buffer)?;
         buffer.push(u8::from(value.context.read_only));
-        self.u64_ser.serialize(&value.context.index_in_slot, buffer)?;
+        self.u64_ser
+            .serialize(&value.context.index_in_slot, buffer)?;
         // Components
         let call_stack_len_ = value.context.call_stack.len();
         let call_stack_len = u32::try_from(call_stack_len_).map_err(|_| {
@@ -72,7 +72,8 @@ impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
         for address in value.context.call_stack.iter() {
             self.addr_ser.serialize(address, buffer)?;
         }
-        self.op_id_ser.serialize(&value.context.origin_operation_id, buffer)?;
+        self.op_id_ser
+            .serialize(&value.context.origin_operation_id, buffer)?;
         buffer.push(u8::from(value.context.is_final));
         buffer.push(u8::from(value.context.is_error));
 
@@ -107,8 +108,8 @@ impl SCOutputEventDeserializer {
             block_id_deser: OptionDeserializer::new(BlockIdDeserializer::new()),
             op_id_deser: OptionDeserializer::new(OperationIdDeserializer::new()),
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
-                 Included(0),
-                 Included(u64::MAX)
+                Included(0),
+                Included(u64::MAX),
             )),
         }
     }
@@ -129,7 +130,6 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                     self.block_id_deser.deserialize(input)
                 }),
                 context("Failed read_only deserialization", |input: &'a [u8]| {
-
                     let (rem, read_only) = take(1usize)(input)?;
                     let read_only = match read_only.first() {
                         None => {
@@ -137,7 +137,7 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         Some(0) => false,
                         _ => true,
                     };
@@ -158,7 +158,6 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                     self.op_id_deser.deserialize(input)
                 }),
                 context("Failed is_final deserialization", |input: &'a [u8]| {
-
                     let (rem, read_only) = take(1usize)(input)?;
                     let read_only = match read_only.first() {
                         None => {
@@ -166,14 +165,13 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         Some(0) => false,
                         _ => true,
                     };
                     IResult::Ok((rem, read_only))
                 }),
                 context("Failed is_error deserialization", |input: &'a [u8]| {
-
                     let (rem, read_only) = take(1usize)(input)?;
                     let read_only = match read_only.first() {
                         None => {
@@ -181,7 +179,7 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                                 input,
                                 nom::error::ErrorKind::Fail,
                             )));
-                        },
+                        }
                         Some(0) => false,
                         _ => true,
                     };
@@ -190,9 +188,10 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                 context("Failed data deserialization", |input| {
                     self.data_deser.deserialize(input)
                 }),
-            ))
+            )),
         )
-            .map(|(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
+        .map(
+            |(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
                 SCOutputEvent {
                     context: EventExecutionContext {
                         slot,
@@ -206,11 +205,11 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                     },
                     data,
                 }
-            })
-            .parse(buffer)
+            },
+        )
+        .parse(buffer)
     }
 }
-
 
 /// SCOutputEvent deserializer args
 #[allow(missing_docs)]
@@ -221,9 +220,9 @@ pub struct SCOutputEventDeserializerArgs {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serial_test::serial;
     use massa_models::slot::Slot;
     use massa_serialization::DeserializeError;
+    use serial_test::serial;
 
     #[test]
     #[serial]
@@ -245,14 +244,15 @@ mod test {
         };
 
         let event_ser = SCOutputEventSerializer::new();
-        let event_deser = SCOutputEventDeserializer::new(
-            SCOutputEventDeserializerArgs { thread_count: 16 }
-        );
+        let event_deser =
+            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: 16 });
 
         let mut buffer = Vec::new();
         event_ser.serialize(&event, &mut buffer).unwrap();
 
-        let (rem, event_new) = event_deser.deserialize::<DeserializeError>(&buffer).unwrap();
+        let (rem, event_new) = event_deser
+            .deserialize::<DeserializeError>(&buffer)
+            .unwrap();
 
         assert_eq!(event.context, event_new.context);
         assert_eq!(event.data, event_new.data);
@@ -262,7 +262,6 @@ mod test {
     #[test]
     #[serial]
     fn test_sc_output_event_ser_der_err() {
-
         // Test serialization / deserialization with a slot with thread too high
 
         let slot_1 = Slot::new(1, 99);
@@ -282,9 +281,8 @@ mod test {
         };
 
         let event_ser = SCOutputEventSerializer::new();
-        let event_deser = SCOutputEventDeserializer::new(
-            SCOutputEventDeserializerArgs { thread_count: 16 }
-        );
+        let event_deser =
+            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: 16 });
 
         let mut buffer = Vec::new();
         event_ser.serialize(&event, &mut buffer).unwrap();

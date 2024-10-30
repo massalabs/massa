@@ -86,6 +86,7 @@ massa_final_state = { workspace = true }
 massa_versioning = { workspace = true }
 massa_db_exports = { workspace = true }
 massa_db_worker = { workspace = true, optional = true }
+massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
