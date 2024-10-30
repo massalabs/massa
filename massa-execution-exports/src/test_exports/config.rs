@@ -24,6 +24,8 @@ impl Default for ExecutionConfig {
         // So we need to create it manually (not really safe but ok for unit testing)
         let hd_cache_path = TempDir::new().unwrap().path().to_path_buf();
         std::fs::create_dir_all(hd_cache_path.clone()).unwrap();
+        let event_cache_path = TempDir::new().unwrap().path().to_path_buf();
+        std::fs::create_dir_all(event_cache_path.clone()).unwrap();
         let block_dump_folder_path = TempDir::new().unwrap().path().to_path_buf();
         std::fs::create_dir_all(block_dump_folder_path.clone()).unwrap();
 
@@ -95,6 +97,10 @@ impl Default for ExecutionConfig {
                 max_custom_sections_len: Some(100),
                 max_custom_sections_data_len: Some(1_000_000),
             },
+            event_cache_path,
+            event_cache_size: 100,
+            event_snip_amount: 10,
+            event_max_len: 512,
         }
     }
 }
