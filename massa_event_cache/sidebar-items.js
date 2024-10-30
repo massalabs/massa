@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"macro":["event_key"],"mod":["config","controller","event_cache","ser_deser"]};
