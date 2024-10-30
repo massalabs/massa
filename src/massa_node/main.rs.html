@@ -1529,6 +1529,9 @@
 <a href="#1529" id="1529">1529</a>
 <a href="#1530" id="1530">1530</a>
 <a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2074,6 +2077,9 @@
         block_dump_folder_path,
         max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
         condom_limits,
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        event_cache_size: SETTINGS.execution.event_cache_size,
+        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
