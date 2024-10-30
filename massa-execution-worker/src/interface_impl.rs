@@ -1151,7 +1151,6 @@ impl Interface for InterfaceImpl {
         };
 
         let mut context = context_guard!(self);
-        let event = context.event_create(data, false);
 
         let event_filter = EventFilter {
             start: None,
@@ -1170,6 +1169,7 @@ impl Interface for InterfaceImpl {
             bail!("Too many event for this operation");
         }
 
+        let event = context.event_create(data, false);
         context.event_emit(event);
         Ok(())
     }

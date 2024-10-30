@@ -68,7 +68,7 @@ impl EventStore {
         // Note on lifetimes:
         // 'a -> is the lifetime for self -> because the iterator returns items from self
         // 'b -> is the lifetime for filter -> because the returning iterator captures filter
-        // and we have lifetime 'a > 'b because filter can live less than self
+        // , and we have lifetime 'a > 'b because filter can live less than self
 
         self.0.iter().filter(|x| {
             if let Some(start) = filter.start {
