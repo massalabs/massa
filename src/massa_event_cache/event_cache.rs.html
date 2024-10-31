@@ -452,7 +452,6 @@
 <a href="#452" id="452">452</a>
 <a href="#453" id="453">453</a>
 <a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::max;
 <span class="comment">// std
 </span><span class="kw">use </span>nom::AsBytes;
@@ -697,7 +696,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>events = (<span class="number">0</span>..cache.max_entry_count - <span class="number">5</span>)
-            .into_iter()
             .map(|i| {
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
@@ -732,7 +730,8 @@
         </span><span class="kw">let </span>db_it = cache.db_iter(<span class="prelude-val">Some</span>(IteratorMode::Start));
         <span class="kw">let </span><span class="kw-2">mut </span>prev_slot = <span class="prelude-val">None</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>prev_event_index = <span class="prelude-val">None</span>;
-        <span class="kw">for </span>kvb <span class="kw">in </span>db_it {
+        <span class="attr">#[allow(clippy::manual_flatten)]
+        </span><span class="kw">for </span>kvb <span class="kw">in </span>db_it {
             <span class="kw">if let </span><span class="prelude-val">Ok</span>(kvb) = kvb {
                 <span class="kw">let </span>bytes = kvb.<span class="number">0</span>.iter().as_slice();
                 <span class="kw">let </span>slot = Slot::from_bytes_key(<span class="kw-2">&amp;</span>bytes[<span class="number">0</span>..=<span class="number">8</span>].try_into().unwrap());
@@ -857,7 +856,6 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>events = (<span class="number">0</span>..cache.max_entry_count - <span class="number">5</span>)
-            .into_iter()
             .map(|i| {
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
