@@ -1,7 +1,7 @@
 use std::cmp::max;
 // std
 use nom::AsBytes;
-use std::path::PathBuf;
+use std::path::Path;
 // third-party
 use crate::ser_deser::{
     SCOutputEventDeserializer, SCOutputEventDeserializerArgs, SCOutputEventSerializer,
@@ -43,12 +43,7 @@ pub(crate) struct EventCache {
 
 impl EventCache {
     /// Create a new EventCache
-    pub fn new(
-        path: PathBuf,
-        max_entry_count: usize,
-        snip_amount: usize,
-        thread_count: u8,
-    ) -> Self {
+    pub fn new(path: &Path, max_entry_count: usize, snip_amount: usize, thread_count: u8) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = db.iterator(IteratorMode::Start).count();
 
@@ -180,7 +175,7 @@ impl EventCache {
         })
     }
 
-    /// Try to remove as much as `self.amount_to_snip` entries from the db
+    /// Try to remove some entries from the db
     fn snip(&mut self, snip_amount: Option<usize>) {
         let mut iter = self.db.iterator(IteratorMode::Start);
         let mut batch = WriteBatch::default();
@@ -308,7 +303,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_insert_more_than_max_entry() {
-        // Test insert (and snip) so we do no store too much event in cache
+        // Test insert (and snip) so we do not store too many event in the cache
 
         let mut cache = setup();
         let event = SCOutputEvent {
@@ -347,7 +342,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_insert_more_than_max_entry_2() {
-        // Test insert_multi_it (and snip) so we do no store too much event in cache
+        // Test insert_multi_it (and snip) so we do not store too many event in the cache
 
         let mut cache = setup();
         let event = SCOutputEvent {

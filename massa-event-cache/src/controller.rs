@@ -3,9 +3,9 @@ use crate::event_cache::EventCache;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 
-#[allow(dead_code)]
 /// Final event cache controller
 pub struct EventCacheController {
+    #[allow(dead_code)]
     /// Cache config.
     /// See `EventCacheConfig` documentation for more information.
     cfg: EventCacheConfig,
@@ -18,7 +18,7 @@ impl EventCacheController {
     /// Creates a new `EventCacheController`
     pub fn new(cfg: EventCacheConfig) -> Self {
         let event_cache = EventCache::new(
-            cfg.event_cache_path.clone(),
+            &cfg.event_cache_path,
             cfg.event_cache_size,
             cfg.snip_amount,
             cfg.thread_count,
