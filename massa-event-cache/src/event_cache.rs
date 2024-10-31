@@ -216,7 +216,7 @@ mod tests {
 
     fn setup() -> EventCache {
         let tmp_path = TempDir::new().unwrap().path().to_path_buf();
-        EventCache::new(tmp_path, 1000, 300, THREAD_COUNT)
+        EventCache::new(&tmp_path, 1000, 300, THREAD_COUNT)
     }
 
     #[test]
