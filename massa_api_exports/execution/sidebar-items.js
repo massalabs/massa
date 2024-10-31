@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ReadOnlyResult","TransferContext"],"struct":["DeferredCallResponse","DeferredCallsQuoteRequest","DeferredCallsQuoteResponse","DeferredCallsSlotResponse","ExecuteReadOnlyResponse","ReadOnlyBytecodeExecution","ReadOnlyCall","Transfer"]};
+window.SIDEBAR_ITEMS = {"enum":["ReadOnlyResult","TransferContext"],"struct":["ExecuteReadOnlyResponse","ReadOnlyBytecodeExecution","ReadOnlyCall","Transfer"]};

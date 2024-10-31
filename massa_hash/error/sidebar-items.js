@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MassaHashError"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_MassaHashError"],"enum":["MassaHashError"]};
