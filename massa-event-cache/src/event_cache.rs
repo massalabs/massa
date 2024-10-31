@@ -242,7 +242,6 @@ mod tests {
         };
 
         let mut events = (0..cache.max_entry_count - 5)
-            .into_iter()
             .map(|i| {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
@@ -277,6 +276,7 @@ mod tests {
         let db_it = cache.db_iter(Some(IteratorMode::Start));
         let mut prev_slot = None;
         let mut prev_event_index = None;
+        #[allow(clippy::manual_flatten)]
         for kvb in db_it {
             if let Ok(kvb) = kvb {
                 let bytes = kvb.0.iter().as_slice();
@@ -402,7 +402,6 @@ mod tests {
         };
 
         let mut events = (0..cache.max_entry_count - 5)
-            .into_iter()
             .map(|i| {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
