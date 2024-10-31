@@ -671,7 +671,7 @@
 
     <span class="kw">fn </span>setup() -&gt; EventCache {
         <span class="kw">let </span>tmp_path = TempDir::new().unwrap().path().to_path_buf();
-        EventCache::new(tmp_path, <span class="number">1000</span>, <span class="number">300</span>, THREAD_COUNT)
+        EventCache::new(<span class="kw-2">&amp;</span>tmp_path, <span class="number">1000</span>, <span class="number">300</span>, THREAD_COUNT)
     }
 
     <span class="attr">#[test]
