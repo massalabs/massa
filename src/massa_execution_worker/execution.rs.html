@@ -2525,10 +2525,11 @@
 
         <span class="kw">let </span>event_cache_controller = EventCacheController::new(EventCacheConfig {
             event_cache_path: config.event_cache_path.clone(),
-            event_cache_size: config.event_cache_size,
+            max_event_cache_length: config.event_cache_size,
             snip_amount: config.event_snip_amount,
-            max_event_length: config.max_event_size <span class="kw">as </span>u64,
+            max_event_data_length: config.max_event_size <span class="kw">as </span>u64,
             thread_count: config.thread_count,
+            max_recursive_call_depth: config.max_recursive_calls_depth,
         });
 
         <span class="comment">// build the execution state
@@ -2629,9 +2630,8 @@
 
         <span class="comment">// append generated events to the final event store
         </span>exec_out.events.finalize();
-        <span class="kw">let </span>final_events_count = exec_out.events.<span class="number">0</span>.len();
         <span class="self">self</span>.final_events_cache
-            .save_events(exec_out.events.<span class="number">0</span>.into_iter(), <span class="prelude-val">Some</span>(final_events_count));
+            .save_events(exec_out.events.<span class="number">0</span>.into_iter());
 
         <span class="comment">// update the prometheus metrics
         </span><span class="self">self</span>.massa_metrics

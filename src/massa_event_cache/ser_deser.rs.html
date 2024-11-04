@@ -292,6 +292,16 @@
 <a href="#292" id="292">292</a>
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::Bound::{Excluded, Included};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="comment">// third-party
@@ -316,8 +326,8 @@
 
 <span class="doccomment">/// Metadata serializer
 </span><span class="kw">pub struct </span>SCOutputEventSerializer {
-    u64_ser: U64VarIntSerializer,
-    u32_ser: U32VarIntSerializer,
+    index_in_slot_ser: U64VarIntSerializer,
+    addr_len_ser: U32VarIntSerializer,
     slot_ser: SlotSerializer,
     addr_ser: AddressSerializer,
     block_id_ser: OptionSerializer&lt;BlockId, BlockIdSerializer&gt;,
@@ -328,8 +338,8 @@
 <span class="kw">impl </span>SCOutputEventSerializer {
     <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            u64_ser: U64VarIntSerializer::new(),
-            u32_ser: U32VarIntSerializer::new(),
+            index_in_slot_ser: U64VarIntSerializer::new(),
+            addr_len_ser: U32VarIntSerializer::new(),
             slot_ser: SlotSerializer::new(),
             addr_ser: AddressSerializer::new(),
             block_id_ser: OptionSerializer::new(BlockIdSerializer::new()),
@@ -351,7 +361,7 @@
         </span><span class="self">self</span>.slot_ser.serialize(<span class="kw-2">&amp;</span>value.context.slot, buffer)<span class="question-mark">?</span>;
         <span class="self">self</span>.block_id_ser.serialize(<span class="kw-2">&amp;</span>value.context.block, buffer)<span class="question-mark">?</span>;
         buffer.push(u8::from(value.context.read_only));
-        <span class="self">self</span>.u64_ser
+        <span class="self">self</span>.index_in_slot_ser
             .serialize(<span class="kw-2">&amp;</span>value.context.index_in_slot, buffer)<span class="question-mark">?</span>;
         <span class="comment">// Components
         </span><span class="kw">let </span>call_stack_len_ = value.context.call_stack.len();
@@ -362,7 +372,7 @@
             ))
         })<span class="question-mark">?</span>;
         <span class="comment">// ser vec len
-        </span><span class="self">self</span>.u32_ser.serialize(<span class="kw-2">&amp;</span>call_stack_len, buffer)<span class="question-mark">?</span>;
+        </span><span class="self">self</span>.addr_len_ser.serialize(<span class="kw-2">&amp;</span>call_stack_len, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>address <span class="kw">in </span>value.context.call_stack.iter() {
             <span class="self">self</span>.addr_ser.serialize(address, buffer)<span class="question-mark">?</span>;
         }
@@ -379,8 +389,8 @@
 
 <span class="doccomment">/// SCOutputEvent deserializer
 </span><span class="kw">pub struct </span>SCOutputEventDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    u32_deser: U32VarIntDeserializer,
+    index_in_slot_deser: U64VarIntDeserializer,
+    addr_len_deser: U32VarIntDeserializer,
     slot_deser: SlotDeserializer,
     addr_deser: AddressDeserializer,
     block_id_deser: OptionDeserializer&lt;BlockId, BlockIdDeserializer&gt;,
@@ -391,9 +401,11 @@
 <span class="kw">impl </span>SCOutputEventDeserializer {
     <span class="kw">pub fn </span>new(args: SCOutputEventDeserializerArgs) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            u64_deser: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
-            <span class="comment">// FIXME: is there some limit for call stack len?
-            </span>u32_deser: U32VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u32::MAX)),
+            index_in_slot_deser: U64VarIntDeserializer::new(Included(<span class="number">0</span>), Included(u64::MAX)),
+            addr_len_deser: U32VarIntDeserializer::new(
+                Included(<span class="number">0</span>),
+                Included(u32::from(args.max_recursive_call_depth)),
+            ),
             slot_deser: SlotDeserializer::new(
                 (Included(<span class="number">0</span>), Included(u64::MAX)),
                 (Included(<span class="number">0</span>), Excluded(args.thread_count)),
@@ -403,7 +415,7 @@
             op_id_deser: OptionDeserializer::new(OperationIdDeserializer::new()),
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
-                Included(u64::MAX),
+                Included(args.max_event_data_length),
             )),
         }
     }
@@ -438,11 +450,11 @@
                     IResult::Ok((rem, read_only))
                 }),
                 context(<span class="string">"Failed index_in_slot deser"</span>, |input| {
-                    <span class="self">self</span>.u64_deser.deserialize(input)
+                    <span class="self">self</span>.index_in_slot_deser.deserialize(input)
                 }),
                 length_count(
                     context(<span class="string">"Failed call stack entry count deser"</span>, |input| {
-                        <span class="self">self</span>.u32_deser.deserialize(input)
+                        <span class="self">self</span>.addr_len_deser.deserialize(input)
                     }),
                     context(<span class="string">"Failed call stack items deser"</span>, |input| {
                         <span class="self">self</span>.addr_deser.deserialize(input)
@@ -509,6 +521,8 @@
 </span><span class="attr">#[allow(missing_docs)]
 </span><span class="kw">pub struct </span>SCOutputEventDeserializerArgs {
     <span class="kw">pub </span>thread_count: u8,
+    <span class="kw">pub </span>max_recursive_call_depth: u16,
+    <span class="kw">pub </span>max_event_data_length: u64,
 }
 
 <span class="attr">#[cfg(test)]
@@ -538,8 +552,11 @@
         };
 
         <span class="kw">let </span>event_ser = SCOutputEventSerializer::new();
-        <span class="kw">let </span>event_deser =
-            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>});
+        <span class="kw">let </span>event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
+            thread_count: <span class="number">16</span>,
+            max_recursive_call_depth: <span class="number">25</span>,
+            max_event_data_length: <span class="number">512</span>,
+        });
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>buffer).unwrap();
@@ -575,8 +592,11 @@
         };
 
         <span class="kw">let </span>event_ser = SCOutputEventSerializer::new();
-        <span class="kw">let </span>event_deser =
-            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: <span class="number">16 </span>});
+        <span class="kw">let </span>event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
+            thread_count: <span class="number">16</span>,
+            max_recursive_call_depth: <span class="number">25</span>,
+            max_event_data_length: <span class="number">512</span>,
+        });
 
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         event_ser.serialize(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;mut </span>buffer).unwrap();
