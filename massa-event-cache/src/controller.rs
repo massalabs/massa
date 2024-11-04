@@ -19,19 +19,17 @@ impl EventCacheController {
     pub fn new(cfg: EventCacheConfig) -> Self {
         let event_cache = EventCache::new(
             &cfg.event_cache_path,
-            cfg.event_cache_size,
+            cfg.max_event_cache_length,
             cfg.snip_amount,
             cfg.thread_count,
+            cfg.max_recursive_call_depth,
+            cfg.max_event_data_length,
         );
         Self { cfg, event_cache }
     }
 
-    pub fn save_events(
-        &mut self,
-        events: impl Iterator<Item = SCOutputEvent> + Clone,
-        events_len: Option<usize>,
-    ) {
-        self.event_cache.insert_multi_it(events, events_len);
+    pub fn save_events(&mut self, events: impl ExactSizeIterator<Item = SCOutputEvent> + Clone) {
+        self.event_cache.insert_multi_it(events);
     }
 
     pub fn get_filtered_sc_output_events<'b, 'a: 'b>(

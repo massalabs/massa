@@ -22,8 +22,8 @@ use massa_serialization::{
 
 /// Metadata serializer
 pub struct SCOutputEventSerializer {
-    u64_ser: U64VarIntSerializer,
-    u32_ser: U32VarIntSerializer,
+    index_in_slot_ser: U64VarIntSerializer,
+    addr_len_ser: U32VarIntSerializer,
     slot_ser: SlotSerializer,
     addr_ser: AddressSerializer,
     block_id_ser: OptionSerializer<BlockId, BlockIdSerializer>,
@@ -34,8 +34,8 @@ pub struct SCOutputEventSerializer {
 impl SCOutputEventSerializer {
     pub fn new() -> Self {
         Self {
-            u64_ser: U64VarIntSerializer::new(),
-            u32_ser: U32VarIntSerializer::new(),
+            index_in_slot_ser: U64VarIntSerializer::new(),
+            addr_len_ser: U32VarIntSerializer::new(),
             slot_ser: SlotSerializer::new(),
             addr_ser: AddressSerializer::new(),
             block_id_ser: OptionSerializer::new(BlockIdSerializer::new()),
@@ -57,7 +57,7 @@ impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
         self.slot_ser.serialize(&value.context.slot, buffer)?;
         self.block_id_ser.serialize(&value.context.block, buffer)?;
         buffer.push(u8::from(value.context.read_only));
-        self.u64_ser
+        self.index_in_slot_ser
             .serialize(&value.context.index_in_slot, buffer)?;
         // Components
         let call_stack_len_ = value.context.call_stack.len();
@@ -68,7 +68,7 @@ impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
             ))
         })?;
         // ser vec len
-        self.u32_ser.serialize(&call_stack_len, buffer)?;
+        self.addr_len_ser.serialize(&call_stack_len, buffer)?;
         for address in value.context.call_stack.iter() {
             self.addr_ser.serialize(address, buffer)?;
         }
@@ -85,8 +85,8 @@ impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
 
 /// SCOutputEvent deserializer
 pub struct SCOutputEventDeserializer {
-    u64_deser: U64VarIntDeserializer,
-    u32_deser: U32VarIntDeserializer,
+    index_in_slot_deser: U64VarIntDeserializer,
+    addr_len_deser: U32VarIntDeserializer,
     slot_deser: SlotDeserializer,
     addr_deser: AddressDeserializer,
     block_id_deser: OptionDeserializer<BlockId, BlockIdDeserializer>,
@@ -97,9 +97,11 @@ pub struct SCOutputEventDeserializer {
 impl SCOutputEventDeserializer {
     pub fn new(args: SCOutputEventDeserializerArgs) -> Self {
         Self {
-            u64_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
-            // FIXME: is there some limit for call stack len?
-            u32_deser: U32VarIntDeserializer::new(Included(0), Included(u32::MAX)),
+            index_in_slot_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
+            addr_len_deser: U32VarIntDeserializer::new(
+                Included(0),
+                Included(u32::from(args.max_recursive_call_depth)),
+            ),
             slot_deser: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
                 (Included(0), Excluded(args.thread_count)),
@@ -109,7 +111,7 @@ impl SCOutputEventDeserializer {
             op_id_deser: OptionDeserializer::new(OperationIdDeserializer::new()),
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
                 Included(0),
-                Included(u64::MAX),
+                Included(args.max_event_data_length),
             )),
         }
     }
@@ -144,11 +146,11 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                     IResult::Ok((rem, read_only))
                 }),
                 context("Failed index_in_slot deser", |input| {
-                    self.u64_deser.deserialize(input)
+                    self.index_in_slot_deser.deserialize(input)
                 }),
                 length_count(
                     context("Failed call stack entry count deser", |input| {
-                        self.u32_deser.deserialize(input)
+                        self.addr_len_deser.deserialize(input)
                     }),
                     context("Failed call stack items deser", |input| {
                         self.addr_deser.deserialize(input)
@@ -215,6 +217,8 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
 #[allow(missing_docs)]
 pub struct SCOutputEventDeserializerArgs {
     pub thread_count: u8,
+    pub max_recursive_call_depth: u16,
+    pub max_event_data_length: u64,
 }
 
 #[cfg(test)]
@@ -244,8 +248,11 @@ mod test {
         };
 
         let event_ser = SCOutputEventSerializer::new();
-        let event_deser =
-            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: 16 });
+        let event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
+            thread_count: 16,
+            max_recursive_call_depth: 25,
+            max_event_data_length: 512,
+        });
 
         let mut buffer = Vec::new();
         event_ser.serialize(&event, &mut buffer).unwrap();
@@ -281,8 +288,11 @@ mod test {
         };
 
         let event_ser = SCOutputEventSerializer::new();
-        let event_deser =
-            SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs { thread_count: 16 });
+        let event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
+            thread_count: 16,
+            max_recursive_call_depth: 25,
+            max_event_data_length: 512,
+        });
 
         let mut buffer = Vec::new();
         event_ser.serialize(&event, &mut buffer).unwrap();

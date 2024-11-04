@@ -223,8 +223,8 @@
     execution_traces_limit = 320
     # path to the event cache storage
     event_cache_path = "storage/event_cache/rocks_db"
-    # maximum number of entries we want to keep in the Event cache
-    event_cache_size = 2000
+    # maximum number of entries we want to keep in the Event cache (~ 10 Gb)
+    event_cache_size = 20071520
     # amount of entries removed when `event_cache_size` is reached
     event_snip_amount = 10
 

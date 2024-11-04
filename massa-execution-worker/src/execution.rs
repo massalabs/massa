@@ -207,10 +207,11 @@ impl ExecutionState {
 
         let event_cache_controller = EventCacheController::new(EventCacheConfig {
             event_cache_path: config.event_cache_path.clone(),
-            event_cache_size: config.event_cache_size,
+            max_event_cache_length: config.event_cache_size,
             snip_amount: config.event_snip_amount,
-            max_event_length: config.max_event_size as u64,
+            max_event_data_length: config.max_event_size as u64,
             thread_count: config.thread_count,
+            max_recursive_call_depth: config.max_recursive_calls_depth,
         });
 
         // build the execution state
@@ -311,9 +312,8 @@ impl ExecutionState {
 
         // append generated events to the final event store
         exec_out.events.finalize();
-        let final_events_count = exec_out.events.0.len();
         self.final_events_cache
-            .save_events(exec_out.events.0.into_iter(), Some(final_events_count));
+            .save_events(exec_out.events.0.into_iter());
 
         // update the prometheus metrics
         self.massa_metrics

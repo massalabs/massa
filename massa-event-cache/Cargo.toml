@@ -3,6 +3,11 @@ name = "massa_event_cache"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+test-exports = [
+    "massa_models/test-exports",
+]
+
 [dependencies]
 nom = {workspace = true}
 rocksdb = {workspace = true}
