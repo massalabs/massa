@@ -16,6 +16,7 @@ const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const EVENT_DESER_ERROR: &str = "critical: event deserialization failed";
 
+/*
 /// Module key formatting macro
 #[macro_export]
 macro_rules! event_key {
@@ -23,6 +24,7 @@ macro_rules! event_key {
         [&$event_slot.to_bytes()[..], &[MODULE_IDENT]].concat()
     };
 }
+*/
 
 pub(crate) struct EventCache {
     /// RocksDB database
@@ -43,20 +45,44 @@ pub(crate) struct EventCache {
 
 impl EventCache {
     /// Create a new EventCache
-    pub fn new(path: &Path, max_entry_count: usize, snip_amount: usize, thread_count: u8) -> Self {
+    pub fn new(
+        path: &Path,
+        max_entry_count: usize,
+        snip_amount: usize,
+        thread_count: u8,
+        max_recursive_call_depth: u16,
+        max_event_data_length: u64,
+    ) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
-        let entry_count = db.iterator(IteratorMode::Start).count();
 
-        Self {
+        let mut event_cache = Self {
             db,
-            entry_count,
+            entry_count: 0,
             max_entry_count,
             snip_amount,
             event_ser: SCOutputEventSerializer::new(),
             event_deser: SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
                 thread_count,
+                max_recursive_call_depth,
+                max_event_data_length,
             }),
+        };
+
+        event_cache.clear();
+        event_cache
+    }
+
+    fn clear(&mut self) {
+        let iter = self.db.iterator(IteratorMode::Start);
+        let mut batch = WriteBatch::default();
+
+        for kvb in iter {    
+            let kvb = kvb.expect(EVENT_DESER_ERROR);
+            batch.delete(kvb.0);
         }
+
+        self.db.write(batch).expect(CRUD_ERROR);
+        self.entry_count = 0;
     }
 
     #[allow(dead_code)]
@@ -77,6 +103,9 @@ impl EventCache {
         let mut batch = WriteBatch::default();
         batch.put(event_key, event_buffer);
         self.db.write(batch).expect(CRUD_ERROR);
+
+        // Note:
+        // This assumes that events are always added, never overwritten
         self.entry_count = self.entry_count.saturating_add(1);
 
         debug!("(Event insert) entry_count is: {}", self.entry_count);
@@ -87,10 +116,9 @@ impl EventCache {
     /// For performance reason, pass events_len to avoid cloning the iterator
     pub fn insert_multi_it(
         &mut self,
-        events: impl Iterator<Item = SCOutputEvent> + Clone,
-        events_len: Option<usize>,
+        events: impl ExactSizeIterator<Item = SCOutputEvent> + Clone,
     ) {
-        let events_len = events_len.unwrap_or_else(|| events.clone().count());
+        let events_len = events.len();
 
         if self.entry_count + events_len >= self.max_entry_count {
             let snip_amount = max(self.snip_amount, events_len);
@@ -110,6 +138,8 @@ impl EventCache {
             batch.put(event_key, event_buffer);
         }
         self.db.write(batch).expect(CRUD_ERROR);
+        // Note:
+        // This assumes that events are always added, never overwritten
         self.entry_count = self.entry_count.saturating_add(events_len);
 
         debug!("(Events insert) entry_count is: {}", self.entry_count);
@@ -210,13 +240,20 @@ mod tests {
     use serial_test::serial;
     use tempfile::TempDir;
     // internal
-    use massa_models::config::THREAD_COUNT;
+    use massa_models::config::{MAX_EVENT_DATA_SIZE, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT};
     use massa_models::output_event::EventExecutionContext;
     use massa_models::slot::Slot;
 
     fn setup() -> EventCache {
         let tmp_path = TempDir::new().unwrap().path().to_path_buf();
-        EventCache::new(&tmp_path, 1000, 300, THREAD_COUNT)
+        EventCache::new(
+            &tmp_path,
+            1000,
+            300,
+            THREAD_COUNT,
+            MAX_RECURSIVE_CALLS_DEPTH,
+            MAX_EVENT_DATA_SIZE as u64,
+        )
     }
 
     #[test]
@@ -364,7 +401,7 @@ mod tests {
             event.context.index_in_slot = i as u64;
             event
         });
-        cache.insert_multi_it(it, Some(cache.max_entry_count));
+        cache.insert_multi_it(it);
 
         assert_eq!(cache.entry_count, cache.max_entry_count);
 
@@ -429,8 +466,7 @@ mod tests {
         // Randomize the events so we insert in random orders in DB
         events.shuffle(&mut thread_rng());
 
-        let events_len = events.len();
-        cache.insert_multi_it(events.into_iter(), Some(events_len));
+        cache.insert_multi_it(events.into_iter());
 
         let filter_1 = EventFilter {
             start: Some(Slot::new(2, 0)),
