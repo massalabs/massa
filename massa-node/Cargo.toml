@@ -88,3 +88,4 @@ massa_versioning = { workspace = true }
 massa_signature = { workspace = true }
 massa_db_exports = { workspace = true }
 massa_db_worker = { workspace = true }
+massa_event_cache = { workspace = true }

@@ -131,6 +131,8 @@ use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
+use massa_event_cache::config::EventCacheConfig;
+use massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 
 #[cfg(feature = "op_spammer")]
 mod operation_injector;
@@ -150,6 +152,7 @@ async fn launch(
     Box<dyn PoolManager>,
     Box<dyn ProtocolManager>,
     Box<dyn FactoryManager>,
+    Box<dyn EventCacheManager>,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -472,6 +475,19 @@ async fn launch(
             );
         }
     }
+    
+    // Event cache thread
+    let event_cache_config = EventCacheConfig {
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        max_event_cache_length: SETTINGS.execution.event_cache_size,
+        snip_amount: SETTINGS.execution.event_snip_amount,
+        max_event_data_length: MAX_EVENT_DATA_SIZE as u64,
+        thread_count: THREAD_COUNT,
+        max_recursive_call_depth: MAX_RECURSIVE_CALLS_DEPTH,
+    };
+    let (event_cache_manager, event_cache_controller) = start_event_cache_writer_worker(
+        event_cache_config
+    );
 
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
@@ -607,6 +623,7 @@ async fn launch(
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
+        event_cache_controller,
         #[cfg(feature = "dump-block")]
         block_storage_backend.clone(),
     );
@@ -1143,6 +1160,7 @@ async fn launch(
         pool_manager,
         protocol_manager,
         factory_manager,
+        event_cache_manager,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -1238,6 +1256,7 @@ struct Managers {
     pool_manager: Box<dyn PoolManager>,
     protocol_manager: Box<dyn ProtocolManager>,
     factory_manager: Box<dyn FactoryManager>,
+    event_cache_manager: Box<dyn EventCacheManager>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1251,6 +1270,7 @@ async fn stop(
         mut pool_manager,
         mut protocol_manager,
         mut factory_manager,
+        mut event_cache_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -1322,6 +1342,8 @@ async fn stop(
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
+    
+    event_cache_manager.stop();
 }
 
 #[derive(Parser)]
@@ -1471,6 +1493,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             pool_manager,
             protocol_manager,
             factory_manager,
+            event_cache_manager,
             api_private_handle,
             api_public_handle,
             api_handle,
@@ -1537,6 +1560,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 pool_manager,
                 protocol_manager,
                 factory_manager,
+                event_cache_manager,
             },
             api_private_handle,
             api_public_handle,

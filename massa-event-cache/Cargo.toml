@@ -12,6 +12,7 @@ test-exports = [
 nom = {workspace = true}
 rocksdb = {workspace = true}
 tracing = {workspace = true}
+parking_lot = { workspace = true }
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
 
