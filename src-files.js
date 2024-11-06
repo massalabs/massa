@@ -10,7 +10,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_consensus_worker",["",[["state",[],["blocks_state.rs","clique_computation.rs","graph.rs","mod.rs","process.rs","process_commands.rs","prune.rs","stats.rs","tick.rs","verifications.rs"]],["worker",[],["init.rs","main_loop.rs","mod.rs"]]],["commands.rs","controller.rs","lib.rs","manager.rs"]]],\
 ["massa_db_exports",["",[],["constants.rs","controller.rs","db_batch.rs","error.rs","lib.rs","settings.rs"]]],\
 ["massa_db_worker",["",[],["lib.rs","massa_db.rs"]]],\
-["massa_event_cache",["",[],["config.rs","controller.rs","event_cache.rs","lib.rs","ser_deser.rs"]]],\
+["massa_event_cache",["",[],["config.rs","controller.rs","event_cache.rs","lib.rs","ser_deser.rs","worker.rs"]]],\
 ["massa_executed_ops",["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]]],\
 ["massa_execution_exports",["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs","types_trace_info.rs"]]],\
 ["massa_execution_worker",["",[],["active_history.rs","context.rs","controller.rs","execution.rs","execution_info.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","storage_backend.rs","worker.rs"]]],\

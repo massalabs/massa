@@ -39,45 +39,97 @@
 <a href="#39" id="39">39</a>
 <a href="#40" id="40">40</a>
 <a href="#41" id="41">41</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::config::EventCacheConfig;
-<span class="kw">use </span><span class="kw">crate</span>::event_cache::EventCache;
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+<a href="#47" id="47">47</a>
+<a href="#48" id="48">48</a>
+<a href="#49" id="49">49</a>
+<a href="#50" id="50">50</a>
+<a href="#51" id="51">51</a>
+<a href="#52" id="52">52</a>
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+</pre></div><pre class="rust"><code><span class="comment">// std
+</span><span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::sync::Arc;
+<span class="comment">// third-party
+</span><span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
+<span class="comment">// internal
+</span><span class="kw">use </span><span class="kw">crate</span>::event_cache::EventCache;
 <span class="kw">use </span>massa_models::execution::EventFilter;
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 
-<span class="doccomment">/// Final event cache controller
-</span><span class="kw">pub struct </span>EventCacheController {
-    <span class="attr">#[allow(dead_code)]
-    </span><span class="doccomment">/// Cache config.
-    /// See `EventCacheConfig` documentation for more information.
-    </span>cfg: EventCacheConfig,
-    <span class="doccomment">/// Event stored cache.
-    /// See the `EventCache` documentation for more information.
-    </span>event_cache: EventCache,
+<span class="doccomment">/// structure used to communicate with controller
+</span><span class="attr">#[derive(Debug)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EventCacheWriterInputData {
+    <span class="doccomment">/// set stop to true to stop the thread
+    </span><span class="kw">pub </span>stop: bool,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) events: VecDeque&lt;SCOutputEvent&gt;,
 }
 
-<span class="kw">impl </span>EventCacheController {
-    <span class="doccomment">/// Creates a new `EventCacheController`
-    </span><span class="kw">pub fn </span>new(cfg: EventCacheConfig) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>event_cache = EventCache::new(
-            <span class="kw-2">&amp;</span>cfg.event_cache_path,
-            cfg.max_event_cache_length,
-            cfg.snip_amount,
-            cfg.thread_count,
-            cfg.max_recursive_call_depth,
-            cfg.max_event_data_length,
-        );
-        <span class="self">Self </span>{ cfg, event_cache }
+<span class="kw">impl </span>EventCacheWriterInputData {
+    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            stop: Default::default(),
+            events: Default::default(),
+        }
     }
 
-    <span class="kw">pub fn </span>save_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>, events: <span class="kw">impl </span>ExactSizeIterator&lt;Item = SCOutputEvent&gt; + Clone) {
-        <span class="self">self</span>.event_cache.insert_multi_it(events);
+    <span class="doccomment">/// Takes the current input data into a clone that is returned,
+    /// and resets self.
+    </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            stop: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.stop),
+            events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
+        }
+    }
+}
+
+<span class="doccomment">/// interface that communicates with the worker thread
+</span><span class="kw">pub trait </span>EventCacheController: Send + Sync {
+    <span class="kw">fn </span>save_events(<span class="kw-2">&amp;</span><span class="self">self</span>, events: VecDeque&lt;SCOutputEvent&gt;);
+
+    <span class="kw">fn </span>get_filtered_sc_output_events(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; Vec&lt;SCOutputEvent&gt;;
+}
+
+<span class="attr">#[derive(Clone)]
+</span><span class="doccomment">/// implementation of the event cache controller
+</span><span class="kw">pub struct </span>EventCacheControllerImpl {
+    <span class="doccomment">/// input data to process in the VM loop
+    /// with a wake-up condition variable that needs to be triggered when the data changes
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;EventCacheWriterInputData&gt;)&gt;,
+    <span class="doccomment">/// Event cache
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) cache: Arc&lt;RwLock&lt;EventCache&gt;&gt;,
+}
+
+<span class="kw">impl </span>EventCacheController <span class="kw">for </span>EventCacheControllerImpl {
+    <span class="kw">fn </span>save_events(<span class="kw-2">&amp;</span><span class="self">self</span>, events: VecDeque&lt;SCOutputEvent&gt;) {
+        <span class="comment">// lock input data
+        </span><span class="kw">let </span><span class="kw-2">mut </span>input_data = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
+        input_data.events = events;
+        <span class="comment">// wake up VM loop
+        </span><span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
     }
 
-    <span class="kw">pub fn </span>get_filtered_sc_output_events&lt;<span class="lifetime">'b</span>, <span class="lifetime">'a</span>: <span class="lifetime">'b</span>&gt;(
-        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
-        filter: <span class="kw-2">&amp;</span><span class="lifetime">'b </span>EventFilter,
-    ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = SCOutputEvent&gt; + <span class="lifetime">'b </span>{
-        <span class="self">self</span>.event_cache.get_filtered_sc_output_events(filter)
+    <span class="kw">fn </span>get_filtered_sc_output_events(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: <span class="kw-2">&amp;</span>EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
+        <span class="kw">let </span>lock = <span class="self">self</span>.cache.read();
+        lock.get_filtered_sc_output_events(filter).collect()
     }
 }
 </code></pre></div></section></main></body></html>

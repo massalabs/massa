@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["config","controller","event_cache","ser_deser"]};
+window.SIDEBAR_ITEMS = {"mod":["config","controller","event_cache","ser_deser","worker"]};
