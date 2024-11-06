@@ -29,6 +29,7 @@ use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
 use tracing::debug;
+use massa_event_cache::controller::EventCacheController;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {
@@ -258,6 +259,7 @@ pub fn start_execution_worker(
     channels: ExecutionChannels,
     wallet: Arc<RwLock<Wallet>>,
     massa_metrics: MassaMetrics,
+    event_cache: Box<dyn EventCacheController>,
     #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     if config.hd_cache_size < config.snip_amount {
@@ -273,6 +275,7 @@ pub fn start_execution_worker(
         channels,
         wallet,
         massa_metrics,
+        event_cache,
         #[cfg(feature = "dump-block")]
         block_storage_backend,
     )));

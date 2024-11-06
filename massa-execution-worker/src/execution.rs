@@ -26,8 +26,6 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-
-use massa_event_cache::config::EventCacheConfig;
 use massa_event_cache::controller::EventCacheController;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -111,8 +109,7 @@ pub(crate) struct ExecutionState {
     // a cursor pointing to the highest executed final slot
     pub final_cursor: Slot,
     // store containing execution events that became final
-    // final_events: EventStore,
-    final_events_cache: EventCacheController,
+    final_events_cache: Box<dyn EventCacheController>,
     // final state with atomic R/W access
     final_state: Arc<RwLock<dyn FinalStateController>>,
     // execution context (see documentation in context.rs)
@@ -159,6 +156,7 @@ impl ExecutionState {
         channels: ExecutionChannels,
         wallet: Arc<RwLock<Wallet>>,
         massa_metrics: MassaMetrics,
+        event_cache: Box<dyn EventCacheController>,
         #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
     ) -> ExecutionState {
         // Get the slot at the output of which the final state is attached.
@@ -201,6 +199,7 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
+        /*
         let event_cache_controller = EventCacheController::new(EventCacheConfig {
             event_cache_path: config.event_cache_path.clone(),
             max_event_cache_length: config.event_cache_size,
@@ -209,6 +208,7 @@ impl ExecutionState {
             thread_count: config.thread_count,
             max_recursive_call_depth: config.max_recursive_calls_depth,
         });
+        */
 
         // build the execution state
         ExecutionState {
@@ -219,7 +219,7 @@ impl ExecutionState {
             active_history,
             // empty final event store: it is not recovered through bootstrap
             // final_events: Default::default(),
-            final_events_cache: event_cache_controller,
+            final_events_cache: event_cache,
             // no active slots executed yet: set active_cursor to the last final block
             active_cursor: last_final_slot,
             final_cursor: last_final_slot,
@@ -308,8 +308,7 @@ impl ExecutionState {
 
         // append generated events to the final event store
         exec_out.events.finalize();
-        self.final_events_cache
-            .save_events(exec_out.events.0.into_iter());
+        self.final_events_cache.save_events(exec_out.events.0);
 
         // update the prometheus metrics
         self.massa_metrics
@@ -2109,7 +2108,7 @@ impl ExecutionState {
             Some(true) => self
                 .final_events_cache
                 .get_filtered_sc_output_events(&filter)
-                .collect(),
+                ,
             Some(false) => self
                 .active_history
                 .read()
@@ -2120,6 +2119,7 @@ impl ExecutionState {
             None => self
                 .final_events_cache
                 .get_filtered_sc_output_events(&filter)
+                .into_iter()
                 .chain(
                     self.active_history
                         .read()
