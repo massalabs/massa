@@ -6,7 +6,9 @@ use parking_lot::{Condvar, Mutex, RwLock};
 use tracing::{debug, info};
 // internal
 use crate::config::EventCacheConfig;
-use crate::controller::{EventCacheController, EventCacheControllerImpl, EventCacheWriterInputData};
+use crate::controller::{
+    EventCacheController, EventCacheControllerImpl, EventCacheWriterInputData,
+};
 use crate::event_cache::EventCache;
 
 /// Structure gathering all elements needed by the event cache thread
@@ -14,16 +16,17 @@ pub(crate) struct EventCacheWriterThread {
     // A copy of the input data allowing access to incoming requests
     input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
     /// Event cache
-    cache: Arc<RwLock<EventCache>>
+    cache: Arc<RwLock<EventCache>>,
 }
 
 impl EventCacheWriterThread {
-    fn new(input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
+    fn new(
+        input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
         event_cache: Arc<RwLock<EventCache>>,
     ) -> Self {
         Self {
             input_data,
-            cache: event_cache
+            cache: event_cache,
         }
     }
 
@@ -39,7 +42,7 @@ impl EventCacheWriterThread {
 
             // take current input data, resetting it
             let input_data: EventCacheWriterInputData = input_data_lock.take();
-            
+
             // Check if there is some input data
             if !input_data.events.is_empty() {
                 return (input_data, false);
@@ -49,7 +52,7 @@ impl EventCacheWriterThread {
             if input_data.stop {
                 return (input_data, true);
             }
-            
+
             // FIXME / TODO: should we sleep here?
         }
     }
@@ -58,7 +61,10 @@ impl EventCacheWriterThread {
     pub fn main_loop(&mut self) {
         loop {
             let (input_data, stop) = self.wait_loop_event();
-            debug!("Event cache writer loop triggered, input_data = {:?}", input_data);
+            debug!(
+                "Event cache writer loop triggered, input_data = {:?}",
+                input_data
+            );
 
             if stop {
                 // we need to stop
@@ -92,7 +98,6 @@ pub struct EventCacheWriterManagerImpl {
 }
 
 impl EventCacheManager for EventCacheWriterManagerImpl {
-
     /// stops the worker
     fn stop(&mut self) {
         info!("Stopping Execution controller...");
@@ -110,24 +115,20 @@ impl EventCacheManager for EventCacheWriterManagerImpl {
     }
 }
 
-pub fn start_event_cache_writer_worker(cfg: EventCacheConfig) -> (Box<dyn EventCacheManager>, Box<dyn EventCacheController>) {
-
-    let event_cache = Arc::new(
-        RwLock::new(
-            EventCache::new(
-                cfg.event_cache_path.as_path(), 
-                cfg.max_event_cache_length, 
-                cfg.snip_amount,
-                cfg.thread_count,
-                cfg.max_recursive_call_depth,
-                cfg.max_event_data_length,
-            )));
+pub fn start_event_cache_writer_worker(
+    cfg: EventCacheConfig,
+) -> (Box<dyn EventCacheManager>, Box<dyn EventCacheController>) {
+    let event_cache = Arc::new(RwLock::new(EventCache::new(
+        cfg.event_cache_path.as_path(),
+        cfg.max_event_cache_length,
+        cfg.snip_amount,
+        cfg.thread_count,
+        cfg.max_recursive_call_depth,
+        cfg.max_event_data_length,
+    )));
 
     // define the input data interface
-    let input_data = Arc::new((
-        Condvar::new(),
-        Mutex::new(EventCacheWriterInputData::new()),
-    )); 
+    let input_data = Arc::new((Condvar::new(), Mutex::new(EventCacheWriterInputData::new())));
     let input_data_clone = input_data.clone();
 
     // create a controller
@@ -136,8 +137,7 @@ pub fn start_event_cache_writer_worker(cfg: EventCacheConfig) -> (Box<dyn EventC
         cache: event_cache.clone(),
     };
 
-    let thread_builder = thread::Builder::new()
-        .name("event_cache".into());
+    let thread_builder = thread::Builder::new().name("event_cache".into());
     let thread_handle = thread_builder
         .spawn(move || {
             EventCacheWriterThread::new(input_data_clone, event_cache).main_loop();
@@ -153,4 +153,3 @@ pub fn start_event_cache_writer_worker(cfg: EventCacheConfig) -> (Box<dyn EventC
     // return the manager and controller pair
     (Box::new(manager), Box::new(controller))
 }
-

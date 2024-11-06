@@ -76,7 +76,7 @@ impl EventCache {
         let iter = self.db.iterator(IteratorMode::Start);
         let mut batch = WriteBatch::default();
 
-        for kvb in iter {    
+        for kvb in iter {
             let kvb = kvb.expect(EVENT_DESER_ERROR);
             batch.delete(kvb.0);
         }

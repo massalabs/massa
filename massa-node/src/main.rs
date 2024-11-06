@@ -127,12 +127,12 @@ use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 
+use massa_event_cache::config::EventCacheConfig;
+use massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::filter::{filter_fn, LevelFilter};
-use massa_event_cache::config::EventCacheConfig;
-use massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 
 #[cfg(feature = "op_spammer")]
 mod operation_injector;
@@ -475,7 +475,7 @@ async fn launch(
             );
         }
     }
-    
+
     // Event cache thread
     let event_cache_config = EventCacheConfig {
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
@@ -485,9 +485,8 @@ async fn launch(
         thread_count: THREAD_COUNT,
         max_recursive_call_depth: MAX_RECURSIVE_CALLS_DEPTH,
     };
-    let (event_cache_manager, event_cache_controller) = start_event_cache_writer_worker(
-        event_cache_config
-    );
+    let (event_cache_manager, event_cache_controller) =
+        start_event_cache_writer_worker(event_cache_config);
 
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
@@ -1342,7 +1341,7 @@ async fn stop(
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
-    
+
     event_cache_manager.stop();
 }
 
