@@ -35,6 +35,7 @@ impl EventCacheWriterInputData {
 }
 
 /// interface that communicates with the worker thread
+#[cfg_attr(feature = "test-exports", mockall_wrap::wrap, mockall::automock)]
 pub trait EventCacheController: Send + Sync {
     fn save_events(&self, events: VecDeque<SCOutputEvent>);
 

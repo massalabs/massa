@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::start_execution_worker;
 #[cfg(all(feature = "file_storage_backend", not(feature = "db_storage_backend")))]
 use crate::storage_backend::FileStorageBackend;
 #[cfg(feature = "db_storage_backend")]
@@ -11,6 +12,7 @@ use crate::storage_backend::RocksDBStorageBackend;
 use cfg_if::cfg_if;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
+use massa_event_cache::MockEventCacheControllerWrapper;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, SlotExecutionOutput,
@@ -43,8 +45,6 @@ use parking_lot::RwLock;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use crate::start_execution_worker;
-
 #[cfg(feature = "execution-trace")]
 use massa_execution_exports::types_trace_info::SlotAbiCallStack;
 
@@ -53,6 +53,7 @@ pub struct ExecutionForeignControllers {
     pub final_state: Arc<RwLock<MockFinalStateController>>,
     pub ledger_controller: MockLedgerControllerWrapper,
     pub db: ShareableMassaDBController,
+    pub event_cache_controller: Box<MockEventCacheControllerWrapper>,
 }
 
 impl ExecutionForeignControllers {
@@ -75,6 +76,7 @@ impl ExecutionForeignControllers {
             ledger_controller: MockLedgerControllerWrapper::new(),
             final_state: Arc::new(RwLock::new(MockFinalStateController::new())),
             db,
+            event_cache_controller: Box::new(MockEventCacheControllerWrapper::new()),
         }
     }
 }
@@ -141,6 +143,7 @@ impl TestUniverse for ExecutionTestUniverse {
                 std::time::Duration::from_secs(5),
             )
             .0,
+            controllers.event_cache_controller,
             #[cfg(feature = "dump-block")]
             block_storage_backend.clone(),
         );

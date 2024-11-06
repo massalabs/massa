@@ -6,7 +6,10 @@ edition = "2021"
 [features]
 test-exports = [
     "massa_models/test-exports",
+    "mockall",
+    "mockall_wrap"
 ]
+
 
 [dependencies]
 nom = {workspace = true}
@@ -15,9 +18,14 @@ tracing = {workspace = true}
 parking_lot = { workspace = true }
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
+mockall = {workspace = true, optional = true}
+mockall_wrap = {workspace = true, optional = true}
 
 [dev-dependencies]
 tempfile = {workspace = true}
 serial_test = {workspace = true}
 more-asserts = {workspace = true}
 rand = {workspace = true}
+mockall = {workspace = true}
+mockall_wrap = {workspace = true}
+massa_models = { workspace = true, features = ["test-exports"] }

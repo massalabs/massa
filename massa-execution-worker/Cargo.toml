@@ -29,6 +29,7 @@ test-exports = [
     "massa_metrics/test-exports",
     "massa_metrics/test-exports",
     "massa_db_worker",
+    "massa_event_cache/test-exports",
     "tempfile",
 ]
 benchmarking = [
@@ -112,4 +113,4 @@ tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
 assert_matches = { workspace = true }
-
+massa_event_cache = { workspace = true, features = ["test-exports"] }
