@@ -65,6 +65,7 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::sync::Arc;
@@ -102,6 +103,7 @@
 }
 
 <span class="doccomment">/// interface that communicates with the worker thread
+</span><span class="attr">#[cfg_attr(feature = <span class="string">"test-exports"</span>, mockall_wrap::wrap, mockall::automock)]
 </span><span class="kw">pub trait </span>EventCacheController: Send + Sync {
     <span class="kw">fn </span>save_events(<span class="kw-2">&amp;</span><span class="self">self</span>, events: VecDeque&lt;SCOutputEvent&gt;);
 
