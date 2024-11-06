@@ -13,6 +13,7 @@ use crate::{
     request_queue::RequestQueue,
     slot_sequencer::SlotSequencer,
 };
+use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -29,7 +30,6 @@ use parking_lot::{Condvar, Mutex, RwLock};
 use std::sync::Arc;
 use std::thread;
 use tracing::debug;
-use massa_event_cache::controller::EventCacheController;
 
 /// Structure gathering all elements needed by the execution thread
 pub(crate) struct ExecutionThread {

@@ -1,12 +1,12 @@
 // std
-use std::sync::Arc;
 use std::collections::VecDeque;
+use std::sync::Arc;
 // third-party
 use parking_lot::{Condvar, Mutex, RwLock};
 // internal
+use crate::event_cache::EventCache;
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
-use crate::event_cache::EventCache;
 
 /// structure used to communicate with controller
 #[derive(Debug)]
@@ -17,7 +17,6 @@ pub(crate) struct EventCacheWriterInputData {
 }
 
 impl EventCacheWriterInputData {
-
     pub fn new() -> Self {
         Self {
             stop: Default::default(),
@@ -39,10 +38,7 @@ impl EventCacheWriterInputData {
 pub trait EventCacheController: Send + Sync {
     fn save_events(&self, events: VecDeque<SCOutputEvent>);
 
-    fn get_filtered_sc_output_events(
-        &self,
-        filter: &EventFilter,
-    ) -> Vec<SCOutputEvent>;
+    fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent>;
 }
 
 #[derive(Clone)]

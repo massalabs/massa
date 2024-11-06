@@ -15,6 +15,7 @@ use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
+use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
     ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionError,
     ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
@@ -26,7 +27,6 @@ use massa_ledger_exports::{SetOrDelete, SetUpdateOrDelete};
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_event_cache::controller::EventCacheController;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -2107,8 +2107,7 @@ impl ExecutionState {
         match filter.is_final {
             Some(true) => self
                 .final_events_cache
-                .get_filtered_sc_output_events(&filter)
-                ,
+                .get_filtered_sc_output_events(&filter),
             Some(false) => self
                 .active_history
                 .read()
