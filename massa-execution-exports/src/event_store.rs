@@ -55,48 +55,61 @@ impl EventStore {
     /// * operation id
     /// * is final
     pub fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> VecDeque<SCOutputEvent> {
-        self.0
-            .iter()
-            .filter(|x| {
-                if let Some(start) = filter.start {
-                    if x.context.slot < start {
-                        return false;
-                    }
-                }
-                if let Some(end) = filter.end {
-                    if x.context.slot >= end {
-                        return false;
-                    }
-                }
-                if let Some(is_final) = filter.is_final {
-                    if x.context.is_final != is_final {
-                        return false;
-                    }
-                }
-                if let Some(is_error) = filter.is_error {
-                    if x.context.is_error != is_error {
-                        return false;
-                    }
-                }
-                match (filter.original_caller_address, x.context.call_stack.front()) {
-                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
-                    (Some(_), None) => return false,
-                    _ => (),
-                }
-                match (filter.emitter_address, x.context.call_stack.back()) {
-                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
-                    (Some(_), None) => return false,
-                    _ => (),
-                }
-                match (filter.original_operation_id, x.context.origin_operation_id) {
-                    (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
-                    (Some(_), None) => return false,
-                    _ => (),
-                }
-                true
-            })
+        self.get_filtered_sc_output_events_iter(filter)
             .cloned()
             .collect()
+    }
+
+    /// Get events iterator optionally filtered by given EventFilter
+    pub fn get_filtered_sc_output_events_iter<'b, 'a: 'b>(
+        &'a self,
+        filter: &'b EventFilter,
+    ) -> impl Iterator<Item = &'a SCOutputEvent> + 'b {
+        // Note on lifetimes:
+        // 'a -> is the lifetime for self -> because the iterator returns items from self
+        // 'b -> is the lifetime for filter -> because the returning iterator captures filter
+        // , and we have lifetime 'a > 'b because filter can live less than self
+
+        self.0.iter().filter(|x| {
+            if let Some(start) = filter.start {
+                if x.context.slot < start {
+                    return false;
+                }
+            }
+            if let Some(end) = filter.end {
+                if x.context.slot >= end {
+                    return false;
+                }
+            }
+            if let Some(is_final) = filter.is_final {
+                if x.context.is_final != is_final {
+                    return false;
+                }
+            }
+            if let Some(is_error) = filter.is_error {
+                if x.context.is_error != is_error {
+                    return false;
+                }
+            }
+
+            match (filter.original_caller_address, x.context.call_stack.front()) {
+                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                (Some(_), None) => return false,
+                _ => (),
+            }
+            match (filter.emitter_address, x.context.call_stack.back()) {
+                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                (Some(_), None) => return false,
+                _ => (),
+            }
+            match (filter.original_operation_id, x.context.origin_operation_id) {
+                (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
+                (Some(_), None) => return false,
+                _ => (),
+            }
+
+            true
+        })
     }
 }
 
