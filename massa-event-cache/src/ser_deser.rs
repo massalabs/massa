@@ -100,7 +100,7 @@ impl SCOutputEventDeserializer {
             index_in_slot_deser: U64VarIntDeserializer::new(Included(0), Included(u64::MAX)),
             addr_len_deser: U32VarIntDeserializer::new(
                 Included(0),
-                Included(u32::from(args.max_recursive_call_depth)),
+                Included(u32::from(args.max_call_stack_length)),
             ),
             slot_deser: SlotDeserializer::new(
                 (Included(0), Included(u64::MAX)),
@@ -217,7 +217,7 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
 #[allow(missing_docs)]
 pub struct SCOutputEventDeserializerArgs {
     pub thread_count: u8,
-    pub max_recursive_call_depth: u16,
+    pub max_call_stack_length: u16,
     pub max_event_data_length: u64,
 }
 
@@ -250,7 +250,7 @@ mod test {
         let event_ser = SCOutputEventSerializer::new();
         let event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
             thread_count: 16,
-            max_recursive_call_depth: 25,
+            max_call_stack_length: 25,
             max_event_data_length: 512,
         });
 
@@ -290,7 +290,7 @@ mod test {
         let event_ser = SCOutputEventSerializer::new();
         let event_deser = SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
             thread_count: 16,
-            max_recursive_call_depth: 25,
+            max_call_stack_length: 25,
             max_event_data_length: 512,
         });
 

@@ -12,5 +12,5 @@ pub struct EventCacheConfig {
     /// Thread count
     pub thread_count: u8,
     /// Call stack max length
-    pub max_recursive_call_depth: u16,
+    pub max_call_stack_length: u16,
 }

@@ -57,7 +57,7 @@ impl EventCache {
             event_ser: SCOutputEventSerializer::new(),
             event_deser: SCOutputEventDeserializer::new(SCOutputEventDeserializerArgs {
                 thread_count,
-                max_recursive_call_depth,
+                max_call_stack_length: max_recursive_call_depth,
                 max_event_data_length,
             }),
         }
