@@ -483,7 +483,10 @@ async fn launch(
         snip_amount: SETTINGS.execution.event_snip_amount,
         max_event_data_length: MAX_EVENT_DATA_SIZE as u64,
         thread_count: THREAD_COUNT,
-        max_recursive_call_depth: MAX_RECURSIVE_CALLS_DEPTH,
+        // Note: SCOutputEvent call stack comes from the execution module, and we assume 
+        //       this should return a limited call stack length
+        //       The value remains for future use & limitations
+        max_call_stack_length: u16::MAX,
     };
     let (event_cache_manager, event_cache_controller) =
         start_event_cache_writer_worker(event_cache_config);

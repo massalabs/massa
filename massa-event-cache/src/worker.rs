@@ -123,7 +123,7 @@ pub fn start_event_cache_writer_worker(
         cfg.max_event_cache_length,
         cfg.snip_amount,
         cfg.thread_count,
-        cfg.max_recursive_call_depth,
+        cfg.max_call_stack_length,
         cfg.max_event_data_length,
     )));
 
