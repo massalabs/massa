@@ -240,7 +240,11 @@ impl Interface for InterfaceImpl {
 
         context.recursion_counter += 1;
 
-        if context.recursion_counter > self.config.max_recursive_calls_depth {
+        let execution_component_version = self.get_interface_version()?;
+
+        if execution_component_version > 0
+            && context.recursion_counter > self.config.max_recursive_calls_depth
+        {
             bail!("recursion depth limit reached");
         }
 
