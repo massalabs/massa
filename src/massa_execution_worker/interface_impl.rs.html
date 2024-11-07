@@ -2441,11 +2441,11 @@
     }
 
     <span class="kw">fn </span>increment_recursion_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
+
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         context.recursion_counter += <span class="number">1</span>;
-
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
 
         <span class="kw">if </span>execution_component_version &gt; <span class="number">0
             </span>&amp;&amp; context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth
