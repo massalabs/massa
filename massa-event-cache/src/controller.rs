@@ -56,13 +56,69 @@ impl EventCacheController for EventCacheControllerImpl {
     fn save_events(&self, events: VecDeque<SCOutputEvent>) {
         // lock input data
         let mut input_data = self.input_data.1.lock();
-        input_data.events = events;
+        input_data.events.extend(events);
         // wake up VM loop
         self.input_data.0.notify_one();
     }
 
     fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent> {
+        
+        let lock_0 = self.input_data.1.lock();
+        let it = lock_0
+            .events
+            .iter()
+            .filter_map(|event| {
+
+                if let Some(start) = filter.start {
+                    if event.context.slot < start {
+                        return None;
+                    }
+                }
+                if let Some(end) = filter.end {
+                    if event.context.slot >= end {
+                        return None;
+                    }
+                }
+                if let Some(is_final) = filter.is_final {
+                    if event.context.is_final != is_final {
+                        return None;
+                    }
+                }
+                if let Some(is_error) = filter.is_error {
+                    if event.context.is_error != is_error {
+                        return None;
+                    }
+                }
+                match (
+                    filter.original_caller_address,
+                    event.context.call_stack.front(),
+                ) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                match (filter.emitter_address, event.context.call_stack.back()) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                match (
+                    filter.original_operation_id,
+                    event.context.origin_operation_id,
+                ) {
+                    (Some(addr1), Some(addr2)) if addr1 != addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                Some(event)
+            }); 
+        
         let lock = self.cache.read();
-        lock.get_filtered_sc_output_events(filter).collect()
+        it
+            .cloned()
+            .chain(lock
+                .get_filtered_sc_output_events(filter)
+            )
+            .collect()
     }
 }

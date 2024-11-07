@@ -9,22 +9,13 @@ use crate::ser_deser::{
 use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use rocksdb::{DBIterator, IteratorMode, WriteBatch, DB};
+use rocksdb::{DBIterator, IteratorMode, Options, WriteBatch, DB};
 use tracing::debug;
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const DESTROY_ERROR: &str = "critical: rocksdb delete operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const EVENT_DESER_ERROR: &str = "critical: event deserialization failed";
-
-/*
-/// Module key formatting macro
-#[macro_export]
-macro_rules! event_key {
-    ($event_slot:expr) => {
-        [&$event_slot.to_bytes()[..], &[MODULE_IDENT]].concat()
-    };
-}
-*/
 
 pub(crate) struct EventCache {
     /// RocksDB database
@@ -53,9 +44,12 @@ impl EventCache {
         max_recursive_call_depth: u16,
         max_event_data_length: u64,
     ) -> Self {
+        
+        // Clear the db 
+        DB::destroy(&Options::default(), path).expect(DESTROY_ERROR);
         let db = DB::open_default(path).expect(OPEN_ERROR);
 
-        let mut event_cache = Self {
+        Self {
             db,
             entry_count: 0,
             max_entry_count,
@@ -66,23 +60,7 @@ impl EventCache {
                 max_recursive_call_depth,
                 max_event_data_length,
             }),
-        };
-
-        event_cache.clear();
-        event_cache
-    }
-
-    fn clear(&mut self) {
-        let iter = self.db.iterator(IteratorMode::Start);
-        let mut batch = WriteBatch::default();
-
-        for kvb in iter {
-            let kvb = kvb.expect(EVENT_DESER_ERROR);
-            batch.delete(kvb.0);
         }
-
-        self.db.write(batch).expect(CRUD_ERROR);
-        self.entry_count = 0;
     }
 
     #[allow(dead_code)]
@@ -112,8 +90,6 @@ impl EventCache {
     }
 
     /// Insert new events in the cache
-    ///
-    /// For performance reason, pass events_len to avoid cloning the iterator
     pub fn insert_multi_it(
         &mut self,
         events: impl ExactSizeIterator<Item = SCOutputEvent> + Clone,
