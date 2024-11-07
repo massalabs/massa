@@ -187,7 +187,7 @@ pub struct ExecutionContext {
 
     /// The version of the execution component
     pub execution_component_version: u32,
-  
+
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
 }

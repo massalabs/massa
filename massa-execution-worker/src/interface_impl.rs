@@ -233,7 +233,7 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         Ok(context.execution_component_version)
     }
-  
+
     fn increment_recursion_counter(&self) -> Result<()> {
         let mut context = context_guard!(self);
 
@@ -1797,11 +1797,6 @@ impl Interface for InterfaceImpl {
                 warn!("Context is locked, cannot save gas remaining before subexecution");
             }
         }
-    }
-
-    /// Interface version to sync with the runtime for its versioning
-    fn get_interface_version(&self) -> Result<u32> {
-        Ok(0)
     }
 }
 
