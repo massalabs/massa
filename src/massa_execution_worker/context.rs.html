@@ -1374,6 +1374,7 @@
 <a href="#1374" id="1374">1374</a>
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1414,6 +1415,7 @@
 };
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
+<span class="kw">use </span>massa_sc_runtime::CondomLimits;
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
 <span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
@@ -2416,7 +2418,7 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
             <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
-                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>);
+                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, CondomLimits::default());
             }
         }
         <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
@@ -2488,7 +2490,7 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
             <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
-                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>);
+                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, <span class="self">self</span>.config.condom_limits.clone());
             }
         }
 
