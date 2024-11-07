@@ -28,6 +28,28 @@ impl Default for ExecutionConfig {
         let block_dump_folder_path = TempDir::new().unwrap().path().to_path_buf();
         std::fs::create_dir_all(block_dump_folder_path.clone()).unwrap();
 
+        #[cfg(feature = "gas_calibration")]
+        let limits = CondomLimits::default();
+
+        #[cfg(not(feature = "gas_calibration"))]
+        let limits = CondomLimits {
+            max_exports: Some(100),
+            max_functions: Some(100),
+            max_signature_len: Some(100),
+            max_name_len: Some(100),
+            max_imports_len: Some(100),
+            max_table_initializers_len: Some(100),
+            max_passive_elements_len: Some(100),
+            max_passive_data_len: Some(100),
+            max_global_initializers_len: Some(100),
+            max_function_names_len: Some(100),
+            max_tables_count: Some(16),
+            max_memories_len: Some(1),
+            max_globals_len: Some(100),
+            max_custom_sections_len: Some(100),
+            max_custom_sections_data_len: Some(1_000_000),
+        };
+
         Self {
             readonly_queue_length: 100,
             max_final_events: 1000,
@@ -78,23 +100,7 @@ impl Default for ExecutionConfig {
             max_execution_traces_slot_limit: 320,
             block_dump_folder_path,
             max_recursive_calls_depth: 25,
-            condom_limits: CondomLimits {
-                max_exports: Some(100),
-                max_functions: Some(100),
-                max_signature_len: Some(100),
-                max_name_len: Some(100),
-                max_imports_len: Some(100),
-                max_table_initializers_len: Some(100),
-                max_passive_elements_len: Some(100),
-                max_passive_data_len: Some(100),
-                max_global_initializers_len: Some(100),
-                max_function_names_len: Some(100),
-                max_tables_count: Some(16),
-                max_memories_len: Some(1),
-                max_globals_len: Some(100),
-                max_custom_sections_len: Some(100),
-                max_custom_sections_data_len: Some(1_000_000),
-            },
+            condom_limits: limits,
             deferred_calls_config: DeferredCallsConfig::default(),
         }
     }
