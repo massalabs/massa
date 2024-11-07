@@ -335,7 +335,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
     fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-
         let execution_component_version = self.get_interface_version()?;
 
         let condom_limits = match execution_component_version {
@@ -343,10 +342,11 @@ impl Interface for InterfaceImpl {
             _ => self.config.condom_limits.clone(),
         };
 
-        Ok((context_guard!(self))
-            .module_cache
-            .write()
-            .load_module(bytecode, gas_limit, condom_limits)?)
+        Ok((context_guard!(self)).module_cache.write().load_module(
+            bytecode,
+            gas_limit,
+            condom_limits,
+        )?)
     }
 
     /// Compile and return a temporary module
@@ -354,7 +354,6 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
     fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-
         let execution_component_version = self.get_interface_version()?;
 
         let condom_limits = match execution_component_version {

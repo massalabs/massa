@@ -949,7 +949,7 @@ impl ExecutionState {
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
-            
+
             execution_component_version = context.execution_component_version;
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
@@ -970,10 +970,10 @@ impl ExecutionState {
         };
 
         // load the tmp module
-        let module = self
-            .module_cache
-            .read()
-            .load_tmp_module(bytecode, *max_gas, condom_limits.clone())?;
+        let module =
+            self.module_cache
+                .read()
+                .load_tmp_module(bytecode, *max_gas, condom_limits.clone())?;
         // run the VM
         let _res = massa_sc_runtime::run_main(
             &*self.execution_interface,
@@ -1031,7 +1031,7 @@ impl ExecutionState {
             let mut context = context_guard!(self);
 
             execution_component_version = context.execution_component_version;
-            
+
             // Set the call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             context.stack = vec![
@@ -1082,7 +1082,10 @@ impl ExecutionState {
             _ => self.config.condom_limits.clone(),
         };
 
-        let module = self.module_cache.write().load_module(&bytecode, max_gas, condom_limits.clone())?;
+        let module =
+            self.module_cache
+                .write()
+                .load_module(&bytecode, max_gas, condom_limits.clone())?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1201,16 +1204,17 @@ impl ExecutionState {
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         let module = match context_guard!(self).execution_component_version {
-            0 => self
-                .module_cache
-                .write()
-                .load_module(&bytecode, message.max_gas, CondomLimits::default())?,
+            0 => self.module_cache.write().load_module(
+                &bytecode,
+                message.max_gas,
+                CondomLimits::default(),
+            )?,
             _ => {
-                let Ok(_module) = self
-                    .module_cache
-                    .write()
-                    .load_module(&bytecode, message.max_gas, self.config.condom_limits.clone())
-                else {
+                let Ok(_module) = self.module_cache.write().load_module(
+                    &bytecode,
+                    message.max_gas,
+                    self.config.condom_limits.clone(),
+                ) else {
                     let err = ExecutionError::RuntimeError(
                         "could not load module for async execution".into(),
                     );
@@ -1959,7 +1963,6 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-
                 let execution_component_version = execution_context.execution_component_version;
                 {
                     let mut context = context_guard!(self);
@@ -1979,10 +1982,11 @@ impl ExecutionState {
                 };
 
                 // load the tmp module
-                let module = self
-                    .module_cache
-                    .read()
-                    .load_tmp_module(&bytecode, req.max_gas, condom_limits.clone())?;
+                let module = self.module_cache.read().load_tmp_module(
+                    &bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )?;
 
                 // run the VM
                 massa_sc_runtime::run_main(
@@ -2039,10 +2043,11 @@ impl ExecutionState {
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let module = self
-                    .module_cache
-                    .write()
-                    .load_module(&bytecode, req.max_gas, condom_limits.clone())?;
+                let module = self.module_cache.write().load_module(
+                    &bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )?;
 
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,

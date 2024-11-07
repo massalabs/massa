@@ -40,7 +40,12 @@ impl ModuleCache {
     }
 
     /// Internal function to compile and build `ModuleInfo`
-    fn compile_cached(&mut self, bytecode: &[u8], hash: Hash, condom_limits: CondomLimits) -> ModuleInfo {
+    fn compile_cached(
+        &mut self,
+        bytecode: &[u8],
+        hash: Hash,
+        condom_limits: CondomLimits,
+    ) -> ModuleInfo {
         match RuntimeModule::new(
             bytecode,
             self.cfg.gas_costs.clone(),
@@ -62,11 +67,10 @@ impl ModuleCache {
     /// Save a new or an already existing module in the cache
     pub fn save_module(&mut self, bytecode: &[u8], condom_limits: CondomLimits) {
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) = self.hd_cache.get(
-            hash,
-            self.cfg.gas_costs.clone(),
-            condom_limits.clone(),
-        ) {
+        if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.cfg.gas_costs.clone(), condom_limits.clone())
+        {
             debug!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
         } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -119,11 +123,10 @@ impl ModuleCache {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);
             lru_module_info
-        } else if let Some(hd_module_info) = self.hd_cache.get(
-            hash,
-            self.cfg.gas_costs.clone(),
-            condom_limits.clone(),
-        ) {
+        } else if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.cfg.gas_costs.clone(), condom_limits.clone())
+        {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
