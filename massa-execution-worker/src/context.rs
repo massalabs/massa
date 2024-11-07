@@ -38,6 +38,7 @@ use massa_models::{
 };
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::PoSChanges;
+use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
 use massa_versioning::versioning::{MipComponent, MipStore};
@@ -1040,7 +1041,7 @@ impl ExecutionContext {
         {
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
-                cache_write_lock.save_module(&bytecode.0);
+                cache_write_lock.save_module(&bytecode.0, CondomLimits::default());
             }
         }
         // if the current slot is last in cycle check the production stats and act accordingly
@@ -1112,7 +1113,7 @@ impl ExecutionContext {
         {
             let mut cache_write_lock = self.module_cache.write();
             for bytecode in bc_updates {
-                cache_write_lock.save_module(&bytecode.0);
+                cache_write_lock.save_module(&bytecode.0, self.config.condom_limits.clone());
             }
         }
 
