@@ -236,11 +236,11 @@ impl Interface for InterfaceImpl {
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
+        let execution_component_version = self.get_interface_version()?;
+
         let mut context = context_guard!(self);
 
         context.recursion_counter += 1;
-
-        let execution_component_version = self.get_interface_version()?;
 
         if execution_component_version > 0
             && context.recursion_counter > self.config.max_recursive_calls_depth
