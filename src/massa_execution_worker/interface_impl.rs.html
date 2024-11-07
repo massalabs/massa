@@ -2200,6 +2200,9 @@
 <a href="#2200" id="2200">2200</a>
 <a href="#2201" id="2201">2201</a>
 <a href="#2202" id="2202">2202</a>
+<a href="#2203" id="2203">2203</a>
+<a href="#2204" id="2204">2204</a>
+<a href="#2205" id="2205">2205</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2442,7 +2445,11 @@
 
         context.recursion_counter += <span class="number">1</span>;
 
-        <span class="kw">if </span>context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth {
+        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
+
+        <span class="kw">if </span>execution_component_version &gt; <span class="number">0
+            </span>&amp;&amp; context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth
+        {
             <span class="macro">bail!</span>(<span class="string">"recursion depth limit reached"</span>);
         }
 
@@ -2537,7 +2544,6 @@
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-
         <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
@@ -2545,10 +2551,11 @@
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
         };
 
-        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>))
-            .module_cache
-            .write()
-            .load_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>)).module_cache.write().load_module(
+            bytecode,
+            gas_limit,
+            condom_limits,
+        )<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Compile and return a temporary module
@@ -2556,7 +2563,6 @@
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-
         <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
 
         <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {

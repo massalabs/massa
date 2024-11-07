@@ -2475,6 +2475,11 @@
 <a href="#2475" id="2475">2475</a>
 <a href="#2476" id="2476">2476</a>
 <a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3426,7 +3431,7 @@
         {
             <span class="comment">// acquire write access to the context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-            
+
             execution_component_version = context.execution_component_version;
             <span class="comment">// Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
@@ -3447,10 +3452,10 @@
         };
 
         <span class="comment">// load the tmp module
-        </span><span class="kw">let </span>module = <span class="self">self
-            </span>.module_cache
-            .read()
-            .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas, condom_limits.clone())<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>module =
+            <span class="self">self</span>.module_cache
+                .read()
+                .load_tmp_module(bytecode, <span class="kw-2">*</span>max_gas, condom_limits.clone())<span class="question-mark">?</span>;
         <span class="comment">// run the VM
         </span><span class="kw">let </span>_res = massa_sc_runtime::run_main(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
@@ -3508,7 +3513,7 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
             execution_component_version = context.execution_component_version;
-            
+
             <span class="comment">// Set the call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
             </span>context.stack = <span class="macro">vec!</span>[
@@ -3559,7 +3564,10 @@
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
         };
 
-        <span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(<span class="kw-2">&amp;</span>bytecode, max_gas, condom_limits.clone())<span class="question-mark">?</span>;
+        <span class="kw">let </span>module =
+            <span class="self">self</span>.module_cache
+                .write()
+                .load_module(<span class="kw-2">&amp;</span>bytecode, max_gas, condom_limits.clone())<span class="question-mark">?</span>;
         <span class="kw">let </span>response = massa_sc_runtime::run_function(
             <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
             module,
@@ -3678,16 +3686,17 @@
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
         </span><span class="kw">let </span>module = <span class="kw">match </span><span class="macro">context_guard!</span>(<span class="self">self</span>).execution_component_version {
-            <span class="number">0 </span>=&gt; <span class="self">self
-                </span>.module_cache
-                .write()
-                .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas, CondomLimits::default())<span class="question-mark">?</span>,
+            <span class="number">0 </span>=&gt; <span class="self">self</span>.module_cache.write().load_module(
+                <span class="kw-2">&amp;</span>bytecode,
+                message.max_gas,
+                CondomLimits::default(),
+            )<span class="question-mark">?</span>,
             <span class="kw">_ </span>=&gt; {
-                <span class="kw">let </span><span class="prelude-val">Ok</span>(_module) = <span class="self">self
-                    </span>.module_cache
-                    .write()
-                    .load_module(<span class="kw-2">&amp;</span>bytecode, message.max_gas, <span class="self">self</span>.config.condom_limits.clone())
-                <span class="kw">else </span>{
+                <span class="kw">let </span><span class="prelude-val">Ok</span>(_module) = <span class="self">self</span>.module_cache.write().load_module(
+                    <span class="kw-2">&amp;</span>bytecode,
+                    message.max_gas,
+                    <span class="self">self</span>.config.condom_limits.clone(),
+                ) <span class="kw">else </span>{
                     <span class="kw">let </span>err = ExecutionError::RuntimeError(
                         <span class="string">"could not load module for async execution"</span>.into(),
                     );
@@ -4436,7 +4445,6 @@
         <span class="comment">// run the interpreter according to the target type
         </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
-
                 <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
                 {
                     <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
@@ -4456,10 +4464,11 @@
                 };
 
                 <span class="comment">// load the tmp module
-                </span><span class="kw">let </span>module = <span class="self">self
-                    </span>.module_cache
-                    .read()
-                    .load_tmp_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas, condom_limits.clone())<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.read().load_tmp_module(
+                    <span class="kw-2">&amp;</span>bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )<span class="question-mark">?</span>;
 
                 <span class="comment">// run the VM
                 </span>massa_sc_runtime::run_main(
@@ -4516,10 +4525,11 @@
 
                 <span class="comment">// load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                </span><span class="kw">let </span>module = <span class="self">self
-                    </span>.module_cache
-                    .write()
-                    .load_module(<span class="kw-2">&amp;</span>bytecode, req.max_gas, condom_limits.clone())<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.write().load_module(
+                    <span class="kw-2">&amp;</span>bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>response = massa_sc_runtime::run_function(
                     <span class="kw-2">&amp;*</span><span class="self">self</span>.execution_interface,
