@@ -1,4 +1,4 @@
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use std::path::PathBuf;
 
 pub struct ModuleCacheConfig {
@@ -16,4 +16,6 @@ pub struct ModuleCacheConfig {
     pub snip_amount: usize,
     /// Maximum length of a module
     pub max_module_length: u64,
+    /// Runtime condom middleware limits
+    pub condom_limits: CondomLimits,
 }

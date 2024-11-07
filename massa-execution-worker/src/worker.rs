@@ -260,6 +260,10 @@ pub fn start_execution_worker(
     massa_metrics: MassaMetrics,
     #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
+    if config.hd_cache_size < config.snip_amount {
+        panic!("In config.toml, hd_cache_size must be greater than snip_amount");
+    }
+
     // create an execution state
     let execution_state = Arc::new(RwLock::new(ExecutionState::new(
         config.clone(),

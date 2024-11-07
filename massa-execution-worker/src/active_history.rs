@@ -211,7 +211,7 @@ impl ActiveHistory {
     }
 
     /// Gets the deferred credits for a given address that will be credited at a given slot
-    pub(crate) fn get_adress_deferred_credit_for(
+    pub(crate) fn get_address_deferred_credit_for(
         &self,
         addr: &Address,
         slot: &Slot,
@@ -250,7 +250,7 @@ impl ActiveHistory {
             return SlotIndexPosition::Past; // too old
         }
         let index: usize = match slot.slots_since(first_slot, thread_count) {
-            Err(_) => return SlotIndexPosition::Future, // overflow
+            Err(_) => return SlotIndexPosition::Past, // overflow
             Ok(d) => {
                 match d.try_into() {
                     Ok(d) => d,

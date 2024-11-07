@@ -3,7 +3,7 @@
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
 use massa_models::amount::Amount;
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::path::PathBuf;
@@ -102,4 +102,11 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
+    /// Max recursive calls depth in SC
+    /// Used to limit the recursion_counter value in the context, to avoid stack overflow issues.
+    pub max_recursive_calls_depth: u16,
+    /// Runtime condom middleware limits
+    pub condom_limits: CondomLimits,
+    /// Maximum number of event that an operation can emit
+    pub max_event_per_operation: usize,
 }

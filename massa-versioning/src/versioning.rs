@@ -1125,7 +1125,7 @@ impl MipStoreRaw {
             .iter()
             .rev()
             .filter(|(mi, ms)| {
-                mi.components.get(component).is_some()
+                mi.components.contains_key(component)
                     && matches!(ms.state, ComponentState::Active(_))
             })
             .find_map(|(mi, ms)| {

@@ -50,6 +50,7 @@ use tracing::warn;
     test
 ))]
 use massa_models::datastore::Datastore;
+use massa_models::execution::EventFilter;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
@@ -87,6 +88,7 @@ impl InterfaceImpl {
     pub fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
+        config: Option<ExecutionConfig>,
     ) -> InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
@@ -100,7 +102,7 @@ impl InterfaceImpl {
         use parking_lot::RwLock;
         use tempfile::TempDir;
 
-        let config = ExecutionConfig::default();
+        let config = config.unwrap_or_default();
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
@@ -130,6 +132,7 @@ impl InterfaceImpl {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // create an empty default store
@@ -229,6 +232,29 @@ impl Interface for InterfaceImpl {
     fn get_interface_version(&self) -> Result<u32> {
         let context = context_guard!(self);
         Ok(context.execution_component_version)
+    }
+  
+    fn increment_recursion_counter(&self) -> Result<()> {
+        let mut context = context_guard!(self);
+
+        context.recursion_counter += 1;
+
+        if context.recursion_counter > self.config.max_recursive_calls_depth {
+            bail!("recursion depth limit reached");
+        }
+
+        Ok(())
+    }
+
+    fn decrement_recursion_counter(&self) -> Result<()> {
+        let mut context = context_guard!(self);
+
+        match context.recursion_counter.checked_sub(1) {
+            Some(value) => context.recursion_counter = value,
+            None => bail!("recursion counter underflow"),
+        }
+
+        Ok(())
     }
 
     /// Initialize the call when bytecode calls a function from another bytecode
@@ -887,10 +913,7 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(
-            public_key_,
-            Some(libsecp256k1::PublicKeyFormat::Raw),
-        )?;
+        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -903,9 +926,36 @@ impl Interface for InterfaceImpl {
         // r is the R.x value of the signature's R point (32 bytes)
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
-        // we ignore the recovery parameter here
         // see test_evm_verify for an example of its usage
+        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
+        // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+        //       restrict to only 27 & 28 (=> 0 & 1)
+        if recovery_id != 0 && recovery_id != 1 {
+            // Note:
+            // The v value in an EVM signature serves as a recovery ID,
+            // aiding in the recovery of the public key from the signature.
+            // Typically, v should be either 27 or 28
+            // (or sometimes 0 or 1, depending on the implementation).
+            // Ensuring that v is within the expected range is crucial
+            // for correctly recovering the public key.
+            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+            return Err(anyhow!(
+                "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+            ));
+        }
+
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+        // Note:
+        // The s value in an EVM signature should be in the lower half of the elliptic curve
+        // in order to prevent malleability attacks.
+        // If s is in the high-order range, it can be converted to its low-order equivalent,
+        // which should be enforced during signature verification.
+        if signature.s.is_high() {
+            return Err(anyhow!(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            ));
+        }
 
         // verify the signature
         Ok(libsecp256k1::verify(&message, &signature, &public_key))
@@ -945,16 +995,33 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the message
-        let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        let message = libsecp256k1::Message::parse_slice(hash_)?;
 
         // parse the signature as being (r, s, v) use only r and s
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+        // Note:
+        // See evm_signature_verify explanation
+        if signature.s.is_high() {
+            return Err(anyhow!(
+                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            ));
+        }
 
         // parse v as a recovery id
-        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
+
+        let recovery_id_: u8 = recovery_id.into();
+        if recovery_id_ != 0 && recovery_id_ != 1 {
+            // Note:
+            // See evm_signature_verify explanation
+            return Err(anyhow!(
+                "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+            ));
+        }
 
         // recover the public key
-        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
 
         // return its serialized value
         Ok(recovered.serialize().to_vec())
@@ -1089,7 +1156,25 @@ impl Interface for InterfaceImpl {
         };
 
         let mut context = context_guard!(self);
+
         let event = context.event_create(data, false);
+        let event_filter = EventFilter {
+            start: None,
+            end: None,
+            emitter_address: None,
+            original_caller_address: None,
+            original_operation_id: event.context.origin_operation_id,
+            is_final: None,
+            is_error: None,
+        };
+        let event_per_op = context
+            .events
+            .get_filtered_sc_output_events_iter(&event_filter)
+            .count();
+        if event_per_op >= self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
+        }
+
         context.event_emit(event);
         Ok(())
     }
@@ -1713,6 +1798,11 @@ impl Interface for InterfaceImpl {
             }
         }
     }
+
+    /// Interface version to sync with the runtime for its versioning
+    fn get_interface_version(&self) -> Result<u32> {
+        Ok(0)
+    }
 }
 
 #[cfg(test)]
@@ -1725,7 +1815,7 @@ mod tests {
     #[test]
     fn test_get_keys() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         interface
             .set_ds_value_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
@@ -1754,7 +1844,7 @@ mod tests {
         operation_datastore.insert(b"k2".to_vec(), b"v2".to_vec());
         operation_datastore.insert(b"l3".to_vec(), b"v3".to_vec());
 
-        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore));
+        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore), None);
 
         let op_keys = interface.get_op_keys_wasmv1(b"k").unwrap();
 
@@ -1766,7 +1856,7 @@ mod tests {
     #[test]
     fn test_native_amount() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let amount1 = interface.native_amount_from_str_wasmv1("100").unwrap();
         let amount2 = interface.native_amount_from_str_wasmv1("100").unwrap();
@@ -1844,7 +1934,7 @@ mod tests {
     #[test]
     fn test_base58_check_to_form() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let data = "helloworld";
         let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
@@ -1855,7 +1945,7 @@ mod tests {
     #[test]
     fn test_comparison_function() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         // address
         let addr1 =

@@ -12,9 +12,9 @@
 //! an instance of `ExecutionManager` is returned (see the documentation of `start_execution_worker` in `massa-execution-worker`),
 //! as well as an instance of `ExecutionController`.
 //!
-//! The non-clonable `ExecutionManager` allows stopping the execution worker thread.
+//! The non-cloneable `ExecutionManager` allows stopping the execution worker thread.
 //!
-//! The clonable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker
+//! The cloneable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker
 //! for it to keep track of them and execute the operations present in blocks.
 //! It also allows various read-only queries such as executing bytecode
 //! while ignoring all the changes it would cause to the consensus state (read-only execution),
@@ -59,7 +59,7 @@ pub use controller_traits::MockExecutionController;
 pub use controller_traits::{ExecutionController, ExecutionManager};
 pub use error::{ExecutionError, ExecutionQueryError};
 pub use event_store::EventStore;
-pub use massa_sc_runtime::GasCosts;
+pub use massa_sc_runtime::{CondomLimits, GasCosts};
 pub use settings::{ExecutionConfig, StorageCostsConstants};
 pub use types::{
     ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,

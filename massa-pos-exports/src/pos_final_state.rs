@@ -1062,7 +1062,7 @@ impl PoSFinalState {
 
         let results = db.multi_get_cf(query);
 
-        match (results.get(0), results.get(1)) {
+        match (results.first(), results.get(1)) {
             (Some(Ok(Some(serialized_fail))), Some(Ok(Some(serialized_success)))) => {
                 let (_, fail) = self
                     .cycle_info_deserializer
