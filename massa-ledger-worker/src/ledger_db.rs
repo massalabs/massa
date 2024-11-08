@@ -149,7 +149,7 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, batch);
+                    self.delete_entry(&addr, batch, final_state_component_version);
                 }
             }
         }
@@ -302,7 +302,7 @@ impl LedgerDB {
             0 => {}
             _ => {
                 // Ensures any potential previous entry is fully deleted.
-                delete_datastore_entries(addr, &db, batch);
+                delete_datastore_entries(addr, &db, batch, final_state_component_version);
             }
         }
 
@@ -452,7 +452,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
+    fn delete_entry(
+        &self,
+        addr: &Address,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         let db = self.db.read();
 
         // version
@@ -476,7 +481,7 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        delete_datastore_entries(addr, &db, batch);
+        delete_datastore_entries(addr, &db, batch, final_state_component_version);
     }
 }
 
@@ -487,6 +492,7 @@ fn delete_datastore_entries(
     addr: &Address,
     db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
     batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+    final_state_component_version: u32,
 ) {
     // datastore
     let key_prefix = datastore_prefix_from_address(addr, &[]);
@@ -496,7 +502,10 @@ fn delete_datastore_entries(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
-        .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
+        .take_while(|(key, _)| match final_state_component_version {
+            0 => key <= &end_prefix(&key_prefix).unwrap(),
+            _ => key < &end_prefix(&key_prefix).unwrap(),
+        })
     {
         db.delete_key(batch, serialized_key.to_vec());
     }
@@ -689,7 +698,7 @@ mod tests {
 
         // delete entry
         let mut batch = DBBatch::new();
-        ledger_db.delete_entry(&addr, &mut batch);
+        ledger_db.delete_entry(&addr, &mut batch, 1);
         ledger_db
             .db
             .write()
