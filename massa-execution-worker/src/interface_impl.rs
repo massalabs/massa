@@ -1204,7 +1204,13 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn generate_event(&self, data: String) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let max_event_size = match execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
@@ -1220,14 +1226,15 @@ impl Interface for InterfaceImpl {
             is_final: None,
             is_error: None,
         };
-        let event_per_op = context
-            .events
-            .get_filtered_sc_output_events_iter(&event_filter)
-            .count();
-        if event_per_op >= self.config.max_event_per_operation {
-            bail!("Too many event for this operation");
+        if execution_component_version > 0 {
+            let event_per_op = context
+                .events
+                .get_filtered_sc_output_events_iter(&event_filter)
+                .count();
+            if event_per_op >= self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
         }
-
         context.event_emit(event);
         Ok(())
     }
@@ -1237,13 +1244,38 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let max_event_size = match execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
         let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
+
+        let event_filter = EventFilter {
+            start: None,
+            end: None,
+            emitter_address: None,
+            original_caller_address: None,
+            original_operation_id: event.context.origin_operation_id,
+            is_final: None,
+            is_error: None,
+        };
+        if execution_component_version > 0 {
+            let event_per_op = context
+                .events
+                .get_filtered_sc_output_events_iter(&event_filter)
+                .count();
+            if event_per_op >= self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
+        }
         context.event_emit(event);
 
         Ok(())
