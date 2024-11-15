@@ -1186,6 +1186,24 @@ impl Interface for InterfaceImpl {
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
         let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
+
+        let event_filter = EventFilter {
+            start: None,
+            end: None,
+            emitter_address: None,
+            original_caller_address: None,
+            original_operation_id: event.context.origin_operation_id,
+            is_final: None,
+            is_error: None,
+        };
+        let event_per_op = context
+            .events
+            .get_filtered_sc_output_events_iter(&event_filter)
+            .count();
+        if event_per_op >= self.config.max_event_per_operation {
+            bail!("Too many event for this operation");
+        }
+
         context.event_emit(event);
 
         Ok(())
