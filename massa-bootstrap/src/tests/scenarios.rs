@@ -20,7 +20,7 @@ fn test_bootstrap_not_whitelisted() {
     let server_keypair = KeyPair::generate(0).unwrap();
     let bootstrap_server_config = BootstrapConfig {
         bootstrap_whitelist_path: PathBuf::from(
-            "../massa-node/base_config/bootstrap_whitelist.json",
+            "../massa-bootstrap/src/tests/test_bootstrap_whitelist.json",
         ),
         ..Default::default()
     };
