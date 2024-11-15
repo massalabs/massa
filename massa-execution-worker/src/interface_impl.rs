@@ -936,8 +936,11 @@ impl Interface for InterfaceImpl {
 
         // parse the public key
         let public_key = match execution_component_version {
-            0 => libsecp256k1::PublicKey::parse_slice(public_key_, Some(libsecp256k1::PublicKeyFormat::Raw))?,
-            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)?
+            0 => libsecp256k1::PublicKey::parse_slice(
+                public_key_,
+                Some(libsecp256k1::PublicKeyFormat::Raw),
+            )?,
+            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)?,
         };
 
         // build the message
@@ -971,7 +974,7 @@ impl Interface for InterfaceImpl {
                     "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
                 ));
             }
-    
+
             // Note:
             // The s value in an EVM signature should be in the lower half of the elliptic curve
             // in order to prevent malleability attacks.
@@ -1029,7 +1032,8 @@ impl Interface for InterfaceImpl {
                 let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
 
                 // parse the signature as being (r, s, v) use only r and s
-                let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+                let signature =
+                    libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
 
                 // parse v as a recovery id
                 let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
@@ -1039,7 +1043,7 @@ impl Interface for InterfaceImpl {
 
                 // return its serialized value
                 Ok(recovered.serialize().to_vec())
-            },
+            }
             _ => {
                 // parse the message
                 let message = libsecp256k1::Message::parse_slice(hash_)?;
