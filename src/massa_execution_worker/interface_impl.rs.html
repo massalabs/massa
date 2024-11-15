@@ -2176,33 +2176,6 @@
 <a href="#2176" id="2176">2176</a>
 <a href="#2177" id="2177">2177</a>
 <a href="#2178" id="2178">2178</a>
-<a href="#2179" id="2179">2179</a>
-<a href="#2180" id="2180">2180</a>
-<a href="#2181" id="2181">2181</a>
-<a href="#2182" id="2182">2182</a>
-<a href="#2183" id="2183">2183</a>
-<a href="#2184" id="2184">2184</a>
-<a href="#2185" id="2185">2185</a>
-<a href="#2186" id="2186">2186</a>
-<a href="#2187" id="2187">2187</a>
-<a href="#2188" id="2188">2188</a>
-<a href="#2189" id="2189">2189</a>
-<a href="#2190" id="2190">2190</a>
-<a href="#2191" id="2191">2191</a>
-<a href="#2192" id="2192">2192</a>
-<a href="#2193" id="2193">2193</a>
-<a href="#2194" id="2194">2194</a>
-<a href="#2195" id="2195">2195</a>
-<a href="#2196" id="2196">2196</a>
-<a href="#2197" id="2197">2197</a>
-<a href="#2198" id="2198">2198</a>
-<a href="#2199" id="2199">2199</a>
-<a href="#2200" id="2200">2200</a>
-<a href="#2201" id="2201">2201</a>
-<a href="#2202" id="2202">2202</a>
-<a href="#2203" id="2203">2203</a>
-<a href="#2204" id="2204">2204</a>
-<a href="#2205" id="2205">2205</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2226,7 +2199,6 @@
 <span class="kw">use </span>massa_proto_rs::massa::model::v1::{
     AddressCategory, ComparisonResult, NativeAmount, NativeTime,
 };
-<span class="kw">use </span>massa_sc_runtime::CondomLimits;
 <span class="kw">use </span>massa_sc_runtime::RuntimeModule;
 <span class="kw">use </span>massa_sc_runtime::{Interface, InterfaceClone};
 <span class="kw">use </span>massa_signature::PublicKey;
@@ -2435,21 +2407,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>get_interface_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u32&gt; {
-        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="prelude-val">Ok</span>(context.execution_component_version)
-    }
-
     <span class="kw">fn </span>increment_recursion_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         context.recursion_counter += <span class="number">1</span>;
 
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0
-            </span>&amp;&amp; context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth
-        {
+        <span class="kw">if </span>context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth {
             <span class="macro">bail!</span>(<span class="string">"recursion depth limit reached"</span>);
         }
 
@@ -2544,18 +2507,10 @@
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; CondomLimits::default(),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
-        };
-
-        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>)).module_cache.write().load_module(
-            bytecode,
-            gas_limit,
-            condom_limits,
-        )<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>))
+            .module_cache
+            .write()
+            .load_module(bytecode, gas_limit)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Compile and return a temporary module
@@ -2563,17 +2518,10 @@
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; CondomLimits::default(),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
-        };
-
         <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>))
             .module_cache
             .write()
-            .load_tmp_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>)
+            .load_tmp_module(bytecode, gas_limit)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Gets the balance of the current address address (top of the stack).
@@ -3499,6 +3447,10 @@
             <span class="macro">bail!</span>(<span class="string">"validity end thread exceeds the configuration thread count"</span>)
         }
 
+        <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
+            <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
+        }
+
         <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
@@ -3517,19 +3469,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
 
-        <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
-            <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
-                <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
-            }
-            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>)
-                &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
-            {
-                <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the validity start"</span>)
-            }
-            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
-                <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the current slot"</span>)
-            }
+        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
+        {
+            <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the validity start"</span>)
+        }
+        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
+            <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the current slot"</span>)
         }
 
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
@@ -3835,15 +3780,11 @@
 
     <span class="kw">fn </span>get_address_category_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, to_check: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;AddressCategory&gt; {
         <span class="kw">let </span>addr = Address::from_str(to_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>execution_component_version = <span class="macro">context_guard!</span>(<span class="self">self</span>).execution_component_version;
-
-        <span class="kw">match </span>(addr, execution_component_version) {
-            (Address::User(<span class="kw">_</span>), <span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
-            (Address::SC(<span class="kw">_</span>), <span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
-            (Address::User(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
-            (Address::SC(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
+        <span class="kw">match </span>addr {
+            Address::User(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
+            Address::SC(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
             <span class="attr">#[allow(unreachable_patterns)]
-            </span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::Unspecified),
+            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(AddressCategory::Unspecified),
         }
     }
 
@@ -4022,6 +3963,11 @@
                 <span class="macro">warn!</span>(<span class="string">"Context is locked, cannot save gas remaining before subexecution"</span>);
             }
         }
+    }
+
+    <span class="doccomment">/// Interface version to sync with the runtime for its versioning
+    </span><span class="kw">fn </span>get_interface_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u32&gt; {
+        <span class="prelude-val">Ok</span>(<span class="number">0</span>)
     }
 }
 
