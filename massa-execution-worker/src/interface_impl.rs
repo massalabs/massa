@@ -99,7 +99,10 @@ impl InterfaceImpl {
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
         use massa_pos_worker::start_selector_worker;
-        use massa_versioning::versioning::{MipStatsConfig, MipStore};
+        use massa_versioning::{
+            mips::get_mip_list,
+            versioning::{MipStatsConfig, MipStore},
+        };
         use parking_lot::RwLock;
         use tempfile::TempDir;
 
@@ -141,8 +144,8 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
+            .expect("Cannot create an empty MIP store");
 
         let mut execution_context = ExecutionContext::new(
             config.clone(),
