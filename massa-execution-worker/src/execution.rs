@@ -441,6 +441,7 @@ impl ExecutionState {
 
         // lock execution context
         let mut context = context_guard!(self);
+        let execution_component_version = context.execution_component_version;
 
         // ignore the operation if it was already executed
         if context.is_op_executed(&operation_id) {
@@ -462,7 +463,9 @@ impl ExecutionState {
         // set the context origin operation ID
         // Note: set operation ID early as if context.transfer_coins fails, event_create will use
         // operation ID in the event message
-        context.origin_operation_id = Some(operation_id);
+        if execution_component_version >= 1 {
+            context.origin_operation_id = Some(operation_id);
+        }
 
         // debit the fee from the operation sender
         if let Err(err) =
@@ -482,6 +485,10 @@ impl ExecutionState {
 
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
+
+        if execution_component_version == 0 {
+            context.origin_operation_id = Some(operation_id);
+        }
 
         Ok(context_snapshot)
     }
