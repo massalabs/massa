@@ -3069,6 +3069,7 @@ dependencies = [
  "mockall_wrap",
  "more-asserts 0.3.1",
  "nom",
+ "num_enum",
  "parking_lot",
  "rand",
  "rocksdb",

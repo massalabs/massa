@@ -13,4 +13,8 @@ pub struct EventCacheConfig {
     pub thread_count: u8,
     /// Call stack max length
     pub max_call_stack_length: u16,
+    /// Maximum number of events per operation
+    pub max_events_per_operation: u64,
+    /// Maximum number of operations per block
+    pub max_operations_per_block: u64,
 }

@@ -1,21 +1,173 @@
-use std::cmp::max;
 // std
-use nom::AsBytes;
+use std::cmp::max;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 // third-party
+use num_enum::IntoPrimitive;
+use rocksdb::{IteratorMode, Options, WriteBatch, DB};
+use tracing::{debug, warn};
+// internal
+use crate::rocksdb_operator::counter_merge;
 use crate::ser_deser::{
     SCOutputEventDeserializer, SCOutputEventDeserializerArgs, SCOutputEventSerializer,
 };
+use massa_models::address::Address;
+use massa_models::error::ModelsError;
 use massa_models::execution::EventFilter;
+use massa_models::operation::{OperationId, OperationIdSerializer};
 use massa_models::output_event::SCOutputEvent;
+use massa_models::slot::Slot;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
-use rocksdb::{DBIterator, IteratorMode, Options, WriteBatch, DB};
-use tracing::debug;
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
+const COUNTER_INIT_ERROR: &str = "critical: cannot init rocksdb counters";
 const DESTROY_ERROR: &str = "critical: rocksdb delete operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
 const EVENT_DESER_ERROR: &str = "critical: event deserialization failed";
+const OPERATION_ID_DESER_ERROR: &str = "critical: deserialization failed for op id in rocksdb";
+const COUNTER_ERROR: &str = "critical: cannot get counter";
+
+#[allow(dead_code)]
+/// Prefix u8 used to identify rocksdb keys
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, IntoPrimitive)]
+#[repr(u8)]
+enum KeyIndent {
+    Counter = 0,
+    Event,
+    EmitterAddress,
+    OriginalCallerAddress,
+    OriginalOperationId,
+    IsError,
+    IsFinal,
+}
+
+/// A Rocksdb key builder to insert in EventCache
+struct EventCacheKeyBuilder {
+    /// Operation Id Serializer
+    op_id_ser: OperationIdSerializer,
+}
+
+impl EventCacheKeyBuilder {
+    fn new() -> Self {
+        Self {
+            op_id_ser: OperationIdSerializer::new(),
+        }
+    }
+
+    /// A prefix key (for rocksdb prefix iteration)
+    fn get_prefix_event_key(&self, slot: &Slot) -> Vec<u8> {
+        let mut event_key = vec![KeyIndent::Event as u8];
+        event_key.extend(slot.to_bytes_key());
+        event_key
+    }
+
+    fn get_event_key(&self, event: &SCOutputEvent) -> Vec<u8> {
+        let mut event_key = vec![KeyIndent::Event as u8];
+        event_key.extend(event.context.slot.to_bytes_key());
+        event_key.extend(event.context.index_in_slot.to_be_bytes());
+        event_key
+    }
+
+    fn get_prefix_emitter_address_address_key(&self, addr: &Address) -> Vec<u8> {
+        let mut key = vec![KeyIndent::EmitterAddress as u8];
+        let addr_bytes = addr.to_prefixed_bytes();
+        let addr_bytes_len = addr_bytes.len();
+        key.extend(addr_bytes);
+        key.push(addr_bytes_len as u8);
+        key
+    }
+
+    fn get_emitter_address_key(&self, event: &SCOutputEvent) -> Option<Vec<u8>> {
+        if let Some(addr) = event.context.call_stack.back() {
+            let mut key = vec![KeyIndent::EmitterAddress as u8];
+            let addr_bytes = addr.to_prefixed_bytes();
+            let addr_bytes_len = addr_bytes.len();
+            key.extend(addr_bytes);
+            key.push(addr_bytes_len as u8);
+            key.extend(self.get_event_key(event));
+            Some(key)
+        } else {
+            None
+        }
+    }
+
+    fn get_prefix_original_caller_address_key(&self, addr: &Address) -> Vec<u8> {
+        let mut key = vec![KeyIndent::OriginalCallerAddress as u8];
+        let addr_bytes = addr.to_prefixed_bytes();
+        let addr_bytes_len = addr_bytes.len();
+        key.extend(addr_bytes);
+        key.push(addr_bytes_len as u8);
+        key
+    }
+
+    fn get_original_caller_address_key(&self, event: &SCOutputEvent) -> Option<Vec<u8>> {
+        if let Some(addr) = event.context.call_stack.front() {
+            let mut key = vec![KeyIndent::OriginalCallerAddress as u8];
+            let addr_bytes = addr.to_prefixed_bytes();
+            let addr_bytes_len = addr_bytes.len();
+            key.extend(addr_bytes);
+            key.push(addr_bytes_len as u8);
+            key.extend(self.get_event_key(event));
+            Some(key)
+        } else {
+            None
+        }
+    }
+
+    fn get_prefix_original_operation_id_key(&self, op_id: &OperationId) -> Option<Vec<u8>> {
+        let mut key = vec![KeyIndent::OriginalOperationId as u8];
+        let mut buffer = Vec::new();
+        self.op_id_ser.serialize(op_id, &mut buffer).ok()?;
+        key.extend(&buffer);
+        key.extend(u32::to_be_bytes(buffer.len() as u32));
+        Some(key)
+    }
+
+    fn get_original_operation_id_key(&self, event: &SCOutputEvent) -> Option<Vec<u8>> {
+        if let Some(op_id) = event.context.origin_operation_id {
+            let mut key = vec![KeyIndent::OriginalOperationId as u8];
+            let mut buffer = Vec::new();
+            self.op_id_ser.serialize(&op_id, &mut buffer).ok()?;
+            key.extend(&buffer);
+            key.extend(u32::to_be_bytes(buffer.len() as u32));
+            key.extend(self.get_event_key(event));
+            Some(key)
+        } else {
+            None
+        }
+    }
+
+    fn get_prefix_is_error_key(&self, is_error: bool) -> Vec<u8> {
+        vec![KeyIndent::IsError as u8, u8::from(is_error)]
+    }
+
+    fn get_is_error_key(&self, event: &SCOutputEvent) -> Vec<u8> {
+        let mut key = vec![KeyIndent::IsError as u8];
+        key.push(event.context.is_error as u8);
+        key.extend(self.get_event_key(event));
+        key
+    }
+
+    fn get_counter_key_from(&self, key: &[u8]) -> Vec<u8> {
+        vec![KeyIndent::Counter as u8, key[0]]
+    }
+
+    fn get_counter_key_from_indent(&self, indent: &KeyIndent) -> Vec<u8> {
+        vec![KeyIndent::Counter as u8, *indent as u8]
+    }
+
+    fn get_counter_key_bool_from(&self, key: &[u8], value: bool) -> Vec<u8> {
+        vec![u8::from(KeyIndent::Counter), key[0], u8::from(value)]
+    }
+
+    fn get_counter_key_bool_from_indent(&self, indent: &KeyIndent, value: bool) -> Vec<u8> {
+        vec![
+            u8::from(KeyIndent::Counter),
+            u8::from(*indent),
+            u8::from(value),
+        ]
+    }
+}
 
 pub(crate) struct EventCache {
     /// RocksDB database
@@ -32,9 +184,22 @@ pub(crate) struct EventCache {
     event_ser: SCOutputEventSerializer,
     /// Event deserializer
     event_deser: SCOutputEventDeserializer,
+    /// Key builder
+    key_builder: EventCacheKeyBuilder,
+    /// First event slot in db
+    first_slot: Slot,
+    /// Last event slot in db
+    last_slot: Slot,
+    /// Thread count
+    thread_count: u8,
+    /// Maximum number of events per operation
+    max_events_per_operation: u64,
+    /// Maximum number of operations per block
+    max_operations_per_block: u64,
 }
 
 impl EventCache {
+    #[allow(clippy::too_many_arguments)]
     /// Create a new EventCache
     pub fn new(
         path: &Path,
@@ -43,11 +208,35 @@ impl EventCache {
         thread_count: u8,
         max_recursive_call_depth: u16,
         max_event_data_length: u64,
+        max_events_per_operation: u64,
+        max_operations_per_block: u64,
     ) -> Self {
-        
-        // Clear the db 
+        // Clear the db
         DB::destroy(&Options::default(), path).expect(DESTROY_ERROR);
-        let db = DB::open_default(path).expect(OPEN_ERROR);
+        let options = {
+            let mut opts = Options::default();
+            opts.create_if_missing(true);
+            opts.set_merge_operator_associative("counter merge operator", counter_merge);
+            opts
+        };
+        let db = DB::open(&options, path).expect(OPEN_ERROR);
+
+        let key_builder = EventCacheKeyBuilder::new();
+        // init counters
+        let mut batch = WriteBatch::default();
+        let value = 0u64.to_be_bytes();
+        let key_counter = key_builder.get_counter_key_from_indent(&KeyIndent::EmitterAddress);
+        batch.put(key_counter, value);
+        let key_counter =
+            key_builder.get_counter_key_from_indent(&KeyIndent::OriginalCallerAddress);
+        batch.put(key_counter, value);
+        let key_counter = key_builder.get_counter_key_from_indent(&KeyIndent::OriginalOperationId);
+        batch.put(key_counter, value);
+        let key_counter = key_builder.get_counter_key_bool_from_indent(&KeyIndent::IsError, true);
+        batch.put(key_counter, value);
+        let key_counter = key_builder.get_counter_key_bool_from_indent(&KeyIndent::IsError, false);
+        batch.put(key_counter, value);
+        db.write(batch).expect(COUNTER_INIT_ERROR);
 
         Self {
             db,
@@ -60,7 +249,47 @@ impl EventCache {
                 max_call_stack_length: max_recursive_call_depth,
                 max_event_data_length,
             }),
+            key_builder,
+            first_slot: Slot::new(0, 0),
+            last_slot: Slot::new(0, 0),
+            thread_count,
+            max_events_per_operation,
+            max_operations_per_block,
         }
+    }
+
+    /// From an event add keys & values into a rocksdb batch
+    fn insert_into_batch(&mut self, event: SCOutputEvent, batch: &mut WriteBatch) {
+        let mut event_buffer = Vec::new();
+        self.event_ser.serialize(&event, &mut event_buffer).unwrap();
+
+        batch.put(self.key_builder.get_event_key(&event), event_buffer);
+        if let Some(key) = self.key_builder.get_emitter_address_key(&event) {
+            let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+            batch.put(key, vec![]);
+            batch.merge(key_counter, 1i64.to_be_bytes());
+        }
+        if let Some(key) = self.key_builder.get_original_caller_address_key(&event) {
+            let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+            batch.put(key, vec![]);
+            batch.merge(key_counter, 1i64.to_be_bytes());
+        }
+        if let Some(key) = self.key_builder.get_original_operation_id_key(&event) {
+            let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+            batch.put(key, vec![]);
+            batch.merge(key_counter, 1i64.to_be_bytes());
+        }
+
+        let key = self.key_builder.get_is_error_key(&event);
+        let key_counter = self
+            .key_builder
+            .get_counter_key_bool_from(key.as_slice(), event.context.is_error);
+        batch.put(key, vec![]);
+        batch.merge(key_counter, 1i64.to_be_bytes());
+
+        // Keep track of last slot (and start slot) of events in the DB
+        // Help for event filtering
+        self.last_slot = max(self.last_slot, event.context.slot);
     }
 
     #[allow(dead_code)]
@@ -70,16 +299,8 @@ impl EventCache {
             self.snip(None);
         }
 
-        let event_key = {
-            let mut event_key = event.context.slot.to_bytes_key().to_vec();
-            event_key.extend(event.context.index_in_slot.to_be_bytes());
-            event_key
-        };
-        let mut event_buffer = Vec::new();
-        self.event_ser.serialize(&event, &mut event_buffer).unwrap();
-
         let mut batch = WriteBatch::default();
-        batch.put(event_key, event_buffer);
+        self.insert_into_batch(event, &mut batch);
         self.db.write(batch).expect(CRUD_ERROR);
 
         // Note:
@@ -103,15 +324,7 @@ impl EventCache {
 
         let mut batch = WriteBatch::default();
         for event in events {
-            let event_key = {
-                let mut event_key = event.context.slot.to_bytes_key().to_vec();
-                event_key.extend(event.context.index_in_slot.to_be_bytes());
-                event_key
-            };
-            let mut event_buffer = Vec::new();
-            self.event_ser.serialize(&event, &mut event_buffer).unwrap();
-
-            batch.put(event_key, event_buffer);
+            self.insert_into_batch(event, &mut batch);
         }
         self.db.write(batch).expect(CRUD_ERROR);
         // Note:
@@ -121,64 +334,253 @@ impl EventCache {
         debug!("(Events insert) entry_count is: {}", self.entry_count);
     }
 
-    fn db_iter(&self, mode: Option<IteratorMode>) -> DBIterator {
-        self.db.iterator(mode.unwrap_or(IteratorMode::Start))
+    /// Get events filtered by the given argument
+    pub(crate) fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent> {
+        // Step 1
+        // Build a (sorted) map with key: (counter value, indent), value: filter
+        // Will be used to iterate from the lower count index to the highest count index
+        // e.g. if index for emitter address is 10 (index count), and origin operation id is 20
+        //      iter over emitter address index then origin operation id index
+
+        let filter_items = from_event_filter(filter);
+
+        if filter_items.is_empty() {
+            // Note: will return too many event - user should restrict the filter
+            warn!("Filter item only on is final field, please add more filter parameters");
+            return vec![];
+        }
+
+        let it = filter_items.iter().map(|(key_indent, filter_item)| {
+            let count = self
+                .filter_item_estimate_count(key_indent, filter_item)
+                .unwrap_or_else(|e| {
+                    warn!(
+                        "Could not estimate count for key indent: {:?} - filter_item: {:?}: {}",
+                        key_indent, filter_item, e
+                    );
+                    self.max_entry_count as u64
+                });
+            ((count, key_indent), filter_item)
+        });
+
+        let map = BTreeMap::from_iter(it);
+
+        // Step 2: apply filter from the lowest counter to the highest counter
+
+        let mut filter_res_prev = None;
+        for ((_counter, indent), filter_item) in map.iter() {
+            let mut filter_res = BTreeSet::new();
+            self.filter_for(
+                indent,
+                filter_item,
+                &mut filter_res,
+                filter_res_prev.as_ref(),
+            );
+            filter_res_prev = Some(filter_res);
+        }
+
+        // Step 3: get values & deserialize
+
+        let multi_args = filter_res_prev
+            .unwrap()
+            .into_iter()
+            .collect::<Vec<Vec<u8>>>();
+        let res = self.db.multi_get(multi_args);
+
+        res.into_iter()
+            .map(|value| {
+                let value = value.unwrap().unwrap();
+                let (_, event) = self
+                    .event_deser
+                    .deserialize::<DeserializeError>(&value)
+                    .unwrap();
+                event
+            })
+            .collect::<Vec<SCOutputEvent>>()
     }
 
-    pub(crate) fn get_filtered_sc_output_events<'b, 'a: 'b>(
-        &'a self,
-        filter: &'b EventFilter,
-    ) -> impl Iterator<Item = SCOutputEvent> + 'b {
-        self.db_iter(Some(IteratorMode::Start)).filter_map(|kvb| {
-            let kvb = kvb.unwrap();
-            let (_rem, event) = self
-                .event_deser
-                .deserialize::<DeserializeError>(kvb.1.as_bytes())
-                .expect(EVENT_DESER_ERROR);
+    fn filter_for(
+        &self,
+        indent: &KeyIndent,
+        filter_item: &FilterItem,
+        result: &mut BTreeSet<Vec<u8>>,
+        seen: Option<&BTreeSet<Vec<u8>>>,
+    ) {
+        if *indent == KeyIndent::Event {
+            let opts = match filter_item {
+                FilterItem::SlotStart(start) => {
+                    let key_start = self.key_builder.get_prefix_event_key(start);
+                    let mut options = rocksdb::ReadOptions::default();
+                    options.set_iterate_lower_bound(key_start);
+                    options
+                }
+                FilterItem::SlotEnd(end) => {
+                    let key_end = self.key_builder.get_prefix_event_key(end);
+                    let mut options = rocksdb::ReadOptions::default();
+                    options.set_iterate_upper_bound(key_end);
+                    options
+                }
+                FilterItem::SlotStartEnd(start, end) => {
+                    let key_start = self.key_builder.get_prefix_event_key(start);
+                    let key_end = self.key_builder.get_prefix_event_key(end);
+                    let mut options = rocksdb::ReadOptions::default();
+                    options.set_iterate_range(key_start..key_end);
+                    options
+                }
+                _ => unreachable!(),
+            };
 
-            if let Some(start) = filter.start {
-                if event.context.slot < start {
-                    return None;
+            #[allow(clippy::manual_flatten)]
+            for kvb in self.db.iterator_opt(IteratorMode::Start, opts) {
+                if let Ok(kvb) = kvb {
+                    if !kvb.0.starts_with(&[*indent as u8]) {
+                        break;
+                    }
+
+                    // FIXME: should check for end bound?
+
+                    let found = kvb.0.to_vec();
+                    // println!("found: {:?}", found);
+
+                    if let Some(filter_set_seen) = seen {
+                        if filter_set_seen.contains(&found) {
+                            result.insert(found);
+                        }
+
+                        // We have already found as many items as in a previous search
+                        // As we search from the lowest count to the highest count, we will never add new items
+                        // in our result, so we can break here
+                        if filter_set_seen.len() == result.len() {
+                            break;
+                        }
+                    } else {
+                        result.insert(found);
+                    }
                 }
             }
-            if let Some(end) = filter.end {
-                if event.context.slot >= end {
-                    return None;
+        } else {
+            let prefix_filter = match filter_item {
+                FilterItem::EmitterAddress(addr) => self
+                    .key_builder
+                    .get_prefix_emitter_address_address_key(addr),
+                FilterItem::OriginalCallerAddress(addr) => self
+                    .key_builder
+                    .get_prefix_original_caller_address_key(addr),
+                FilterItem::OriginalOperationId(op_id) => self
+                    .key_builder
+                    .get_prefix_original_operation_id_key(op_id)
+                    .expect(OPERATION_ID_DESER_ERROR),
+                FilterItem::IsError(is_error) => {
+                    self.key_builder.get_prefix_is_error_key(*is_error)
+                }
+                _ => unreachable!(),
+            };
+
+            #[allow(clippy::manual_flatten)]
+            for kvb in self.db.prefix_iterator(prefix_filter.as_slice()) {
+                if let Ok(kvb) = kvb {
+                    if !kvb.0.starts_with(&[*indent as u8]) {
+                        break;
+                    }
+
+                    // FIXME: is this always true?
+                    if !kvb.0.starts_with(prefix_filter.as_slice()) {
+                        break;
+                    }
+
+                    let found = kvb
+                        .0
+                        .strip_prefix(prefix_filter.as_slice())
+                        .unwrap()
+                        .to_vec();
+
+                    if let Some(filter_set_seen) = seen {
+                        if filter_set_seen.contains(&found) {
+                            result.insert(found);
+                        }
+
+                        // We have already found as many items as in a previous search
+                        // As we search from the lowest count to the highest count, we will never add new items
+                        // in our result, so we can break here
+                        if filter_set_seen.len() == result.len() {
+                            break;
+                        }
+                    } else {
+                        result.insert(found);
+                    }
                 }
             }
-            if let Some(is_final) = filter.is_final {
-                if event.context.is_final != is_final {
-                    return None;
-                }
+        }
+    }
+
+    /// Estimate for a given KeyIndent & FilterItem the number of row to process
+    fn filter_item_estimate_count(
+        &self,
+        key_indent: &KeyIndent,
+        filter_item: &FilterItem,
+    ) -> Result<u64, ModelsError> {
+        match filter_item {
+            FilterItem::SlotStart(start) => {
+                let diff = self.last_slot.slots_since(start, self.thread_count)?;
+                // Note: Pessimistic estimation - should we keep an average count of events per slot
+                //       and use that instead?
+                Ok(diff
+                    .saturating_mul(self.max_events_per_operation)
+                    .saturating_mul(self.max_operations_per_block))
             }
-            if let Some(is_error) = filter.is_error {
-                if event.context.is_error != is_error {
-                    return None;
-                }
+            FilterItem::SlotStartEnd(start, end) => {
+                let diff = end.slots_since(start, self.thread_count)?;
+                Ok(diff
+                    .saturating_mul(self.max_events_per_operation)
+                    .saturating_mul(self.max_operations_per_block))
             }
-            match (
-                filter.original_caller_address,
-                event.context.call_stack.front(),
-            ) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
+            FilterItem::SlotEnd(end) => {
+                let diff = end.slots_since(&self.first_slot, self.thread_count)?;
+                Ok(diff
+                    .saturating_mul(self.max_events_per_operation)
+                    .saturating_mul(self.max_operations_per_block))
             }
-            match (filter.emitter_address, event.context.call_stack.back()) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
+            FilterItem::EmitterAddress(_addr) => {
+                let counter_key = self.key_builder.get_counter_key_from_indent(key_indent);
+                let counter = u64::from_be_bytes(
+                    self.db
+                        .get(counter_key)
+                        .expect(COUNTER_ERROR)
+                        .unwrap() // safe to unwrap - counter init in new
+                        .try_into()
+                        .unwrap(), // safe to unwrap - counter is init with u64.to_be_bytes
+                );
+                Ok(counter)
             }
-            match (
-                filter.original_operation_id,
-                event.context.origin_operation_id,
-            ) {
-                (Some(addr1), Some(addr2)) if addr1 != addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
+            FilterItem::OriginalCallerAddress(_addr) => {
+                let counter_key = self.key_builder.get_counter_key_from_indent(key_indent);
+                let counter = u64::from_be_bytes(
+                    self.db
+                        .get(counter_key)
+                        .expect(COUNTER_ERROR)
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                );
+                Ok(counter)
             }
-            Some(event)
-        })
+            FilterItem::OriginalOperationId(_op_id) => {
+                let counter_key = self.key_builder.get_counter_key_from_indent(key_indent);
+                let counter_ = self.db.get(counter_key);
+                let counter =
+                    u64::from_be_bytes(counter_.expect(COUNTER_ERROR).unwrap().try_into().unwrap());
+                Ok(counter)
+            }
+            FilterItem::IsError(is_error) => {
+                let counter_key = self
+                    .key_builder
+                    .get_counter_key_bool_from(&[*key_indent as u8], *is_error);
+                let counter_ = self.db.get(counter_key);
+                let counter =
+                    u64::from_be_bytes(counter_.expect(COUNTER_ERROR).unwrap().try_into().unwrap());
+                Ok(counter)
+            }
+        }
     }
 
     /// Try to remove some entries from the db
@@ -196,19 +598,143 @@ impl EventCache {
             let kvb = key_value
                 .unwrap() // safe to unwrap - just tested it
                 .expect(EVENT_DESER_ERROR);
-            batch.delete(kvb.0);
+
+            let key = kvb.0;
+            if !key.starts_with(&[u8::from(KeyIndent::Event)]) {
+                continue;
+            }
+
+            let (_, event) = self
+                .event_deser
+                .deserialize::<DeserializeError>(&kvb.1)
+                .unwrap();
+
+            // delete all associated key
+            if let Some(key) = self.key_builder.get_emitter_address_key(&event) {
+                let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+                batch.delete(key);
+                batch.merge(key_counter, (-1i64).to_be_bytes());
+            }
+            if let Some(key) = self.key_builder.get_original_caller_address_key(&event) {
+                let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+                batch.delete(key);
+                batch.merge(key_counter, (-1i64).to_be_bytes());
+            }
+            if let Some(key) = self.key_builder.get_original_operation_id_key(&event) {
+                let key_counter = self.key_builder.get_counter_key_from(key.as_slice());
+                batch.delete(key);
+                batch.merge(key_counter, (-1i64).to_be_bytes());
+            }
+            let key_is_error = self.key_builder.get_is_error_key(&event);
+            let key_counter = self
+                .key_builder
+                .get_counter_key_bool_from(key_is_error.as_slice(), event.context.is_error);
+            batch.delete(key_is_error);
+            batch.merge(key_counter, (-1i64).to_be_bytes());
+
+            batch.delete(key);
+
             snipped_count += 1;
         }
 
         // delete the key and reduce entry_count
         self.db.write(batch).expect(CRUD_ERROR);
-        self.entry_count -= snipped_count;
+        self.entry_count = self.entry_count.saturating_sub(snipped_count);
+
+        // Update first_slot / last_slot in the DB
+        if self.entry_count == 0 {
+            // Reset
+            self.first_slot = Slot::new(0, 0);
+            self.last_slot = Slot::new(0, 0);
+        } else {
+            // Get the first event in the db
+            // By using a prefix iterator this should be fast
+
+            let mut it_slot = self.db.prefix_iterator([u8::from(KeyIndent::Event)]);
+
+            let key_value = it_slot.next();
+            let kvb = key_value.unwrap().expect(EVENT_DESER_ERROR);
+
+            let (_, event) = self
+                .event_deser
+                .deserialize::<DeserializeError>(&kvb.1)
+                .unwrap();
+            self.first_slot = event.context.slot;
+        }
+    }
+}
+
+/// A filter parameter - used to decompose EventFilter in multiple filters
+#[derive(Debug)]
+enum FilterItem {
+    SlotStart(Slot),
+    SlotStartEnd(Slot, Slot),
+    SlotEnd(Slot),
+    EmitterAddress(Address),
+    OriginalCallerAddress(Address),
+    OriginalOperationId(OperationId),
+    IsError(bool),
+}
+
+/// Convert a EventFilter into a list of (KeyIndent, FilterItem)
+fn from_event_filter(event_filter: &EventFilter) -> Vec<(KeyIndent, FilterItem)> {
+    let mut filter_items = vec![];
+    if event_filter.start.is_some() && event_filter.end.is_some() {
+        let start = event_filter.start.unwrap();
+        let end = event_filter.end.unwrap();
+        filter_items.push((KeyIndent::Event, FilterItem::SlotStartEnd(start, end)));
+    } else if event_filter.start.is_some() {
+        let start = event_filter.start.unwrap();
+        filter_items.push((KeyIndent::Event, FilterItem::SlotStart(start)));
+    } else if event_filter.end.is_some() {
+        let end = event_filter.end.unwrap();
+        filter_items.push((KeyIndent::Event, FilterItem::SlotEnd(end)));
+    }
+
+    if let Some(addr) = event_filter.emitter_address {
+        filter_items.push((KeyIndent::EmitterAddress, FilterItem::EmitterAddress(addr)));
+    }
+
+    if let Some(addr) = event_filter.original_caller_address {
+        filter_items.push((
+            KeyIndent::OriginalCallerAddress,
+            FilterItem::OriginalCallerAddress(addr),
+        ));
+    }
+
+    if let Some(op_id) = event_filter.original_operation_id {
+        filter_items.push((
+            KeyIndent::OriginalOperationId,
+            FilterItem::OriginalOperationId(op_id),
+        ));
+    }
+
+    if let Some(is_error) = event_filter.is_error {
+        filter_items.push((KeyIndent::IsError, FilterItem::IsError(is_error)));
+    }
+
+    filter_items
+}
+
+#[cfg(test)]
+impl EventCache {
+    /// Iterate over all keys & values in the db - test only
+    fn iter_all(
+        &self,
+        mode: Option<IteratorMode>,
+    ) -> impl Iterator<Item = (Box<[u8]>, Box<[u8]>)> + '_ {
+        self.db
+            .iterator(mode.unwrap_or(IteratorMode::Start))
+            .flatten()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    // std
+    use std::collections::VecDeque;
+    use std::str::FromStr;
     // third-party
     use more_asserts::assert_gt;
     use rand::seq::SliceRandom;
@@ -216,7 +742,10 @@ mod tests {
     use serial_test::serial;
     use tempfile::TempDir;
     // internal
-    use massa_models::config::{MAX_EVENT_DATA_SIZE, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT};
+    use massa_models::config::{
+        MAX_EVENT_DATA_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
+    };
+    use massa_models::operation::OperationId;
     use massa_models::output_event::EventExecutionContext;
     use massa_models::slot::Slot;
 
@@ -229,6 +758,10 @@ mod tests {
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
             MAX_EVENT_DATA_SIZE as u64,
+            // TODO: rebase
+            // MAX_EVENT_PER_OPERATION as u64,
+            25u64,
+            MAX_OPERATIONS_PER_BLOCK as u64,
         )
     }
 
@@ -286,27 +819,30 @@ mod tests {
         }
 
         // Now check that we are going to iter in correct order
-        let db_it = cache.db_iter(Some(IteratorMode::Start));
+        // let db_it = cache.db_iter(Some(IteratorMode::Start));
         let mut prev_slot = None;
         let mut prev_event_index = None;
         #[allow(clippy::manual_flatten)]
-        for kvb in db_it {
-            if let Ok(kvb) = kvb {
-                let bytes = kvb.0.iter().as_slice();
-                let slot = Slot::from_bytes_key(&bytes[0..=8].try_into().unwrap());
-                let event_index = u64::from_be_bytes(bytes[9..].try_into().unwrap());
-                if prev_slot.is_some() && prev_event_index.is_some() {
-                    assert_gt!(
-                        (slot, event_index),
-                        (prev_slot.unwrap(), prev_event_index.unwrap())
-                    );
-                } else {
-                    assert_eq!(slot, slot_1);
-                    assert_eq!(event_index, index_1_0);
-                }
-                prev_slot = Some(slot);
-                prev_event_index = Some(event_index);
+        for kvb in cache.iter_all(None) {
+            let bytes = kvb.0.iter().as_slice();
+
+            if bytes[0] != u8::from(KeyIndent::Event) {
+                continue;
             }
+
+            let slot = Slot::from_bytes_key(&bytes[1..=9].try_into().unwrap());
+            let event_index = u64::from_be_bytes(bytes[10..].try_into().unwrap());
+            if prev_slot.is_some() && prev_event_index.is_some() {
+                assert_gt!(
+                    (slot, event_index),
+                    (prev_slot.unwrap(), prev_event_index.unwrap())
+                );
+            } else {
+                assert_eq!(slot, slot_1);
+                assert_eq!(event_index, index_1_0);
+            }
+            prev_slot = Some(slot);
+            prev_event_index = Some(event_index);
         }
 
         assert_eq!(prev_slot, Some(slot_2));
@@ -439,7 +975,7 @@ mod tests {
         };
         events.push(event_slot_2.clone());
         events.push(event_slot_2_2.clone());
-        // Randomize the events so we insert in random orders in DB
+        // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
 
         cache.insert_multi_it(events.into_iter());
@@ -453,14 +989,490 @@ mod tests {
             is_final: None,
             is_error: None,
         };
-        let filtered_events_1 = cache
-            .get_filtered_sc_output_events(&filter_1)
-            .collect::<Vec<SCOutputEvent>>();
+
+        let filtered_events_1 = cache.get_filtered_sc_output_events(&filter_1);
 
         assert_eq!(filtered_events_1.len(), 2);
+        println!("filtered_events_1[0]: {:?}", filtered_events_1[0]);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
         assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_1);
+        println!("filtered_events_1[1]: {:?}", filtered_events_1[1]);
         assert_eq!(filtered_events_1[1].context.slot, slot_2);
         assert_eq!(filtered_events_1[1].context.index_in_slot, index_2_2);
+    }
+
+    #[test]
+    #[serial]
+    fn test_event_filter_2() {
+        // Test get_filtered_sc_output_events + op id
+
+        let mut cache = setup();
+        cache.max_entry_count = 10;
+
+        let slot_1 = Slot::new(1, 0);
+        let index_1_0 = 0;
+        let op_id_1 =
+            OperationId::from_str("O12n1vt8uTLh3H65J4TVuztaWfBh3oumjjVtRCkke7Ba5qWdXdjD").unwrap();
+        let op_id_2 =
+            OperationId::from_str("O1p5P691KF672fQ8tQougxzSERBwDKZF8FwtkifMSJbP14sEuGc").unwrap();
+
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: slot_1,
+                block: None,
+                read_only: false,
+                index_in_slot: index_1_0,
+                call_stack: Default::default(),
+                origin_operation_id: Some(op_id_1),
+                is_final: true,
+                is_error: false,
+            },
+            data: "message foo bar".to_string(),
+        };
+
+        let mut events = (0..cache.max_entry_count - 5)
+            .map(|i| {
+                let mut event = event.clone();
+                event.context.index_in_slot = i as u64;
+                event
+            })
+            .collect::<Vec<SCOutputEvent>>();
+
+        let slot_2 = Slot::new(2, 0);
+        let index_2_1 = 0u64;
+        let event_slot_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_1;
+            event.context.origin_operation_id = Some(op_id_2);
+            event
+        };
+        let index_2_2 = 256u64;
+        let event_slot_2_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_2;
+            event.context.origin_operation_id = Some(op_id_2);
+            event
+        };
+        events.push(event_slot_2.clone());
+        events.push(event_slot_2_2.clone());
+        // Randomize the events so we insert in random orders in the DB
+        events.shuffle(&mut thread_rng());
+        println!("inserting events:");
+        for evt in events.iter() {
+            println!("{:?}", evt);
+        }
+        println!("{}", "#".repeat(32));
+
+        cache.insert_multi_it(events.into_iter());
+
+        for (k, v) in cache.iter_all(None) {
+            println!("k: {:?}, v: {:?}", k, v);
+        }
+        println!("{}", "#".repeat(32));
+
+        let mut filter_1 = EventFilter {
+            start: None, // Some(Slot::new(2, 0)),
+            end: None,
+            emitter_address: None,
+            original_caller_address: None,
+            original_operation_id: Some(op_id_1),
+            is_final: None,
+            is_error: None,
+        };
+
+        let filtered_events_1 = cache.get_filtered_sc_output_events(&filter_1);
+
+        assert_eq!(filtered_events_1.len(), cache.max_entry_count - 5);
+        filtered_events_1.iter().enumerate().for_each(|(i, event)| {
+            println!("checking event #{}: {:?}", i, event);
+            assert_eq!(event.context.slot, slot_1);
+            assert_eq!(event.context.index_in_slot, i as u64);
+        });
+
+        // println!("filtered_events_1[0]: {:?}", filtered_events_1[0]);
+        // assert_eq!(filtered_events_1[0].context.slot, slot_2);
+        // assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_1);
+        // println!("filtered_events_1[1]: {:?}", filtered_events_1[1]);
+        // assert_eq!(filtered_events_1[1].context.slot, slot_2);
+        // assert_eq!(filtered_events_1[1].context.index_in_slot, index_2_2);
+
+        {
+            filter_1.original_operation_id = Some(op_id_2);
+            let filtered_events_2 = cache.get_filtered_sc_output_events(&filter_1);
+            assert_eq!(filtered_events_2.len(), 2);
+            filtered_events_2.iter().enumerate().for_each(|(i, event)| {
+                println!("checking event #{}: {:?}", i, event);
+                assert_eq!(event.context.slot, slot_2);
+                if i == 0 {
+                    assert_eq!(event.context.index_in_slot, i as u64);
+                } else {
+                    assert_eq!(event.context.index_in_slot, 256u64);
+                }
+            });
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_event_filter_3() {
+        // Test get_filtered_sc_output_events + emitter address
+
+        let mut cache = setup();
+        cache.max_entry_count = 10;
+
+        let slot_1 = Slot::new(1, 0);
+        let index_1_0 = 0;
+
+        let dummy_addr =
+            Address::from_str("AU12qePoXhNbYWE1jZuafqJong7bbq1jw3k89RgbMawbrdZpaasoA").unwrap();
+        let emit_addr_1 =
+            Address::from_str("AU122Em8qkqegdLb1eyH8rdkSCNEf7RZLeTJve4Q2inRPGiTJ2xNv").unwrap();
+        let emit_addr_2 =
+            Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: slot_1,
+                block: None,
+                read_only: false,
+                index_in_slot: index_1_0,
+                call_stack: Default::default(),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+            },
+            data: "message foo bar".to_string(),
+        };
+
+        let to_insert_count = cache.max_entry_count - 5;
+        let threshold = to_insert_count / 2;
+        let mut events = (0..cache.max_entry_count - 5)
+            .map(|i| {
+                let mut event = event.clone();
+                event.context.index_in_slot = i as u64;
+                if i < threshold {
+                    event.context.call_stack =
+                        VecDeque::from(vec![dummy_addr, emit_addr_1.clone()]);
+                } else {
+                    event.context.call_stack =
+                        VecDeque::from(vec![dummy_addr, emit_addr_2.clone()]);
+                }
+                event
+            })
+            .collect::<Vec<SCOutputEvent>>();
+
+        let slot_2 = Slot::new(2, 0);
+        let index_2_1 = 0u64;
+        let event_slot_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_1;
+            event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2.clone()]);
+            event
+        };
+        let index_2_2 = 256u64;
+        let event_slot_2_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_2;
+            event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2.clone()]);
+            event
+        };
+        events.push(event_slot_2.clone());
+        events.push(event_slot_2_2.clone());
+        // Randomize the events so we insert in random orders in the DB
+        events.shuffle(&mut thread_rng());
+        println!("inserting events:");
+        for evt in events.iter() {
+            println!("{:?}", evt);
+        }
+        println!("{}", "#".repeat(32));
+
+        cache.insert_multi_it(events.into_iter());
+
+        println!("db iter all:");
+        for (k, v) in cache.iter_all(None) {
+            println!("k: {:?}, v: {:?}", k, v);
+        }
+        println!("{}", "#".repeat(32));
+
+        let mut filter_1 = EventFilter {
+            start: None, // Some(Slot::new(2, 0)),
+            end: None,
+            emitter_address: Some(emit_addr_1),
+            original_caller_address: None,
+            original_operation_id: None,
+            is_final: None,
+            is_error: None,
+        };
+
+        let filtered_events_1 = cache.get_filtered_sc_output_events(&filter_1);
+
+        assert_eq!(filtered_events_1.len(), threshold);
+        filtered_events_1
+            .iter()
+            .enumerate()
+            .for_each(|(_i, event)| {
+                assert_eq!(event.context.slot, slot_1);
+                assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_1)
+            });
+
+        {
+            filter_1.emitter_address = Some(emit_addr_2);
+            let filtered_events_2 = cache.get_filtered_sc_output_events(&filter_1);
+            assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
+            filtered_events_2
+                .iter()
+                .enumerate()
+                .for_each(|(_i, event)| {
+                    assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_2)
+                });
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_event_filter_4() {
+        // Test get_filtered_sc_output_events + original caller addr
+
+        let mut cache = setup();
+        cache.max_entry_count = 10;
+
+        let slot_1 = Slot::new(1, 0);
+        let index_1_0 = 0;
+
+        let dummy_addr =
+            Address::from_str("AU12qePoXhNbYWE1jZuafqJong7bbq1jw3k89RgbMawbrdZpaasoA").unwrap();
+        let emit_addr_1 =
+            Address::from_str("AU122Em8qkqegdLb1eyH8rdkSCNEf7RZLeTJve4Q2inRPGiTJ2xNv").unwrap();
+        let emit_addr_2 =
+            Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: slot_1,
+                block: None,
+                read_only: false,
+                index_in_slot: index_1_0,
+                call_stack: Default::default(),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+            },
+            data: "message foo bar".to_string(),
+        };
+
+        let to_insert_count = cache.max_entry_count - 5;
+        let threshold = to_insert_count / 2;
+        let mut events = (0..cache.max_entry_count - 5)
+            .map(|i| {
+                let mut event = event.clone();
+                event.context.index_in_slot = i as u64;
+                if i < threshold {
+                    event.context.call_stack =
+                        VecDeque::from(vec![emit_addr_1.clone(), dummy_addr.clone()]);
+                } else {
+                    event.context.call_stack =
+                        VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+                }
+                event
+            })
+            .collect::<Vec<SCOutputEvent>>();
+
+        let slot_2 = Slot::new(2, 0);
+        let index_2_1 = 0u64;
+        let event_slot_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_1;
+            event.context.call_stack = VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+            event
+        };
+        let index_2_2 = 256u64;
+        let event_slot_2_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_2;
+            event.context.call_stack = VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+            event
+        };
+        events.push(event_slot_2.clone());
+        events.push(event_slot_2_2.clone());
+        // Randomize the events so we insert in random orders in the DB
+        events.shuffle(&mut thread_rng());
+        println!("inserting events:");
+        for evt in events.iter() {
+            println!("{:?}", evt);
+        }
+        println!("{}", "#".repeat(32));
+
+        cache.insert_multi_it(events.into_iter());
+
+        println!("db iter all:");
+        for (k, v) in cache.iter_all(None) {
+            println!("k: {:?}, v: {:?}", k, v);
+        }
+        println!("{}", "#".repeat(32));
+
+        let mut filter_1 = EventFilter {
+            start: None, // Some(Slot::new(2, 0)),
+            end: None,
+            emitter_address: None,
+            original_caller_address: Some(emit_addr_1),
+            original_operation_id: None,
+            is_final: None,
+            is_error: None,
+        };
+
+        let filtered_events_1 = cache.get_filtered_sc_output_events(&filter_1);
+
+        assert_eq!(filtered_events_1.len(), threshold);
+        filtered_events_1
+            .iter()
+            .enumerate()
+            .for_each(|(_i, event)| {
+                assert_eq!(event.context.slot, slot_1);
+                assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_1);
+            });
+
+        {
+            filter_1.original_caller_address = Some(emit_addr_2);
+            let filtered_events_2 = cache.get_filtered_sc_output_events(&filter_1);
+            assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
+            filtered_events_2
+                .iter()
+                .enumerate()
+                .for_each(|(_i, event)| {
+                    assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_2);
+                });
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn test_event_filter_5() {
+        // Test get_filtered_sc_output_events + is error
+
+        let mut cache = setup();
+        cache.max_entry_count = 10;
+
+        let slot_1 = Slot::new(1, 0);
+        let index_1_0 = 0;
+
+        let dummy_addr =
+            Address::from_str("AU12qePoXhNbYWE1jZuafqJong7bbq1jw3k89RgbMawbrdZpaasoA").unwrap();
+        let emit_addr_1 =
+            Address::from_str("AU122Em8qkqegdLb1eyH8rdkSCNEf7RZLeTJve4Q2inRPGiTJ2xNv").unwrap();
+        let emit_addr_2 =
+            Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: slot_1,
+                block: None,
+                read_only: false,
+                index_in_slot: index_1_0,
+                call_stack: Default::default(),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+            },
+            data: "message foo bar".to_string(),
+        };
+
+        let to_insert_count = cache.max_entry_count - 5;
+        let threshold = to_insert_count / 2;
+        let mut events = (0..cache.max_entry_count - 5)
+            .map(|i| {
+                let mut event = event.clone();
+                event.context.index_in_slot = i as u64;
+                if i < threshold {
+                    event.context.call_stack =
+                        VecDeque::from(vec![emit_addr_1.clone(), dummy_addr.clone()]);
+                } else {
+                    event.context.call_stack =
+                        VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+                }
+                event
+            })
+            .collect::<Vec<SCOutputEvent>>();
+
+        let slot_2 = Slot::new(2, 0);
+        let index_2_1 = 0u64;
+        let event_slot_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_1;
+            event.context.call_stack = VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+            event
+        };
+        let index_2_2 = 256u64;
+        let event_slot_2_2 = {
+            let mut event = event.clone();
+            event.context.slot = slot_2;
+            event.context.index_in_slot = index_2_2;
+            event.context.call_stack = VecDeque::from(vec![emit_addr_2.clone(), dummy_addr]);
+            event.context.is_error = true;
+            event
+        };
+        events.push(event_slot_2.clone());
+        events.push(event_slot_2_2.clone());
+        // Randomize the events so we insert in random orders in the DB
+        events.shuffle(&mut thread_rng());
+        println!("inserting events:");
+        for evt in events.iter() {
+            println!("{:?}", evt);
+        }
+        println!("{}", "#".repeat(32));
+
+        cache.insert_multi_it(events.into_iter());
+
+        println!("db iter all:");
+        for (k, v) in cache.iter_all(None) {
+            println!("k: {:?}, v: {:?}", k, v);
+        }
+        println!("{}", "#".repeat(32));
+
+        let filter_1 = EventFilter {
+            start: None, // Some(Slot::new(2, 0)),
+            end: None,
+            emitter_address: None,
+            original_caller_address: None,
+            original_operation_id: None,
+            is_final: None,
+            is_error: Some(true),
+        };
+
+        let filtered_events_1 = cache.get_filtered_sc_output_events(&filter_1);
+
+        assert_eq!(filtered_events_1.len(), 1);
+        assert_eq!(filtered_events_1[0].context.is_error, true);
+        assert_eq!(filtered_events_1[0].context.slot, slot_2);
+        assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_2);
+
+        // filtered_events_1
+        //     .iter()
+        //     .enumerate()
+        //     .for_each(|(_i, event)| {
+        //         assert_eq!(event.context.slot, slot_1);
+        //         assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_1);
+        //     });
+
+        /*
+        {
+            filter_1.original_caller_address = Some(emit_addr_2);
+            let filtered_events_2 = cache
+                .get_filtered_sc_output_events(&filter_1);
+            assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
+            filtered_events_2
+                .iter()
+                .enumerate()
+                .for_each(|(_i, event)| {
+                    assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_2);
+                });
+        }
+        */
     }
 }
