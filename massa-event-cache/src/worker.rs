@@ -125,6 +125,8 @@ pub fn start_event_cache_writer_worker(
         cfg.thread_count,
         cfg.max_call_stack_length,
         cfg.max_event_data_length,
+        cfg.max_events_per_operation,
+        cfg.max_operations_per_block,
     )));
 
     // define the input data interface

@@ -35,7 +35,7 @@
 //! * if we want to delete item a: 1000 ^ 0011 == 1011 (== item b)
 //! * if we want to delete item b: 1000 ^ 1011 == 0011 (== item a)
 //!
-//! Note that this does not provides "Proof of present" nor "Proof of Absence"
+//! Note that this does not provide "Proof of present" nor "Proof of Absence"
 //! (operations avail with Merkle trees)
 //!
 //! For more details here: https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158
@@ -45,10 +45,10 @@
 //! # Caches
 //!
 //! A cache of db changes is kept in memory allowing to easily stream it
-//! (by streaming, we means: sending it to another massa node (aka bootstrap))
+//! (by streaming, we mean: sending it to another massa node (aka bootstrap))
 //! There is 2 separate caches: one for 'state' and one for 'versioning'
 //!
-//! These caches is stored as a key, value: slot -> insertion_data|deletion_data.
+//! These caches are stored as a key, value: slot -> insertion_data|deletion_data.
 //!
 //! # Streaming steps
 //!
