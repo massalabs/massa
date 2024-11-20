@@ -13,20 +13,5 @@
         "balance": "1000000000",
         "datastore": [],
         "bytecode": []
-    },
-    "AU12Kqf1GkNGqByGLXrzBCAN6uZUdgtwyAE5MGq5brSeL1hdaxTZx": {
-        "balance": "1000000000",
-        "datastore": [],
-        "bytecode": []
-    },
-    "AU1XfpV1kwMnZXVBx3rv5Rm5fRWB72nGsva1ogKt7KF9AH3EzLV1": {
-        "balance": "1000000000",
-        "datastore": [],
-        "bytecode": []
-    },
-    "AU12QC7C5JsndymvDbnydFNP3bVaH2mR9Lcjaa4wgiJM4bTgTy2KM": {
-        "balance": "1000000000",
-        "datastore": [],
-        "bytecode": []
     }
 }
