@@ -4052,7 +4052,7 @@
                     <span class="kw">let </span>call_stack_addr = context.get_call_stack();
 
                     <span class="comment">// transfer fee
-                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.get(<span class="number">0</span>)) {
+                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr), <span class="prelude-val">None</span>, fee, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
                 }
@@ -4097,13 +4097,13 @@
                     <span class="kw">let </span>call_stack_addr = context.get_call_stack();
 
                     <span class="comment">// transfer fee
-                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.get(<span class="number">0</span>)) {
+                    </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(fee), <span class="prelude-val">Some</span>(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr), <span class="prelude-val">None</span>, fee, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
 
                     <span class="comment">// transfer coins
                     </span><span class="kw">if let </span>(<span class="prelude-val">Some</span>(coins), <span class="prelude-val">Some</span>(from), <span class="prelude-val">Some</span>(to)) =
-                        (req.coins, call_stack_addr.get(<span class="number">0</span>), call_stack_addr.get(<span class="number">1</span>))
+                        (req.coins, call_stack_addr.first(), call_stack_addr.get(<span class="number">1</span>))
                     {
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>from), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>to), coins, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
