@@ -1778,7 +1778,7 @@ impl ExecutionState {
                     let call_stack_addr = context.get_call_stack();
 
                     // transfer fee
-                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(Some(*addr), None, fee, false)?;
                     }
                 }
@@ -1823,13 +1823,13 @@ impl ExecutionState {
                     let call_stack_addr = context.get_call_stack();
 
                     // transfer fee
-                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.get(0)) {
+                    if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
                         context.transfer_coins(Some(*addr), None, fee, false)?;
                     }
 
                     // transfer coins
                     if let (Some(coins), Some(from), Some(to)) =
-                        (req.coins, call_stack_addr.get(0), call_stack_addr.get(1))
+                        (req.coins, call_stack_addr.first(), call_stack_addr.get(1))
                     {
                         context.transfer_coins(Some(*from), Some(*to), coins, false)?;
                     }

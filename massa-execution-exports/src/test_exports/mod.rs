@@ -14,4 +14,3 @@
 //! with an execution worker within tests.
 
 mod config;
-pub use config::*;
