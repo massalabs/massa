@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/context.rs`."><title>context.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1161,11 +1161,12 @@
 <a href="#1161" id="1161">1161</a>
 <a href="#1162" id="1162">1162</a>
 <a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
 //! It provides information such as the current call stack.
-//! It also maintains a &quot;speculative&quot; ledger state which is a virtual ledger
+//! It also maintains a "speculative" ledger state which is a virtual ledger
 //! as seen after applying everything that happened so far in the context.
 //! More generally, the context acts only on its own state
 //! and does not write anything persistent to the consensus state.
@@ -1266,16 +1267,16 @@
     <span class="doccomment">/// speculative ledger state,
     /// as seen after everything that happened so far in the context
     </span><span class="attr">#[cfg(all(
-        not(feature = <span class="string">&quot;gas_calibration&quot;</span>),
-        not(feature = <span class="string">&quot;benchmarking&quot;</span>),
-        not(feature = <span class="string">&quot;test-exports&quot;</span>),
+        not(feature = <span class="string">"gas_calibration"</span>),
+        not(feature = <span class="string">"benchmarking"</span>),
+        not(feature = <span class="string">"test-exports"</span>),
         not(test)
     ))]
     </span>speculative_ledger: SpeculativeLedger,
     <span class="attr">#[cfg(any(
-        feature = <span class="string">&quot;gas_calibration&quot;</span>,
-        feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;test-exports&quot;</span>,
+        feature = <span class="string">"gas_calibration"</span>,
+        feature = <span class="string">"benchmarking"</span>,
+        feature = <span class="string">"test-exports"</span>,
         test
     ))]
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) speculative_ledger: SpeculativeLedger,
@@ -1315,7 +1316,7 @@
     <span class="doccomment">/// address call stack, most recent is at the back
     </span><span class="kw">pub </span>stack: Vec&lt;ExecutionStackElement&gt;,
 
-    <span class="doccomment">/// True if it&#39;s a read-only context
+    <span class="doccomment">/// True if it's a read-only context
     </span><span class="kw">pub </span>read_only: bool,
 
     <span class="doccomment">/// generated events during this execution, with multiple indexes
@@ -1324,7 +1325,7 @@
     <span class="doccomment">/// Unsafe random state (can be predicted and manipulated)
     </span><span class="kw">pub </span>unsafe_rng: Xoshiro256PlusPlus,
 
-    <span class="doccomment">/// Creator address. The bytecode of this address can&#39;t be modified
+    <span class="doccomment">/// Creator address. The bytecode of this address can't be modified
     </span><span class="kw">pub </span>creator_address: <span class="prelude-ty">Option</span>&lt;Address&gt;,
 
     <span class="doccomment">/// operation id that originally caused this execution (if any)
@@ -1352,6 +1353,7 @@
     ///
     /// # arguments
     /// * `final_state`: thread-safe access to the final state.
+    ///
     /// Note that this will be used only for reading, never for writing
     ///
     /// # returns
@@ -1464,7 +1466,7 @@
         <span class="comment">// Emit the error event.
         // Note that the context event counter is properly handled by event_emit (see doc).
         </span><span class="self">self</span>.event_emit(<span class="self">self</span>.event_create(
-            <span class="macro">serde_json::json!</span>({ <span class="string">&quot;massa_execution_error&quot;</span>: <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, error) }).to_string(),
+            <span class="macro">serde_json::json!</span>({ <span class="string">"massa_execution_error"</span>: <span class="macro">format!</span>(<span class="string">"{}"</span>, error) }).to_string(),
             <span class="bool-val">true</span>,
         ));
     }
@@ -1588,7 +1590,7 @@
         <span class="kw">match </span><span class="self">self</span>.stack.last() {
             <span class="prelude-val">Some</span>(addr) =&gt; <span class="prelude-val">Ok</span>(addr.address),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
-                <span class="string">&quot;failed to read current address: call stack empty&quot;</span>.into(),
+                <span class="string">"failed to read current address: call stack empty"</span>.into(),
             )),
         }
     }
@@ -1599,7 +1601,7 @@
         <span class="kw">match </span><span class="self">self</span>.stack.last() {
             <span class="prelude-val">Some</span>(v) =&gt; <span class="prelude-val">Ok</span>(v.owned_addresses.clone()),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
-                <span class="string">&quot;failed to read current owned addresses list: call stack empty&quot;</span>.into(),
+                <span class="string">"failed to read current owned addresses list: call stack empty"</span>.into(),
             )),
         }
     }
@@ -1609,7 +1611,7 @@
         <span class="kw">match </span><span class="self">self</span>.stack.last() {
             <span class="prelude-val">Some</span>(v) =&gt; <span class="prelude-val">Ok</span>(v.coins),
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
-                <span class="string">&quot;failed to read current call coins: call stack empty&quot;</span>.into(),
+                <span class="string">"failed to read current call coins: call stack empty"</span>.into(),
             )),
         }
     }
@@ -1635,18 +1637,18 @@
             <span class="self">self</span>.config.genesis_timestamp,
             <span class="self">self</span>.slot,
         )
-        .expect(<span class="string">&quot;could not compute current slot timestamp&quot;</span>);
+        .expect(<span class="string">"could not compute current slot timestamp"</span>);
 
-        <span class="comment">// Loop over nonces until we find an address that doesn&#39;t exist in the speculative ledger.
+        <span class="comment">// Loop over nonces until we find an address that doesn't exist in the speculative ledger.
         // Note that this loop is here for robustness, and should not be looping because
         // even through the SC addresses are predictable, nobody can create them beforehand because:
-        // - their category is &quot;SC&quot; and not &quot;USER&quot; so they can&#39;t be derived from a public key
+        // - their category is "SC" and not "USER" so they can't be derived from a public key
         // - sending tokens to the target SC address to create it by funding is not allowed because transactions towards SC addresses are not allowed
         </span><span class="kw">let </span><span class="kw-2">mut </span>nonce = <span class="number">0u64</span>;
         <span class="kw">let </span>address = <span class="kw">loop </span>{
             <span class="comment">// get a deterministic seed hash
             </span><span class="kw">let </span>hash = massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-                <span class="string">&quot;SC_ADDRESS&quot;</span>.as_bytes(),
+                <span class="string">"SC_ADDRESS"</span>.as_bytes(),
                 <span class="self">self</span>.execution_trail_hash.to_bytes(),
                 <span class="kw-2">&amp;</span><span class="self">self</span>.created_addr_index.to_be_bytes(),
                 <span class="kw-2">&amp;</span>nonce.to_be_bytes(),
@@ -1666,7 +1668,7 @@
 
             <span class="comment">// otherwise, increment the nonce to get a new hash and try again
             </span>nonce = nonce.checked_add(<span class="number">1</span>).ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="string">&quot;nonce overflow when creating SC address&quot;</span>.into())
+                ExecutionError::RuntimeError(<span class="string">"nonce overflow when creating SC address"</span>.into())
             })<span class="question-mark">?</span>;
         };
 
@@ -1687,7 +1689,7 @@
             }
             <span class="prelude-val">None </span>=&gt; {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(
-                    <span class="string">&quot;owned addresses not found in context stack&quot;</span>.into(),
+                    <span class="string">"owned addresses not found in context stack"</span>.into(),
                 ));
             }
         };
@@ -1740,7 +1742,7 @@
         <span class="comment">// check access right
         </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(address) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;writing in the datastore of address {} is not allowed in this context&quot;</span>,
+                <span class="string">"writing in the datastore of address {} is not allowed in this context"</span>,
                 address
             )));
         }
@@ -1767,7 +1769,7 @@
         <span class="comment">// check access right
         </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(address) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;appending to the datastore of address {} is not allowed in this context&quot;</span>,
+                <span class="string">"appending to the datastore of address {} is not allowed in this context"</span>,
                 address
             )));
         }
@@ -1778,7 +1780,7 @@
             .get_data_entry(address, <span class="kw-2">&amp;</span>key)
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;appending to the datastore of address {} failed: entry {:?} not found&quot;</span>,
+                    <span class="string">"appending to the datastore of address {} failed: entry {:?} not found"</span>,
                     address, key
                 ))
             })<span class="question-mark">?</span>;
@@ -1805,7 +1807,7 @@
         <span class="comment">// check access right
         </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(address) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;deleting from the datastore of address {} is not allowed in this context&quot;</span>,
+                <span class="string">"deleting from the datastore of address {} is not allowed in this context"</span>,
                 address
             )));
         }
@@ -1834,19 +1836,19 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
             <span class="comment">// check access rights
             </span><span class="kw">if </span>check_rights {
-                <span class="comment">// ensure we can&#39;t spend from an address on which we have no write access
+                <span class="comment">// ensure we can't spend from an address on which we have no write access
                 </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;spending from address {} is not allowed in this context&quot;</span>,
+                        <span class="string">"spending from address {} is not allowed in this context"</span>,
                         from_addr
                     )));
                 }
 
-                <span class="comment">// ensure we can&#39;t transfer towards SC addresses on which we have no write access
+                <span class="comment">// ensure we can't transfer towards SC addresses on which we have no write access
                 </span><span class="kw">if let </span><span class="prelude-val">Some</span>(to_addr) = <span class="kw-2">&amp;</span>to_addr {
                     <span class="kw">if </span><span class="macro">matches!</span>(to_addr, Address::SC(..)) &amp;&amp; !<span class="self">self</span>.has_write_rights_on(to_addr) {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                            <span class="string">&quot;crediting SC address {} is not allowed without write access to it&quot;</span>,
+                            <span class="string">"crediting SC address {} is not allowed without write access to it"</span>,
                             to_addr
                         )));
                     }
@@ -1880,12 +1882,12 @@
         <span class="kw">let </span>transfer_result = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(msg.sender), msg.coins, <span class="bool-val">false</span>);
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
             <span class="macro">debug!</span>(
-                <span class="string">&quot;async message cancel: reimbursement of {} failed: {}&quot;</span>,
+                <span class="string">"async message cancel: reimbursement of {} failed: {}"</span>,
                 msg.sender, e
             );
         }
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
             result = <span class="prelude-val">Some</span>((msg.sender, <span class="prelude-val">Err</span>(e.to_string())))
         } <span class="kw">else </span>{
@@ -1949,7 +1951,7 @@
             .checked_mul_u64(slashed_rolls.unwrap_or_default())
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Cannot multiply roll price by {}&quot;</span>,
+                    <span class="string">"Cannot multiply roll price by {}"</span>,
                     roll_count
                 ))
             })<span class="question-mark">?</span>;
@@ -1961,7 +1963,7 @@
             .checked_mul_u64(roll_count)
             .ok_or_else(|| {
                 ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">&quot;Cannot multiply roll price by {}&quot;</span>,
+                    <span class="string">"Cannot multiply roll price by {}"</span>,
                     roll_count
                 ))
             })<span class="question-mark">?
@@ -1979,7 +1981,7 @@
                 slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
             <span class="kw">if </span>amount_remaining_to_slash_2 &gt; Amount::zero() {
                 <span class="comment">// Use saturating_mul_u64 to avoid an error (for just a warn!(..))
-                </span><span class="macro">warn!</span>(<span class="string">&quot;Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins&quot;</span>,
+                </span><span class="macro">warn!</span>(<span class="string">"Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins"</span>,
                     slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
                     <span class="self">self</span>.config.roll_price.saturating_mul_u64(roll_count)
                 );
@@ -2026,12 +2028,12 @@
 
                 <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
                     <span class="macro">debug!</span>(
-                        <span class="string">&quot;could not credit {} deferred coins to {} at slot {}: {}&quot;</span>,
+                        <span class="string">"could not credit {} deferred coins to {} at slot {}: {}"</span>,
                         amount, address, slot, e
                     );
                 }
 
-                <span class="attr">#[cfg(feature = <span class="string">&quot;execution-info&quot;</span>)]
+                <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
                 </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
                     result.push((address, <span class="prelude-val">Err</span>(e.to_string())));
                 } <span class="kw">else </span>{
@@ -2112,9 +2114,9 @@
             block_info,
             state_changes,
             events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
-            <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
             </span>slot_trace: <span class="prelude-val">None</span>,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
             </span>storage: <span class="prelude-val">None</span>,
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
@@ -2136,7 +2138,7 @@
         <span class="comment">// check access right
         </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(address) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;setting the bytecode of address {} is not allowed in this context&quot;</span>,
+                <span class="string">"setting the bytecode of address {} is not allowed in this context"</span>,
                 address
             )));
         }
@@ -2145,7 +2147,7 @@
         // See: https://github.com/massalabs/massa/discussions/2952
         </span><span class="kw">if let </span>Address::User(<span class="kw">_</span>) = address {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;can&#39;t set the bytecode of address {} because this is not a smart contract address&quot;</span>,
+                <span class="string">"can't set the bytecode of address {} because this is not a smart contract address"</span>,
                 address
             )));
         }
@@ -2178,7 +2180,7 @@
     }
 
     <span class="doccomment">/// Emits a previously created event.
-    /// Overrides the event&#39;s index with the current event counter value, and increments the event counter.
+    /// Overrides the event's index with the current event counter value, and increments the event counter.
     </span><span class="kw">pub fn </span>event_emit(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>event: SCOutputEvent) {
         <span class="comment">// Set the event index
         </span>event.context.index_in_slot = <span class="self">self</span>.created_event_index;
@@ -2246,7 +2248,7 @@
         <span class="kw">let </span>min_slot = <span class="self">self
             </span>.slot
             .get_next_slot(thread_count)
-            .expect(<span class="string">&quot;unexpected slot overflow in context.get_addresses_deferred_credits&quot;</span>);
+            .expect(<span class="string">"unexpected slot overflow in context.get_addresses_deferred_credits"</span>);
         <span class="self">self</span>.speculative_roll_state
             .get_address_deferred_credits(address, (std::ops::Bound::Included(min_slot), max_slot))
     }
@@ -2266,7 +2268,7 @@
                 <span class="comment">// if the target address does not exist: fail
                 </span><span class="kw">if </span>!<span class="self">self</span>.speculative_ledger.entry_exists(<span class="kw-2">&amp;</span>target_sc_address) {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                        <span class="string">&quot;The called smart contract address {} does not exist&quot;</span>,
+                        <span class="string">"The called smart contract address {} does not exist"</span>,
                         target_sc_address
                     )));
                 }
@@ -2274,7 +2276,7 @@
             }
             <span class="comment">// if the target address is not SC: fail
             </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                <span class="string">&quot;The called address {} is not a smart contract address&quot;</span>,
+                <span class="string">"The called address {} is not a smart contract address"</span>,
                 target_sc_address
             ))),
         }
@@ -2313,7 +2315,7 @@
     <span class="comment">// Deterministically seed the unsafe RNG to allow the bytecode to use it.
     // Note that consecutive read-only calls for the same slot will get the same random seed.
     </span><span class="kw">let </span>seed = massa_hash::Hash::compute_from_tuple(<span class="kw-2">&amp;</span>[
-        <span class="string">&quot;PRNG_SEED&quot;</span>.as_bytes(),
+        <span class="string">"PRNG_SEED"</span>.as_bytes(),
         execution_trail_hash.to_bytes(),
     ])
     .into_bytes();
@@ -2321,7 +2323,7 @@
     <span class="comment">// We use Xoshiro256PlusPlus because it is very fast,
     // has a period long enough to ensure no repetitions will ever happen,
     // of decent quality (given the unsafe constraints)
-    // but not cryptographically secure (and that&#39;s ok because the internal state is exposed anyway)
+    // but not cryptographically secure (and that's ok because the internal state is exposed anyway)
     </span>Xoshiro256PlusPlus::from_seed(seed)
 }
 </code></pre></div></section></main></body></html>

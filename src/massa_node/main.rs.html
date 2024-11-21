@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><title>main.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_node" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_node/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-node/src/main.rs`."><title>main.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_node" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1506,12 +1506,12 @@
 <a href="#1506" id="1506">1506</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]
+</span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
 </span><span class="kw">extern crate </span>massa_logging;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::operation_injector::start_operation_injector;
 <span class="kw">use </span><span class="kw">crate</span>::settings::SETTINGS;
 <span class="kw">use </span><span class="kw">crate</span>::survey::MassaSurvey;
@@ -1543,12 +1543,12 @@
 };
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="attr">#[cfg(all(
-    feature = <span class="string">&quot;dump-block&quot;</span>,
-    feature = <span class="string">&quot;file_storage_backend&quot;</span>,
-    not(feature = <span class="string">&quot;db_storage_backend&quot;</span>)
+    feature = <span class="string">"dump-block"</span>,
+    feature = <span class="string">"file_storage_backend"</span>,
+    not(feature = <span class="string">"db_storage_backend"</span>)
 ))]
 </span><span class="kw">use </span>massa_execution_worker::storage_backend::FileStorageBackend;
-<span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))]
+<span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"db_storage_backend"</span>))]
 </span><span class="kw">use </span>massa_execution_worker::storage_backend::RocksDBStorageBackend;
 
 <span class="kw">use </span>massa_factory_exports::{FactoryChannels, FactoryConfig, FactoryManager};
@@ -1626,7 +1626,7 @@
 <span class="kw">use </span>tracing::{debug, error, info, warn};
 <span class="kw">use </span>tracing_subscriber::filter::{filter_fn, LevelFilter};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
 </span><span class="kw">mod </span>operation_injector;
 <span class="kw">mod </span>settings;
 <span class="kw">mod </span>survey;
@@ -1656,7 +1656,7 @@
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(end) = <span class="kw-2">*</span>END_TIMESTAMP {
         <span class="kw">if </span>now &gt; end {
-            <span class="macro">panic!</span>(<span class="string">&quot;This episode has come to an end, please get the latest testnet node version to continue&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"This episode has come to an end, please get the latest testnet node version to continue"</span>);
         }
     }
 
@@ -1723,18 +1723,18 @@
         SETTINGS.metrics.tick_delay.to_duration(),
     );
 
-    <span class="comment">// Remove current disk ledger if there is one and we don&#39;t want to restart from snapshot
+    <span class="comment">// Remove current disk ledger if there is one and we don't want to restart from snapshot
     // NOTE: this is temporary, since we cannot currently handle bootstrap from remaining ledger
     </span><span class="kw">if </span>args.keep_ledger || args.restart_from_snapshot_at_period.is_some() {
-        <span class="macro">info!</span>(<span class="string">&quot;Loading old ledger for next episode&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">"Loading old ledger for next episode"</span>);
     } <span class="kw">else </span>{
         <span class="kw">if </span>SETTINGS.ledger.disk_ledger_path.exists() {
             std::fs::remove_dir_all(SETTINGS.ledger.disk_ledger_path.clone())
-                .expect(<span class="string">&quot;disk ledger delete failed&quot;</span>);
+                .expect(<span class="string">"disk ledger delete failed"</span>);
         }
         <span class="kw">if </span>SETTINGS.execution.hd_cache_path.exists() {
             std::fs::remove_dir_all(SETTINGS.execution.hd_cache_path.clone())
-                .expect(<span class="string">&quot;disk hd cache delete failed&quot;</span>);
+                .expect(<span class="string">"disk hd cache delete failed"</span>);
         }
     }
 
@@ -1747,7 +1747,7 @@
         max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
     };
     <span class="kw">let </span>db = Arc::new(RwLock::new(
-        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+        Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
     ));
 
     <span class="comment">// Create final ledger
@@ -1762,7 +1762,7 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         genesis_address: Address::from_public_key(<span class="kw-2">&amp;</span>GENESIS_KEY.get_public_key()),
     })
-    .expect(<span class="string">&quot;could not start selector worker&quot;</span>);
+    .expect(<span class="string">"could not start selector worker"</span>);
 
     <span class="comment">// Creates an empty default store
     </span><span class="kw">let </span>mip_stats_config = MipStatsConfig {
@@ -1784,8 +1784,8 @@
                 // Note that FinalState::new_derived_from_snapshot will check if MIP store is consistent
                 // No Bootstrap are expected after this
                 </span><span class="kw">let </span>mip_store: MipStore = MipStore::try_from_db(db.clone(), mip_stats_config)
-                    .expect(<span class="string">&quot;MIP store creation failed&quot;</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;After read from db, Mip store: {:?}&quot;</span>, mip_store);
+                    .expect(<span class="string">"MIP store creation failed"</span>);
+                <span class="macro">debug!</span>(<span class="string">"After read from db, Mip store: {:?}"</span>, mip_store);
 
                 FinalState::new_derived_from_snapshot(
                     db.clone(),
@@ -1795,7 +1795,7 @@
                     mip_store,
                     last_start_period,
                 )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
+                .expect(<span class="string">"could not init final state"</span>)
             }
             <span class="prelude-val">None </span>=&gt; {
                 <span class="comment">// The node is started in a normal way
@@ -1804,9 +1804,9 @@
                 // to get the latest information for the MIP store (new states, votes...)
 
                 </span><span class="kw">let </span>mip_list = get_mip_list();
-                <span class="macro">debug!</span>(<span class="string">&quot;MIP list: {:?}&quot;</span>, mip_list);
+                <span class="macro">debug!</span>(<span class="string">"MIP list: {:?}"</span>, mip_list);
                 <span class="kw">let </span>mip_store = MipStore::try_from((mip_list, mip_stats_config))
-                    .expect(<span class="string">&quot;mip store creation failed&quot;</span>);
+                    .expect(<span class="string">"mip store creation failed"</span>);
 
                 FinalState::new(
                     db.clone(),
@@ -1816,7 +1816,7 @@
                     mip_store,
                     <span class="bool-val">true</span>,
                 )
-                .expect(<span class="string">&quot;could not init final state&quot;</span>)
+                .expect(<span class="string">"could not init final state"</span>)
             }
         },
     ));
@@ -1891,15 +1891,15 @@
     ) {
         <span class="prelude-val">Ok</span>(vals) =&gt; vals,
         <span class="prelude-val">Err</span>(BootstrapError::Interrupted(msg)) =&gt; {
-            <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, msg);
+            <span class="macro">info!</span>(<span class="string">"{}"</span>, msg);
             process::exit(<span class="number">0</span>);
         }
-        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;critical error detected in the bootstrap process: {}&quot;</span>, err),
+        <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">panic!</span>(<span class="string">"critical error detected in the bootstrap process: {}"</span>, err),
     };
 
     <span class="kw">if </span>!final_state.read().is_db_valid() {
         <span class="comment">// TODO: Bootstrap again instead of panicking
-        </span><span class="macro">panic!</span>(<span class="string">&quot;critical: db is not valid after bootstrap&quot;</span>);
+        </span><span class="macro">panic!</span>(<span class="string">"critical: db is not valid after bootstrap"</span>);
     }
 
     <span class="kw">if </span>args.restart_from_snapshot_at_period.is_none() {
@@ -1909,7 +1909,7 @@
         </span>final_state
             .write()
             .compute_initial_draws()
-            .expect(<span class="string">&quot;could not compute initial draws&quot;</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
+            .expect(<span class="string">"could not compute initial draws"</span>); <span class="comment">// TODO: this might just mean a bad bootstrap, no need to panic, just reboot
     </span>}
 
     <span class="kw">let </span>last_slot_before_downtime_ = <span class="kw-2">*</span>final_state.read().get_last_slot_before_downtime();
@@ -1931,7 +1931,7 @@
                 T0,
                 <span class="kw-2">*</span>GENESIS_TIMESTAMP,
             )
-            .expect(<span class="string">&quot;Mip store is not consistent with shutdown period&quot;</span>);
+            .expect(<span class="string">"Mip store is not consistent with shutdown period"</span>);
 
         <span class="comment">// If we are before a network restart, print the hash to make it easier to debug bootstrapping issues
         </span><span class="kw">let </span>now = MassaTime::now();
@@ -1941,11 +1941,11 @@
         );
         <span class="kw">let </span>last_start_slot_timestamp =
             get_block_slot_timestamp(THREAD_COUNT, T0, <span class="kw-2">*</span>GENESIS_TIMESTAMP, last_start_slot)
-                .expect(<span class="string">&quot;Can&#39;t get timestamp for last_start_slot&quot;</span>);
+                .expect(<span class="string">"Can't get timestamp for last_start_slot"</span>);
         <span class="kw">if </span>now &lt; last_start_slot_timestamp {
             <span class="kw">let </span>final_state_hash = final_state.read().get_fingerprint();
             <span class="macro">info!</span>(
-                <span class="string">&quot;final_state hash before network restarts at slot {}: {}&quot;</span>,
+                <span class="string">"final_state hash before network restarts at slot {}: {}"</span>,
                 last_start_slot, final_state_hash
             );
         }
@@ -1957,7 +1957,7 @@
         ledger_entry_base_cost: LEDGER_ENTRY_BASE_COST,
         ledger_entry_datastore_base_cost: LEDGER_COST_PER_BYTE
             .checked_mul_u64(LEDGER_ENTRY_DATASTORE_BASE_SIZE <span class="kw">as </span>u64)
-            .expect(<span class="string">&quot;Overflow when creating constant ledger_entry_datastore_base_size&quot;</span>),
+            .expect(<span class="string">"Overflow when creating constant ledger_entry_datastore_base_size"</span>),
     };
 
     <span class="comment">// gas costs
@@ -1965,14 +1965,14 @@
         SETTINGS.execution.abi_gas_costs_file.clone(),
         SETTINGS.execution.wasm_gas_costs_file.clone(),
     )
-    .expect(<span class="string">&quot;Failed to load gas costs&quot;</span>);
+    .expect(<span class="string">"Failed to load gas costs"</span>);
 
     <span class="kw">let </span>block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     <span class="kw">if </span>!block_dump_folder_path.exists() {
-        <span class="macro">info!</span>(<span class="string">&quot;Current folder: {:?}&quot;</span>, std::env::current_dir().unwrap());
-        <span class="macro">info!</span>(<span class="string">&quot;Creating dump folder: {:?}&quot;</span>, block_dump_folder_path);
+        <span class="macro">info!</span>(<span class="string">"Current folder: {:?}"</span>, std::env::current_dir().unwrap());
+        <span class="macro">info!</span>(<span class="string">"Creating dump folder: {:?}"</span>, block_dump_folder_path);
         std::fs::create_dir_all(block_dump_folder_path.clone())
-            .expect(<span class="string">&quot;Cannot create dump block folder&quot;</span>);
+            .expect(<span class="string">"Cannot create dump block folder"</span>);
     }
 
     <span class="comment">// launch execution module
@@ -2015,9 +2015,9 @@
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: <span class="kw-2">*</span>CHAINID,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span>broadcast_traces_enabled: <span class="bool-val">true</span>,
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+        <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
         </span>broadcast_traces_enabled: <span class="bool-val">false</span>,
         broadcast_slot_execution_traces_channel_capacity: SETTINGS
             .execution
@@ -2031,26 +2031,26 @@
             execution_config.broadcast_slot_execution_output_channel_capacity,
         )
         .<span class="number">0</span>,
-        <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span>slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
         )
         .<span class="number">0</span>,
     };
 
-    <span class="macro">cfg_if! </span>{
-        <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;db_storage_backend&quot;</span>))] </span>{
+    <span class="macro">cfg_if!</span> {
+        <span class="kw">if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"db_storage_backend"</span>))] </span>{
             <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
                 RocksDBStorageBackend::new(
                 execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
-        } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">&quot;dump-block&quot;</span>, feature = <span class="string">&quot;file_storage_backend&quot;</span>))] </span>{
+        } <span class="kw">else if </span><span class="attr">#[cfg(all(feature = <span class="string">"dump-block"</span>, feature = <span class="string">"file_storage_backend"</span>))] </span>{
             <span class="kw">let </span>block_storage_backend = Arc::new(RwLock::new(
                 FileStorageBackend::new(
                 execution_config.block_dump_folder_path.clone(), SETTINGS.block_dump.max_blocks),
             ));
-        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)] </span>{
-            <span class="macro">compile_error!</span>(<span class="string">&quot;feature dump-block requise either db_storage_backend or file_storage_backend&quot;</span>);
+        } <span class="kw">else if </span><span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>{
+            <span class="macro">compile_error!</span>(<span class="string">"feature dump-block requise either db_storage_backend or file_storage_backend"</span>);
         }
     }
 
@@ -2062,7 +2062,7 @@
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
-        <span class="attr">#[cfg(feature = <span class="string">&quot;dump-block&quot;</span>)]
+        <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
         </span>block_storage_backend.clone(),
     );
 
@@ -2253,7 +2253,7 @@
     };
 
     <span class="kw">let </span>(consensus_event_sender, consensus_event_receiver) =
-        MassaChannel::new(<span class="string">&quot;consensus_event&quot;</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
+        MassaChannel::new(<span class="string">"consensus_event"</span>.to_string(), <span class="prelude-val">Some</span>(CHANNEL_SIZE));
     <span class="kw">let </span>consensus_channels = ConsensusChannels {
         execution_controller: execution_controller.clone(),
         selector_controller: selector_controller.clone(),
@@ -2292,7 +2292,7 @@
         mip_store.clone(),
         massa_metrics.clone(),
     )
-    .expect(<span class="string">&quot;could not start protocol controller&quot;</span>);
+    .expect(<span class="string">"could not start protocol controller"</span>);
 
     <span class="comment">// launch factory
     </span><span class="kw">let </span>factory_config = FactoryConfig {
@@ -2329,8 +2329,8 @@
         <span class="kw">let </span>(listener_stopper, listener) =
             BootstrapTcpListener::create(<span class="kw-2">&amp;</span>addr).unwrap_or_else(|<span class="kw">_</span>| {
                 <span class="macro">panic!</span>(
-                    <span class="string">&quot;{}&quot;</span>,
-                    <span class="macro">format!</span>(<span class="string">&quot;Could not bind to address: {}&quot;</span>, addr).as_str()
+                    <span class="string">"{}"</span>,
+                    <span class="macro">format!</span>(<span class="string">"Could not bind to address: {}"</span>, addr).as_str()
                 )
             });
 
@@ -2345,7 +2345,7 @@
             <span class="kw-2">*</span>VERSION,
             massa_metrics.clone(),
         )
-        .expect(<span class="string">&quot;Could not start bootstrap server&quot;</span>)
+        .expect(<span class="string">"Could not start bootstrap server"</span>)
     });
 
     <span class="kw">let </span>api_config: APIConfig = APIConfig {
@@ -2399,14 +2399,14 @@
     <span class="kw">let </span>api_handle = api
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_api, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await
-        </span>.expect(<span class="string">&quot;failed to start MASSA API&quot;</span>);
+        </span>.expect(<span class="string">"failed to start MASSA API"</span>);
 
     <span class="macro">info!</span>(
-        <span class="string">&quot;API | EXPERIMENTAL JsonRPC | listening on: {}&quot;</span>,
+        <span class="string">"API | EXPERIMENTAL JsonRPC | listening on: {}"</span>,
         <span class="kw-2">&amp;</span>SETTINGS.api.bind_api
     );
 
-    <span class="comment">// Disable WebSockets for Private and Public API&#39;s
+    <span class="comment">// Disable WebSockets for Private and Public API's
     </span><span class="kw">let </span><span class="kw-2">mut </span>api_config = api_config.clone();
     api_config.enable_ws = <span class="bool-val">false</span>;
 
@@ -2443,8 +2443,8 @@
         </span><span class="kw">let </span>grpc_public_stop_handle = grpc_public_api
             .serve(<span class="kw-2">&amp;</span>grpc_public_config)
             .<span class="kw">await
-            </span>.expect(<span class="string">&quot;failed to start gRPC PUBLIC API&quot;</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;gRPC | PUBLIC | listening on: {}&quot;</span>, grpc_public_config.bind);
+            </span>.expect(<span class="string">"failed to start gRPC PUBLIC API"</span>);
+        <span class="macro">info!</span>(<span class="string">"gRPC | PUBLIC | listening on: {}"</span>, grpc_public_config.bind);
 
         <span class="prelude-val">Some</span>(grpc_public_stop_handle)
     } <span class="kw">else </span>{
@@ -2484,9 +2484,9 @@
         </span><span class="kw">let </span>grpc_private_stop_handle = grpc_private_api
             .serve(<span class="kw-2">&amp;</span>grpc_private_config)
             .<span class="kw">await
-            </span>.expect(<span class="string">&quot;failed to start gRPC PRIVATE API&quot;</span>);
+            </span>.expect(<span class="string">"failed to start gRPC PRIVATE API"</span>);
         <span class="macro">info!</span>(
-            <span class="string">&quot;gRPC | PRIVATE | listening on: {}&quot;</span>,
+            <span class="string">"gRPC | PRIVATE | listening on: {}"</span>,
             grpc_private_config.bind
         );
 
@@ -2495,7 +2495,7 @@
         <span class="prelude-val">None
     </span>};
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
     </span>start_operation_injector(
         <span class="kw-2">*</span>GENESIS_TIMESTAMP,
         shared_storage.clone_without_refs(),
@@ -2516,9 +2516,9 @@
     <span class="kw">let </span>api_private_handle = api_private
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_private, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await
-        </span>.expect(<span class="string">&quot;failed to start PRIVATE API&quot;</span>);
+        </span>.expect(<span class="string">"failed to start PRIVATE API"</span>);
     <span class="macro">info!</span>(
-        <span class="string">&quot;API | PRIVATE JsonRPC | listening on: {}&quot;</span>,
+        <span class="string">"API | PRIVATE JsonRPC | listening on: {}"</span>,
         api_config.bind_private
     );
 
@@ -2539,9 +2539,9 @@
     <span class="kw">let </span>api_public_handle = api_public
         .serve(<span class="kw-2">&amp;</span>SETTINGS.api.bind_public, <span class="kw-2">&amp;</span>api_config)
         .<span class="kw">await
-        </span>.expect(<span class="string">&quot;failed to start PUBLIC API&quot;</span>);
+        </span>.expect(<span class="string">"failed to start PUBLIC API"</span>);
     <span class="macro">info!</span>(
-        <span class="string">&quot;API | PUBLIC JsonRPC | listening on: {}&quot;</span>,
+        <span class="string">"API | PUBLIC JsonRPC | listening on: {}"</span>,
         api_config.bind_public
     );
 
@@ -2559,17 +2559,17 @@
         ),
     );
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"deadlock_detection"</span>)]
     </span>{
         <span class="comment">// only for #[cfg]
         </span><span class="kw">use </span>parking_lot::deadlock;
         <span class="kw">use </span>std::thread;
 
         <span class="kw">let </span>interval = Duration::from_secs(args.dl_interval);
-        <span class="macro">warn!</span>(<span class="string">&quot;deadlocks detector will run every {:?}&quot;</span>, interval);
+        <span class="macro">warn!</span>(<span class="string">"deadlocks detector will run every {:?}"</span>, interval);
 
         <span class="comment">// Create a background thread which checks for deadlocks at the defined interval
-        </span><span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">&quot;deadlock-detection&quot;</span>.into());
+        </span><span class="kw">let </span>thread_builder = thread::Builder::new().name(<span class="string">"deadlock-detection"</span>.into());
         thread_builder
             .spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
                 thread::sleep(interval);
@@ -2577,16 +2577,16 @@
                 <span class="kw">if </span>deadlocks.is_empty() {
                     <span class="kw">continue</span>;
                 }
-                <span class="macro">warn!</span>(<span class="string">&quot;{} deadlocks detected&quot;</span>, deadlocks.len());
+                <span class="macro">warn!</span>(<span class="string">"{} deadlocks detected"</span>, deadlocks.len());
                 <span class="kw">for </span>(i, threads) <span class="kw">in </span>deadlocks.iter().enumerate() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Deadlock #{}&quot;</span>, i);
+                    <span class="macro">warn!</span>(<span class="string">"Deadlock #{}"</span>, i);
                     <span class="kw">for </span>t <span class="kw">in </span>threads {
-                        <span class="macro">warn!</span>(<span class="string">&quot;Thread Id {:#?}&quot;</span>, t.thread_id());
-                        <span class="macro">warn!</span>(<span class="string">&quot;{:#?}&quot;</span>, t.backtrace());
+                        <span class="macro">warn!</span>(<span class="string">"Thread Id {:#?}"</span>, t.thread_id());
+                        <span class="macro">warn!</span>(<span class="string">"{:#?}"</span>, t.backtrace());
                     }
                 }
             })
-            .expect(<span class="string">&quot;failed to spawn thread : deadlock-detection&quot;</span>);
+            .expect(<span class="string">"failed to spawn thread : deadlock-detection"</span>);
     }
     (
         consensus_event_receiver,
@@ -2718,34 +2718,34 @@
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(bootstrap_manager) = bootstrap_manager {
         bootstrap_manager
             .stop()
-            .expect(<span class="string">&quot;bootstrap server shutdown failed&quot;</span>)
+            .expect(<span class="string">"bootstrap server shutdown failed"</span>)
     }
 
-    <span class="macro">info!</span>(<span class="string">&quot;Start stopping API&#39;s: gRPC(PUBLIC, PRIVATE), EXPERIMENTAL, PUBLIC, PRIVATE&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"Start stopping API's: gRPC(PUBLIC, PRIVATE), EXPERIMENTAL, PUBLIC, PRIVATE"</span>);
 
     <span class="comment">// stop Massa gRPC PUBLIC API
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_public_handle {
         handle.stop();
     }
-    <span class="macro">info!</span>(<span class="string">&quot;API | PUBLIC gRPC | stopped&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"API | PUBLIC gRPC | stopped"</span>);
 
     <span class="comment">// stop Massa gRPC PRIVATE API
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(handle) = grpc_private_handle {
         handle.stop();
     }
-    <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE gRPC | stopped&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"API | PRIVATE gRPC | stopped"</span>);
 
     <span class="comment">// stop Massa API
     </span>api_handle.stop().<span class="kw">await</span>;
-    <span class="macro">info!</span>(<span class="string">&quot;API | EXPERIMENTAL JsonRPC | stopped&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"API | EXPERIMENTAL JsonRPC | stopped"</span>);
 
     <span class="comment">// stop public API
     </span>api_public_handle.stop().<span class="kw">await</span>;
-    <span class="macro">info!</span>(<span class="string">&quot;API | PUBLIC JsonRPC | stopped&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"API | PUBLIC JsonRPC | stopped"</span>);
 
     <span class="comment">// stop private API
     </span>api_private_handle.stop().<span class="kw">await</span>;
-    <span class="macro">info!</span>(<span class="string">&quot;API | PRIVATE JsonRPC | stopped&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">"API | PRIVATE JsonRPC | stopped"</span>);
 
     <span class="comment">// stop metrics
     </span>metrics_stopper.stop();
@@ -2773,7 +2773,7 @@
 
     <span class="comment">// stop pool controller
     // TODO
-    //let protocol_pool_event_receiver = pool_manager.stop().await.expect(&quot;pool shutdown failed&quot;);
+    //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
 </span>}
@@ -2781,35 +2781,35 @@
 <span class="attr">#[derive(Parser)]
 #[command(version = <span class="macro">crate_version!</span>())]
 </span><span class="kw">struct </span>Args {
-    <span class="attr">#[arg(long = <span class="string">&quot;keep-ledger&quot;</span>)]
+    <span class="attr">#[arg(long = <span class="string">"keep-ledger"</span>)]
     </span>keep_ledger: bool,
     <span class="doccomment">/// Wallet password
-    </span><span class="comment">// #[arg(short = &quot;p&quot;, long = &quot;pwd&quot;)]
-    </span><span class="attr">#[arg(short = <span class="string">&#39;p&#39;</span>, long = <span class="string">&quot;pwd&quot;</span>)]
+    </span><span class="comment">// #[arg(short = "p", long = "pwd")]
+    </span><span class="attr">#[arg(short = <span class="string">'p'</span>, long = <span class="string">"pwd"</span>)]
     </span>password: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="doccomment">/// restart_from_snapshot_at_period
-    </span><span class="attr">#[arg(long = <span class="string">&quot;restart-from-snapshot-at-period&quot;</span>)]
+    </span><span class="attr">#[arg(long = <span class="string">"restart-from-snapshot-at-period"</span>)]
     </span>restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;op_spammer&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
     </span><span class="doccomment">/// number of operations
     </span><span class="attr">#[arg(
-        name = <span class="string">&quot;number of operations&quot;</span>,
-        long_help = <span class="string">&quot;Define the number of operations the node can spam.&quot;</span>,
-        short = <span class="string">&#39;n&#39;</span>,
-        long = <span class="string">&quot;number-operations&quot;
+        name = <span class="string">"number of operations"</span>,
+        long_help = <span class="string">"Define the number of operations the node can spam."</span>,
+        short = <span class="string">'n'</span>,
+        long = <span class="string">"number-operations"
     </span>)]
     </span>nb_op: u64,
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;deadlock_detection&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"deadlock_detection"</span>)]
     </span><span class="doccomment">/// Deadlocks detector
     </span><span class="attr">#[structopt(
-        name = <span class="string">&quot;deadlocks interval&quot;</span>,
-        long_help = <span class="string">&quot;Define the interval of launching a deadlocks checking.&quot;</span>,
-        short = <span class="string">&#39;i&#39;</span>,
-        long = <span class="string">&quot;dli&quot;</span>,
-        default_value = <span class="string">&quot;10&quot;
+        name = <span class="string">"deadlocks interval"</span>,
+        long_help = <span class="string">"Define the interval of launching a deadlocks checking."</span>,
+        short = <span class="string">'i'</span>,
+        long = <span class="string">"dli"</span>,
+        default_value = <span class="string">"10"
     </span>)]
     </span>dl_interval: u64,
 }
@@ -2823,17 +2823,17 @@
     <span class="kw">let </span>password = <span class="kw">if </span>path.is_dir() {
         password.unwrap_or_else(|| {
             Password::new()
-                .with_prompt(<span class="string">&quot;Enter staking keys file password&quot;</span>)
+                .with_prompt(<span class="string">"Enter staking keys file password"</span>)
                 .interact()
-                .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be unlocked&quot;</span>)
+                .expect(<span class="string">"IO error: Password reading failed, staking keys file couldn't be unlocked"</span>)
         })
     } <span class="kw">else </span>{
         password.unwrap_or_else(|| {
             Password::new()
-                .with_prompt(<span class="string">&quot;Enter new password for staking keys file&quot;</span>)
-                .with_confirmation(<span class="string">&quot;Confirm password&quot;</span>, <span class="string">&quot;Passwords mismatching&quot;</span>)
+                .with_prompt(<span class="string">"Enter new password for staking keys file"</span>)
+                .with_confirmation(<span class="string">"Confirm password"</span>, <span class="string">"Passwords mismatching"</span>)
                 .interact()
-                .expect(<span class="string">&quot;IO error: Password reading failed, staking keys file couldn&#39;t be created&quot;</span>)
+                .expect(<span class="string">"IO error: Password reading failed, staking keys file couldn't be created"</span>)
         })
     };
     <span class="prelude-val">Ok</span>(Arc::new(RwLock::new(Wallet::new(
@@ -2850,7 +2850,7 @@
         .thread_name_fn(|| {
             <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
             <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
-            <span class="macro">format!</span>(<span class="string">&quot;tokio-node-{}&quot;</span>, id)
+            <span class="macro">format!</span>(<span class="string">"tokio-node-{}"</span>, id)
         })
         .enable_all()
         .build()
@@ -2872,7 +2872,7 @@
             <span class="kw">_ </span>=&gt; LevelFilter::ERROR,
         })
         .with_filter(filter_fn(|metadata| {
-            metadata.target().starts_with(<span class="string">&quot;massa&quot;</span>) <span class="comment">// ignore non-massa logs
+            metadata.target().starts_with(<span class="string">"massa"</span>) <span class="comment">// ignore non-massa logs
         </span>}));
     <span class="comment">// build a `Subscriber` by combining layers with a `tracing_subscriber::Registry`:
     </span>tracing_subscriber::registry()
@@ -2890,7 +2890,7 @@
         std::process::exit(<span class="number">1</span>);
     }));
 
-    <span class="macro">info!</span>(<span class="string">&quot;Node version : {}&quot;</span>, <span class="kw-2">*</span>VERSION);
+    <span class="macro">info!</span>(<span class="string">"Node version : {}"</span>, <span class="kw-2">*</span>VERSION);
 
     <span class="comment">// load or create wallet, asking for password if necessary
     </span><span class="kw">let </span>node_wallet = load_wallet(
@@ -2907,12 +2907,12 @@
         <span class="kw-2">*</span>sig_int_toggled_clone
             .<span class="number">0
             </span>.lock()
-            .expect(<span class="string">&quot;double-lock on interupt bool in ctrl-c handler&quot;</span>) = <span class="bool-val">true</span>;
+            .expect(<span class="string">"double-lock on interupt bool in ctrl-c handler"</span>) = <span class="bool-val">true</span>;
         sig_int_toggled_clone.<span class="number">1</span>.notify_all();
     })
-    .expect(<span class="string">&quot;Error setting Ctrl-C handler&quot;</span>);
+    .expect(<span class="string">"Error setting Ctrl-C handler"</span>);
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"resync_check"</span>)]
     </span><span class="kw">let </span><span class="kw-2">mut </span>resync_check = <span class="prelude-val">Some</span>(std::time::Instant::now() + std::time::Duration::from_secs(<span class="number">10</span>));
 
     <span class="kw">loop </span>{
@@ -2936,11 +2936,11 @@
 
         <span class="comment">// loop over messages
         </span><span class="kw">let </span>restart = <span class="kw">loop </span>{
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;massa-node.main.run.select&quot;</span>, {});
+            <span class="macro">massa_trace!</span>(<span class="string">"massa-node.main.run.select"</span>, {});
             <span class="kw">match </span>consensus_event_receiver.try_recv() {
                 <span class="prelude-val">Ok</span>(evt) =&gt; <span class="kw">match </span>evt {
                     ConsensusEvent::NeedSync =&gt; {
-                        <span class="macro">warn!</span>(<span class="string">&quot;in response to a desynchronization, the node is going to bootstrap again&quot;</span>);
+                        <span class="macro">warn!</span>(<span class="string">"in response to a desynchronization, the node is going to bootstrap again"</span>);
                         <span class="kw">break </span><span class="bool-val">true</span>;
                     }
                     ConsensusEvent::Stop =&gt; {
@@ -2948,7 +2948,7 @@
                     }
                 },
                 <span class="prelude-val">Err</span>(TryRecvError::Disconnected) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">&quot;consensus_event_receiver.wait_event disconnected&quot;</span>);
+                    <span class="macro">error!</span>(<span class="string">"consensus_event_receiver.wait_event disconnected"</span>);
                     <span class="kw">break </span><span class="bool-val">false</span>;
                 }
                 <span class="kw">_ </span>=&gt; {}
@@ -2959,23 +2959,23 @@
             </span><span class="kw">let </span>int_sig = sig_int_toggled
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">&quot;double-lock() on interupted signal mutex&quot;</span>);
+                .expect(<span class="string">"double-lock() on interupted signal mutex"</span>);
             <span class="kw">let </span>wake = sig_int_toggled
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
-                .expect(<span class="string">&quot;interupt signal mutex poisoned&quot;</span>);
+                .expect(<span class="string">"interupt signal mutex poisoned"</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
-                <span class="macro">info!</span>(<span class="string">&quot;interrupt signal received&quot;</span>);
+                <span class="macro">info!</span>(<span class="string">"interrupt signal received"</span>);
                 <span class="kw">break </span><span class="bool-val">false</span>;
             }
 
             <span class="comment">// Elements of the system that involve stopping and restarting should be checked by forcing a relaunch.
             // This check allows the system to start up as normal, wait 10s, then force a relaunch. If Things take too long
             // to shutdown, or does not allow for a clean relaunch, this feature flag can expose those issues.
-            </span><span class="attr">#[cfg(feature = <span class="string">&quot;resync_check&quot;</span>)]
+            </span><span class="attr">#[cfg(feature = <span class="string">"resync_check"</span>)]
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(resync_moment) = resync_check {
                 <span class="kw">if </span>resync_moment &lt; std::time::Instant::now() {
-                    <span class="macro">warn!</span>(<span class="string">&quot;resync check triggered&quot;</span>);
+                    <span class="macro">warn!</span>(<span class="string">"resync check triggered"</span>);
                     resync_check = <span class="prelude-val">None</span>;
                     <span class="kw">break </span><span class="bool-val">true</span>;
                 }

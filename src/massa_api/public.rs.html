@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><title>public.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/public.rs`."><title>public.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1505,7 +1505,7 @@
         <span class="kw">crate</span>::wrong_api::&lt;()&gt;()
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+    <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
     </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, slots: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
         <span class="kw">use </span>massa_api_exports::execution::TransferContext;
         <span class="kw">use </span>std::str::FromStr;
@@ -1527,9 +1527,9 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(abi_calls) = abi_calls {
                 <span class="comment">// flatten &amp; filter transfer trace in asc_call_stacks
 
-                </span><span class="kw">let </span>abi_transfer_1 = <span class="string">&quot;assembly_script_transfer_coins&quot;</span>.to_string();
-                <span class="kw">let </span>abi_transfer_2 = <span class="string">&quot;assembly_script_transfer_coins_for&quot;</span>.to_string();
-                <span class="kw">let </span>abi_transfer_3 = <span class="string">&quot;abi_transfer_coins&quot;</span>.to_string();
+                </span><span class="kw">let </span>abi_transfer_1 = <span class="string">"assembly_script_transfer_coins"</span>.to_string();
+                <span class="kw">let </span>abi_transfer_2 = <span class="string">"assembly_script_transfer_coins_for"</span>.to_string();
+                <span class="kw">let </span>abi_transfer_3 = <span class="string">"abi_transfer_coins"</span>.to_string();
                 <span class="kw">let </span>transfer_abi_names = <span class="macro">vec!</span>[abi_transfer_1, abi_transfer_2, abi_transfer_3];
                 <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>abi_calls.asc_call_stacks.iter().enumerate() {
                     <span class="kw">for </span>abi_trace <span class="kw">in </span>asc_call_stack {
@@ -1594,9 +1594,9 @@
         <span class="prelude-val">Ok</span>(res)
     }
 
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+    <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
     </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt; {
-        RpcResult::Err(ApiError::BadRequest(<span class="string">&quot;feature execution-trace is not enabled&quot;</span>.into()).into())
+        RpcResult::Err(ApiError::BadRequest(<span class="string">"feature execution-trace is not enabled"</span>.into()).into())
     }
 
     <span class="kw">async fn </span>execute_read_only_bytecode(
@@ -1604,7 +1604,7 @@
         reqs: Vec&lt;ReadOnlyBytecodeExecution&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt; {
         <span class="kw">if </span>reqs.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;ExecuteReadOnlyResponse&gt; = Vec::with_capacity(reqs.len());
@@ -1639,7 +1639,7 @@
                         <span class="prelude-val">Ok</span>((<span class="kw">_</span>, deserialized)) =&gt; <span class="prelude-val">Some</span>(deserialized),
                         <span class="prelude-val">Err</span>(e) =&gt; {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(<span class="macro">format!</span>(
-                                <span class="string">&quot;Operation datastore error: {}&quot;</span>,
+                                <span class="string">"Operation datastore error: {}"</span>,
                                 e
                             ))
                             .into())
@@ -1669,7 +1669,7 @@
                     <span class="kw">let </span>result = ExecuteReadOnlyResponse {
                         executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
                         result: ReadOnlyResult::Error(<span class="macro">format!</span>(
-                            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+                            <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
                             fee, <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
                         )),
                         gas_cost: <span class="number">0</span>,
@@ -1690,7 +1690,7 @@
                     .as_ref()
                     .map_or_else(|<span class="kw">_</span>| Slot::new(<span class="number">0</span>, <span class="number">0</span>), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
-                    |err| ReadOnlyResult::Error(<span class="macro">format!</span>(<span class="string">&quot;readonly call failed: {}&quot;</span>, err)),
+                    |err| ReadOnlyResult::Error(<span class="macro">format!</span>(<span class="string">"readonly call failed: {}"</span>, err)),
                     |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|<span class="kw">_</span>| <span class="number">0</span>, |v| v.gas_cost),
@@ -1713,7 +1713,7 @@
         reqs: Vec&lt;ReadOnlyCall&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt; {
         <span class="kw">if </span>reqs.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>res: Vec&lt;ExecuteReadOnlyResponse&gt; = Vec::with_capacity(reqs.len());
@@ -1770,7 +1770,7 @@
                     <span class="kw">let </span>result = ExecuteReadOnlyResponse {
                         executed_at: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
                         result: ReadOnlyResult::Error(<span class="macro">format!</span>(
-                            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+                            <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
                             fee, <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
                         )),
                         gas_cost: <span class="number">0</span>,
@@ -1791,7 +1791,7 @@
                     .as_ref()
                     .map_or_else(|<span class="kw">_</span>| Slot::new(<span class="number">0</span>, <span class="number">0</span>), |v| v.out.slot),
                 result: result.as_ref().map_or_else(
-                    |err| ReadOnlyResult::Error(<span class="macro">format!</span>(<span class="string">&quot;readonly call failed: {}&quot;</span>, err)),
+                    |err| ReadOnlyResult::Error(<span class="macro">format!</span>(<span class="string">"readonly call failed: {}"</span>, err)),
                     |res| ReadOnlyResult::Ok(res.call_result.clone()),
                 ),
                 gas_cost: result.as_ref().map_or_else(|<span class="kw">_</span>| <span class="number">0</span>, |v| v.gas_cost),
@@ -2022,7 +2022,7 @@
 
         <span class="kw">let </span>api_cfg = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
 
         <span class="comment">// ask pool whether it carries the operations
@@ -2057,7 +2057,7 @@
         <span class="kw">for </span>(id, (operation, in_blocks), in_pool, is_operation_final, op_exec_status) <span class="kw">in
             </span>zipped_iterator
         {
-            <span class="attr">#[cfg(feature = <span class="string">&quot;execution-trace&quot;</span>)]
+            <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
             </span>{
                 <span class="kw">let </span><span class="kw-2">mut </span>transfer = <span class="prelude-val">None</span>;
                 <span class="kw">if </span>is_operation_final.is_none() || op_exec_status.is_none() {
@@ -2077,7 +2077,7 @@
                     op_exec_status,
                 });
             }
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;execution-trace&quot;</span>))]
+            <span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
             </span>{
                 res.push(OperationInfo {
                     id,
@@ -2103,7 +2103,7 @@
         <span class="kw-2">mut </span>endorsement_ids: Vec&lt;EndorsementId&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt; {
         <span class="kw">if </span>endorsement_ids.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>secure_share_endorsements: Vec&lt;SecureShareEndorsement&gt; =
@@ -2278,7 +2278,7 @@
             .max_cliques
             .iter()
             .find(|clique| clique.is_blockclique)
-            .ok_or_else(|| ApiError::InconsistencyError(<span class="string">&quot;missing blockclique&quot;</span>.to_string()))<span class="question-mark">?</span>;
+            .ok_or_else(|| ApiError::InconsistencyError(<span class="string">"missing blockclique"</span>.to_string()))<span class="question-mark">?</span>;
         <span class="kw">for </span>(id, exported_block) <span class="kw">in </span>graph.active_blocks.into_iter() {
             res.push(BlockSummary {
                 id,
@@ -2392,7 +2392,7 @@
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.t0,
                 <span class="self">self</span>.<span class="number">0</span>.api_settings.genesis_timestamp,
             )
-            .expect(<span class="string">&quot;could not get latest current slot&quot;</span>)
+            .expect(<span class="string">"could not get latest current slot"</span>)
             .unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>));
             <span class="kw">let </span>slot_end = Slot::new(
                 cur_slot
@@ -2510,11 +2510,11 @@
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">if </span>queries.is_empty() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;no arguments specified&quot;</span>.to_string()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"no arguments specified"</span>.to_string()).into());
         }
 
         <span class="kw">if </span>queries.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="macro">format!</span>(<span class="string">&quot;too many arguments received. Only a maximum of {} arguments are accepted per request&quot;</span>, <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments)).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="macro">format!</span>(<span class="string">"too many arguments received. Only a maximum of {} arguments are accepted per request"</span>, <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments)).into());
         }
 
         <span class="kw">let </span>responses = <span class="self">self
@@ -2529,7 +2529,7 @@
                 <span class="prelude-val">Ok</span>(item) =&gt; <span class="kw">match </span>item {
                     ExecutionQueryResponseItem::Bytecode(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ApiError::InternalServerError(
-                        <span class="string">&quot;unexpected response type&quot;</span>.to_string(),
+                        <span class="string">"unexpected response type"</span>.to_string(),
                     )),
                 },
                 <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(ApiError::InternalServerError(err.to_string())),
@@ -2547,7 +2547,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>to_send = <span class="self">self</span>.<span class="number">0</span>.storage.clone_without_refs();
 
         <span class="kw">if </span>ops.len() <span class="kw">as </span>u64 &gt; api_cfg.max_arguments {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">&quot;too many arguments&quot;</span>.into()).into());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
         <span class="kw">let </span>now = MassaTime::now();
         <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
@@ -2570,7 +2570,7 @@
                         .is_none()
                     {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="macro">format!</span>(
-                            <span class="string">&quot;fee is too low provided: {} , minimal_fees required: {}&quot;</span>,
+                            <span class="string">"fee is too low provided: {} , minimal_fees required: {}"</span>,
                             operation.content.fee, <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees
                         ))
                         .into());
@@ -2594,7 +2594,7 @@
             .<span class="kw">await
             </span>.map_err(|err| ApiError::InternalServerError(err.to_string()))<span class="question-mark">?
             </span>.map_err(|err| {
-                ApiError::InternalServerError(<span class="macro">format!</span>(<span class="string">&quot;Failed to propagate operations: {}&quot;</span>, err))
+                ApiError::InternalServerError(<span class="macro">format!</span>(<span class="string">"Failed to propagate operations: {}"</span>, err))
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ids)
     }
@@ -2664,7 +2664,7 @@
         <span class="kw">let </span>openrpc: RpcResult&lt;Value&gt; = std::fs::read_to_string(openrpc_spec_path)
             .map_err(|e| {
                 ApiError::InternalServerError(<span class="macro">format!</span>(
-                    <span class="string">&quot;failed to read OpenRPC specification: {}&quot;</span>,
+                    <span class="string">"failed to read OpenRPC specification: {}"</span>,
                     e
                 ))
                 .into()
@@ -2672,7 +2672,7 @@
             .and_then(|openrpc_str| {
                 serde_json::from_str(<span class="kw-2">&amp;</span>openrpc_str).map_err(|e| {
                     ApiError::InternalServerError(<span class="macro">format!</span>(
-                        <span class="string">&quot;failed to parse OpenRPC specification: {}&quot;</span>,
+                        <span class="string">"failed to parse OpenRPC specification: {}"</span>,
                         e
                     ))
                     .into()
@@ -2728,7 +2728,7 @@
             <span class="kw">let </span>gas_usage =
                 op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
             <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
-                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">&quot;Upper gas limit for CallSC operation is {}. Your operation will never be included in a block.&quot;</span>,
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for CallSC operation is {}. Your operation will never be included in a block."</span>,
                     api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost));
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
             }
@@ -2737,7 +2737,7 @@
             <span class="kw">let </span>gas_usage =
                 op.get_gas_usage(api_cfg.base_operation_gas_cost, api_cfg.sp_compilation_cost);
             <span class="kw">if </span>gas_usage &gt; api_cfg.max_gas_per_block {
-                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">&quot;Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block.&quot;</span>,
+                <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"Upper gas limit for ExecuteSC operation is {}. Your operation will never be included in a block."</span>,
                     api_cfg.max_gas_per_block.saturating_sub(api_cfg.base_operation_gas_cost).saturating_sub(api_cfg.sp_compilation_cost));
                 <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::InconsistencyError(err_msg).into());
             }
@@ -2748,7 +2748,7 @@
         <span class="kw">if </span>op.content.expire_period &lt; slot.period {
             <span class="kw">return </span><span class="prelude-val">Err</span>(
                 ApiError::InconsistencyError(
-                    <span class="string">&quot;Operation expire_period is lower than the current period of this node. Your operation will never be included in a block.&quot;</span>.into()
+                    <span class="string">"Operation expire_period is lower than the current period of this node. Your operation will never be included in a block."</span>.into()
                 ).into()
             );
         }
@@ -2757,7 +2757,7 @@
         <span class="prelude-val">Ok</span>(op)
     } <span class="kw">else </span>{
         <span class="prelude-val">Err</span>(ApiError::ModelsError(ModelsError::DeserializeError(
-            <span class="string">&quot;There is data left after operation deserialization&quot;</span>.to_owned(),
+            <span class="string">"There is data left after operation deserialization"</span>.to_owned(),
         ))
         .into())
     }

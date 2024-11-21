@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/bindings/server.rs`."><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_bootstrap/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-bootstrap/src/bindings/server.rs`."><title>server.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_bootstrap" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -462,9 +462,9 @@
             <span class="kw">let </span>(<span class="kw">_</span>, received_version) = <span class="self">self
                 </span>.version_deserializer
                 .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>msg_bytes[..version_bytes.len()])
-                .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="kw-2">&amp;</span>err)))<span class="question-mark">?</span>;
+                .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"{}"</span>, <span class="kw-2">&amp;</span>err)))<span class="question-mark">?</span>;
             <span class="kw">if </span>!received_version.is_compatible(<span class="kw-2">&amp;</span>version) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(<span class="string">&quot;Received a bad incompatible version in handshake. (excepted: {}, received: {})&quot;</span>, version, received_version)));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::IncompatibleVersionError(<span class="macro">format!</span>(<span class="string">"Received a bad incompatible version in handshake. (excepted: {}, received: {})"</span>, version, received_version)));
             }
             Hash::compute_from(<span class="kw-2">&amp;</span>msg_bytes)
         };
@@ -488,7 +488,7 @@
             {
                 BootstrapError::TimedOut(std::io::Error::new(
                     std::io::ErrorKind::TimedOut,
-                    <span class="macro">format!</span>(<span class="string">&quot;BootstrapServerMessage::{} send timed out&quot;</span>, to_str),
+                    <span class="macro">format!</span>(<span class="string">"BootstrapServerMessage::{} send timed out"</span>, to_str),
                 ))
             }
             <span class="kw">_ </span>=&gt; e,
@@ -504,28 +504,28 @@
     /// consumes the binding in the process
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>close_and_send_error&lt;F&gt;(<span class="kw-2">mut </span><span class="self">self</span>, msg: String, addr: SocketAddr, close_fn: F)
     <span class="kw">where
-        </span>F: FnOnce() + Send + <span class="lifetime">&#39;static</span>,
+        </span>F: FnOnce() + Send + <span class="lifetime">'static</span>,
     {
         thread::Builder::new()
-            .name(<span class="string">&quot;bootstrap-error-send&quot;</span>.to_string())
+            .name(<span class="string">"bootstrap-error-send"</span>.to_string())
             .spawn(<span class="kw">move </span>|| {
                 <span class="kw">let </span>msg_cloned = msg.clone();
                 <span class="kw">let </span>err_send = <span class="self">self</span>.send_error_timeout(msg_cloned);
                 <span class="kw">match </span>err_send {
                     <span class="prelude-val">Err</span>(BootstrapError::IoError(e)) <span class="kw">if </span>e.kind() == ErrorKind::TimedOut =&gt; <span class="macro">error!</span>(
-                        <span class="string">&quot;bootstrap server timed out sending error &#39;{}&#39; to addr {}&quot;</span>,
+                        <span class="string">"bootstrap server timed out sending error '{}' to addr {}"</span>,
                         msg, addr
                     ),
                     <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(
-                        <span class="string">&quot;bootstrap server encountered error &#39;{}&#39; sending error &#39;{}&#39; to addr &#39;{}&#39;&quot;</span>,
+                        <span class="string">"bootstrap server encountered error '{}' sending error '{}' to addr '{}'"</span>,
                         e, msg, addr
                     ),
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
                 }
                 close_fn();
             })
-            <span class="comment">// the non-builder spawn doesn&#39;t return a Result, and documentation states that
-            // it&#39;s an error at the OS level.
+            <span class="comment">// the non-builder spawn doesn't return a Result, and documentation states that
+            // it's an error at the OS level.
             </span>.unwrap();
     }
     <span class="kw">pub fn </span>send_error_timeout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, error: String) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
@@ -552,7 +552,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg_bytes = Vec::new();
         BootstrapServerMessageSerializer::new().serialize(<span class="kw-2">&amp;</span>msg, <span class="kw-2">&amp;mut </span>msg_bytes)<span class="question-mark">?</span>;
         <span class="kw">let </span>msg_len: u32 = msg_bytes.len().try_into().map_err(|e| {
-            BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;bootstrap message too large to encode: {}&quot;</span>, e))
+            BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"bootstrap message too large to encode: {}"</span>, e))
         })<span class="question-mark">?</span>;
 
         <span class="comment">// compute signature, and extract the bytes
@@ -612,7 +612,7 @@
         <span class="comment">// check previous hash
         </span><span class="kw">if </span>received_prev_hash != <span class="self">self</span>.prev_message {
             <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(
-                <span class="string">&quot;Message sequencing has been broken&quot;</span>.to_string(),
+                <span class="string">"Message sequencing has been broken"</span>.to_string(),
             ));
         }
 
@@ -636,7 +636,7 @@
             <span class="self">self</span>.max_consensus_block_ids,
         )
         .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>msg_bytes)
-        .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+        .map_err(|err| BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(msg)
     }
@@ -653,7 +653,7 @@
                 <span class="prelude-val">Some</span>(Hash::from_bytes(
                     leader_buf[..HASH_SIZE_BYTES]
                         .try_into()
-                        .expect(<span class="string">&quot;bad slice logic&quot;</span>),
+                        .expect(<span class="string">"bad slice logic"</span>),
                 ))
             } <span class="kw">else </span>{
                 <span class="prelude-val">None

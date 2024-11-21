@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><title>message.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_async_pool/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-async-pool/src/message.rs`."><title>message.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_async_pool" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1576,12 +1576,12 @@
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
     ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
@@ -1646,12 +1646,12 @@
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
     ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
@@ -1667,23 +1667,23 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(id, id_deser);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AsyncMessageId, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], AsyncMessageId, E&gt; {
         context(
-            <span class="string">&quot;Failed AsyncMessageId deserialization&quot;</span>,
+            <span class="string">"Failed AsyncMessageId deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed num deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed num deserialization"</span>, |input| {
                     <span class="self">self</span>.numerator_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed denum deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed denum deserialization"</span>, |input| {
                     <span class="self">self</span>.denominator_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed emission_slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_index deserialization"</span>, |input| {
                     <span class="self">self</span>.emission_index_deserializer.deserialize(input)
                 }),
             )),
@@ -1758,17 +1758,17 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;AsyncMessageTrigger&gt; <span class="kw">for </span>AsyncMessageTriggerDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AsyncMessageTrigger, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], AsyncMessageTrigger, E&gt; {
         context(
-            <span class="string">&quot;Failed AsyncMessageTrigger deserialization&quot;</span>,
+            <span class="string">"Failed AsyncMessageTrigger deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed address deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed address deserialization"</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed datastore_key deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed datastore_key deserialization"</span>, |input| {
                     <span class="self">self</span>.key_serializer.deserialize(input)
                 }),
             )),
@@ -1797,7 +1797,7 @@
     <span class="doccomment">/// The address towards which the message is being sent
     </span><span class="kw">pub </span>destination: Address,
 
-    <span class="doccomment">/// the function function name within the destination address&#39; bytecode
+    <span class="doccomment">/// the function function name within the destination address' bytecode
     </span><span class="kw">pub </span>function: String,
 
     <span class="doccomment">/// Maximum gas to use when processing the message
@@ -1937,17 +1937,17 @@
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
     ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     Some(AsyncMessageTrigger {
-    ///         address: Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///         address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///         datastore_key: Some(vec![1, 2, 3, 4])
     ///     }),
     ///     None,
@@ -2054,17 +2054,17 @@
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
     ///     0,
-    ///     Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
-    ///     Address::from_str(&quot;AS12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;).unwrap(),
-    ///     String::from(&quot;test&quot;),
+    ///     Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
+    ///     Address::from_str("AS12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G").unwrap(),
+    ///     String::from("test"),
     ///     10000000,
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
-    ///     Amount::from_str(&quot;1&quot;).unwrap(),
+    ///     Amount::from_str("1").unwrap(),
+    ///     Amount::from_str("1").unwrap(),
     ///     Slot::new(2, 0),
     ///     Slot::new(3, 0),
     ///     vec![1, 2, 3, 4],
     ///     Some(AsyncMessageTrigger {
-    ///        address: Address::from_str(&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;).unwrap(),
+    ///        address: Address::from_str("AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x").unwrap(),
     ///        datastore_key: Some(vec![1, 2, 3, 4]),
     ///     }),
     ///     None,
@@ -2078,50 +2078,50 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(message, message_deserialized);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AsyncMessage, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], AsyncMessage, E&gt; {
         context(
-            <span class="string">&quot;Failed AsyncMessage deserialization&quot;</span>,
+            <span class="string">"Failed AsyncMessage deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed emission_slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_index deserialization"</span>, |input| {
                     <span class="self">self</span>.emission_index_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed sender deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed sender deserialization"</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed destination deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed destination deserialization"</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed function deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed function deserialization"</span>, |input| {
                     <span class="self">self</span>.function_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed max_gas deserialization"</span>, |input| {
                     <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed fee deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed fee deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed coins deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed coins deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed validity_start deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed validity_start deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed validity_end deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed validity_end deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed data deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed data deserialization"</span>, |input| {
                     <span class="self">self</span>.function_params_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed filter deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed filter deserialization"</span>, |input| {
                     <span class="self">self</span>.trigger_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed can_be_executed deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed can_be_executed deserialization"</span>, |input| {
                     <span class="kw">if </span><span class="self">self</span>.for_db {
                         <span class="self">self</span>.bool_deserializer.deserialize(input)
                     } <span class="kw">else </span>{
@@ -2208,7 +2208,7 @@
     <span class="doccomment">/// The address towards which the message is being sent
     </span><span class="kw">pub </span>destination: SetOrKeep&lt;Address&gt;,
 
-    <span class="doccomment">/// the function function name within the destination address&#39; bytecode
+    <span class="doccomment">/// the function function name within the destination address' bytecode
     </span><span class="kw">pub </span>function: SetOrKeep&lt;String&gt;,
 
     <span class="doccomment">/// Maximum gas to use when processing the message
@@ -2378,50 +2378,50 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;AsyncMessageUpdate&gt; <span class="kw">for </span>AsyncMessageUpdateDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], AsyncMessageUpdate, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], AsyncMessageUpdate, E&gt; {
         context(
-            <span class="string">&quot;Failed AsyncMessageUpdate deserialization&quot;</span>,
+            <span class="string">"Failed AsyncMessageUpdate deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed emission_slot deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_slot deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed emission_index deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed emission_index deserialization"</span>, |input| {
                     <span class="self">self</span>.emission_index_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed sender deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed sender deserialization"</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed destination deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed destination deserialization"</span>, |input| {
                     <span class="self">self</span>.address_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed function deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed function deserialization"</span>, |input| {
                     <span class="self">self</span>.function_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed max_gas deserialization"</span>, |input| {
                     <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed fee deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed fee deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed coins deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed coins deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed validity_start deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed validity_start deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed validity_end deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed validity_end deserialization"</span>, |input| {
                     <span class="self">self</span>.slot_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed function_params deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed function_params deserialization"</span>, |input| {
                     <span class="self">self</span>.function_params_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed filter deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed filter deserialization"</span>, |input| {
                     <span class="self">self</span>.trigger_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed can_be_executed deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed can_be_executed deserialization"</span>, |input| {
                     <span class="kw">if </span><span class="self">self</span>.for_db {
                         <span class="self">self</span>.bool_deserializer.deserialize(input)
                     } <span class="kw">else </span>{
@@ -2540,19 +2540,19 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>no_apply_update_message() {
         <span class="comment">// Init an AsyncMessage, try to apply an update (with no modifications at all)
-        // Original async message and &#39;updated&#39; async message should be ==
+        // Original async message and 'updated' async message should be ==
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
-            function: String::from(<span class="string">&quot;&quot;</span>),
+            function: String::from(<span class="string">""</span>),
             max_gas: <span class="number">0</span>,
-            fee: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
-            coins: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"0"</span>).unwrap(),
+            coins: Amount::from_str(<span class="string">"0"</span>).unwrap(),
             validity_start: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             validity_end: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             function_params: <span class="macro">vec!</span>[],
@@ -2583,19 +2583,19 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>apply_update_message() {
         <span class="comment">// Init an AsyncMessage, try to apply an update (with modifications for all fields)
-        // Original async message and &#39;updated&#39; async message should be !=
+        // Original async message and 'updated' async message should be !=
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
-            function: String::from(<span class="string">&quot;&quot;</span>),
+            function: String::from(<span class="string">""</span>),
             max_gas: <span class="number">0</span>,
-            fee: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
-            coins: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"0"</span>).unwrap(),
+            coins: Amount::from_str(<span class="string">"0"</span>).unwrap(),
             validity_start: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             validity_end: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             function_params: <span class="macro">vec!</span>[],
@@ -2608,14 +2608,14 @@
             emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             emission_index: SetOrKeep::Set(u64::MAX),
             sender: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
             ),
             destination: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>).unwrap(),
             ),
             function: SetOrKeep::Set(
                 (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                    .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                    .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                     .collect::&lt;String&gt;(),
             ),
             max_gas: SetOrKeep::Set(u64::MAX),
@@ -2625,7 +2625,7 @@
             validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             function_params: SetOrKeep::Set(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize]),
             trigger: SetOrKeep::Set(<span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             })),
@@ -2638,12 +2638,12 @@
         <span class="kw">let </span>new_msg = AsyncMessage {
             emission_slot: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             emission_index: u64::MAX,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
             function: (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                 .collect::&lt;String&gt;(),
             max_gas: u64::MAX,
             fee: Amount::from_raw(u64::MAX),
@@ -2652,7 +2652,7 @@
             validity_end: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             function_params: <span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize],
             trigger: <span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             }),
@@ -2668,14 +2668,14 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
-            function: String::from(<span class="string">&quot;&quot;</span>),
+            function: String::from(<span class="string">""</span>),
             max_gas: <span class="number">0</span>,
-            fee: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
-            coins: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"0"</span>).unwrap(),
+            coins: Amount::from_str(<span class="string">"0"</span>).unwrap(),
             validity_start: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             validity_end: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             function_params: <span class="macro">vec!</span>[],
@@ -2703,14 +2703,14 @@
             emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             emission_index: SetOrKeep::Set(u64::MAX),
             sender: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
             ),
             destination: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>).unwrap(),
             ),
             function: SetOrKeep::Set(
                 (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                    .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                    .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                     .collect::&lt;String&gt;(),
             ),
             max_gas: SetOrKeep::Set(u64::MAX),
@@ -2720,7 +2720,7 @@
             validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             function_params: SetOrKeep::Set(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize]),
             trigger: SetOrKeep::Set(<span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             })),
@@ -2734,12 +2734,12 @@
         <span class="kw">let </span>new_msg = AsyncMessage {
             emission_slot: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             emission_index: u64::MAX,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
             function: (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                 .collect::&lt;String&gt;(),
             max_gas: u64::MAX,
             fee: Amount::from_raw(u64::MAX),
@@ -2748,7 +2748,7 @@
             validity_end: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             function_params: <span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize],
             trigger: <span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             }),
@@ -2811,7 +2811,7 @@
         <span class="kw">let </span>deserializer = AsyncMessageIdDeserializer::new(<span class="number">32</span>);
         <span class="kw">let _ </span>= deserializer
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer)
-            .expect_err(<span class="string">&quot;Failed to deserialize&quot;</span>);
+            .expect_err(<span class="string">"Failed to deserialize"</span>);
     }
 
     <span class="attr">#[test]
@@ -2821,14 +2821,14 @@
         </span><span class="kw">let </span>msg = AsyncMessage {
             emission_slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             emission_index: <span class="number">0</span>,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
-            function: String::from(<span class="string">&quot;&quot;</span>),
+            function: String::from(<span class="string">""</span>),
             max_gas: <span class="number">0</span>,
-            fee: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
-            coins: Amount::from_str(<span class="string">&quot;0&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"0"</span>).unwrap(),
+            coins: Amount::from_str(<span class="string">"0"</span>).unwrap(),
             validity_start: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             validity_end: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             function_params: <span class="macro">vec!</span>[],
@@ -2860,12 +2860,12 @@
         </span><span class="kw">let </span>msg = AsyncMessage {
             emission_slot: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             emission_index: u64::MAX,
-            sender: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+            sender: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                 .unwrap(),
-            destination: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+            destination: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                 .unwrap(),
             function: (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                 .collect::&lt;String&gt;(),
             max_gas: u64::MAX,
             fee: Amount::from_raw(u64::MAX),
@@ -2874,7 +2874,7 @@
             validity_end: Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>),
             function_params: <span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize],
             trigger: <span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             }),
@@ -2939,14 +2939,14 @@
             emission_slot: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             emission_index: SetOrKeep::Set(u64::MAX),
             sender: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
             ),
             destination: SetOrKeep::Set(
-                Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
+                Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>).unwrap(),
             ),
             function: SetOrKeep::Set(
                 (<span class="number">0</span>..MAX_FUNCTION_NAME_LENGTH)
-                    .map(|<span class="kw">_</span>| <span class="string">&quot;X&quot;</span>)
+                    .map(|<span class="kw">_</span>| <span class="string">"X"</span>)
                     .collect::&lt;String&gt;(),
             ),
             max_gas: SetOrKeep::Set(u64::MAX),
@@ -2956,7 +2956,7 @@
             validity_end: SetOrKeep::Set(Slot::new(u64::MAX, THREAD_COUNT - <span class="number">1</span>)),
             function_params: SetOrKeep::Set(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_PARAMETERS_SIZE <span class="kw">as </span>usize]),
             trigger: SetOrKeep::Set(<span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">0</span>; MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>usize]),
             })),
@@ -2987,17 +2987,17 @@
         </span><span class="kw">let </span>message = AsyncMessage::new(
             Slot::new(<span class="number">1</span>, <span class="number">2</span>),
             <span class="number">0</span>,
-            Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
-            Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
-            String::from(<span class="string">&quot;test&quot;</span>),
+            Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
+            Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>).unwrap(),
+            String::from(<span class="string">"test"</span>),
             <span class="number">10000000</span>,
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">"1"</span>).unwrap(),
+            Amount::from_str(<span class="string">"1"</span>).unwrap(),
             Slot::new(<span class="number">2</span>, <span class="number">0</span>),
             Slot::new(<span class="number">3</span>, <span class="number">0</span>),
             <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
             <span class="prelude-val">Some</span>(AsyncMessageTrigger {
-                address: Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>)
+                address: Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>)
                     .unwrap(),
                 datastore_key: <span class="prelude-val">None</span>,
             }),

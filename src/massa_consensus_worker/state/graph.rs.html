@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/graph.rs`."><title>graph.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../massa_consensus_worker/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-consensus-worker/src/state/graph.rs`."><title>graph.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="massa_consensus_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -389,7 +389,7 @@
         {
             a_block.same_thread_parent_creator = same_thread_parent_creator;
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;block status should be active&quot;</span>);
+            <span class="macro">panic!</span>(<span class="string">"block status should be active"</span>);
         };
 
         <span class="comment">// add as descendant to ancestors if not final
@@ -429,7 +429,7 @@
             <span class="kw">for </span>block_h <span class="kw">in </span>clique.block_ids.iter() {
                 <span class="kw">let </span>fitness = <span class="kw">match </span><span class="self">self</span>.blocks_state.get(block_h) {
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; a_block.fitness,
-                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses computing fitness while adding {} - missing {}&quot;</span>, add_block_id, block_h))),
+                    <span class="kw">_ </span>=&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">"inconsistency inside block statuses computing fitness while adding {} - missing {}"</span>, add_block_id, block_h))),
                 };
                 clique.fitness = clique
                     .fitness
@@ -476,7 +476,7 @@
         }) = block_status
         {
             <span class="kw">if </span>active_block.is_final {
-               <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} was already final&quot;</span>, add_block_id, block_id);
+               <span class="macro">panic!</span>(<span class="string">"inconsistency inside block statuses removing stale blocks adding {} - block {} was already final"</span>, add_block_id, block_id);
             }
 
             <span class="comment">// remove from gi_head
@@ -505,7 +505,7 @@
                 }];
             }
 
-            <span class="comment">// remove from parent&#39;s children
+            <span class="comment">// remove from parent's children
             </span><span class="kw">for </span>(parent_h, _parent_period) <span class="kw">in </span>active_block.parents.iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(BlockStatus::Active {
                     a_block: parent_active_block,
@@ -517,8 +517,8 @@
                 }
             }
 
-            <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.stale&quot;</span>, {
-                <span class="string">&quot;hash&quot;</span>: block_id
+            <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.add_block_to_graph.stale"</span>, {
+                <span class="string">"hash"</span>: block_id
             });
 
             <span class="comment">// mark as stale
@@ -534,7 +534,7 @@
                 }
             )
         } <span class="kw">else </span>{
-            <span class="macro">panic!</span>(<span class="string">&quot;inconsistency inside block statuses removing stale blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id);
+            <span class="macro">panic!</span>(<span class="string">"inconsistency inside block statuses removing stale blocks adding {} - block {} is missing"</span>, add_block_id, block_id);
         }
     });
     }
@@ -545,7 +545,7 @@
         indices.sort_unstable_by_key(|<span class="kw-2">&amp;</span>i| <span class="self">self</span>.max_cliques[i].block_ids.len());
         <span class="kw">let </span><span class="kw-2">mut </span>indices_iter = indices.iter();
         <span class="kw">let </span><span class="kw-2">mut </span>final_candidates = <span class="self">self</span>.max_cliques
-            [<span class="kw-2">*</span>indices_iter.next().expect(<span class="string">&quot;expected at least one clique&quot;</span>)]
+            [<span class="kw-2">*</span>indices_iter.next().expect(<span class="string">"expected at least one clique"</span>)]
         .block_ids
         .clone();
         <span class="kw">for </span>i <span class="kw">in </span>indices_iter {
@@ -557,7 +557,7 @@
 
         <span class="comment">// restrict search to cliques with high enough fitness, sort cliques by fitness (highest to lowest)
         </span><span class="macro">massa_trace!</span>(
-            <span class="string">&quot;consensus.block_graph.add_block_to_graph.list_final_blocks.restrict&quot;</span>,
+            <span class="string">"consensus.block_graph.add_block_to_graph.list_final_blocks.restrict"</span>,
             {}
         );
         indices.retain(|<span class="kw-2">&amp;</span>i| <span class="self">self</span>.max_cliques[i].fitness &gt; <span class="self">self</span>.config.delta_f0);
@@ -566,8 +566,8 @@
         <span class="kw">let </span><span class="kw-2">mut </span>final_blocks = PreHashSet::&lt;BlockId&gt;::default();
         <span class="kw">for </span>clique_i <span class="kw">in </span>indices.into_iter() {
             <span class="macro">massa_trace!</span>(
-                <span class="string">&quot;consensus.block_graph.add_block_to_graph.list_final_blocks.loop&quot;</span>,
-                { <span class="string">&quot;clique_i&quot;</span>: clique_i }
+                <span class="string">"consensus.block_graph.add_block_to_graph.list_final_blocks.loop"</span>,
+                { <span class="string">"clique_i"</span>: clique_i }
             );
             <span class="comment">// check in cliques from highest to lowest fitness
             </span><span class="kw">if </span>final_candidates.is_empty() {
@@ -583,7 +583,7 @@
                     <span class="prelude-val">Some</span>(BlockStatus::Active { a_block, .. }) =&gt; <span class="kw-2">&amp;</span>a_block.descendants,
                     <span class="kw">_ </span>=&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::MissingBlock(<span class="macro">format!</span>(
-                            <span class="string">&quot;missing block when computing total fitness of descendants: {}&quot;</span>,
+                            <span class="string">"missing block when computing total fitness of descendants: {}"</span>,
                             candidate_h
                         )))
                     }
@@ -614,7 +614,7 @@
         <span class="self">self</span>.max_cliques
             .iter()
             .find(|c| c.is_blockclique)
-            .expect(<span class="string">&quot;blockclique missing&quot;</span>)
+            .expect(<span class="string">"blockclique missing"</span>)
             .block_ids
             .clone()
     }
@@ -640,8 +640,8 @@
                 ..
             }) = <span class="self">self</span>.blocks_state.get_mut(<span class="kw-2">&amp;</span>block_id)
             {
-                <span class="macro">massa_trace!</span>(<span class="string">&quot;consensus.block_graph.add_block_to_graph.final&quot;</span>, {
-                    <span class="string">&quot;hash&quot;</span>: block_id
+                <span class="macro">massa_trace!</span>(<span class="string">"consensus.block_graph.add_block_to_graph.final"</span>, {
+                    <span class="string">"hash"</span>: block_id
                 });
                 final_block.is_final = <span class="bool-val">true</span>;
                 <span class="comment">// remove from cliques
@@ -670,7 +670,7 @@
                 <span class="comment">// update new final blocks list
                 </span><span class="self">self</span>.new_final_blocks.insert(block_id);
             } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">&quot;inconsistency inside block statuses updating final blocks adding {} - block {} is missing&quot;</span>, add_block_id, block_id)));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ConsensusError::ContainerInconsistency(<span class="macro">format!</span>(<span class="string">"inconsistency inside block statuses updating final blocks adding {} - block {} is missing"</span>, add_block_id, block_id)));
             }
         }
         <span class="prelude-val">Ok</span>(())

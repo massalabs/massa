@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/interface_impl.rs`."><title>interface_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_execution_worker/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-execution-worker/src/interface_impl.rs`."><title>interface_impl.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_execution_worker" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2101,9 +2101,9 @@
 <span class="kw">use </span>massa_signature::Signature;
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="attr">#[cfg(any(
-    feature = <span class="string">&quot;gas_calibration&quot;</span>,
-    feature = <span class="string">&quot;benchmarking&quot;</span>,
-    feature = <span class="string">&quot;test-exports&quot;</span>,
+    feature = <span class="string">"gas_calibration"</span>,
+    feature = <span class="string">"benchmarking"</span>,
+    feature = <span class="string">"test-exports"</span>,
     test
 ))]
 </span><span class="kw">use </span>num::rational::Ratio;
@@ -2118,15 +2118,15 @@
 <span class="kw">use </span>tracing::warn;
 
 <span class="attr">#[cfg(any(
-    feature = <span class="string">&quot;gas_calibration&quot;</span>,
-    feature = <span class="string">&quot;benchmarking&quot;</span>,
-    feature = <span class="string">&quot;test-exports&quot;</span>,
+    feature = <span class="string">"gas_calibration"</span>,
+    feature = <span class="string">"benchmarking"</span>,
+    feature = <span class="string">"test-exports"</span>,
     test
 ))]
 </span><span class="kw">use </span>massa_models::datastore::Datastore;
 
 <span class="doccomment">/// helper for locking the context mutex
-</span><span class="macro">macro_rules! </span>context_guard {
+</span><span class="macro">macro_rules!</span> context_guard {
     (<span class="macro-nonterminal">$self</span>:ident) =&gt; {
         <span class="macro-nonterminal">$self</span>.context.lock()
     };
@@ -2152,9 +2152,9 @@
     }
 
     <span class="attr">#[cfg(any(
-        feature = <span class="string">&quot;gas_calibration&quot;</span>,
-        feature = <span class="string">&quot;benchmarking&quot;</span>,
-        feature = <span class="string">&quot;test-exports&quot;</span>,
+        feature = <span class="string">"gas_calibration"</span>,
+        feature = <span class="string">"benchmarking"</span>,
+        feature = <span class="string">"test-exports"</span>,
         test
     ))]
     </span><span class="doccomment">/// Used to create an default interface to run SC in a test environment
@@ -2181,8 +2181,8 @@
         };
         <span class="kw">let </span>mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
         <span class="kw">let </span>(<span class="kw">_</span>, selector_controller) = start_selector_worker(SelectorConfig::default())
-            .expect(<span class="string">&quot;could not start selector controller&quot;</span>);
-        <span class="kw">let </span>disk_ledger = TempDir::new().expect(<span class="string">&quot;cannot create temp directory&quot;</span>);
+            .expect(<span class="string">"could not start selector controller"</span>);
+        <span class="kw">let </span>disk_ledger = TempDir::new().expect(<span class="string">"cannot create temp directory"</span>);
         <span class="kw">let </span>db_config = MassaDBConfig {
             path: disk_ledger.path().to_path_buf(),
             max_history_length: <span class="number">10</span>,
@@ -2193,7 +2193,7 @@
         };
 
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
         <span class="kw">let </span>(final_state, _tempfile) =
             get_sample_state(config.last_start_period, selector_controller, mip_store, db).unwrap();
@@ -2212,7 +2212,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
         <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::new(
             config.clone(),
@@ -2250,7 +2250,7 @@
 <span class="doccomment">/// Helper function that creates an amount from a NativeAmount
 </span><span class="kw">fn </span>amount_from_native_amount(amount: <span class="kw-2">&amp;</span>NativeAmount) -&gt; <span class="prelude-ty">Result</span>&lt;Amount&gt; {
     <span class="kw">let </span>amount = Amount::from_mantissa_scale(amount.mantissa, amount.scale)
-        .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+        .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(amount)
 }
@@ -2293,9 +2293,9 @@
     <span class="doccomment">/// prints a message in the node logs at log level 3 (debug)
     </span><span class="kw">fn </span>print(<span class="kw-2">&amp;</span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span><span class="macro">cfg!</span>(test) {
-            <span class="macro">println!</span>(<span class="string">&quot;SC print: {}&quot;</span>, message);
+            <span class="macro">println!</span>(<span class="string">"SC print: {}"</span>, message);
         } <span class="kw">else </span>{
-            <span class="macro">debug!</span>(<span class="string">&quot;SC print: {}&quot;</span>, message);
+            <span class="macro">debug!</span>(<span class="string">"SC print: {}"</span>, message);
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -2324,13 +2324,13 @@
         <span class="comment">// get target bytecode
         </span><span class="kw">let </span>bytecode = <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>to_address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; bytecode,
-            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found for address {}&quot;</span>, to_address),
+            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found for address {}"</span>, to_address),
         };
 
         <span class="comment">// get caller address
         </span><span class="kw">let </span>from_address = <span class="kw">match </span>context.stack.last() {
             <span class="prelude-val">Some</span>(addr) =&gt; addr.address,
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;failed to read call stack current address&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"failed to read call stack current address"</span>),
         };
 
         <span class="comment">// transfer coins from caller to target address
@@ -2340,7 +2340,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), coins, <span class="bool-val">false</span>)
         {
             <span class="macro">bail!</span>(
-                <span class="string">&quot;error transferring {} coins from {} to {}: {}&quot;</span>,
+                <span class="string">"error transferring {} coins from {} to {}: {}"</span>,
                 coins,
                 from_address,
                 to_address,
@@ -2366,7 +2366,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         <span class="kw">if </span>context.stack.pop().is_none() {
-            <span class="macro">bail!</span>(<span class="string">&quot;call stack out of bounds&quot;</span>)
+            <span class="macro">bail!</span>(<span class="string">"call stack out of bounds"</span>)
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -2454,7 +2454,7 @@
     </span><span class="kw">fn </span>create_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="kw">match </span><span class="macro">context_guard!</span>(<span class="self">self</span>).create_new_sc_address(Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(addr) =&gt; <span class="prelude-val">Ok</span>(addr.to_string()),
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t create new SC address: {}&quot;</span>, err),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">"couldn't create new SC address: {}"</span>, err),
         }
     }
 
@@ -2469,7 +2469,7 @@
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr, prefix_opt.unwrap_or_default()) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2484,7 +2484,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match </span>context.get_keys(addr, prefix_opt.unwrap_or_default()) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2502,7 +2502,7 @@
 
         <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, prefix) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2520,7 +2520,7 @@
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>addr, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2539,7 +2539,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match </span>context.get_data_entry(addr, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2557,7 +2557,7 @@
 
         <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>address, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;data entry not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
     }
 
@@ -2755,7 +2755,7 @@
                 last.owned_addresses.clone()
             }
         } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;empty stack&quot;</span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"empty stack"</span>));
         };
         <span class="kw">let </span>current_address = context.get_current_address()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(caller_owned_addresses.contains(<span class="kw-2">&amp;</span>current_address))
@@ -2769,7 +2769,7 @@
         <span class="kw">let </span>address = context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found"</span>),
         }
     }
 
@@ -2781,7 +2781,7 @@
         <span class="kw">let </span>address = Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found"</span>),
         }
     }
 
@@ -2792,7 +2792,7 @@
 
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found"</span>),
         }
     }
 
@@ -2811,11 +2811,11 @@
         <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
 
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>keys = datastore
             .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
             .map(|(k, _v)| k.clone())
@@ -2833,11 +2833,11 @@
         <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
 
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>keys = datastore
             .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
             .map(|(k, _v)| k.clone())
@@ -2855,11 +2855,11 @@
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     </span><span class="kw">fn </span>op_entry_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>has_key = datastore.contains_key(key);
         <span class="prelude-val">Ok</span>(has_key)
     }
@@ -2874,15 +2874,15 @@
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     </span><span class="kw">fn </span>get_op_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No stack&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;No datastore in stack&quot;</span>))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>data = datastore
             .get(key)
             .cloned()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">&quot;Unknown key: {:?}&quot;</span>, key));
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"Unknown key: {:?}"</span>, key));
         data
     }
 
@@ -2952,7 +2952,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;invalid signature length in evm_signature_verify&quot;</span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"invalid signature length in evm_signature_verify"</span>));
         }
 
         <span class="comment">// parse the public key
@@ -2962,14 +2962,14 @@
         )<span class="question-mark">?</span>;
 
         <span class="comment">// build the message
-        </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">&quot;\x19Ethereum Signed Message:\n{}&quot;</span>, message_.len());
+        </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">"\x19Ethereum Signed Message:\n{}"</span>, message_.len());
         <span class="kw">let </span>to_hash = [prefix.as_bytes(), message_].concat();
         <span class="kw">let </span>full_hash = sha3::Keccak256::digest(to_hash);
         <span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>full_hash)
-            .expect(<span class="string">&quot;message could not be parsed from a hash slice&quot;</span>);
+            .expect(<span class="string">"message could not be parsed from a hash slice"</span>);
 
         <span class="comment">// parse the signature as being (r, s, v)
-        // r is the R.x value of the signature&#39;s R point (32 bytes)
+        // r is the R.x value of the signature's R point (32 bytes)
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // we ignore the recovery parameter here
@@ -3009,7 +3009,7 @@
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                <span class="string">&quot;invalid signature length in evm_get_pubkey_from_signature&quot;
+                <span class="string">"invalid signature length in evm_get_pubkey_from_signature"
             </span>));
         }
 
@@ -3154,7 +3154,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     </span><span class="kw">fn </span>generate_event(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
-            <span class="macro">bail!</span>(<span class="string">&quot;Event data size is too large&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
@@ -3169,10 +3169,10 @@
     /// data: the bytes_array data that is the payload of the event
     </span><span class="kw">fn </span>generate_event_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
-            <span class="macro">bail!</span>(<span class="string">&quot;Event data size is too large&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
-        <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, data));
+        <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, data));
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>event = context.event_create(data_str, <span class="bool-val">false</span>);
         context.event_emit(event);
@@ -3252,24 +3252,24 @@
         filter: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>str, <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;)&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">if </span>validity_start.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
-            <span class="macro">bail!</span>(<span class="string">&quot;validity start thread exceeds the configuration thread count&quot;</span>)
+            <span class="macro">bail!</span>(<span class="string">"validity start thread exceeds the configuration thread count"</span>)
         }
         <span class="kw">if </span>validity_end.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
-            <span class="macro">bail!</span>(<span class="string">&quot;validity end thread exceeds the configuration thread count&quot;</span>)
+            <span class="macro">bail!</span>(<span class="string">"validity end thread exceeds the configuration thread count"</span>)
         }
         <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
-            <span class="macro">bail!</span>(<span class="string">&quot;target address is not a smart contract address&quot;</span>)
+            <span class="macro">bail!</span>(<span class="string">"target address is not a smart contract address"</span>)
         }
 
         <span class="comment">// Length verifications
         </span><span class="kw">if </span>target_function.len() &gt; <span class="self">self</span>.config.max_function_length <span class="kw">as </span>usize {
-            <span class="macro">bail!</span>(<span class="string">&quot;Function name is too large&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">"Function name is too large"</span>);
         }
         <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_parameter_length <span class="kw">as </span>usize {
-            <span class="macro">bail!</span>(<span class="string">&quot;Parameter size is too large&quot;</span>);
+            <span class="macro">bail!</span>(<span class="string">"Parameter size is too large"</span>);
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
@@ -3297,7 +3297,7 @@
                     <span class="kw">let </span>datastore_key = key.map(|k| k.to_vec());
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">ref </span>k) = datastore_key {
                         <span class="kw">if </span>k.len() &gt; <span class="self">self</span>.config.max_datastore_key_length <span class="kw">as </span>usize {
-                            <span class="macro">bail!</span>(<span class="string">&quot;datastore key is too long&quot;</span>)
+                            <span class="macro">bail!</span>(<span class="string">"datastore key is too long"</span>)
                         }
                     }
                     <span class="prelude-val">Ok</span>::&lt;AsyncMessageTrigger, <span class="kw">_</span>&gt;(AsyncMessageTrigger {
@@ -3350,12 +3350,12 @@
         <span class="kw">let </span>address = execution_context.get_current_address()<span class="question-mark">?</span>;
         <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">"couldn't set address {} bytecode: {}"</span>, address, err),
         }
     }
 
     <span class="doccomment">/// Sets the bytecode of an arbitrary address.
-    /// Fails if the address does not exist, is an user address, or if the context doesn&#39;t have write access rights on it.
+    /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     </span><span class="kw">fn </span>raw_set_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -3363,19 +3363,19 @@
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">"couldn't set address {} bytecode: {}"</span>, address, err),
         }
     }
 
     <span class="doccomment">/// Sets the bytecode of an arbitrary address, or the current address if not provided.
-    /// Fails if the address does not exist, is an user address, or if the context doesn&#39;t have write access rights on it.
+    /// Fails if the address does not exist, is an user address, or if the context doesn't have write access rights on it.
     </span><span class="kw">fn </span>set_bytecode_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], address: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
         <span class="kw">match </span>context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">&quot;couldn&#39;t set address {} bytecode: {}&quot;</span>, address, err),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">"couldn't set address {} bytecode: {}"</span>, address, err),
         }
     }
 
@@ -3411,7 +3411,7 @@
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(to_address, Address::SC(..)) {
-            <span class="macro">bail!</span>(<span class="string">&quot;called address {} is not an SC address&quot;</span>, to_address);
+            <span class="macro">bail!</span>(<span class="string">"called address {} is not an SC address"</span>, to_address);
         }
 
         <span class="comment">// write-lock context
@@ -3420,13 +3420,13 @@
         <span class="comment">// get target bytecode
         </span><span class="kw">let </span>bytecode = <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>to_address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; bytecode,
-            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;bytecode not found for address {}&quot;</span>, to_address),
+            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found for address {}"</span>, to_address),
         };
 
         <span class="comment">// get caller address
         </span><span class="kw">let </span>from_address = <span class="kw">match </span>context.stack.last() {
             <span class="prelude-val">Some</span>(addr) =&gt; addr.address,
-            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;failed to read call stack current address&quot;</span>),
+            <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"failed to read call stack current address"</span>),
         };
 
         <span class="comment">// transfer coins from caller to target address
@@ -3436,7 +3436,7 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), coins, <span class="bool-val">false</span>)
         {
             <span class="macro">bail!</span>(
-                <span class="string">&quot;error transferring {} coins from {} to {}: {}&quot;</span>,
+                <span class="string">"error transferring {} coins from {} to {}: {}"</span>,
                 coins,
                 from_address,
                 to_address,
@@ -3458,14 +3458,14 @@
 
     <span class="doccomment">/// Returns a NativeAmount from a string
     </span><span class="kw">fn </span>native_amount_from_str_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;NativeAmount&gt; {
-        <span class="kw">let </span>amount = Amount::from_str(amount).map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+        <span class="kw">let </span>amount = Amount::from_str(amount).map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount_to_native_amount(<span class="kw-2">&amp;</span>amount))
     }
 
     <span class="doccomment">/// Returns a string from a NativeAmount
     </span><span class="kw">fn </span>native_amount_to_string_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: <span class="kw-2">&amp;</span>NativeAmount) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="kw">let </span>amount = amount_from_native_amount(amount)
-            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t convert native amount to Amount: {}&quot;</span>, err)))<span class="question-mark">?</span>;
+            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't convert native amount to Amount: {}"</span>, err)))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount.to_string())
     }
 
@@ -3519,11 +3519,11 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_u64(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t div_rem native amount&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native amount"</span>)))<span class="question-mark">?</span>;
         <span class="comment">// we can unwrap, we
         </span><span class="kw">let </span>remainder = dividend
             .checked_rem_u64(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t checked_rem_u64 native amount&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem_u64 native amount"</span>)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             amount_to_native_amount(<span class="kw-2">&amp;</span>quotient),
@@ -3542,11 +3542,11 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t div_rem native amount&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native amount"</span>)))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remainder = dividend
             .checked_rem(<span class="kw-2">&amp;</span>divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t checked_rem native amount&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem native amount"</span>)))<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = amount_to_native_amount(<span class="kw-2">&amp;</span>remainder);
 
         <span class="prelude-val">Ok</span>((quotient, remainder))
@@ -3556,7 +3556,7 @@
         bs58::decode(s)
             .with_check(<span class="prelude-val">None</span>)
             .into_vec()
-            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">&quot;bs58 parsing error: {}&quot;</span>, err)))
+            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"bs58 parsing error: {}"</span>, err)))
     }
 
     <span class="kw">fn </span>bytes_to_base58_check_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; String {
@@ -3593,7 +3593,7 @@
             </span>Address::SC(SCAddress::SCAddressV0(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="comment">// Address::SC(SCAddress::SCAddressV1(_)) =&gt; Ok(1),
             </span><span class="attr">#[allow(unreachable_patterns)]
-            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;Unknown address version&quot;</span>),
+            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"Unknown address version"</span>),
         }
     }
 
@@ -3602,7 +3602,7 @@
         <span class="kw">match </span>pubkey {
             PublicKey::PublicKeyV0(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="attr">#[allow(unreachable_patterns)]
-            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;Unknown pubkey version&quot;</span>),
+            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"Unknown pubkey version"</span>),
         }
     }
 
@@ -3611,7 +3611,7 @@
         <span class="kw">match </span>signature {
             Signature::SignatureV0(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="attr">#[allow(unreachable_patterns)]
-            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">&quot;Unknown signature version&quot;</span>),
+            </span><span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"Unknown signature version"</span>),
         }
     }
 
@@ -3652,10 +3652,10 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_u64(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t div_rem native time&quot;</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native time"</span>)))<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = dividend
             .checked_rem_u64(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t checked_rem_u64 native time&quot;</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem_u64 native time"</span>)))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             massa_time_to_native_time(<span class="kw-2">&amp;</span>quotient),
@@ -3673,11 +3673,11 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_time(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t div_rem native time&quot;</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native time"</span>)))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remainder = dividend
             .checked_rem_time(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">&quot;Couldn&#39;t checked_rem native time&quot;</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem native time"</span>)))<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = massa_time_to_native_time(<span class="kw-2">&amp;</span>remainder);
 
         <span class="prelude-val">Ok</span>((quotient, remainder))
@@ -3757,7 +3757,7 @@
                 context.gas_remaining_before_subexecution = <span class="prelude-val">Some</span>(gas_remaining);
             }
             <span class="prelude-val">None </span>=&gt; {
-                <span class="macro">warn!</span>(<span class="string">&quot;Context is locked, cannot save gas remaining before subexecution&quot;</span>);
+                <span class="macro">warn!</span>(<span class="string">"Context is locked, cannot save gas remaining before subexecution"</span>);
             }
         }
     }
@@ -3776,20 +3776,20 @@
         <span class="kw">let </span>interface = InterfaceImpl::new_default(sender_addr, <span class="prelude-val">None</span>);
 
         interface
-            .set_ds_value_wasmv1(<span class="string">b&quot;k1&quot;</span>, <span class="string">b&quot;v1&quot;</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
+            .set_ds_value_wasmv1(<span class="string">b"k1"</span>, <span class="string">b"v1"</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
             .unwrap();
         interface
-            .set_ds_value_wasmv1(<span class="string">b&quot;k2&quot;</span>, <span class="string">b&quot;v2&quot;</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
+            .set_ds_value_wasmv1(<span class="string">b"k2"</span>, <span class="string">b"v2"</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
             .unwrap();
         interface
-            .set_ds_value_wasmv1(<span class="string">b&quot;l3&quot;</span>, <span class="string">b&quot;v3&quot;</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
+            .set_ds_value_wasmv1(<span class="string">b"l3"</span>, <span class="string">b"v3"</span>, <span class="prelude-val">Some</span>(sender_addr.to_string()))
             .unwrap();
 
-        <span class="kw">let </span>keys = interface.get_ds_keys_wasmv1(<span class="string">b&quot;k&quot;</span>, <span class="prelude-val">None</span>).unwrap();
+        <span class="kw">let </span>keys = interface.get_ds_keys_wasmv1(<span class="string">b"k"</span>, <span class="prelude-val">None</span>).unwrap();
 
         <span class="macro">assert_eq!</span>(keys.len(), <span class="number">2</span>);
-        <span class="macro">assert!</span>(keys.contains(<span class="string">b&quot;k1&quot;</span>.as_slice()));
-        <span class="macro">assert!</span>(keys.contains(<span class="string">b&quot;k2&quot;</span>.as_slice()));
+        <span class="macro">assert!</span>(keys.contains(<span class="string">b"k1"</span>.as_slice()));
+        <span class="macro">assert!</span>(keys.contains(<span class="string">b"k2"</span>.as_slice()));
     }
 
     <span class="comment">// Tests the get_op_keys_wasmv1 interface method used by the updated get_op_keys abi.
@@ -3798,17 +3798,17 @@
         <span class="kw">let </span>sender_addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
 
         <span class="kw">let </span><span class="kw-2">mut </span>operation_datastore = Datastore::new();
-        operation_datastore.insert(<span class="string">b&quot;k1&quot;</span>.to_vec(), <span class="string">b&quot;v1&quot;</span>.to_vec());
-        operation_datastore.insert(<span class="string">b&quot;k2&quot;</span>.to_vec(), <span class="string">b&quot;v2&quot;</span>.to_vec());
-        operation_datastore.insert(<span class="string">b&quot;l3&quot;</span>.to_vec(), <span class="string">b&quot;v3&quot;</span>.to_vec());
+        operation_datastore.insert(<span class="string">b"k1"</span>.to_vec(), <span class="string">b"v1"</span>.to_vec());
+        operation_datastore.insert(<span class="string">b"k2"</span>.to_vec(), <span class="string">b"v2"</span>.to_vec());
+        operation_datastore.insert(<span class="string">b"l3"</span>.to_vec(), <span class="string">b"v3"</span>.to_vec());
 
         <span class="kw">let </span>interface = InterfaceImpl::new_default(sender_addr, <span class="prelude-val">Some</span>(operation_datastore));
 
-        <span class="kw">let </span>op_keys = interface.get_op_keys_wasmv1(<span class="string">b&quot;k&quot;</span>).unwrap();
+        <span class="kw">let </span>op_keys = interface.get_op_keys_wasmv1(<span class="string">b"k"</span>).unwrap();
 
         <span class="macro">assert_eq!</span>(op_keys.len(), <span class="number">2</span>);
-        <span class="macro">assert!</span>(op_keys.contains(<span class="kw-2">&amp;</span><span class="string">b&quot;k1&quot;</span>.to_vec()));
-        <span class="macro">assert!</span>(op_keys.contains(<span class="kw-2">&amp;</span><span class="string">b&quot;k2&quot;</span>.to_vec()));
+        <span class="macro">assert!</span>(op_keys.contains(<span class="kw-2">&amp;</span><span class="string">b"k1"</span>.to_vec()));
+        <span class="macro">assert!</span>(op_keys.contains(<span class="kw-2">&amp;</span><span class="string">b"k2"</span>.to_vec()));
     }
 
     <span class="attr">#[test]
@@ -3816,9 +3816,9 @@
         <span class="kw">let </span>sender_addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
         <span class="kw">let </span>interface = InterfaceImpl::new_default(sender_addr, <span class="prelude-val">None</span>);
 
-        <span class="kw">let </span>amount1 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;100&quot;</span>).unwrap();
-        <span class="kw">let </span>amount2 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;100&quot;</span>).unwrap();
-        <span class="kw">let </span>amount3 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;200&quot;</span>).unwrap();
+        <span class="kw">let </span>amount1 = interface.native_amount_from_str_wasmv1(<span class="string">"100"</span>).unwrap();
+        <span class="kw">let </span>amount2 = interface.native_amount_from_str_wasmv1(<span class="string">"100"</span>).unwrap();
+        <span class="kw">let </span>amount3 = interface.native_amount_from_str_wasmv1(<span class="string">"200"</span>).unwrap();
 
         <span class="kw">let </span>sum = interface
             .add_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="kw-2">&amp;</span>amount2)
@@ -3826,11 +3826,11 @@
 
         <span class="macro">assert_eq!</span>(amount3, sum);
         <span class="macro">println!</span>(
-            <span class="string">&quot;sum: {}&quot;</span>,
+            <span class="string">"sum: {}"</span>,
             interface.native_amount_to_string_wasmv1(<span class="kw-2">&amp;</span>sum).unwrap()
         );
         <span class="macro">assert_eq!</span>(
-            <span class="string">&quot;200&quot;</span>,
+            <span class="string">"200"</span>,
             interface.native_amount_to_string_wasmv1(<span class="kw-2">&amp;</span>sum).unwrap()
         );
 
@@ -3853,8 +3853,8 @@
         <span class="kw">let </span>(quotient, remainder) = interface
             .scalar_div_rem_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="number">2</span>)
             .unwrap();
-        <span class="kw">let </span>quotient_res_50 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;50&quot;</span>).unwrap();
-        <span class="kw">let </span>remainder_res_0 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;0&quot;</span>).unwrap();
+        <span class="kw">let </span>quotient_res_50 = interface.native_amount_from_str_wasmv1(<span class="string">"50"</span>).unwrap();
+        <span class="kw">let </span>remainder_res_0 = interface.native_amount_from_str_wasmv1(<span class="string">"0"</span>).unwrap();
         <span class="macro">assert_eq!</span>(quotient, quotient_res_50);
         <span class="macro">assert_eq!</span>(remainder, remainder_res_0);
 
@@ -3869,14 +3869,14 @@
             .unwrap();
         <span class="macro">assert_eq!</span>(verif_dif, amount1);
 
-        <span class="kw">let </span>amount5 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;2&quot;</span>).unwrap();
+        <span class="kw">let </span>amount5 = interface.native_amount_from_str_wasmv1(<span class="string">"2"</span>).unwrap();
         <span class="kw">let </span>(quotient, remainder) = interface
             .div_rem_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="kw-2">&amp;</span>amount5)
             .unwrap();
         <span class="macro">assert_eq!</span>(quotient, <span class="number">50</span>);
         <span class="macro">assert_eq!</span>(remainder, remainder_res_0);
 
-        <span class="kw">let </span>amount6 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;3&quot;</span>).unwrap();
+        <span class="kw">let </span>amount6 = interface.native_amount_from_str_wasmv1(<span class="string">"3"</span>).unwrap();
         <span class="kw">let </span>(quotient, remainder) = interface
             .div_rem_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="kw-2">&amp;</span>amount6)
             .unwrap();
@@ -3894,7 +3894,7 @@
         <span class="kw">let </span>sender_addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
         <span class="kw">let </span>interface = InterfaceImpl::new_default(sender_addr, <span class="prelude-val">None</span>);
 
-        <span class="kw">let </span>data = <span class="string">&quot;helloworld&quot;</span>;
+        <span class="kw">let </span>data = <span class="string">"helloworld"</span>;
         <span class="kw">let </span>encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
         <span class="kw">let </span>decoded = interface.base58_check_to_bytes_wasmv1(<span class="kw-2">&amp;</span>encoded).unwrap();
 
@@ -3912,22 +3912,22 @@
             Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key()).to_string();
 
         <span class="kw">let </span>cmp_res = interface.compare_address_wasmv1(<span class="kw-2">&amp;</span>addr1, <span class="kw-2">&amp;</span>addr1).unwrap();
-        <span class="macro">println!</span>(<span class="string">&quot;compare_address_wasmv1(: {}&quot;</span>, cmp_res.as_str_name());
+        <span class="macro">println!</span>(<span class="string">"compare_address_wasmv1(: {}"</span>, cmp_res.as_str_name());
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Equal,
-            <span class="string">&quot;  &gt; Error: compare_address_wasmv1((addr1, addr1) should return EQUAL&quot;
+            <span class="string">"  &gt; Error: compare_address_wasmv1((addr1, addr1) should return EQUAL"
         </span>);
 
         <span class="kw">let </span>cmp_res1 = interface.compare_address_wasmv1(<span class="kw-2">&amp;</span>addr1, <span class="kw-2">&amp;</span>addr2).unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_address_wasmv1((addr1, addr2): {}&quot;</span>,
+            <span class="string">"compare_address_wasmv1((addr1, addr2): {}"</span>,
             cmp_res1.as_str_name()
         );
 
         <span class="kw">let </span>cmp_res2 = interface.compare_address_wasmv1(<span class="kw-2">&amp;</span>addr2, <span class="kw-2">&amp;</span>addr1).unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_address_wasmv1((addr2, addr1): {}&quot;</span>,
+            <span class="string">"compare_address_wasmv1((addr2, addr1): {}"</span>,
             cmp_res2.as_str_name()
         );
 
@@ -3935,70 +3935,70 @@
             <span class="macro">assert_eq!</span>(
                 cmp_res2,
                 ComparisonResult::Greater,
-                <span class="string">&quot;  &gt; Error: compare_address_wasmv1((addr2, addr1) should return GREATER&quot;
+                <span class="string">"  &gt; Error: compare_address_wasmv1((addr2, addr1) should return GREATER"
             </span>);
         } <span class="kw">else if </span>cmp_res1 == ComparisonResult::Greater {
             <span class="macro">assert_eq!</span>(
                 cmp_res2,
                 ComparisonResult::Lower,
-                <span class="string">&quot;  &gt; Error: compare_address_wasmv1((addr2, addr1) should return LOWER&quot;
+                <span class="string">"  &gt; Error: compare_address_wasmv1((addr2, addr1) should return LOWER"
             </span>);
         } <span class="kw">else </span>{
             <span class="macro">assert_eq!</span>(
                 cmp_res1, cmp_res2,
-                <span class="string">&quot;  &gt; Error: compare_address_wasmv1((addr2, addr1) should return EQUAL&quot;
+                <span class="string">"  &gt; Error: compare_address_wasmv1((addr2, addr1) should return EQUAL"
             </span>);
         }
 
         <span class="comment">//amount
-        </span><span class="kw">let </span>amount1 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;1&quot;</span>).unwrap();
-        <span class="kw">let </span>amount2 = interface.native_amount_from_str_wasmv1(<span class="string">&quot;2&quot;</span>).unwrap();
-        <span class="macro">println!</span>(<span class="string">&quot;do some compare with amount1 = 1, amount2 = 2&quot;</span>);
+        </span><span class="kw">let </span>amount1 = interface.native_amount_from_str_wasmv1(<span class="string">"1"</span>).unwrap();
+        <span class="kw">let </span>amount2 = interface.native_amount_from_str_wasmv1(<span class="string">"2"</span>).unwrap();
+        <span class="macro">println!</span>(<span class="string">"do some compare with amount1 = 1, amount2 = 2"</span>);
 
         <span class="kw">let </span>cmp_res = interface
             .compare_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="kw-2">&amp;</span>amount1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_amount_wasmv1(amount1, amount1): {}&quot;</span>,
+            <span class="string">"compare_native_amount_wasmv1(amount1, amount1): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Equal,
-            <span class="string">&quot;  &gt; Error: compare_native_amount_wasmv1(amount1, amount1) should return EQUAL&quot;
+            <span class="string">"  &gt; Error: compare_native_amount_wasmv1(amount1, amount1) should return EQUAL"
         </span>);
 
         <span class="kw">let </span>cmp_res = interface
             .compare_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount1, <span class="kw-2">&amp;</span>amount2)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_amount_wasmv1(amount1, amount2): {}&quot;</span>,
+            <span class="string">"compare_native_amount_wasmv1(amount1, amount2): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Lower,
-            <span class="string">&quot;  &gt; Error: compare_native_amount_wasmv1(amount1, amount2) should return LOWER&quot;
+            <span class="string">"  &gt; Error: compare_native_amount_wasmv1(amount1, amount2) should return LOWER"
         </span>);
 
         <span class="kw">let </span>cmp_res = interface
             .compare_native_amount_wasmv1(<span class="kw-2">&amp;</span>amount2, <span class="kw-2">&amp;</span>amount1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_amount_wasmv1(amount2, amount1): {}&quot;</span>,
+            <span class="string">"compare_native_amount_wasmv1(amount2, amount1): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Greater,
-            <span class="string">&quot;  &gt; Error: compare_native_amount_wasmv1(amount2, amount1) should return GREATER&quot;
+            <span class="string">"  &gt; Error: compare_native_amount_wasmv1(amount2, amount1) should return GREATER"
         </span>);
 
         <span class="comment">//time
         </span><span class="kw">let </span>time1 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_millis(<span class="number">1</span>));
         <span class="kw">let </span>time2 = massa_time_to_native_time(<span class="kw-2">&amp;</span>MassaTime::from_millis(<span class="number">2</span>));
         <span class="macro">println!</span>(
-            <span class="string">&quot;do some compare with time1 = {}, time2 = {}&quot;</span>,
+            <span class="string">"do some compare with time1 = {}, time2 = {}"</span>,
             time1.milliseconds, time2.milliseconds
         );
 
@@ -4006,39 +4006,39 @@
             .compare_native_time_wasmv1(<span class="kw-2">&amp;</span>time1, <span class="kw-2">&amp;</span>time1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_time_wasmv1(time1, time1): {}&quot;</span>,
+            <span class="string">"compare_native_time_wasmv1(time1, time1): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Equal,
-            <span class="string">&quot;  &gt; Error:compare_native_time_wasmv1(time1, time1) should return EQUAL&quot;
+            <span class="string">"  &gt; Error:compare_native_time_wasmv1(time1, time1) should return EQUAL"
         </span>);
 
         <span class="kw">let </span>cmp_res = interface
             .compare_native_time_wasmv1(<span class="kw-2">&amp;</span>time1, <span class="kw-2">&amp;</span>time2)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_time_wasmv1(time1, time2): {}&quot;</span>,
+            <span class="string">"compare_native_time_wasmv1(time1, time2): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Lower,
-            <span class="string">&quot;  &gt; Error: compare_native_time_wasmv1(time1, time2) should return LOWER&quot;
+            <span class="string">"  &gt; Error: compare_native_time_wasmv1(time1, time2) should return LOWER"
         </span>);
 
         <span class="kw">let </span>cmp_res = interface
             .compare_native_time_wasmv1(<span class="kw-2">&amp;</span>time2, <span class="kw-2">&amp;</span>time1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_native_time_wasmv1(time2, time1): {}&quot;</span>,
+            <span class="string">"compare_native_time_wasmv1(time2, time1): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Greater,
-            <span class="string">&quot;  &gt; Error: compare_native_time_wasmv1(time2, time1) should return GREATER&quot;
+            <span class="string">"  &gt; Error: compare_native_time_wasmv1(time2, time1) should return GREATER"
         </span>);
 
         <span class="comment">//pub_key
@@ -4046,7 +4046,7 @@
         <span class="kw">let </span>pub_key2 = KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key().to_string();
 
         <span class="macro">println!</span>(
-            <span class="string">&quot;do some compare with pub_key1 = {}, pub_key2 = {}&quot;</span>,
+            <span class="string">"do some compare with pub_key1 = {}, pub_key2 = {}"</span>,
             pub_key1, pub_key2
         );
 
@@ -4054,44 +4054,44 @@
             .compare_pub_key_wasmv1(<span class="kw-2">&amp;</span>pub_key1, <span class="kw-2">&amp;</span>pub_key1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_pub_key_wasmv1(pub_key1, pub_key1): {}&quot;</span>,
+            <span class="string">"compare_pub_key_wasmv1(pub_key1, pub_key1): {}"</span>,
             cmp_res.as_str_name()
         );
         <span class="macro">assert_eq!</span>(
             cmp_res,
             ComparisonResult::Equal,
-            <span class="string">&quot;  &gt; Error: compare_pub_key_wasmv1(pub_key1, pub_key1) should return EQUAL&quot;
+            <span class="string">"  &gt; Error: compare_pub_key_wasmv1(pub_key1, pub_key1) should return EQUAL"
         </span>);
         <span class="kw">let </span>cmp_res1 = interface
             .compare_pub_key_wasmv1(<span class="kw-2">&amp;</span>pub_key1, <span class="kw-2">&amp;</span>pub_key2)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_pub_key_wasmv1(pub_key1, pub_key2): {}&quot;</span>,
+            <span class="string">"compare_pub_key_wasmv1(pub_key1, pub_key2): {}"</span>,
             cmp_res1.as_str_name()
         );
         <span class="kw">let </span>cmp_res2 = interface
             .compare_pub_key_wasmv1(<span class="kw-2">&amp;</span>pub_key2, <span class="kw-2">&amp;</span>pub_key1)
             .unwrap();
         <span class="macro">println!</span>(
-            <span class="string">&quot;compare_pub_key_wasmv1(pub_key2, pub_key1): {}&quot;</span>,
+            <span class="string">"compare_pub_key_wasmv1(pub_key2, pub_key1): {}"</span>,
             cmp_res2.as_str_name()
         );
         <span class="kw">if </span>cmp_res1 == ComparisonResult::Lower {
             <span class="macro">assert_eq!</span>(
                 cmp_res2,
                 ComparisonResult::Greater,
-                <span class="string">&quot;  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return GREATER&quot;
+                <span class="string">"  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return GREATER"
             </span>);
         } <span class="kw">else if </span>cmp_res1 == ComparisonResult::Greater {
             <span class="macro">assert_eq!</span>(
                 cmp_res2,
                 ComparisonResult::Lower,
-                <span class="string">&quot;  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return LOWER&quot;
+                <span class="string">"  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return LOWER"
             </span>);
         } <span class="kw">else </span>{
             <span class="macro">assert_eq!</span>(
                 cmp_res1, cmp_res2,
-                <span class="string">&quot;  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return EQUAL&quot;
+                <span class="string">"  &gt; Error: compare_pub_key_wasmv1((pub_key2, pub_key1) should return EQUAL"
             </span>);
         }
     }
@@ -4102,23 +4102,23 @@
     <span class="kw">use </span>hex_literal::hex;
 
     <span class="comment">// signature info
-    </span><span class="kw">let </span>address_ = <span class="macro">hex!</span>(<span class="string">&quot;807a7bb5193edf9898b9092c1597bb966fe52514&quot;</span>);
-    <span class="kw">let </span>message_ = <span class="string">b&quot;test&quot;</span>;
-    <span class="kw">let </span>signature_ = <span class="macro">hex!</span>(<span class="string">&quot;d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b&quot;</span>);
-    <span class="kw">let </span>private_key_ = <span class="macro">hex!</span>(<span class="string">&quot;ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3&quot;</span>);
+    </span><span class="kw">let </span>address_ = <span class="macro">hex!</span>(<span class="string">"807a7bb5193edf9898b9092c1597bb966fe52514"</span>);
+    <span class="kw">let </span>message_ = <span class="string">b"test"</span>;
+    <span class="kw">let </span>signature_ = <span class="macro">hex!</span>(<span class="string">"d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b"</span>);
+    <span class="kw">let </span>private_key_ = <span class="macro">hex!</span>(<span class="string">"ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3"</span>);
 
     <span class="comment">// build original public key
     </span><span class="kw">let </span>private_key = libsecp256k1::SecretKey::parse_slice(<span class="kw-2">&amp;</span>private_key_).unwrap();
     <span class="kw">let </span>public_key = libsecp256k1::PublicKey::from_secret_key(<span class="kw-2">&amp;</span>private_key);
 
     <span class="comment">// build the message
-    </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">&quot;\x19Ethereum Signed Message:\n{}&quot;</span>, message_.len());
+    </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">"\x19Ethereum Signed Message:\n{}"</span>, message_.len());
     <span class="kw">let </span>to_hash = [prefix.as_bytes(), message_].concat();
     <span class="kw">let </span>full_hash = sha3::Keccak256::digest(to_hash);
     <span class="kw">let </span>message = libsecp256k1::Message::parse_slice(<span class="kw-2">&amp;</span>full_hash).unwrap();
 
     <span class="comment">// parse the signature as being (r, s, v)
-    // r is the R.x value of the signature&#39;s R point (32 bytes)
+    // r is the R.x value of the signature's R point (32 bytes)
     // s is the signature proof for R.x (32 bytes)
     // v is a recovery parameter used to ease the signature verification (1 byte)
     </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>]).unwrap();

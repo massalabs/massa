@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_api/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-api/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_api" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -457,9 +457,9 @@
 <span class="kw">use </span>tower_http::cors::{Any, CorsLayer};
 <span class="kw">use </span>tracing::{info, warn};
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
 </span><span class="kw">use </span>massa_channel <span class="kw">as _</span>;
-<span class="attr">#[cfg(feature = <span class="string">&quot;test-exports&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
 </span><span class="kw">use </span>massa_grpc <span class="kw">as _</span>;
 
 <span class="kw">mod </span>api;
@@ -573,7 +573,7 @@
     } <span class="kw">else if </span>api_config.enable_ws &amp;&amp; !api_config.enable_http {
         server_builder = server_builder.ws_only()
     } <span class="kw">else if </span>!api_config.enable_http &amp;&amp; !api_config.enable_ws {
-        <span class="macro">panic!</span>(<span class="string">&quot;wrong server configuration, you can&#39;t disable both http and ws&quot;</span>);
+        <span class="macro">panic!</span>(<span class="string">"wrong server configuration, you can't disable both http and ws"</span>);
     }
 
     <span class="kw">let </span>cors = CorsLayer::new()
@@ -584,7 +584,7 @@
         .allow_headers([hyper::header::CONTENT_TYPE]);
 
     <span class="kw">let </span>hosts = <span class="kw">if </span>api_config.allow_hosts.is_empty() {
-        <span class="macro">vec!</span>[<span class="string">&quot;*:*&quot;</span>]
+        <span class="macro">vec!</span>[<span class="string">"*:*"</span>]
     } <span class="kw">else </span>{
         api_config
             .allow_hosts
@@ -593,7 +593,7 @@
             .collect()
     };
 
-    <span class="kw">let </span>allowed_hosts = HostFilterLayer::new(hosts).expect(<span class="string">&quot;failed to build allowed hosts filter&quot;</span>);
+    <span class="kw">let </span>allowed_hosts = HostFilterLayer::new(hosts).expect(<span class="string">"failed to build allowed hosts filter"</span>);
 
     <span class="kw">let </span>middleware = tower::ServiceBuilder::new()
         .layer(cors)
@@ -603,7 +603,7 @@
         .set_middleware(middleware)
         .build(url)
         .<span class="kw">await
-        </span>.expect(<span class="string">&quot;failed to build server&quot;</span>);
+        </span>.expect(<span class="string">"failed to build server"</span>);
 
     <span class="kw">let </span>server_handler = server.start(api);
     <span class="kw">let </span>stop_handler = StopHandle { server_handler };
@@ -621,9 +621,9 @@
     </span><span class="kw">pub async fn </span>stop(<span class="self">self</span>) {
         <span class="kw">match </span><span class="self">self</span>.server_handler.stop() {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
-                <span class="macro">info!</span>(<span class="string">&quot;API stop signal sent successfully&quot;</span>);
+                <span class="macro">info!</span>(<span class="string">"API stop signal sent successfully"</span>);
             }
-            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">warn!</span>(<span class="string">&quot;API thread panicked: {:?}&quot;</span>, err),
+            <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">warn!</span>(<span class="string">"API thread panicked: {:?}"</span>, err),
         }
         <span class="self">self</span>.server_handler.stopped().<span class="kw">await</span>;
     }
@@ -633,28 +633,28 @@
 </span><span class="attr">#[rpc(server)]
 </span><span class="kw">pub trait </span>MassaRpc {
     <span class="doccomment">/// Gracefully stop the node.
-    </span><span class="attr">#[method(name = <span class="string">&quot;stop_node&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"stop_node"</span>)]
     </span><span class="kw">fn </span>stop_node(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
 
-    <span class="doccomment">/// Sign message with node&#39;s key.
+    <span class="doccomment">/// Sign message with node's key.
     /// Returns the public key that signed the message and the signature.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_sign_message&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_sign_message"</span>)]
     </span><span class="kw">async fn </span>node_sign_message(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;u8&gt;) -&gt; RpcResult&lt;PubkeySig&gt;;
 
     <span class="doccomment">/// Add a vector of new secret(private) keys for the node to use to stake.
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;add_staking_secret_keys&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"add_staking_secret_keys"</span>)]
     </span><span class="kw">async fn </span>add_staking_secret_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;String&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Execute bytecode in read-only mode.
-    </span><span class="attr">#[method(name = <span class="string">&quot;execute_read_only_bytecode&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"execute_read_only_bytecode"</span>)]
     </span><span class="kw">async fn </span>execute_read_only_bytecode(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: Vec&lt;ReadOnlyBytecodeExecution&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;ExecuteReadOnlyResponse&gt;&gt;;
 
     <span class="doccomment">/// Execute an SC function in read-only mode.
-    </span><span class="attr">#[method(name = <span class="string">&quot;execute_read_only_call&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"execute_read_only_call"</span>)]
     </span><span class="kw">async fn </span>execute_read_only_call(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: Vec&lt;ReadOnlyCall&gt;,
@@ -662,136 +662,136 @@
 
     <span class="doccomment">/// Remove a vector of addresses used to stake.
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;remove_staking_addresses&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"remove_staking_addresses"</span>)]
     </span><span class="kw">async fn </span>remove_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;Address&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Return hash set of staking addresses.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_staking_addresses&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_staking_addresses"</span>)]
     </span><span class="kw">async fn </span>get_staking_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;PreHashSet&lt;Address&gt;&gt;;
 
     <span class="doccomment">/// Bans given IP address(es).
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_ban_by_ip&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_ban_by_ip"</span>)]
     </span><span class="kw">async fn </span>node_ban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Bans given node id.
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_ban_by_id&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_ban_by_id"</span>)]
     </span><span class="kw">async fn </span>node_ban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Returns node peers whitelist IP address(es).
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_peers_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_peers_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
     <span class="doccomment">/// Add IP address(es) to node peers whitelist.
     /// No confirmation to expect.
     /// Note: If the ip was unknown it adds it to the known peers, otherwise it updates the peer type
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_peers_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_add_to_peers_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_add_to_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Remove from peers whitelist given IP address(es).
     /// keep it as standard
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_peers_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_remove_from_peers_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_remove_from_peers_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Returns node bootstrap whitelist IP address(es).
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_bootstrap_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
     <span class="doccomment">/// Allow everyone to bootstrap from the node.
     /// remove bootstrap whitelist configuration file.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_whitelist_allow_all&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_bootstrap_whitelist_allow_all"</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_whitelist_allow_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Add IP address(es) to node bootstrap whitelist.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_add_to_bootstrap_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Remove IP address(es) to bootstrap whitelist.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_whitelist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_remove_from_bootstrap_whitelist"</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_whitelist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Returns node bootstrap blacklist IP address(es).
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_bootstrap_blacklist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_bootstrap_blacklist"</span>)]
     </span><span class="kw">async fn </span>node_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;IpAddr&gt;&gt;;
 
     <span class="doccomment">/// Add IP address(es) to node bootstrap blacklist.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_add_to_bootstrap_blacklist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_add_to_bootstrap_blacklist"</span>)]
     </span><span class="kw">async fn </span>node_add_to_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Remove IP address(es) to bootstrap blacklist.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_remove_from_bootstrap_blacklist&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_remove_from_bootstrap_blacklist"</span>)]
     </span><span class="kw">async fn </span>node_remove_from_bootstrap_blacklist(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Unban given IP address(es).
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_unban_by_ip&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_unban_by_ip"</span>)]
     </span><span class="kw">async fn </span>node_unban_by_ip(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;IpAddr&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Unban given node id.
     /// No confirmation to expect.
-    </span><span class="attr">#[method(name = <span class="string">&quot;node_unban_by_id&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"node_unban_by_id"</span>)]
     </span><span class="kw">async fn </span>node_unban_by_id(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;NodeId&gt;) -&gt; RpcResult&lt;()&gt;;
 
     <span class="doccomment">/// Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_status&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_status"</span>)]
     </span><span class="kw">async fn </span>get_status(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;NodeStatus&gt;;
 
     <span class="doccomment">/// Get cliques.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_cliques&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_cliques"</span>)]
     </span><span class="kw">async fn </span>get_cliques(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Vec&lt;Clique&gt;&gt;;
 
     <span class="doccomment">/// Returns the active stakers and their active roll counts for the current cycle.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_stakers&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_stakers"</span>)]
     </span><span class="kw">async fn </span>get_stakers(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         page_request: <span class="prelude-ty">Option</span>&lt;PageRequest&gt;,
     ) -&gt; RpcResult&lt;PagedVec&lt;(Address, u64)&gt;&gt;;
 
     <span class="doccomment">/// Returns operation(s) information associated to a given list of operation(s) ID(s).
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_operations&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_operations"</span>)]
     </span><span class="kw">async fn </span>get_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;OperationId&gt;) -&gt; RpcResult&lt;Vec&lt;OperationInfo&gt;&gt;;
 
     <span class="doccomment">/// Returns endorsement(s) information associated to a given list of endorsement(s) ID(s)
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_endorsements&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_endorsements"</span>)]
     </span><span class="kw">async fn </span>get_endorsements(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;EndorsementId&gt;) -&gt; RpcResult&lt;Vec&lt;EndorsementInfo&gt;&gt;;
 
     <span class="doccomment">/// Returns block(s) information associated to a given list of block(s) ID(s)
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_blocks&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_blocks"</span>)]
     </span><span class="kw">async fn </span>get_blocks(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;BlockId&gt;) -&gt; RpcResult&lt;Vec&lt;BlockInfo&gt;&gt;;
 
     <span class="doccomment">/// Get information on the block at a slot in the blockclique.
     /// If there is no block at this slot a `None` is returned.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_blockclique_block_by_slot&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_blockclique_block_by_slot"</span>)]
     </span><span class="kw">async fn </span>get_blockclique_block_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Slot) -&gt; RpcResult&lt;<span class="prelude-ty">Option</span>&lt;Block&gt;&gt;;
 
     <span class="doccomment">/// Get the block graph within the specified time interval.
     /// Optional parameters: from `&lt;time_start&gt;` (included) and to `&lt;time_end&gt;` (excluded) millisecond timestamp
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_graph_interval&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_graph_interval"</span>)]
     </span><span class="kw">async fn </span>get_graph_interval(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: TimeInterval) -&gt; RpcResult&lt;Vec&lt;BlockSummary&gt;&gt;;
 
     <span class="doccomment">/// Get multiple datastore entries.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_datastore_entries&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_datastore_entries"</span>)]
     </span><span class="kw">async fn </span>get_datastore_entries(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: Vec&lt;DatastoreEntryInput&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DatastoreEntryOutput&gt;&gt;;
 
     <span class="doccomment">/// Get addresses.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_addresses&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_addresses"</span>)]
     </span><span class="kw">async fn </span>get_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;Address&gt;) -&gt; RpcResult&lt;Vec&lt;AddressInfo&gt;&gt;;
 
     <span class="doccomment">/// Get addresses bytecode.
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_addresses_bytecode&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_addresses_bytecode"</span>)]
     </span><span class="kw">async fn </span>get_addresses_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, args: Vec&lt;AddressFilter&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt;;
 
     <span class="doccomment">/// Get all the transfers for a slot
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_slots_transfers&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_slots_transfers"</span>)]
     </span><span class="kw">async fn </span>get_slots_transfers(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;Slot&gt;) -&gt; RpcResult&lt;Vec&lt;Vec&lt;Transfer&gt;&gt;&gt;;
 
     <span class="doccomment">/// Adds operations to pool. Returns operations that were ok and sent to pool.
-    </span><span class="attr">#[method(name = <span class="string">&quot;send_operations&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"send_operations"</span>)]
     </span><span class="kw">async fn </span>send_operations(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: Vec&lt;OperationInput&gt;) -&gt; RpcResult&lt;Vec&lt;OperationId&gt;&gt;;
 
     <span class="doccomment">/// Get events optionally filtered by:
@@ -800,12 +800,12 @@
     /// * emitter address
     /// * original caller address
     /// * operation id
-    </span><span class="attr">#[method(name = <span class="string">&quot;get_filtered_sc_output_event&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"get_filtered_sc_output_event"</span>)]
     </span><span class="kw">async fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, arg: EventFilter)
         -&gt; RpcResult&lt;Vec&lt;SCOutputEvent&gt;&gt;;
 
     <span class="doccomment">/// Get OpenRPC specification.
-    </span><span class="attr">#[method(name = <span class="string">&quot;rpc.discover&quot;</span>)]
+    </span><span class="attr">#[method(name = <span class="string">"rpc.discover"</span>)]
     </span><span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt;;
 }
 

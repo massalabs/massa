@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><title>operation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_models/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-models/src/operation.rs`."><title>operation.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_models" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1953,30 +1953,30 @@
 
 <span class="doccomment">/// operation id
 </span><span class="attr">#[allow(missing_docs)]
-#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(
     Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, SerializeDisplay, DeserializeFromStr,
 )]
 </span><span class="kw">pub struct </span>OperationId(Hash);
 
-<span class="kw">const </span>OPERATIONID_PREFIX: char = <span class="string">&#39;O&#39;</span>;
+<span class="kw">const </span>OPERATIONID_PREFIX: char = <span class="string">'O'</span>;
 
 <span class="doccomment">/// Left part of the operation id hash stored in a vector of size [`OPERATION_ID_PREFIX_SIZE_BYTES`]
 </span><span class="attr">#[allow(missing_docs)]
-#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 #[allow(unused_macros)]
 </span><span class="kw">pub struct </span>OperationPrefixId([u8; OPERATION_ID_PREFIX_SIZE_BYTES]);
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationPrefixId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            OperationPrefixId::OperationPrefixIdV0(prefix) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, prefix),
+            OperationPrefixId::OperationPrefixIdV0(prefix) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, prefix),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationPrefixId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
@@ -1986,34 +1986,34 @@
             .serialize(<span class="kw-2">&amp;</span><span class="self">Self</span>::VERSION, <span class="kw-2">&amp;mut </span>bytes)
             .map_err(|<span class="kw">_</span>| std::fmt::Error)<span class="question-mark">?</span>;
         bytes.extend(<span class="self">self</span>.<span class="number">0</span>.as_bytes());
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, bs58::encode(bytes).into_string())
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, bs58::encode(bytes).into_string())
     }
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>OperationPrefixId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            OperationPrefixId::OperationPrefixIdV0(prefix) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, prefix),
+            OperationPrefixId::OperationPrefixIdV0(prefix) =&gt; <span class="macro">write!</span>(f, <span class="string">"{:?}"</span>, prefix),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>OperationPrefixId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            OperationId::OperationIdV0(id) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, id),
+            OperationId::OperationIdV0(id) =&gt; <span class="macro">write!</span>(f, <span class="string">"{}"</span>, id),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="kw">let </span>u64_serializer = U64VarIntSerializer::new();
@@ -2025,7 +2025,7 @@
         bytes.extend(<span class="self">self</span>.<span class="number">0</span>.to_bytes());
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="string">"{}{}"</span>,
             OPERATIONID_PREFIX,
             bs58::encode(bytes).with_check().into_string()
         )
@@ -2033,17 +2033,17 @@
 }
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>OperationId {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
-            OperationId::OperationIdV0(id) =&gt; <span class="macro">write!</span>(f, <span class="string">&quot;{:?}&quot;</span>, id),
+            OperationId::OperationIdV0(id) =&gt; <span class="macro">write!</span>(f, <span class="string">"{:?}"</span>, id),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>OperationId {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
@@ -2085,7 +2085,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>FromStr <span class="kw">for </span>OperationId {
     <span class="kw">type </span><span class="prelude-val">Err </span>= ModelsError;
     <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
@@ -2131,7 +2131,7 @@
 <span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>[u8; OPERATION_ID_PREFIX_SIZE_BYTES]&gt; <span class="kw">for </span>OperationPrefixId {
     <span class="doccomment">/// get prefix of the operation id of size `OPERATION_ID_PREFIX_SIZE_BIT`
     </span><span class="kw">fn </span>from(bytes: <span class="kw-2">&amp;</span>[u8; OPERATION_ID_PREFIX_SIZE_BYTES]) -&gt; <span class="self">Self </span>{
-        <span class="macro">OperationPrefixIdVariant!</span>[<span class="string">&quot;0&quot;</span>](<span class="macro">OperationPrefixId!</span>[<span class="string">&quot;0&quot;</span>](<span class="kw-2">*</span>bytes))
+        <span class="macro">OperationPrefixIdVariant!</span>[<span class="string">"0"</span>](<span class="macro">OperationPrefixId!</span>[<span class="string">"0"</span>](<span class="kw-2">*</span>bytes))
     }
 }
 
@@ -2166,14 +2166,14 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>OperationId {
     <span class="doccomment">/// convert the [`OperationId`] into a [`OperationPrefixId`]
     </span><span class="kw">pub fn </span>into_prefix(<span class="self">self</span>) -&gt; OperationPrefixId {
         OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
             <span class="self">self</span>.<span class="number">0</span>.into_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
-                .expect(<span class="string">&quot;failed to truncate prefix from OperationId&quot;</span>),
+                .expect(<span class="string">"failed to truncate prefix from OperationId"</span>),
         ))
     }
 
@@ -2182,7 +2182,7 @@
         OperationPrefixId::OperationPrefixIdV0(OperationPrefixIdV0(
             <span class="self">self</span>.<span class="number">0</span>.to_bytes()[..OPERATION_ID_PREFIX_SIZE_BYTES]
                 .try_into()
-                .expect(<span class="string">&quot;failed to truncate prefix from OperationId&quot;</span>),
+                .expect(<span class="string">"failed to truncate prefix from OperationId"</span>),
         ))
     }
 
@@ -2220,7 +2220,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;OperationId&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"OperationId"</span>))]
 </span><span class="kw">impl </span>Serializer&lt;OperationId&gt; <span class="kw">for </span>OperationIdSerializer {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>OperationId, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         buffer.extend(value.<span class="number">0</span>.to_bytes());
@@ -2252,10 +2252,10 @@
 }
 
 <span class="kw">impl </span>Deserializer&lt;OperationId&gt; <span class="kw">for </span>OperationIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], OperationId, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], OperationId, E&gt; {
         <span class="comment">// Verify that we at least have a version and something else
         </span><span class="kw">if </span>buffer.len() &lt; <span class="number">2 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof)));
@@ -2267,22 +2267,22 @@
                     nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))
                 })<span class="question-mark">?</span>;
         <span class="kw">match </span>op_id_version {
-            &lt;<span class="macro">OperationId!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
+            &lt;<span class="macro">OperationId!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; {
                 <span class="kw">let </span>(rest, op_id) = <span class="self">self</span>.deserialize(rest)<span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((rest, <span class="macro">OperationIdVariant!</span>[<span class="string">&quot;0&quot;</span>](op_id)))
+                <span class="prelude-val">Ok</span>((rest, <span class="macro">OperationIdVariant!</span>[<span class="string">"0"</span>](op_id)))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(nom::Err::Error(E::from_error_kind(buffer, ErrorKind::Eof))),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;OperationId&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"OperationId"</span>))]
 </span><span class="kw">impl </span>Deserializer&lt;OperationId&gt; <span class="kw">for </span>OperationIdDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], OperationId, E&gt; {
-        context(<span class="string">&quot;Failed OperationId deserialization&quot;</span>, |input| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], OperationId, E&gt; {
+        context(<span class="string">"Failed OperationId deserialization"</span>, |input| {
             <span class="self">self</span>.hash_deserializer.deserialize(input)
         })
         .map(OperationId)
@@ -2307,17 +2307,17 @@
 </span><span class="kw">pub struct </span>Operation {
     <span class="doccomment">/// the fee they have decided for this operation
     </span><span class="kw">pub </span>fee: Amount,
-    <span class="doccomment">/// after `expire_period` slot the operation won&#39;t be included in a block
+    <span class="doccomment">/// after `expire_period` slot the operation won't be included in a block
     </span><span class="kw">pub </span>expire_period: u64,
     <span class="doccomment">/// the type specific operation part
     </span><span class="kw">pub </span>op: OperationType,
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Operation {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;Fee: {}&quot;</span>, <span class="self">self</span>.fee)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;Expire period: {}&quot;</span>, <span class="self">self</span>.expire_period)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(f, <span class="string">&quot;Operation type: {}&quot;</span>, <span class="self">self</span>.op)<span class="question-mark">?</span>;
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">writeln!</span>(f, <span class="string">"Fee: {}"</span>, <span class="self">self</span>.fee)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"Expire period: {}"</span>, <span class="self">self</span>.expire_period)<span class="question-mark">?</span>;
+        <span class="macro">writeln!</span>(f, <span class="string">"Operation type: {}"</span>, <span class="self">self</span>.op)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -2378,10 +2378,10 @@
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
-    ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
+    ///    amount: Amount::from_str("300").unwrap(),
     /// };
     /// let operation = Operation {
-    ///   fee: Amount::from_str(&quot;20&quot;).unwrap(),
+    ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
     /// };
@@ -2443,10 +2443,10 @@
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
-    ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
+    ///    amount: Amount::from_str("300").unwrap(),
     /// };
     /// let operation = Operation {
-    ///   fee: Amount::from_str(&quot;20&quot;).unwrap(),
+    ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
     /// };
@@ -2462,25 +2462,25 @@
     ///     amount,
     ///   } =&gt; {
     ///     assert_eq!(recipient_address, Address::from_public_key(&amp;keypair.get_public_key()));
-    ///     assert_eq!(amount, Amount::from_str(&quot;300&quot;).unwrap());
+    ///     assert_eq!(amount, Amount::from_str("300").unwrap());
     ///   }
-    ///   _ =&gt; panic!(&quot;wrong operation type&quot;),
+    ///   _ =&gt; panic!("wrong operation type"),
     /// };
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Operation, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Operation, E&gt; {
         context(
-            <span class="string">&quot;Failed Operation deserialization&quot;</span>,
+            <span class="string">"Failed Operation deserialization"</span>,
             tuple((
-                context(<span class="string">&quot;Failed fee deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed fee deserialization"</span>, |input| {
                     <span class="self">self</span>.amount_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed expire_period deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed expire_period deserialization"</span>, |input| {
                     <span class="self">self</span>.expire_period_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed op deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed op deserialization"</span>, |input| {
                     <span class="kw">let </span>(rest, op) = <span class="self">self</span>.op_type_deserializer.deserialize(input)<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>((rest, op))
                 }),
@@ -2525,7 +2525,7 @@
         <span class="doccomment">/// Max amount of coins allowed to be spent by the execution
         </span>max_coins: Amount,
         <span class="doccomment">/// A key-value store associating a hash to arbitrary bytes
-        </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(_, _)&gt;&quot;</span>)]
+        </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">"Vec&lt;(_, _)&gt;"</span>)]
         </span>datastore: Datastore,
     },
     <span class="doccomment">/// Calls an exported function from a stored smart contract
@@ -2538,29 +2538,29 @@
         </span>param: Vec&lt;u8&gt;,
         <span class="doccomment">/// The maximum amount of gas that the execution of the contract is allowed to cost.
         </span>max_gas: u64,
-        <span class="doccomment">/// Extra coins that are spent from the caller&#39;s balance and transferred to the target
+        <span class="doccomment">/// Extra coins that are spent from the caller's balance and transferred to the target
         </span>coins: Amount,
     },
 }
 
 <span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>OperationType {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">match </span><span class="self">self </span>{
             OperationType::Transaction {
                 recipient_address,
                 amount,
             } =&gt; {
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;Transaction:&quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- Recipient:{}&quot;</span>, recipient_address)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t  Amount:{}&quot;</span>, amount)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"Transaction:"</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- Recipient:{}"</span>, recipient_address)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t  Amount:{}"</span>, amount)<span class="question-mark">?</span>;
             }
             OperationType::RollBuy { roll_count } =&gt; {
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;Buy rolls:&quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- Roll count:{}&quot;</span>, roll_count)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"Buy rolls:"</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- Roll count:{}"</span>, roll_count)<span class="question-mark">?</span>;
             }
             OperationType::RollSell { roll_count } =&gt; {
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;Sell rolls:&quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- Roll count:{}&quot;</span>, roll_count)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"Sell rolls:"</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- Roll count:{}"</span>, roll_count)<span class="question-mark">?</span>;
             }
             OperationType::ExecuteSC {
                 max_gas,
@@ -2568,9 +2568,9 @@
                 ..
                 <span class="comment">// data &amp; datastore, // these fields are ignored because bytes eh
             </span>} =&gt; {
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;ExecuteSC: &quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_coins:{}&quot;</span>, max_coins)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_gas:{}&quot;</span>, max_gas)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"ExecuteSC: "</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- max_coins:{}"</span>, max_coins)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- max_gas:{}"</span>, max_gas)<span class="question-mark">?</span>;
             },
             OperationType::CallSC {
                 max_gas,
@@ -2579,12 +2579,12 @@
                 target_func,
                 param
             } =&gt; {
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;CallSC:&quot;</span>)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target address:{}&quot;</span>, target_addr)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target function:{}&quot;</span>, target_func)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- target parameter:{:?}&quot;</span>, param)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- max_gas:{}&quot;</span>, max_gas)<span class="question-mark">?</span>;
-                <span class="macro">writeln!</span>(f, <span class="string">&quot;\t- coins:{}&quot;</span>, coins)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"CallSC:"</span>)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- target address:{}"</span>, target_addr)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- target function:{}"</span>, target_func)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- target parameter:{:?}"</span>, param)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- max_gas:{}"</span>, max_gas)<span class="question-mark">?</span>;
+                <span class="macro">writeln!</span>(f, <span class="string">"\t- coins:{}"</span>, coins)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -2636,7 +2636,7 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    max_coins: Amount::from_str(&quot;5000000&quot;).unwrap(),
+    ///    max_coins: Amount::from_str("5000000").unwrap(),
     ///    datastore: BTreeMap::default(),
     /// };
     /// let mut buffer = Vec::new();
@@ -2764,7 +2764,7 @@
     /// let op = OperationType::ExecuteSC {
     ///    data: vec![0x01, 0x02, 0x03],
     ///    max_gas: 100,
-    ///    max_coins: Amount::from_str(&quot;5000000&quot;).unwrap(),
+    ///    max_coins: Amount::from_str("5000000").unwrap(),
     ///    datastore: BTreeMap::from([(vec![1, 2], vec![254, 255])])
     /// };
     /// let mut buffer = Vec::new();
@@ -2780,17 +2780,17 @@
     ///   } =&gt; {
     ///     assert_eq!(data, vec![0x01, 0x02, 0x03]);
     ///     assert_eq!(max_gas, 100);
-    ///     assert_eq!(max_coins, Amount::from_str(&quot;5000000&quot;).unwrap());
+    ///     assert_eq!(max_coins, Amount::from_str("5000000").unwrap());
     ///     assert_eq!(datastore, BTreeMap::from([(vec![1, 2], vec![254, 255])]))
     ///   }
-    ///   _ =&gt; panic!(&quot;Unexpected operation type&quot;),
+    ///   _ =&gt; panic!("Unexpected operation type"),
     /// };
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], OperationType, E&gt; {
-        context(<span class="string">&quot;Failed OperationType deserialization&quot;</span>, |buffer| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], OperationType, E&gt; {
+        context(<span class="string">"Failed OperationType deserialization"</span>, |buffer| {
             <span class="kw">let </span>(input, id) = <span class="self">self</span>.id_deserializer.deserialize(buffer)<span class="question-mark">?</span>;
             <span class="kw">let </span>id = OperationTypeId::try_from(id).map_err(|<span class="kw">_</span>| {
                 nom::Err::Error(ParseError::from_error_kind(
@@ -2800,12 +2800,12 @@
             })<span class="question-mark">?</span>;
             <span class="kw">match </span>id {
                 OperationTypeId::Transaction =&gt; context(
-                    <span class="string">&quot;Failed Transaction deserialization&quot;</span>,
+                    <span class="string">"Failed Transaction deserialization"</span>,
                     tuple((
-                        context(<span class="string">&quot;Failed recipient_address deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed recipient_address deserialization"</span>, |input| {
                             <span class="self">self</span>.address_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed amount deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed amount deserialization"</span>, |input| {
                             <span class="self">self</span>.amount_deserializer.deserialize(input)
                         }),
                     )),
@@ -2815,29 +2815,29 @@
                     amount,
                 })
                 .parse(input),
-                OperationTypeId::RollBuy =&gt; context(<span class="string">&quot;Failed RollBuy deserialization&quot;</span>, |input| {
+                OperationTypeId::RollBuy =&gt; context(<span class="string">"Failed RollBuy deserialization"</span>, |input| {
                     <span class="self">self</span>.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollBuy { roll_count })
                 .parse(input),
-                OperationTypeId::RollSell =&gt; context(<span class="string">&quot;Failed RollSell deserialization&quot;</span>, |input| {
+                OperationTypeId::RollSell =&gt; context(<span class="string">"Failed RollSell deserialization"</span>, |input| {
                     <span class="self">self</span>.rolls_number_deserializer.deserialize(input)
                 })
                 .map(|roll_count| OperationType::RollSell { roll_count })
                 .parse(input),
                 OperationTypeId::ExecuteSC =&gt; context(
-                    <span class="string">&quot;Failed ExecuteSC deserialization&quot;</span>,
+                    <span class="string">"Failed ExecuteSC deserialization"</span>,
                     tuple((
-                        context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed max_gas deserialization"</span>, |input| {
                             <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed max_coins deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed max_coins deserialization"</span>, |input| {
                             <span class="self">self</span>.amount_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed data deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed data deserialization"</span>, |input| {
                             <span class="self">self</span>.data_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed datastore deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed datastore deserialization"</span>, |input| {
                             <span class="self">self</span>.datastore_deserializer.deserialize(input)
                         }),
                     )),
@@ -2852,21 +2852,21 @@
                 )
                 .parse(input),
                 OperationTypeId::CallSC =&gt; context(
-                    <span class="string">&quot;Failed CallSC deserialization&quot;</span>,
+                    <span class="string">"Failed CallSC deserialization"</span>,
                     tuple((
-                        context(<span class="string">&quot;Failed max_gas deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed max_gas deserialization"</span>, |input| {
                             <span class="self">self</span>.max_gas_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed coins deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed coins deserialization"</span>, |input| {
                             <span class="self">self</span>.amount_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed target_addr deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed target_addr deserialization"</span>, |input| {
                             <span class="self">self</span>.address_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed target_func deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed target_func deserialization"</span>, |input| {
                             <span class="self">self</span>.function_name_deserializer.deserialize(input)
                         }),
-                        context(<span class="string">&quot;Failed param deserialization&quot;</span>, |input| {
+                        context(<span class="string">"Failed param deserialization"</span>, |input| {
                             <span class="self">self</span>.parameter_deserializer.deserialize(input)
                         }),
                     )),
@@ -2967,7 +2967,7 @@
     }
 }
 
-<span class="doccomment">/// Set of operation id&#39;s prefix
+<span class="doccomment">/// Set of operation id's prefix
 </span><span class="kw">pub type </span>OperationPrefixIds = PreHashSet&lt;OperationPrefixId&gt;;
 
 <span class="doccomment">/// Serializer for `Vec&lt;OperationId&gt;`
@@ -3000,8 +3000,8 @@
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
-    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&amp;operations_ids, &amp;mut buffer).unwrap();
     /// ```
@@ -3012,7 +3012,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>list_len: u32 = value.len().try_into().map_err(|<span class="kw">_</span>| {
             SerializeError::NumberTooBig(
-                <span class="string">&quot;could not encode Vec&lt;OperationId&gt; list length as u32&quot;</span>.into(),
+                <span class="string">"could not encode Vec&lt;OperationId&gt; list length as u32"</span>.into(),
             )
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>list_len, buffer)<span class="question-mark">?</span>;
@@ -3050,25 +3050,25 @@
     /// use std::str::FromStr;
     ///
     /// let mut operations_ids = Vec::new();
-    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
-    /// operations_ids.push(OperationId::from_str(&quot;O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU&quot;).unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
+    /// operations_ids.push(OperationId::from_str("O1xcVGtyWAyrehW1NDpnZ1wE5K95n8qVJCV9dEJSp1ypU8eJsQU").unwrap());
     /// let mut buffer = Vec::new();
     /// OperationIdsSerializer::new().serialize(&amp;operations_ids, &amp;mut buffer).unwrap();
     /// let (rest, deserialized_operations_ids) = OperationIdsDeserializer::new(1000).deserialize::&lt;DeserializeError&gt;(&amp;buffer).unwrap();
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized_operations_ids, operations_ids);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;OperationId&gt;, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Vec&lt;OperationId&gt;, E&gt; {
         context(
-            <span class="string">&quot;Failed Vec&lt;OperationId&gt; deserialization&quot;</span>,
+            <span class="string">"Failed Vec&lt;OperationId&gt; deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed OperationId deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed OperationId deserialization"</span>, |input| {
                     <span class="self">self</span>.op_id_deserializer.deserialize(input)
                 }),
             ),
@@ -3100,13 +3100,13 @@
     /// let mut buffer = Vec::new();
     /// OperationPrefixIdsSerializer::new().serialize(&amp;op_prefixes, &amp;mut buffer).unwrap();
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], OperationPrefixId, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], OperationPrefixId, E&gt; {
         context(
-            <span class="string">&quot;Failed operation prefix id deserialization&quot;</span>,
-            |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+            <span class="string">"Failed operation prefix id deserialization"</span>,
+            |input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
                 <span class="kw">if </span>buffer.len() &lt; OPERATION_ID_PREFIX_SIZE_BYTES {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                         input,
@@ -3165,17 +3165,17 @@
     /// assert_eq!(rest.len(), 0);
     /// assert_eq!(deserialized, op_prefixes);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], OperationPrefixIds, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], OperationPrefixIds, E&gt; {
         context(
-            <span class="string">&quot;Failed OperationPrefixIds deserialization&quot;</span>,
+            <span class="string">"Failed OperationPrefixIds deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed OperationPrefixId deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed OperationPrefixId deserialization"</span>, |input| {
                     <span class="self">self</span>.pref_deserializer.deserialize(input)
                 }),
             ),
@@ -3214,7 +3214,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>list_len: u32 = value.len().try_into().map_err(|<span class="kw">_</span>| {
             SerializeError::NumberTooBig(
-                <span class="string">&quot;could not encode Set&lt;OperationId&gt; list length as u32&quot;</span>.into(),
+                <span class="string">"could not encode Set&lt;OperationId&gt; list length as u32"</span>.into(),
             )
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>list_len, buffer)<span class="question-mark">?</span>;
@@ -3260,10 +3260,10 @@
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
-    ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
+    ///    amount: Amount::from_str("300").unwrap(),
     /// };
     /// let content = Operation {
-    ///   fee: Amount::from_str(&quot;20&quot;).unwrap(),
+    ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
     /// };
@@ -3278,7 +3278,7 @@
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">let </span>list_len: u32 = value.len().try_into().map_err(|<span class="kw">_</span>| {
-            SerializeError::NumberTooBig(<span class="string">&quot;could not encode Operations list length as u32&quot;</span>.into())
+            SerializeError::NumberTooBig(<span class="string">"could not encode Operations list length as u32"</span>.into())
         })<span class="question-mark">?</span>;
         <span class="self">self</span>.u32_serializer.serialize(<span class="kw-2">&amp;</span>list_len, buffer)<span class="question-mark">?</span>;
         <span class="kw">for </span>op <span class="kw">in </span>value {
@@ -3339,10 +3339,10 @@
     /// let keypair = KeyPair::generate(0).unwrap();
     /// let op = OperationType::Transaction {
     ///    recipient_address: Address::from_public_key(&amp;keypair.get_public_key()),
-    ///    amount: Amount::from_str(&quot;300&quot;).unwrap(),
+    ///    amount: Amount::from_str("300").unwrap(),
     /// };
     /// let content = Operation {
-    ///   fee: Amount::from_str(&quot;20&quot;).unwrap(),
+    ///   fee: Amount::from_str("20").unwrap(),
     ///   op,
     ///   expire_period: 50,
     /// };
@@ -3358,17 +3358,17 @@
     ///     assert_eq!(operation1.content.fee, operation2.content.fee);
     /// }
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Vec&lt;SecureShareOperation&gt;, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Vec&lt;SecureShareOperation&gt;, E&gt; {
         context(
-            <span class="string">&quot;Failed Operations deserialization&quot;</span>,
+            <span class="string">"Failed Operations deserialization"</span>,
             length_count(
-                context(<span class="string">&quot;Failed length deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed length deserialization"</span>, |input| {
                     <span class="self">self</span>.length_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;Failed operation deserialization&quot;</span>, |input| {
+                context(<span class="string">"Failed operation deserialization"</span>, |input| {
                     <span class="self">self</span>.signed_op_deserializer.deserialize(input)
                 }),
             ),
@@ -3388,7 +3388,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
             op_id_serializer
                 .serialize(op_id, <span class="kw-2">&amp;mut </span>serialized)
-                .expect(<span class="string">&quot;serialization of operation id should not fail&quot;</span>);
+                .expect(<span class="string">"serialization of operation id should not fail"</span>);
             serialized
         })
         .collect::&lt;Vec&lt;Vec&lt;u8&gt;&gt;&gt;();
@@ -3424,14 +3424,14 @@
         // Warning: check if the current chain id matches the chain id in the doc
 
         </span><span class="kw">let </span>chain_id: u64 = <span class="number">77658383</span>;
-        <span class="kw">let </span>sk = <span class="string">&quot;S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA&quot;</span>;
-        <span class="kw">let </span>pk = <span class="string">&quot;P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd&quot;</span>;
-        <span class="kw">let </span>_addr = <span class="string">&quot;AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7&quot;</span>;
-        <span class="kw">let </span>op_fee = <span class="string">&quot;0.001&quot;</span>;
+        <span class="kw">let </span>sk = <span class="string">"S1CkpvD4WMjJWxR2WZcrDEkJ1kWG2kKe1e3Afe8miqmskHqovvA"</span>;
+        <span class="kw">let </span>pk = <span class="string">"P1t4JZwHhWNLt4xYabCbukyVNxSbhYPdF6wCYuRmDuHD784juxd"</span>;
+        <span class="kw">let </span>_addr = <span class="string">"AU12m1gXHUGxBZsDF4veeWfYaRmpztBCieHhPBaqf3fcRF2LdAuZ7"</span>;
+        <span class="kw">let </span>op_fee = <span class="string">"0.001"</span>;
         <span class="kw">let </span>op_expiry_period = <span class="number">1000</span>;
 
-        <span class="kw">let </span>tx_dest_addr = <span class="string">&quot;AU12v83xmHg2UrLM8GLsXRMrm7LQgn3DZVT6kUeFsuFyhZKLkbQtY&quot;</span>;
-        <span class="kw">let </span>tx_amount = <span class="string">&quot;3.1&quot;</span>;
+        <span class="kw">let </span>tx_dest_addr = <span class="string">"AU12v83xmHg2UrLM8GLsXRMrm7LQgn3DZVT6kUeFsuFyhZKLkbQtY"</span>;
+        <span class="kw">let </span>tx_amount = <span class="string">"3.1"</span>;
 
         <span class="kw">let </span>op_type = OperationType::Transaction {
             recipient_address: Address::from_str(tx_dest_addr).unwrap(),
@@ -3455,16 +3455,16 @@
         <span class="kw">let </span>op: SecureShare&lt;Operation, OperationId&gt; =
             Operation::new_verifiable(content, op_serializer, <span class="kw-2">&amp;</span>sender_keypair, chain_id).unwrap();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Chain id: {}&quot;</span>, <span class="kw-2">*</span>CHAINID);
-        <span class="macro">println!</span>(<span class="string">&quot;Operation id: {:?}&quot;</span>, op.id);
+        <span class="macro">println!</span>(<span class="string">"Chain id: {}"</span>, <span class="kw-2">*</span>CHAINID);
+        <span class="macro">println!</span>(<span class="string">"Operation id: {:?}"</span>, op.id);
 
         <span class="kw">let </span><span class="kw-2">mut </span>ser_op = Vec::new();
         SecureShareSerializer::new()
             .serialize(<span class="kw-2">&amp;</span>op, <span class="kw-2">&amp;mut </span>ser_op)
             .unwrap();
 
-        <span class="macro">println!</span>(<span class="string">&quot;Operation serialized:&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:02X?}&quot;</span>, ser_op);
+        <span class="macro">println!</span>(<span class="string">"Operation serialized:"</span>);
+        <span class="macro">println!</span>(<span class="string">"{:02X?}"</span>, ser_op);
     }
 
     <span class="attr">#[test]
@@ -3495,7 +3495,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>content = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3550,7 +3550,7 @@
 
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
+            max_coins: Amount::from_str(<span class="string">"1.0"</span>).unwrap(),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
@@ -3574,7 +3574,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>content = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3632,9 +3632,9 @@
         <span class="kw">let </span>op = OperationType::CallSC {
             max_gas: <span class="number">123</span>,
             target_addr,
-            coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
-            target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
-            param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
+            coins: Amount::from_str(<span class="string">"456.789"</span>).unwrap(),
+            target_func: <span class="string">"target function"</span>.to_string(),
+            param: <span class="string">b"parameter"</span>.to_vec(),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
         OperationTypeSerializer::new()
@@ -3653,7 +3653,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>content = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3727,7 +3727,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3735,8 +3735,8 @@
         <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
         <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
         <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
+        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">"fee"</span>]);
+        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">"expire_period"</span>]);
     }
 
     <span class="attr">#[test]
@@ -3744,7 +3744,7 @@
     </span><span class="kw">fn </span>test_executesc_serde() {
         <span class="kw">let </span>op = OperationType::ExecuteSC {
             max_gas: <span class="number">123</span>,
-            max_coins: Amount::from_str(<span class="string">&quot;1.0&quot;</span>).unwrap(),
+            max_coins: Amount::from_str(<span class="string">"1.0"</span>).unwrap(),
             data: <span class="macro">vec!</span>[<span class="number">23u8</span>, <span class="number">123u8</span>, <span class="number">44u8</span>],
             datastore: BTreeMap::from([
                 (<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="macro">vec!</span>[<span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>]),
@@ -3768,7 +3768,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3776,8 +3776,8 @@
         <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
         <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
         <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
+        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">"fee"</span>]);
+        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">"expire_period"</span>]);
     }
 
     <span class="attr">#[test]
@@ -3789,9 +3789,9 @@
         <span class="kw">let </span>op = OperationType::CallSC {
             max_gas: <span class="number">123</span>,
             target_addr,
-            coins: Amount::from_str(<span class="string">&quot;456.789&quot;</span>).unwrap(),
-            target_func: <span class="string">&quot;target function&quot;</span>.to_string(),
-            param: <span class="string">b&quot;parameter&quot;</span>.to_vec(),
+            coins: Amount::from_str(<span class="string">"456.789"</span>).unwrap(),
+            target_func: <span class="string">"target function"</span>.to_string(),
+            param: <span class="string">b"parameter"</span>.to_vec(),
         };
         <span class="kw">let </span><span class="kw-2">mut </span>ser_type = Vec::new();
         OperationTypeSerializer::new()
@@ -3810,7 +3810,7 @@
         <span class="macro">assert_eq!</span>(res_type, op);
 
         <span class="kw">let </span>orig_operation = Operation {
-            fee: Amount::from_str(<span class="string">&quot;20&quot;</span>).unwrap(),
+            fee: Amount::from_str(<span class="string">"20"</span>).unwrap(),
             op,
             expire_period: <span class="number">50</span>,
         };
@@ -3818,8 +3818,8 @@
         <span class="kw">let </span>serialized_operation = serde_json::to_string(<span class="kw-2">&amp;</span>orig_operation).unwrap();
         <span class="kw">let </span>res_operation: Value = serde_json::from_str(<span class="kw-2">&amp;</span>serialized_operation).unwrap();
         <span class="comment">// check equality
-        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">&quot;fee&quot;</span>]);
-        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">&quot;expire_period&quot;</span>]);
+        </span><span class="macro">assert_eq!</span>(orig_operation.fee.to_string(), res_operation[<span class="string">"fee"</span>]);
+        <span class="macro">assert_eq!</span>(orig_operation.expire_period, res_operation[<span class="string">"expire_period"</span>]);
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-serialization/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_serialization" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_serialization/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-serialization/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_serialization" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -754,30 +754,30 @@
 }
 
 <span class="attr">#[derive(Clone, Error)]
-</span><span class="kw">pub struct </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
-    errors: VecDeque&lt;(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], String)&gt;,
+</span><span class="kw">pub struct </span>DeserializeError&lt;<span class="lifetime">'a</span>&gt; {
+    errors: VecDeque&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], String)&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">fn </span>add_context(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], ctx: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>add_context(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], ctx: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         other.errors.push_front((input, ctx.to_string()));
         other
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">fn </span>append(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], kind: nom::error::ErrorKind, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>append(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], kind: nom::error::ErrorKind, <span class="kw-2">mut </span>other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         other
             .errors
             .push_front((input, kind.description().to_string()));
         other
     }
-    <span class="kw">fn </span>from_error_kind(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], kind: nom::error::ErrorKind) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from_error_kind(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], kind: nom::error::ErrorKind) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>errors = VecDeque::new();
         errors.push_front((input, kind.description().to_string()));
         <span class="self">Self </span>{ errors }
     }
-    <span class="kw">fn </span>from_char(input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="kw">_</span>: char) -&gt; <span class="self">Self </span>{
+    <span class="kw">fn </span>from_char(input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], <span class="kw">_</span>: char) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::from_error_kind(input, nom::error::ErrorKind::Char)
     }
     <span class="kw">fn </span>or(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
@@ -785,24 +785,24 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Display <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Display <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.errors {
-            <span class="macro">write!</span>(f, <span class="string">&quot;{} / &quot;</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"{} / "</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; Debug <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">&#39;a</span>&gt; {
-    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">&#39;_</span>&gt;) -&gt; std::fmt::Result {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Debug <span class="kw">for </span>DeserializeError&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         <span class="kw">let </span><span class="kw-2">mut </span>last_input = <span class="prelude-val">None</span>;
         <span class="kw">for </span>error <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.errors {
-            <span class="macro">write!</span>(f, <span class="string">&quot;{} / &quot;</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
+            <span class="macro">write!</span>(f, <span class="string">"{} / "</span>, error.<span class="number">1</span>)<span class="question-mark">?</span>;
             last_input = <span class="prelude-val">Some</span>(error.<span class="number">0</span>);
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(last_input) = last_input {
-            <span class="macro">writeln!</span>(f, <span class="string">&quot;Input: {:?}&quot;</span>, last_input)<span class="question-mark">?</span>;
+            <span class="macro">writeln!</span>(f, <span class="string">"Input: {:?}"</span>, last_input)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -832,8 +832,8 @@
 /// }
 ///
 /// impl Deserializer&lt;u64&gt; for U64VarIntDeserializer {
-///     fn deserialize&lt;&#39;a, E: ParseError&lt;&amp;&#39;a [u8]&gt; + ContextError&lt;&amp;&#39;a [u8]&gt;&gt;(&amp;self, buffer: &amp;&#39;a [u8]) -&gt; IResult&lt;&amp;&#39;a [u8], u64, E&gt; {
-///         context(concat!(&quot;Failed u64 deserialization&quot;), |input: &amp;&#39;a [u8]| {
+///     fn deserialize&lt;'a, E: ParseError&lt;&amp;'a [u8]&gt; + ContextError&lt;&amp;'a [u8]&gt;&gt;(&amp;self, buffer: &amp;'a [u8]) -&gt; IResult&lt;&amp;'a [u8], u64, E&gt; {
+///         context(concat!("Failed u64 deserialization"), |input: &amp;'a [u8]| {
 ///             let (rest, value) = varint_nom::u64(input).map_err(|_| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))?;
 ///             if !self.range.contains(&amp;value) {
 ///                 return Err(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
@@ -851,10 +851,10 @@
     ///
     /// ## Returns
     /// A nom result with the rest of the serialized data and the decoded value.
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], T, E&gt;;
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], T, E&gt;;
 }
 
 <span class="doccomment">/// This trait must be implemented to serializes all data in Massa.
@@ -885,7 +885,7 @@
 /// impl Serializer&lt;u64&gt; for U64VarIntSerializer {
 ///     fn serialize(&amp;self, value: &amp;u64, buffer: &amp;mut Vec&lt;u8&gt;) -&gt; Result&lt;(), SerializeError&gt; {
 ///         if !self.range.contains(value) {
-///             return Err(SerializeError::NumberTooBig(format!(&quot;Value {:#?} is not in range {:#?}&quot;, value, self.range)));
+///             return Err(SerializeError::NumberTooBig(format!("Value {:#?} is not in range {:#?}", value, self.range)));
 ///         }
 ///         buffer.extend_from_slice(u64(*value, &amp;mut u64_buffer()));
 ///         Ok(())
@@ -903,23 +903,23 @@
     </span><span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, value: <span class="kw-2">&amp;</span>T, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt;;
 }
 
-<span class="macro">macro_rules! </span>gen_varint {
+<span class="macro">macro_rules!</span> gen_varint {
     ($(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$s</span>:ident, <span class="macro-nonterminal">$bs</span>:ident, <span class="macro-nonterminal">$ds</span>:ident, <span class="macro-nonterminal">$d</span>:expr);<span class="kw-2">*</span>) =&gt; {
         <span class="kw">use </span>std::ops::{Bound, RangeBounds};
         <span class="kw">use </span>nom::error::context;
         <span class="kw">use </span>unsigned_varint::nom <span class="kw">as </span>unsigned_nom;
         $(
             <span class="kw">use </span>unsigned_varint::encode::{<span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">$bs</span>};
-            <span class="attr">#[doc = <span class="string">&quot; Serializer for &quot;</span>]
+            <span class="attr">#[doc = <span class="string">" Serializer for "</span>]
             #[doc = <span class="macro-nonterminal">$d</span>]
-            #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+            #[doc = <span class="string">" in a varint form."</span>]
             #[derive(Clone)]
             </span><span class="kw">pub struct </span><span class="macro-nonterminal">$s</span>;
 
             <span class="kw">impl </span><span class="macro-nonterminal">$s </span>{
-                <span class="attr">#[doc = <span class="string">&quot;Create a basic serializer for &quot;</span>]
+                <span class="attr">#[doc = <span class="string">"Create a basic serializer for "</span>]
                 #[doc = <span class="macro-nonterminal">$d</span>]
-                #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+                #[doc = <span class="string">" in a varint form."</span>]
                 #[allow(dead_code)]
                 </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
                     <span class="self">Self
@@ -939,18 +939,18 @@
                 }
             }
 
-            <span class="attr">#[doc = <span class="string">&quot; Deserializer for &quot;</span>]
+            <span class="attr">#[doc = <span class="string">" Deserializer for "</span>]
             #[doc = <span class="macro-nonterminal">$d</span>]
-            #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+            #[doc = <span class="string">" in a varint form."</span>]
             #[derive(Clone)]
             </span><span class="kw">pub struct </span><span class="macro-nonterminal">$ds </span>{
                 range: (Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;, <span class="macro-nonterminal">Bound</span>&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;)
             }
 
             <span class="kw">impl </span><span class="macro-nonterminal">$ds </span>{
-                <span class="attr">#[doc = <span class="string">&quot;Create a basic deserializer for &quot;</span>]
+                <span class="attr">#[doc = <span class="string">"Create a basic deserializer for "</span>]
                 #[doc = <span class="macro-nonterminal">$d</span>]
-                #[doc = <span class="string">&quot; in a varint form.&quot;</span>]
+                #[doc = <span class="string">" in a varint form."</span>]
                 #[allow(dead_code)]
                 </span><span class="kw">pub const fn </span>new(min: Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;, <span class="macro-nonterminal">max</span>: Bound&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;) -&gt; <span class="macro-nonterminal">Self </span>{
                     <span class="self">Self </span>{
@@ -960,8 +960,8 @@
             }
 
             <span class="kw">impl </span>Deserializer&lt;<span class="macro-nonterminal">$</span><span class="kw">type</span>&gt; <span class="kw">for </span><span class="macro-nonterminal">$ds </span>{
-                <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">E</span>&gt; {
-                    context(<span class="macro">concat!</span>(<span class="string">&quot;Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization&quot;</span>), |<span class="macro-nonterminal">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+                <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], <span class="macro-nonterminal">$</span><span class="kw">type</span>, <span class="macro-nonterminal">E</span>&gt; {
+                    context(<span class="macro">concat!</span>(<span class="string">"Failed "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" deserialization"</span>), |<span class="macro-nonterminal">input</span>: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
                         <span class="kw">let </span>(rest, value) = unsigned_nom::<span class="macro-nonterminal">$</span><span class="kw">type</span>(<span class="macro-nonterminal">input</span>).map_err(|<span class="kw">_</span>| nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)))<span class="question-mark">?</span>;
                         <span class="kw">if </span>!<span class="self">self</span>.range.contains(<span class="kw-2">&amp;</span>value) {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(input, nom::error::ErrorKind::Fail)));
@@ -974,10 +974,10 @@
     };
 }
 
-<span class="macro">gen_varint! </span>{
-u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string">&quot;`u16`&quot;</span>;
-u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">&quot;`u32`&quot;</span>;
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">&quot;`u64`&quot;
+<span class="macro">gen_varint!</span> {
+u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string">"`u16`"</span>;
+u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">"`u32`"</span>;
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">"`u64`"
 </span>}
 
 <span class="attr">#[derive(Clone)]
@@ -1007,10 +1007,10 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
 {
     <span class="kw">fn </span>serialize(<span class="kw-2">&amp;</span><span class="self">self</span>, opt_value: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;T&gt;, buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), SerializeError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = opt_value {
-            buffer.push(<span class="string">b&#39;1&#39;</span>);
+            buffer.push(<span class="string">b'1'</span>);
             <span class="self">self</span>.data_serializer.serialize(value, buffer)<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
-            buffer.push(<span class="string">b&#39;0&#39;</span>);
+            buffer.push(<span class="string">b'0'</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1044,17 +1044,17 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     </span>T: Clone,
     DT: Deserializer&lt;T&gt;,
 {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], <span class="prelude-ty">Option</span>&lt;T&gt;, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], <span class="prelude-ty">Option</span>&lt;T&gt;, E&gt; {
         context(
-            <span class="string">&quot;Option&lt;_&gt; deserializer failed&quot;</span>,
+            <span class="string">"Option&lt;_&gt; deserializer failed"</span>,
             alt((
-                context(<span class="string">&quot;None&quot;</span>, value(<span class="prelude-val">None</span>, tag(<span class="string">b&quot;0&quot;</span>))),
+                context(<span class="string">"None"</span>, value(<span class="prelude-val">None</span>, tag(<span class="string">b"0"</span>))),
                 context(
-                    <span class="string">&quot;Some(_)&quot;</span>,
-                    preceded(tag(<span class="string">b&quot;1&quot;</span>), |input| {
+                    <span class="string">"Some(_)"</span>,
+                    preceded(tag(<span class="string">b"1"</span>), |input| {
                         <span class="self">self</span>.data_deserializer
                             .deserialize(input)
                             .map(|(rest, data)| (rest, <span class="prelude-val">Some</span>(data)))
@@ -1096,11 +1096,11 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
 }
 
 <span class="kw">impl </span>Deserializer&lt;bool&gt; <span class="kw">for </span>BoolDeserializer {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], bool, E&gt; {
-        context(<span class="string">&quot;Failed bool deserialization&quot;</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]| {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], bool, E&gt; {
+        context(<span class="string">"Failed bool deserialization"</span>, |input: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]| {
             <span class="kw">let </span><span class="prelude-val">Some</span>((first, rest)) = input.split_first() <span class="kw">else </span>{
                 <span class="kw">return </span><span class="prelude-val">Err</span>(nom::Err::Error(ParseError::from_error_kind(
                     input,
@@ -1185,17 +1185,17 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     </span>T: Integer + Clone,
     DT: Deserializer&lt;T&gt;,
 {
-    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Ratio&lt;T&gt;, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Ratio&lt;T&gt;, E&gt; {
         context(
-            <span class="string">&quot;Ratio&lt;_&gt; deserializer failed&quot;</span>,
+            <span class="string">"Ratio&lt;_&gt; deserializer failed"</span>,
             tuple((
-                context(<span class="string">&quot;numer deser failed&quot;</span>, |input| {
+                context(<span class="string">"numer deser failed"</span>, |input| {
                     <span class="self">self</span>.data_deserializer.deserialize(input)
                 }),
-                context(<span class="string">&quot;denom deser failed&quot;</span>, |input| {
+                context(<span class="string">"denom deser failed"</span>, |input| {
                     <span class="self">self</span>.data_deserializer.deserialize(input)
                 }),
             )),
@@ -1217,16 +1217,16 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     // - Test with a normal case but a more bigger number that everything works
     // - Test with a number that is out of the range of the deserializer
     // - Test to give an empty buffer to the deserializer
-    </span><span class="macro">macro_rules! </span>gen_test_varint {
+    </span><span class="macro">macro_rules!</span> gen_test_varint {
         ($(<span class="macro-nonterminal">$</span><span class="kw">type</span>:<span class="macro-nonterminal">ident</span>, <span class="macro-nonterminal">$bs</span>:ident, <span class="macro-nonterminal">$ds</span>:ident);<span class="kw-2">*</span>) =&gt; {
             $(
-                <span class="macro">paste! </span>{
+                <span class="macro">paste!</span> {
                     <span class="attr">#[test]
                     </span><span class="kw">fn </span>[&lt;test_ <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer_deserializer_works</span>&gt;]() {
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$bs::new</span>();
                         <span class="kw">let </span>number = [&lt;<span class="number">3 </span><span class="macro-nonterminal">$</span><span class="kw">type </span>&gt;];
                         <span class="kw">let </span><span class="kw-2">mut </span><span class="macro-nonterminal">buffer </span>= Vec::new();
-                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">&quot;Failed to serialize &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; 3&quot;</span>));
+                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">"Failed to serialize "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" 3"</span>));
                         <span class="macro">assert_eq!</span>(<span class="macro-nonterminal">buffer</span>, <span class="macro">vec!</span>[<span class="number">3</span>]);
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$ds::new</span>(std::ops::Bound::Included([&lt;<span class="number">0 </span><span class="macro-nonterminal">$</span><span class="kw">type </span>&gt;]), <span class="macro-nonterminal">std::ops::Bound::Included</span>(number));
                         <span class="kw">let </span>result = [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;].deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
@@ -1241,7 +1241,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$bs::new</span>();
                         <span class="kw">let </span>number = [&lt;<span class="number">60_500 </span><span class="macro-nonterminal">$</span><span class="kw">type</span>&gt;];
                         <span class="kw">let </span><span class="kw-2">mut </span><span class="macro-nonterminal">buffer </span>= Vec::new();
-                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">&quot;Failed to serialize &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; 10_000_000&quot;</span>));
+                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">"Failed to serialize "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" 10_000_000"</span>));
                         <span class="macro">assert_eq!</span>(<span class="macro-nonterminal">buffer</span>, <span class="macro">vec!</span>[<span class="number">212</span>, <span class="number">216</span>, <span class="number">3</span>]);
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$ds::new</span>(std::ops::Bound::Included([&lt;<span class="number">0 </span><span class="macro-nonterminal">$</span><span class="kw">type </span>&gt;]), <span class="macro-nonterminal">std::ops::Bound::Included</span>(number));
                         <span class="kw">let </span>result = [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;].deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
@@ -1256,13 +1256,13 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$bs::new</span>();
                         <span class="kw">let </span>number = [&lt;<span class="number">3 </span><span class="macro-nonterminal">$</span><span class="kw">type </span>&gt;];
                         <span class="kw">let </span><span class="kw-2">mut </span><span class="macro-nonterminal">buffer </span>= Vec::new();
-                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">&quot;Failed to serialize &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; 3&quot;</span>));
+                        [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_serializer </span>&gt;].serialize(<span class="kw-2">&amp;</span>number, <span class="kw-2">&amp;mut </span>buffer).expect(<span class="macro">concat!</span>(<span class="string">"Failed to serialize "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" 3"</span>));
                         <span class="macro">assert_eq!</span>(<span class="macro-nonterminal">buffer</span>, <span class="macro">vec!</span>[<span class="number">3</span>]);
                         <span class="kw">let </span>[&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;] = <span class="kw">super</span>::<span class="macro-nonterminal">$ds::new</span>(std::ops::Bound::Included([&lt;<span class="number">0 </span><span class="macro-nonterminal">$</span><span class="kw">type </span>&gt;]), <span class="macro-nonterminal">std::ops::Bound::Excluded</span>(number));
                         <span class="kw">let </span>result = [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;].deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
                         <span class="macro">assert!</span>(result.is_err());
                         <span class="kw">let </span>err = result.unwrap_err();
-                        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err), <span class="macro">concat!</span>(<span class="string">&quot;Parsing Error: Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization / Fail / Input: [3]\n&quot;</span>));
+                        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="macro">concat!</span>(<span class="string">"Parsing Error: Failed "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" deserialization / Fail / Input: [3]\n"</span>));
                     }
 
                     <span class="attr">#[<span class="macro-nonterminal">test</span>]
@@ -1272,7 +1272,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
                         <span class="kw">let </span>result = [&lt; <span class="macro-nonterminal">$</span><span class="kw">type </span><span class="macro-nonterminal">_deserializer </span>&gt;].deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
                         <span class="macro">assert!</span>(result.is_err());
                         <span class="kw">let </span>err = result.unwrap_err();
-                        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err), <span class="macro">concat!</span>(<span class="string">&quot;Parsing Error: Failed &quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">&quot; deserialization / Fail / Input: []\n&quot;</span>));
+                        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="macro">concat!</span>(<span class="string">"Parsing Error: Failed "</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="kw">type</span>), <span class="string">" deserialization / Fail / Input: []\n"</span>));
                     }
                 }
             )*
@@ -1296,8 +1296,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
         <span class="macro">assert_eq!</span>(
-            <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err),
-            <span class="string">&quot;Parsing Error: Failed u64 deserialization / Fail / Input: []\n&quot;
+            <span class="macro">format!</span>(<span class="string">"{}"</span>, err),
+            <span class="string">"Parsing Error: Failed u64 deserialization / Fail / Input: []\n"
         </span>);
     }
 
@@ -1307,8 +1307,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         option_serializer
             .serialize(<span class="kw-2">&amp;</span><span class="prelude-val">Some</span>(<span class="number">3u64</span>), <span class="kw-2">&amp;mut </span>buffer)
-            .expect(<span class="string">&quot;Failed to serialize Some(3)&quot;</span>);
-        <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="string">b&#39;1&#39;</span>, <span class="number">3</span>]);
+            .expect(<span class="string">"Failed to serialize Some(3)"</span>);
+        <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="string">b'1'</span>, <span class="number">3</span>]);
         <span class="kw">let </span>option_deserializer =
             <span class="kw">super</span>::OptionDeserializer::new(<span class="kw">super</span>::U64VarIntDeserializer::new(
                 std::ops::Bound::Included(<span class="number">0</span>),
@@ -1327,8 +1327,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         option_serializer
             .serialize(<span class="kw-2">&amp;</span><span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>buffer)
-            .expect(<span class="string">&quot;Failed to serialize None&quot;</span>);
-        <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="string">b&#39;0&#39;</span>]);
+            .expect(<span class="string">"Failed to serialize None"</span>);
+        <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="string">b'0'</span>]);
         <span class="kw">let </span>option_deserializer =
             <span class="kw">super</span>::OptionDeserializer::new(<span class="kw">super</span>::U64VarIntDeserializer::new(
                 std::ops::Bound::Included(<span class="number">0</span>),
@@ -1352,7 +1352,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span>result = option_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
-        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err), <span class="string">&quot;Parsing Error: Option&lt;_&gt; deserializer failed / Alternative / Some(_) / Tag / Input: [2]\n&quot;</span>);
+        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="string">"Parsing Error: Option&lt;_&gt; deserializer failed / Alternative / Some(_) / Tag / Input: [2]\n"</span>);
     }
 
     <span class="attr">#[test]
@@ -1366,7 +1366,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span>result = option_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
-        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err), <span class="string">&quot;Parsing Error: Option&lt;_&gt; deserializer failed / Alternative / Some(_) / Tag / Input: []\n&quot;</span>);
+        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="string">"Parsing Error: Option&lt;_&gt; deserializer failed / Alternative / Some(_) / Tag / Input: []\n"</span>);
     }
 
     <span class="attr">#[test]
@@ -1375,7 +1375,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         bool_serializer
             .serialize(<span class="kw-2">&amp;</span><span class="bool-val">true</span>, <span class="kw-2">&amp;mut </span>buffer)
-            .expect(<span class="string">&quot;Failed to serialize true&quot;</span>);
+            .expect(<span class="string">"Failed to serialize true"</span>);
         <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="number">1</span>]);
         <span class="kw">let </span>bool_deserializer = <span class="kw">super</span>::BoolDeserializer::new();
         <span class="kw">let </span>result = bool_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
@@ -1393,8 +1393,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
         <span class="macro">assert_eq!</span>(
-            <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err),
-            <span class="string">&quot;Parsing Error: Failed bool deserialization / Fail / Input: [2]\n&quot;
+            <span class="macro">format!</span>(<span class="string">"{}"</span>, err),
+            <span class="string">"Parsing Error: Failed bool deserialization / Fail / Input: [2]\n"
         </span>);
     }
 
@@ -1406,8 +1406,8 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
         <span class="macro">assert_eq!</span>(
-            <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err),
-            <span class="string">&quot;Parsing Error: Failed bool deserialization / Fail / Input: []\n&quot;
+            <span class="macro">format!</span>(<span class="string">"{}"</span>, err),
+            <span class="string">"Parsing Error: Failed bool deserialization / Fail / Input: []\n"
         </span>);
     }
 
@@ -1417,7 +1417,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         ratio_serializer
             .serialize(<span class="kw-2">&amp;</span>Ratio::new(<span class="number">3u64</span>, <span class="number">4u64</span>), <span class="kw-2">&amp;mut </span>buffer)
-            .expect(<span class="string">&quot;Failed to serialize Ratio(3, 4)&quot;</span>);
+            .expect(<span class="string">"Failed to serialize Ratio(3, 4)"</span>);
         <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="number">3</span>, <span class="number">4</span>]);
         <span class="kw">let </span>ratio_deserializer = <span class="kw">super</span>::RatioDeserializer::new(<span class="kw">super</span>::U64VarIntDeserializer::new(
             std::ops::Bound::Included(<span class="number">0</span>),
@@ -1436,7 +1436,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span><span class="kw-2">mut </span>buffer = Vec::new();
         ratio_serializer
             .serialize(<span class="kw-2">&amp;</span>Ratio::new(<span class="number">3u64</span>, <span class="number">4u64</span>), <span class="kw-2">&amp;mut </span>buffer)
-            .expect(<span class="string">&quot;Failed to serialize Ratio(3, 4)&quot;</span>);
+            .expect(<span class="string">"Failed to serialize Ratio(3, 4)"</span>);
         <span class="macro">assert_eq!</span>(buffer, <span class="macro">vec!</span>[<span class="number">3</span>, <span class="number">4</span>]);
         <span class="kw">let </span>ratio_deserializer = <span class="kw">super</span>::RatioDeserializer::new(<span class="kw">super</span>::U64VarIntDeserializer::new(
             std::ops::Bound::Included(<span class="number">0</span>),
@@ -1445,7 +1445,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
         <span class="kw">let </span>result = ratio_deserializer.deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>buffer);
         <span class="macro">assert!</span>(result.is_err());
         <span class="kw">let </span>err = result.unwrap_err();
-        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err), <span class="string">&quot;Parsing Error: Ratio&lt;_&gt; deserializer failed / denom deser failed / Failed u64 deserialization / Fail / Input: [4]\n&quot;</span>);
+        <span class="macro">assert_eq!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err), <span class="string">"Parsing Error: Ratio&lt;_&gt; deserializer failed / denom deser failed / Failed u64 deserialization / Fail / Input: [4]\n"</span>);
     }
 }
 </code></pre></div></section></main></body></html>

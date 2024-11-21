@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-signature/src/signature_impl.rs`."><title>signature_impl.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_signature" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_signature/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-signature/src/signature_impl.rs`."><title>signature_impl.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_signature" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1356,7 +1356,7 @@
 
 <span class="attr">#[allow(missing_docs)]
 </span><span class="doccomment">/// versioned KeyPair used for signature and decryption
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+</span><span class="attr">#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(Clone)]
 </span><span class="kw">pub struct </span>KeyPair(ed25519_dalek::SigningKey);
 
@@ -1370,11 +1370,11 @@
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>KeyPair {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
-<span class="kw">const </span>SECRET_PREFIX: char = <span class="string">&#39;S&#39;</span>;
+<span class="kw">const </span>SECRET_PREFIX: char = <span class="string">'S'</span>;
 
 <span class="kw">impl </span>FromStr <span class="kw">for </span>KeyPair {
     <span class="kw">type </span><span class="prelude-val">Err </span>= MassaSignatureError;
@@ -1399,12 +1399,12 @@
                         .with_check(<span class="prelude-val">None</span>)
                         .into_vec()
                         .map_err(|<span class="kw">_</span>| {
-                            MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">&quot;bad secret key bs58: {}&quot;</span>, s))
+                            MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">"bad secret key bs58: {}"</span>, s))
                         })<span class="question-mark">?</span>;
                 KeyPair::from_bytes(<span class="kw-2">&amp;</span>decoded_bs58_check)
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::ParsingError(<span class="macro">format!</span>(
-                <span class="string">&quot;bad secret prefix for: {}&quot;</span>,
+                <span class="string">"bad secret prefix for: {}"</span>,
                 s
             ))),
         }
@@ -1427,15 +1427,15 @@
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
     </span><span class="kw">pub fn </span>generate(version: u64) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MassaSignatureError&gt; {
         <span class="kw">match </span>version {
-            &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::generate())),
+            &lt;<span class="macro">KeyPair!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">"0"</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">"0"</span>]&gt;::generate())),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
-                <span class="string">&quot;KeyPair version {} doesn&#39;t exist.&quot;</span>,
+                <span class="string">"KeyPair version {} doesn't exist."</span>,
                 version
             ))),
         }
@@ -1449,7 +1449,7 @@
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     /// ```
     </span><span class="kw">pub fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, MassaSignatureError&gt; {
@@ -1509,30 +1509,30 @@
             .deserialize::&lt;DeserializeError&gt;(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))<span class="question-mark">?</span>;
         <span class="kw">match </span>version {
-            &lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            &lt;<span class="macro">KeyPair!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">KeyPairVariant!</span>[<span class="string">"0"</span>](&lt;<span class="macro">KeyPair!</span>[<span class="string">"0"</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
-                <span class="string">&quot;Unknown keypair version: {}&quot;</span>,
+                <span class="string">"Unknown keypair version: {}"</span>,
                 version
             ))),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>KeyPair {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="string">"{}{}"</span>,
             SECRET_PREFIX,
             bs58::encode(<span class="self">self</span>.to_bytes()).with_check().into_string()
         )
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"KeyPair"</span>))]
 </span><span class="kw">impl </span>KeyPair {
     <span class="kw">pub const </span>SECRET_KEY_BYTES_SIZE: usize = ed25519_dalek::SECRET_KEY_LENGTH;
 
@@ -1566,7 +1566,7 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;KeyPair&quot;</span>, <span class="string">&quot;Signature&quot;</span>, <span class="string">&quot;PublicKey&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"KeyPair"</span>, <span class="string">"Signature"</span>, <span class="string">"PublicKey"</span>))]
 </span><span class="kw">impl </span>KeyPair {
     <span class="doccomment">/// Returns the Signature produced by signing
     /// data bytes with a `KeyPair`.
@@ -1576,7 +1576,7 @@
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     /// ```
     </span><span class="kw">pub fn </span>sign(<span class="kw-2">&amp;</span><span class="self">self</span>, hash: <span class="kw-2">&amp;</span>Hash) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, MassaSignatureError&gt; {
@@ -1602,7 +1602,7 @@
     /// # use massa_signature::KeyPair;
     /// # use massa_hash::Hash;
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -1626,7 +1626,7 @@
     </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, MassaSignatureError&gt; {
         <span class="kw">if </span>data.len() &lt; <span class="self">Self</span>::SECRET_KEY_BYTES_SIZE {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaSignatureError::ParsingError(
-                <span class="string">&quot;keypair byte array is of invalid size&quot;</span>.to_string(),
+                <span class="string">"keypair byte array is of invalid size"</span>.to_string(),
             ));
         }
 
@@ -1653,15 +1653,15 @@
     /// ```
     ///
     </span><span class="kw">fn </span>serialize&lt;S: ::serde::Serializer&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, s: S) -&gt; <span class="prelude-ty">Result</span>&lt;S::Ok, S::Error&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>keypair_serializer = s.serialize_struct(<span class="string">&quot;keypair&quot;</span>, <span class="number">2</span>)<span class="question-mark">?</span>;
-        keypair_serializer.serialize_field(<span class="string">&quot;secret_key&quot;</span>, <span class="kw-2">&amp;</span>Cow::from(<span class="self">self</span>.to_string()))<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>keypair_serializer = s.serialize_struct(<span class="string">"keypair"</span>, <span class="number">2</span>)<span class="question-mark">?</span>;
+        keypair_serializer.serialize_field(<span class="string">"secret_key"</span>, <span class="kw-2">&amp;</span>Cow::from(<span class="self">self</span>.to_string()))<span class="question-mark">?</span>;
         keypair_serializer
-            .serialize_field(<span class="string">&quot;public_key&quot;</span>, <span class="kw-2">&amp;</span>Cow::from(<span class="self">self</span>.get_public_key().to_string()))<span class="question-mark">?</span>;
+            .serialize_field(<span class="string">"public_key"</span>, <span class="kw-2">&amp;</span>Cow::from(<span class="self">self</span>.get_public_key().to_string()))<span class="question-mark">?</span>;
         keypair_serializer.end()
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>KeyPair {
+<span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>KeyPair {
     <span class="doccomment">/// `::serde::Deserialize` trait for `KeyPair`
     /// if the deserializer is human readable,
     /// deserialization is done using `deserialize_bs58_check`
@@ -1678,24 +1678,24 @@
     /// let deserialized: KeyPair = serde_json::from_str(&amp;serialized).unwrap();
     /// ```
     ///
-    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPair, D::Error&gt; {
+    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">'de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPair, D::Error&gt; {
         <span class="kw">enum </span>Field {
             SecretKey,
             PublicKey,
         }
 
-        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Field {
+        <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; Deserialize&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>Field {
             <span class="kw">fn </span>deserialize&lt;D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;Field, D::Error&gt;
             <span class="kw">where
-                </span>D: serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
+                </span>D: serde::Deserializer&lt;<span class="lifetime">'de</span>&gt;,
             {
                 <span class="kw">struct </span>FieldVisitor;
 
-                <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>FieldVisitor {
+                <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>FieldVisitor {
                     <span class="kw">type </span>Value = Field;
 
                     <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                        formatter.write_str(<span class="string">&quot;`secret_key` or `public_key`&quot;</span>)
+                        formatter.write_str(<span class="string">"`secret_key` or `public_key`"</span>)
                     }
 
                     <span class="kw">fn </span>visit_str&lt;E&gt;(<span class="self">self</span>, value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Field, E&gt;
@@ -1703,8 +1703,8 @@
                         </span>E: serde::de::Error,
                     {
                         <span class="kw">match </span>value {
-                            <span class="string">&quot;secret_key&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::SecretKey),
-                            <span class="string">&quot;public_key&quot; </span>=&gt; <span class="prelude-val">Ok</span>(Field::PublicKey),
+                            <span class="string">"secret_key" </span>=&gt; <span class="prelude-val">Ok</span>(Field::SecretKey),
+                            <span class="string">"public_key" </span>=&gt; <span class="prelude-val">Ok</span>(Field::PublicKey),
                             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(serde::de::Error::unknown_field(value, FIELDS)),
                         }
                     }
@@ -1716,16 +1716,16 @@
 
         <span class="kw">struct </span>KeyPairVisitor;
 
-        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>KeyPairVisitor {
+        <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>KeyPairVisitor {
             <span class="kw">type </span>Value = KeyPair;
 
             <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                formatter.write_str(<span class="string">&quot;{&#39;secret_key&#39;: &#39;xxx&#39;, &#39;public_key&#39;: &#39;xxx&#39;}&quot;</span>)
+                formatter.write_str(<span class="string">"{'secret_key': 'xxx', 'public_key': 'xxx'}"</span>)
             }
 
             <span class="kw">fn </span>visit_seq&lt;V&gt;(<span class="self">self</span>, <span class="kw-2">mut </span>seq: V) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPair, V::Error&gt;
             <span class="kw">where
-                </span>V: SeqAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
+                </span>V: SeqAccess&lt;<span class="lifetime">'de</span>&gt;,
             {
                 <span class="kw">let </span>secret: Cow&lt;str&gt; = seq
                     .next_element()<span class="question-mark">?
@@ -1738,7 +1738,7 @@
 
             <span class="kw">fn </span>visit_map&lt;V&gt;(<span class="self">self</span>, <span class="kw-2">mut </span>map: V) -&gt; <span class="prelude-ty">Result</span>&lt;KeyPair, V::Error&gt;
             <span class="kw">where
-                </span>V: MapAccess&lt;<span class="lifetime">&#39;de</span>&gt;,
+                </span>V: MapAccess&lt;<span class="lifetime">'de</span>&gt;,
             {
                 <span class="kw">let </span><span class="kw-2">mut </span>secret = <span class="prelude-val">None</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>public = <span class="prelude-val">None</span>;
@@ -1746,28 +1746,28 @@
                     <span class="kw">match </span>key {
                         Field::SecretKey =&gt; {
                             <span class="kw">if </span>secret.is_some() {
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(serde::de::Error::duplicate_field(<span class="string">&quot;secret&quot;</span>));
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(serde::de::Error::duplicate_field(<span class="string">"secret"</span>));
                             }
                             secret = <span class="prelude-val">Some</span>(map.next_value()<span class="question-mark">?</span>);
                         }
                         Field::PublicKey =&gt; {
                             <span class="kw">if </span>public.is_some() {
-                                <span class="kw">return </span><span class="prelude-val">Err</span>(serde::de::Error::duplicate_field(<span class="string">&quot;public&quot;</span>));
+                                <span class="kw">return </span><span class="prelude-val">Err</span>(serde::de::Error::duplicate_field(<span class="string">"public"</span>));
                             }
                             public = <span class="prelude-val">Some</span>(map.next_value()<span class="question-mark">?</span>);
                         }
                     }
                 }
                 <span class="kw">let </span>secret: Cow&lt;str&gt; =
-                    secret.ok_or_else(|| serde::de::Error::missing_field(<span class="string">&quot;secret&quot;</span>))<span class="question-mark">?</span>;
+                    secret.ok_or_else(|| serde::de::Error::missing_field(<span class="string">"secret"</span>))<span class="question-mark">?</span>;
                 <span class="kw">let _</span>: Cow&lt;str&gt; =
-                    public.ok_or_else(|| serde::de::Error::missing_field(<span class="string">&quot;public&quot;</span>))<span class="question-mark">?</span>;
+                    public.ok_or_else(|| serde::de::Error::missing_field(<span class="string">"public"</span>))<span class="question-mark">?</span>;
                 KeyPair::from_str(<span class="kw-2">&amp;</span>secret).map_err(serde::de::Error::custom)
             }
         }
 
-        <span class="kw">const </span>FIELDS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = <span class="kw-2">&amp;</span>[<span class="string">&quot;secret_key&quot;</span>, <span class="string">&quot;public_key&quot;</span>];
-        d.deserialize_struct(<span class="string">&quot;KeyPair&quot;</span>, FIELDS, KeyPairVisitor)
+        <span class="kw">const </span>FIELDS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>str] = <span class="kw-2">&amp;</span>[<span class="string">"secret_key"</span>, <span class="string">"public_key"</span>];
+        d.deserialize_struct(<span class="string">"KeyPair"</span>, FIELDS, KeyPairVisitor)
     }
 }
 
@@ -1775,7 +1775,7 @@
 </span><span class="doccomment">/// Public key used to check if a message was encoded
 /// by the corresponding `PublicKey`.
 /// Generated from the `KeyPair` using `SignatureEngine`
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+</span><span class="attr">#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(Clone, Copy, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>PublicKey(ed25519_dalek::VerifyingKey);
 
@@ -1808,12 +1808,12 @@
     </span><span class="kw">use </span>std::collections::BTreeSet;
 
     <span class="kw">let </span>v0 = <span class="macro">vec!</span>[
-        PublicKey::from_str(<span class="string">&quot;P1wiuz54kR2kmvumCELcgxv1YVStCnPK8QQ6os2FNbGYwp188im&quot;</span>).unwrap(),
-        PublicKey::from_str(<span class="string">&quot;P12hzfgN14TCvAM3QgWvpPdHTKLUdqh2NzWqxkr2LAEG5hJmExr1&quot;</span>).unwrap(),
+        PublicKey::from_str(<span class="string">"P1wiuz54kR2kmvumCELcgxv1YVStCnPK8QQ6os2FNbGYwp188im"</span>).unwrap(),
+        PublicKey::from_str(<span class="string">"P12hzfgN14TCvAM3QgWvpPdHTKLUdqh2NzWqxkr2LAEG5hJmExr1"</span>).unwrap(),
     ];
     <span class="comment">// let v1 = vec![
-    //    PublicKey::from_str(&quot;P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d&quot;).unwrap(),
-    //    PublicKey::from_str(&quot;P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN&quot;).unwrap(),
+    //    PublicKey::from_str("P33GgHz13gmyTPfd1ntSWEr8WyQE6CoYj76EqwesX9VaRQDSc2d").unwrap(),
+    //    PublicKey::from_str("P4PSBj9N2trF4Dp3hvQ4CUojAH5HkRMkEFH9BXHAswRvwXsTaGN").unwrap(),
     //];
 
     </span><span class="kw">let </span><span class="kw-2">mut </span>map = BTreeSet::new();
@@ -1832,11 +1832,11 @@
 
 <span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
-<span class="kw">const </span>PUBLIC_PREFIX: char = <span class="string">&#39;P&#39;</span>;
+<span class="kw">const </span>PUBLIC_PREFIX: char = <span class="string">'P'</span>;
 
 <span class="kw">impl </span>FromStr <span class="kw">for </span>PublicKey {
     <span class="kw">type </span><span class="prelude-val">Err </span>= MassaSignatureError;
@@ -1861,12 +1861,12 @@
                         .with_check(<span class="prelude-val">None</span>)
                         .into_vec()
                         .map_err(|<span class="kw">_</span>| {
-                            MassaSignatureError::ParsingError(<span class="string">&quot;Bad public key bs58&quot;</span>.to_owned())
+                            MassaSignatureError::ParsingError(<span class="string">"Bad public key bs58"</span>.to_owned())
                         })<span class="question-mark">?</span>;
                 PublicKey::from_bytes(<span class="kw-2">&amp;</span>decoded_bs58_check)
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::ParsingError(
-                <span class="string">&quot;Bad public key prefix&quot;</span>.to_owned(),
+                <span class="string">"Bad public key prefix"</span>.to_owned(),
             )),
         }
     }
@@ -1927,18 +1927,18 @@
             .deserialize::&lt;DeserializeError&gt;(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))<span class="question-mark">?</span>;
         <span class="kw">match </span>version {
-            &lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">PublicKeyVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">PublicKey!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            &lt;<span class="macro">PublicKey!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">PublicKeyVariant!</span>[<span class="string">"0"</span>](&lt;<span class="macro">PublicKey!</span>[<span class="string">"0"</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
-                <span class="string">&quot;Unknown PublicKey version: {}&quot;</span>,
+                <span class="string">"Unknown PublicKey version: {}"</span>,
                 version
             ))),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 #[allow(clippy::derived_hash_with_manual_eq)]
 </span><span class="kw">impl </span>std::hash::Hash <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
@@ -1946,40 +1946,40 @@
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>PartialOrd <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
         <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="number">0</span>.to_bytes().cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes()))
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>Ord <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>PublicKey) -&gt; Ordering {
         <span class="self">self</span>.<span class="number">0</span>.to_bytes().cmp(<span class="kw-2">&amp;</span>other.<span class="number">0</span>.to_bytes())
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
         <span class="macro">write!</span>(
             f,
-            <span class="string">&quot;{}{}&quot;</span>,
+            <span class="string">"{}{}"</span>,
             PUBLIC_PREFIX,
             bs58::encode(<span class="self">self</span>.to_bytes()).with_check().into_string()
         )
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>PublicKey {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>)
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;PublicKey&quot;</span>, <span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"PublicKey"</span>, <span class="string">"Signature"</span>))]
 </span><span class="kw">impl </span>PublicKey {
     <span class="doccomment">/// Size of a public key
     </span><span class="kw">pub const </span>PUBLIC_KEY_SIZE_BYTES: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
@@ -1997,7 +1997,7 @@
         signature: <span class="kw-2">&amp;</span>Signature,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaSignatureError&gt; {
         <span class="self">self</span>.<span class="number">0</span>.verify(hash.to_bytes(), <span class="kw-2">&amp;</span>signature.<span class="number">0</span>).map_err(|err| {
-            MassaSignatureError::SignatureError(<span class="macro">format!</span>(<span class="string">&quot;Signature verification failed: {}&quot;</span>, err))
+            MassaSignatureError::SignatureError(<span class="macro">format!</span>(<span class="string">"Signature verification failed: {}"</span>, err))
         })
     }
 
@@ -2036,7 +2036,7 @@
     </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;PublicKey, MassaSignatureError&gt; {
         <span class="kw">if </span>data.len() &lt; <span class="self">Self</span>::PUBLIC_KEY_SIZE_BYTES {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaSignatureError::ParsingError(
-                <span class="string">&quot;public key byte array is of invalid size&quot;</span>.to_string(),
+                <span class="string">"public key byte array is of invalid size"</span>.to_string(),
             ));
         }
         ed25519_dalek::VerifyingKey::from_bytes(
@@ -2071,10 +2071,10 @@
     /// assert!(rest.is_empty());
     /// assert_eq!(keypair.get_public_key(), deser_public_key);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], PublicKey, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], PublicKey, E&gt; {
         <span class="kw">let </span>public_key = PublicKey::from_bytes(buffer).map_err(|<span class="kw">_</span>| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
@@ -2107,7 +2107,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>PublicKey {
+<span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>PublicKey {
     <span class="doccomment">/// `::serde::Deserialize` trait for `PublicKey`
     /// if the deserializer is human readable,
     /// deserialization is done using `deserialize_bs58_check`
@@ -2125,14 +2125,14 @@
     /// let deserialized: PublicKey = serde_json::from_str(&amp;serialized).unwrap();
     /// ```
     ///
-    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;PublicKey, D::Error&gt; {
+    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">'de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;PublicKey, D::Error&gt; {
         <span class="kw">struct </span>Base58CheckVisitor;
 
-        <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Base58CheckVisitor {
+        <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>Base58CheckVisitor {
             <span class="kw">type </span>Value = PublicKey;
 
             <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                formatter.write_str(<span class="string">&quot;an ASCII base58check string&quot;</span>)
+                formatter.write_str(<span class="string">"an ASCII base58check string"</span>)
             }
 
             <span class="kw">fn </span>visit_bytes&lt;E&gt;(<span class="self">self</span>, v: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
@@ -2159,11 +2159,11 @@
 
 <span class="attr">#[allow(missing_docs)]
 </span><span class="doccomment">/// Signature generated from a message and a `KeyPair`.
-</span><span class="attr">#[transition::versioned(versions(<span class="string">&quot;0&quot;</span>))]
+</span><span class="attr">#[transition::versioned(versions(<span class="string">"0"</span>))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 </span><span class="kw">pub struct </span>Signature(ed25519_dalek::Signature);
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"Signature"</span>))]
 </span><span class="kw">impl </span>Signature {
     <span class="doccomment">/// Size of a signature
     </span><span class="kw">pub const </span>SIGNATURE_SIZE_BYTES: usize = ed25519_dalek::SIGNATURE_LENGTH;
@@ -2186,7 +2186,7 @@
     /// # use massa_hash::Hash;
     /// # use std::str::FromStr;
     ///
-    /// let hash = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let hash = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = KeyPair::generate(0).unwrap().sign(&amp;hash).unwrap();
     /// let string = signature.to_string();
     /// let signature_2 = Signature::from_str(&amp;string).unwrap();
@@ -2197,7 +2197,7 @@
         <span class="kw">let </span>decoded_bs58_check = bs58::decode(data)
             .with_check(<span class="prelude-val">None</span>)
             .into_vec()
-            .map_err(|<span class="kw">_</span>| MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">&quot;bad signature bs58: {}&quot;</span>, s)))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| MassaSignatureError::ParsingError(<span class="macro">format!</span>(<span class="string">"bad signature bs58: {}"</span>, s)))<span class="question-mark">?</span>;
         Signature::from_bytes(<span class="kw-2">&amp;</span>decoded_bs58_check)
     }
 }
@@ -2211,7 +2211,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -2230,7 +2230,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -2242,7 +2242,7 @@
             .into_vec()
             .map_err(|err| {
                 MassaSignatureError::ParsingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;signature bs58_check parsing error: {}&quot;</span>,
+                    <span class="string">"signature bs58_check parsing error: {}"</span>,
                     err
                 ))
             })
@@ -2264,7 +2264,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -2283,7 +2283,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -2295,25 +2295,25 @@
             .deserialize::&lt;DeserializeError&gt;(data)
             .map_err(|err| MassaSignatureError::ParsingError(err.to_string()))<span class="question-mark">?</span>;
         <span class="kw">match </span>version {
-            &lt;<span class="macro">Signature!</span>[<span class="string">&quot;0&quot;</span>]&gt;::VERSION =&gt; {
-                <span class="prelude-val">Ok</span>(<span class="macro">SignatureVariant!</span>[<span class="string">&quot;0&quot;</span>](&lt;<span class="macro">Signature!</span>[<span class="string">&quot;0&quot;</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
+            &lt;<span class="macro">Signature!</span>[<span class="string">"0"</span>]&gt;::VERSION =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="macro">SignatureVariant!</span>[<span class="string">"0"</span>](&lt;<span class="macro">Signature!</span>[<span class="string">"0"</span>]&gt;::from_bytes(rest)<span class="question-mark">?</span>))
             }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(MassaSignatureError::InvalidVersionError(<span class="macro">format!</span>(
-                <span class="string">&quot;Unknown signature version: {}&quot;</span>,
+                <span class="string">"Unknown signature version: {}"</span>,
                 version
             ))),
         }
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>))]
 </span><span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>Signature {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-        <span class="macro">write!</span>(f, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.to_bs58_check())
+        <span class="macro">write!</span>(f, <span class="string">"{}"</span>, <span class="self">self</span>.to_bs58_check())
     }
 }
 
-<span class="attr">#[transition::impl_version(versions(<span class="string">&quot;0&quot;</span>), structures(<span class="string">&quot;Signature&quot;</span>))]
+<span class="attr">#[transition::impl_version(versions(<span class="string">"0"</span>), structures(<span class="string">"Signature"</span>))]
 </span><span class="kw">impl </span>Signature {
     <span class="doccomment">/// Serialize a `Signature` using `bs58` encoding with checksum.
     ///
@@ -2323,7 +2323,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -2345,7 +2345,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -2371,7 +2371,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized = signature.to_bytes();
@@ -2380,7 +2380,7 @@
     </span><span class="kw">pub fn </span>from_bytes(data: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, MassaSignatureError&gt; {
         <span class="kw">if </span>data.len() &lt; <span class="self">Self</span>::SIGNATURE_SIZE_BYTES {
             <span class="kw">return </span><span class="prelude-val">Err</span>(MassaSignatureError::ParsingError(
-                <span class="string">&quot;signature byte array is of invalid size&quot;</span>.to_string(),
+                <span class="string">"signature byte array is of invalid size"</span>.to_string(),
             ));
         }
         <span class="prelude-val">Ok</span>(Signature(ed25519_dalek::Signature::from_bytes(
@@ -2396,7 +2396,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = signature.to_bs58_check();
@@ -2408,7 +2408,7 @@
             .into_vec()
             .map_err(|err| {
                 MassaSignatureError::ParsingError(<span class="macro">format!</span>(
-                    <span class="string">&quot;signature bs58_check parsing error: {}&quot;</span>,
+                    <span class="string">"signature bs58_check parsing error: {}"</span>,
                     err
                 ))
             })
@@ -2430,7 +2430,7 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized: String = serde_json::to_string(&amp;signature).unwrap();
@@ -2445,7 +2445,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>Signature {
+<span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::Deserialize&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>Signature {
     <span class="doccomment">/// `::serde::Deserialize` trait for `Signature`
     /// if the deserializer is human readable,
     /// deserialization is done using `from_bs58_check`
@@ -2459,22 +2459,22 @@
     /// # use massa_hash::Hash;
     /// # use serde::{Deserialize, Serialize};
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     ///
     /// let serialized = serde_json::to_string(&amp;signature).unwrap();
     /// let deserialized: Signature = serde_json::from_str(&amp;serialized).unwrap();
     /// ```
     ///
-    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, D::Error&gt; {
+    </span><span class="kw">fn </span>deserialize&lt;D: ::serde::Deserializer&lt;<span class="lifetime">'de</span>&gt;&gt;(d: D) -&gt; <span class="prelude-ty">Result</span>&lt;Signature, D::Error&gt; {
         <span class="kw">if </span>d.is_human_readable() {
             <span class="kw">struct </span>SignatureVisitor;
 
-            <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>SignatureVisitor {
+            <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>SignatureVisitor {
                 <span class="kw">type </span>Value = Signature;
 
                 <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                    formatter.write_str(<span class="string">&quot;an ASCII base58check string&quot;</span>)
+                    formatter.write_str(<span class="string">"an ASCII base58check string"</span>)
                 }
 
                 <span class="kw">fn </span>visit_bytes&lt;E&gt;(<span class="self">self</span>, v: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
@@ -2499,11 +2499,11 @@
         } <span class="kw">else </span>{
             <span class="kw">struct </span>BytesVisitor;
 
-            <span class="kw">impl</span>&lt;<span class="lifetime">&#39;de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">&#39;de</span>&gt; <span class="kw">for </span>BytesVisitor {
+            <span class="kw">impl</span>&lt;<span class="lifetime">'de</span>&gt; ::serde::de::Visitor&lt;<span class="lifetime">'de</span>&gt; <span class="kw">for </span>BytesVisitor {
                 <span class="kw">type </span>Value = Signature;
 
                 <span class="kw">fn </span>expecting(<span class="kw-2">&amp;</span><span class="self">self</span>, formatter: <span class="kw-2">&amp;mut </span>std::fmt::Formatter) -&gt; std::fmt::Result {
-                    formatter.write_str(<span class="string">&quot;a bytestring&quot;</span>)
+                    formatter.write_str(<span class="string">"a bytestring"</span>)
                 }
 
                 <span class="kw">fn </span>visit_bytes&lt;E&gt;(<span class="self">self</span>, v: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Value, E&gt;
@@ -2537,17 +2537,17 @@
     /// use massa_hash::Hash;
     ///
     /// let keypair = KeyPair::generate(0).unwrap();
-    /// let data = Hash::compute_from(&quot;Hello World!&quot;.as_bytes());
+    /// let data = Hash::compute_from("Hello World!".as_bytes());
     /// let signature = keypair.sign(&amp;data).unwrap();
     /// let serialized = signature.to_bytes();
     /// let (rest, deser_signature) = SignatureDeserializer::new().deserialize::&lt;DeserializeError&gt;(&amp;serialized).unwrap();
     /// assert!(rest.is_empty());
     /// assert_eq!(signature, deser_signature);
     /// ```
-    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">&#39;a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8]&gt;&gt;(
+    </span><span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        buffer: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8],
-    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[u8], Signature, E&gt; {
+        buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
+    ) -&gt; IResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8], Signature, E&gt; {
         <span class="kw">let </span>signature = Signature::from_bytes(buffer).map_err(|<span class="kw">_</span>| {
             nom::Err::Error(ParseError::from_error_kind(
                 buffer,
@@ -2592,7 +2592,7 @@
     ed25519_dalek::verify_batch(<span class="kw-2">&amp;</span>hashes, signatures.as_slice(), public_keys.as_slice()).map_err(
         |err| {
             MassaSignatureError::SignatureError(<span class="macro">format!</span>(
-                <span class="string">&quot;Batch signature verification failed: {}&quot;</span>,
+                <span class="string">"Batch signature verification failed: {}"</span>,
                 err
             ))
         },
@@ -2609,7 +2609,7 @@
     #[serial]
     </span><span class="kw">fn </span>test_example() {
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
-        <span class="kw">let </span>message = <span class="string">&quot;Hello World!&quot;</span>.as_bytes();
+        <span class="kw">let </span>message = <span class="string">"Hello World!"</span>.as_bytes();
         <span class="kw">let </span>hash = Hash::compute_from(message);
         <span class="kw">let </span>signature = keypair.sign(<span class="kw-2">&amp;</span>hash).unwrap();
         <span class="macro">assert!</span>(keypair
@@ -2622,9 +2622,9 @@
     #[serial]
     </span><span class="kw">fn </span>test_serde_keypair() {
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
-        <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>keypair).expect(<span class="string">&quot;could not serialize keypair&quot;</span>);
+        <span class="kw">let </span>serialized = serde_json::to_string(<span class="kw-2">&amp;</span>keypair).expect(<span class="string">"could not serialize keypair"</span>);
         <span class="kw">let </span>deserialized: KeyPair =
-            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">&quot;could not deserialize keypair&quot;</span>);
+            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">"could not deserialize keypair"</span>);
 
         <span class="kw">match </span>(keypair, deserialized) {
             (KeyPair::KeyPairV0(keypair), KeyPair::KeyPairV0(deserialized)) =&gt; {
@@ -2642,9 +2642,9 @@
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
         <span class="kw">let </span>public_key = keypair.get_public_key();
         <span class="kw">let </span>serialized =
-            serde_json::to_string(<span class="kw-2">&amp;</span>public_key).expect(<span class="string">&quot;Could not serialize public key&quot;</span>);
+            serde_json::to_string(<span class="kw-2">&amp;</span>public_key).expect(<span class="string">"Could not serialize public key"</span>);
         <span class="kw">let </span>deserialized =
-            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">&quot;could not deserialize public key&quot;</span>);
+            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">"could not deserialize public key"</span>);
         <span class="macro">assert_eq!</span>(public_key, deserialized);
     }
 
@@ -2652,13 +2652,13 @@
     #[serial]
     </span><span class="kw">fn </span>test_serde_signature() {
         <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
-        <span class="kw">let </span>message = <span class="string">&quot;Hello World!&quot;</span>.as_bytes();
+        <span class="kw">let </span>message = <span class="string">"Hello World!"</span>.as_bytes();
         <span class="kw">let </span>hash = Hash::compute_from(message);
         <span class="kw">let </span>signature = keypair.sign(<span class="kw-2">&amp;</span>hash).unwrap();
         <span class="kw">let </span>serialized =
-            serde_json::to_string(<span class="kw-2">&amp;</span>signature).expect(<span class="string">&quot;could not serialize signature key&quot;</span>);
+            serde_json::to_string(<span class="kw-2">&amp;</span>signature).expect(<span class="string">"could not serialize signature key"</span>);
         <span class="kw">let </span>deserialized =
-            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">&quot;could not deserialize signature key&quot;</span>);
+            serde_json::from_str(<span class="kw-2">&amp;</span>serialized).expect(<span class="string">"could not deserialize signature key"</span>);
         <span class="macro">assert_eq!</span>(signature, deserialized);
     }
 }

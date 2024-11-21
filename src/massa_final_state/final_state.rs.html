@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><title>final_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fa3bb1812debf86c.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_final_state" data-themes="" data-resource-suffix="" data-rustdoc-version="1.74.1 (a28077b28 2023-12-04)" data-channel="1.74.1" data-search-js="search-8be46b629f5f14a8.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-c5bd66d33317d69f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../massa_final_state/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `massa-final-state/src/final_state.rs`."><title>final_state.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c5d6553a23f1e5a6.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="massa_final_state" data-themes="" data-resource-suffix="" data-rustdoc-version="1.81.0 (eeb90cda1 2024-09-04)" data-channel="1.81.0" data-search-js="search-d234aafac6c221dd.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-d2fab2bf619172d3.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-df360f571f6edeae.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1402,7 +1402,7 @@
         <span class="kw">let </span>db_slot = db
             .read()
             .get_change_id()
-            .map_err(|<span class="kw">_</span>| FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>)))<span class="question-mark">?</span>;
+            .map_err(|<span class="kw">_</span>| FinalStateError::InvalidSlot(String::from(<span class="string">"Could not get slot in db"</span>)))<span class="question-mark">?</span>;
 
         <span class="comment">// create the pos state
         </span><span class="kw">let </span>pos_state = PoSFinalState::new(
@@ -1412,7 +1412,7 @@
             selector,
             db.clone(),
         )
-        .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;PoS final state init error: {}&quot;</span>, err)))<span class="question-mark">?</span>;
+        .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">"PoS final state init error: {}"</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// attach at the output of the latest initial final slot, that is the last genesis slot
         </span><span class="kw">let </span>slot = <span class="kw">if </span>reset_final_state {
@@ -1458,7 +1458,7 @@
         }
 
         <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            <span class="string">"final_state hash at slot {}: {}"</span>,
             slot,
             final_state.db.read().get_xof_db_hash()
         );
@@ -1472,7 +1472,7 @@
     </span><span class="kw">fn </span>interpolate_downtime(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>current_slot =
             <span class="self">self</span>.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
-                FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>))
+                FinalStateError::InvalidSlot(String::from(<span class="string">"Could not get slot in db"</span>))
             })<span class="question-mark">?</span>;
         <span class="kw">let </span>current_slot_cycle = current_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
 
@@ -1483,7 +1483,7 @@
         <span class="kw">let </span>end_slot_cycle = end_slot.get_cycle(<span class="self">self</span>.config.periods_per_cycle);
 
         <span class="macro">debug!</span>(
-            <span class="string">&quot;Interpolating downtime between slots {} and {}&quot;</span>,
+            <span class="string">"Interpolating downtime between slots {} and {}"</span>,
             current_slot, end_slot
         );
 
@@ -1504,7 +1504,7 @@
         </span><span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
 
         <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            <span class="string">"final_state hash at slot {}: {}"</span>,
             end_slot, final_state_hash
         );
 
@@ -1525,14 +1525,14 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
             FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
+                <span class="string">"Impossible to interpolate the downtime: no cycle in the given snapshot"</span>,
             )),
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self
             </span>.pos_state
             .get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>)
-            .ok_or_else(|| FinalStateError::SnapshotError(String::from(<span class="string">&quot;Missing cycle info&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from(<span class="string">"Missing cycle info"</span>)))<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
@@ -1540,7 +1540,7 @@
             .cycle_history_cache
             .pop_back()
             .ok_or(FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
+                <span class="string">"Impossible to interpolate the downtime: no cycle in the given snapshot"</span>,
             )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
@@ -1557,11 +1557,11 @@
                 <span class="kw-2">&amp;</span>latest_snapshot_cycle_info,
                 current_slot
                     .get_next_slot(<span class="self">self</span>.config.thread_count)
-                    .expect(<span class="string">&quot;Cannot get next slot&quot;</span>),
+                    .expect(<span class="string">"Cannot get next slot"</span>),
                 end_slot,
                 <span class="kw-2">&amp;mut </span>batch,
             )
-            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
         <span class="self">self</span>.pos_state
             .db
@@ -1581,14 +1581,14 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), FinalStateError&gt; {
         <span class="kw">let </span>latest_snapshot_cycle = <span class="self">self</span>.pos_state.cycle_history_cache.back().cloned().ok_or(
             FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
+                <span class="string">"Impossible to interpolate the downtime: no cycle in the given snapshot"</span>,
             )),
         )<span class="question-mark">?</span>;
 
         <span class="kw">let </span>latest_snapshot_cycle_info = <span class="self">self
             </span>.pos_state
             .get_cycle_info(latest_snapshot_cycle.<span class="number">0</span>)
-            .ok_or_else(|| FinalStateError::SnapshotError(String::from(<span class="string">&quot;Missing cycle info&quot;</span>)))<span class="question-mark">?</span>;
+            .ok_or_else(|| FinalStateError::SnapshotError(String::from(<span class="string">"Missing cycle info"</span>)))<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
@@ -1596,7 +1596,7 @@
             .cycle_history_cache
             .pop_back()
             .ok_or(FinalStateError::SnapshotError(String::from(
-                <span class="string">&quot;Impossible to interpolate the downtime: no cycle in the given snapshot&quot;</span>,
+                <span class="string">"Impossible to interpolate the downtime: no cycle in the given snapshot"</span>,
             )))<span class="question-mark">?</span>;
         <span class="self">self</span>.pos_state
             .delete_cycle_info(latest_snapshot_cycle.<span class="number">0</span>, <span class="kw-2">&amp;mut </span>batch);
@@ -1614,7 +1614,7 @@
         )
         .map_err(|err| {
             FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                <span class="string">"Cannot create slot for interpolating downtime: {}"</span>,
                 err
             ))
         })<span class="question-mark">?</span>;
@@ -1626,11 +1626,11 @@
                 <span class="kw-2">&amp;</span>latest_snapshot_cycle_info,
                 current_slot
                     .get_next_slot(<span class="self">self</span>.config.thread_count)
-                    .expect(<span class="string">&quot;Cannot get next slot&quot;</span>),
+                    .expect(<span class="string">"Cannot get next slot"</span>),
                 last_slot,
                 <span class="kw-2">&amp;mut </span>batch,
             )
-            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
         <span class="self">self</span>.pos_state
             .db
@@ -1650,7 +1650,7 @@
             <span class="kw">let </span>first_slot = Slot::new_first_of_cycle(cycle, <span class="self">self</span>.config.periods_per_cycle)
                 .map_err(|err| {
                     FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                        <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                        <span class="string">"Cannot create slot for interpolating downtime: {}"</span>,
                         err
                     ))
                 })<span class="question-mark">?</span>;
@@ -1662,7 +1662,7 @@
             )
             .map_err(|err| {
                 FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                    <span class="string">"Cannot create slot for interpolating downtime: {}"</span>,
                     err
                 ))
             })<span class="question-mark">?</span>;
@@ -1676,7 +1676,7 @@
                     last_slot,
                     <span class="kw-2">&amp;mut </span>batch,
                 )
-                .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+                .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
             <span class="self">self</span>.pos_state
                 .db
@@ -1691,7 +1691,7 @@
         </span><span class="kw">let </span>first_slot = Slot::new_first_of_cycle(end_slot_cycle, <span class="self">self</span>.config.periods_per_cycle)
             .map_err(|err| {
                 FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Cannot create slot for interpolating downtime: {}&quot;</span>,
+                    <span class="string">"Cannot create slot for interpolating downtime: {}"</span>,
                     err
                 ))
             })<span class="question-mark">?</span>;
@@ -1705,7 +1705,7 @@
                 end_slot,
                 <span class="kw-2">&amp;mut </span>batch,
             )
-            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, err)))<span class="question-mark">?</span>;
+            .map_err(|err| FinalStateError::PosError(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
 
         <span class="comment">// If the end_slot_cycle is completed
         </span><span class="kw">if </span>end_slot.is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count) {
@@ -1740,10 +1740,10 @@
 
         <span class="self">self</span>.pos_state
             .feed_selector(cycle.checked_add(<span class="number">2</span>).ok_or_else(|| {
-                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+                FinalStateError::PosError(<span class="string">"cycle overflow when feeding selector"</span>.into())
             })<span class="question-mark">?</span>)
             .map_err(|<span class="kw">_</span>| {
-                FinalStateError::PosError(<span class="string">&quot;cycle overflow when feeding selector&quot;</span>.into())
+                FinalStateError::PosError(<span class="string">"cycle overflow when feeding selector"</span>.into())
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -1753,11 +1753,11 @@
         <span class="comment">// check slot consistency
         </span><span class="kw">let </span>next_slot = cur_slot.get_next_slot(<span class="self">self</span>.config.thread_count)<span class="question-mark">?</span>;
 
-        <span class="comment">// .expect(&quot;overflow in execution state slot&quot;);
+        <span class="comment">// .expect("overflow in execution state slot");
 
         </span><span class="kw">if </span>slot != next_slot {
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                <span class="string">&quot;attempting to apply execution state changes at slot {} while the current slot is {}&quot;</span>,
+                <span class="string">"attempting to apply execution state changes at slot {} while the current slot is {}"</span>,
                 slot, cur_slot
             ));
         }
@@ -1820,10 +1820,10 @@
         <span class="kw">let </span>final_state_hash = <span class="self">self</span>.db.read().get_xof_db_hash();
 
         <span class="comment">// compute the final state hash
-        </span><span class="macro">info!</span>(<span class="string">&quot;final_state hash at slot {}: {}&quot;</span>, slot, final_state_hash);
+        </span><span class="macro">info!</span>(<span class="string">"final_state hash at slot {}: {}"</span>, slot, final_state_hash);
 
         <span class="comment">// Backup DB if needed
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;bootstrap_server&quot;</span>)]
+        </span><span class="attr">#[cfg(feature = <span class="string">"bootstrap_server"</span>)]
         </span><span class="kw">if </span>slot.period % <span class="self">self</span>.config.ledger_backup_periods_interval == <span class="number">0
             </span>&amp;&amp; slot.period != <span class="number">0
             </span>&amp;&amp; slot.thread == <span class="number">0
@@ -1832,14 +1832,14 @@
             <span class="kw">match </span>state_slot {
                 <span class="prelude-val">Ok</span>(slot) =&gt; {
                     <span class="macro">info!</span>(
-                        <span class="string">&quot;Backuping db for slot {}, state slot: {}, state hash: {}&quot;</span>,
+                        <span class="string">"Backuping db for slot {}, state slot: {}, state hash: {}"</span>,
                         slot, slot, final_state_hash
                     );
                 }
                 <span class="prelude-val">Err</span>(e) =&gt; {
-                    <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, e);
+                    <span class="macro">info!</span>(<span class="string">"{}"</span>, e);
                     <span class="macro">info!</span>(
-                        <span class="string">&quot;Backuping db for unknown state slot, state hash: {}&quot;</span>,
+                        <span class="string">"Backuping db for unknown state slot, state hash: {}"</span>,
                         final_state_hash
                     );
                 }
@@ -1866,14 +1866,14 @@
                 <span class="kw">match </span>db.get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec()) {
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(v)) =&gt; v,
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">&quot;No execution trail hash found in DB&quot;</span>));
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"No execution trail hash found in DB"</span>));
                     }
                     <span class="prelude-val">Err</span>(err) =&gt; {
                         <span class="kw">return </span><span class="prelude-val">Err</span>(err.into());
                     }
                 };
             <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = massa_hash::Hash::try_from(<span class="kw-2">&amp;</span>execution_trail_hash_serialized[..]) {
-                <span class="macro">warn!</span>(<span class="string">&quot;Invalid execution trail hash found in DB: {}&quot;</span>, err);
+                <span class="macro">warn!</span>(<span class="string">"Invalid execution trail hash found in DB: {}"</span>, err);
                 <span class="kw">return </span><span class="prelude-val">Err</span>(err.into());
             }
         }
@@ -1887,11 +1887,11 @@
                     .is_cycle_history_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for CYCLE_HISTORY_KEY PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1901,11 +1901,11 @@
                     .is_deferred_credits_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for DEFERRED_CREDITS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1915,11 +1915,11 @@
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for ASYNC_POOL PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1929,11 +1929,11 @@
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
                     <span class="macro">warn!</span>(
-                        <span class="string">&quot;Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     );
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for EXECUTED_OPS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1942,9 +1942,9 @@
                     </span>.executed_denunciations
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>, serialized_key, serialized_value);
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>, serialized_key, serialized_value);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for EXECUTED_DENUNCIATIONS PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1953,9 +1953,9 @@
                     </span>.ledger
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>, serialized_key, serialized_value);
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>, serialized_key, serialized_value);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for LEDGER PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1964,9 +1964,9 @@
                     </span>.mip_store
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for MIP Store&quot;</span>);
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for MIP Store"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
@@ -1974,11 +1974,11 @@
                 <span class="comment">// no checks here as they are performed above by direct reading
             </span>} <span class="kw">else </span>{
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
                 );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
                 ));
             }
@@ -1994,19 +1994,19 @@
                     </span>.mip_store
                     .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
                 {
-                    <span class="macro">warn!</span>(<span class="string">&quot;Wrong key/value for MIP Store&quot;</span>);
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for MIP Store"</span>);
                     <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">&quot;Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                        <span class="string">"Wrong key/value for MIP Store serialized_key: {:?}, serialized_value: {:?}"</span>,
                         serialized_key, serialized_value
                     ));
                 }
             } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(
-                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
                 );
                 <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">&quot;Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}&quot;</span>,
+                    <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
                 ));
             }
@@ -2031,18 +2031,18 @@
         mip_store: MipStore,
         last_start_period: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, FinalStateError&gt; {
-        <span class="macro">info!</span>(<span class="string">&quot;Restarting from snapshot&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">"Restarting from snapshot"</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>final_state =
             FinalState::new(db, config.clone(), ledger, selector, mip_store, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>recovered_slot =
             final_state.db.read().get_change_id().map_err(|<span class="kw">_</span>| {
-                FinalStateError::InvalidSlot(String::from(<span class="string">&quot;Could not get slot in db&quot;</span>))
+                FinalStateError::InvalidSlot(String::from(<span class="string">"Could not get slot in db"</span>))
             })<span class="question-mark">?</span>;
 
         <span class="comment">// This is needed for `test_bootstrap_server` to work
-        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">&quot;test-exports&quot;</span>) {
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"test-exports"</span>) {
             <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
             final_state.pos_state.create_initial_cycle(<span class="kw-2">&amp;mut </span>batch);
             final_state
@@ -2059,7 +2059,7 @@
             .get_next_slot(config.thread_count)
             .map_err(|e| {
                 FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Unable to get next slot from recovered slot: {:?}&quot;</span>,
+                    <span class="string">"Unable to get next slot from recovered slot: {:?}"</span>,
                     e
                 ))
             })<span class="question-mark">?</span>;
@@ -2067,12 +2067,12 @@
             .get_prev_slot(config.thread_count)
             .map_err(|e| {
                 FinalStateError::InvalidSlot(<span class="macro">format!</span>(
-                    <span class="string">&quot;Unable to compute prev slot from last start period: {:?}&quot;</span>,
+                    <span class="string">"Unable to compute prev slot from last start period: {:?}"</span>,
                     e
                 ))
             })<span class="question-mark">?</span>;
         <span class="macro">debug!</span>(
-            <span class="string">&quot;Checking if MIP store is consistent against shutdown period: {} - {}&quot;</span>,
+            <span class="string">"Checking if MIP store is consistent against shutdown period: {} - {}"</span>,
             shutdown_start, shutdown_end
         );
 
@@ -2088,12 +2088,12 @@
             .map_err(FinalStateError::from)<span class="question-mark">?</span>;
 
         <span class="macro">debug!</span>(
-            <span class="string">&quot;Latest consistent slot found in snapshot data: {}&quot;</span>,
+            <span class="string">"Latest consistent slot found in snapshot data: {}"</span>,
             recovered_slot
         );
 
         <span class="macro">info!</span>(
-            <span class="string">&quot;final_state hash at slot {}: {}&quot;</span>,
+            <span class="string">"final_state hash at slot {}: {}"</span>,
             recovered_slot,
             final_state.db.read().get_xof_db_hash()
         );
@@ -2128,13 +2128,13 @@
             </span>.db
             .read()
             .get_cf(STATE_CF, EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec())
-            .expect(<span class="string">&quot;could not read execution trail hash from state DB&quot;</span>)
-            .expect(<span class="string">&quot;could not find execution trail hash in state DB&quot;</span>);
+            .expect(<span class="string">"could not read execution trail hash from state DB"</span>)
+            .expect(<span class="string">"could not find execution trail hash in state DB"</span>);
         Hash::from_bytes(
             hash_bytes
                 .as_slice()
                 .try_into()
-                .expect(<span class="string">&quot;invalid execution trail hash in state DB&quot;</span>),
+                .expect(<span class="string">"invalid execution trail hash in state DB"</span>),
         )
     }
 
@@ -2147,7 +2147,7 @@
         <span class="self">self</span>.db
             .read()
             .get_change_id()
-            .expect(<span class="string">&quot;Critical error: Final state has no slot attached&quot;</span>)
+            .expect(<span class="string">"Critical error: Final state has no slot attached"</span>)
     }
 
     <span class="kw">fn </span>init_execution_trail_hash_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
@@ -2282,12 +2282,12 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="kw">fn </span>get_final_state_config() -&gt; (FinalStateConfig, LedgerConfig) {
-        <span class="kw">let </span>massa_node_base = PathBuf::from(<span class="string">&quot;../massa-node&quot;</span>);
+        <span class="kw">let </span>massa_node_base = PathBuf::from(<span class="string">"../massa-node"</span>);
 
         <span class="kw">let </span>genesis_timestamp = MassaTime::from_millis(<span class="number">0</span>);
         <span class="kw">let </span>ledger_config = LedgerConfig {
             thread_count: THREAD_COUNT,
-            initial_ledger_path: massa_node_base.join(<span class="string">&quot;base_config/initial_ledger.json&quot;</span>),
+            initial_ledger_path: massa_node_base.join(<span class="string">"base_config/initial_ledger.json"</span>),
             max_key_length: MAX_DATASTORE_KEY_LENGTH,
             max_datastore_value_length: MAX_DATASTORE_VALUE_LENGTH,
         };
@@ -2306,7 +2306,7 @@
             max_production_stats_length: MAX_PRODUCTION_STATS_LENGTH,
             max_credit_length: MAX_DEFERRED_CREDITS_LENGTH,
             initial_deferred_credits_path: <span class="prelude-val">Some</span>(
-                massa_node_base.join(<span class="string">&quot;base_config/deferred_credits.json&quot;</span>),
+                massa_node_base.join(<span class="string">"base_config/deferred_credits.json"</span>),
             ),
         };
         <span class="kw">let </span>executed_ops_config = ExecutedOpsConfig {
@@ -2329,8 +2329,8 @@
             final_history_length: <span class="number">100</span>, <span class="comment">// SETTINGS.ledger.final_history_length,
             </span>thread_count: THREAD_COUNT,
             periods_per_cycle: PERIODS_PER_CYCLE,
-            initial_seed_string: <span class="string">&quot;test&quot;</span>.to_string(),
-            initial_rolls_path: massa_node_base.join(<span class="string">&quot;base_config/initial_rolls.json&quot;</span>), <span class="comment">// SETTINGS.selector.initial_rolls_path.clone(),
+            initial_seed_string: <span class="string">"test"</span>.to_string(),
+            initial_rolls_path: massa_node_base.join(<span class="string">"base_config/initial_rolls.json"</span>), <span class="comment">// SETTINGS.selector.initial_rolls_path.clone(),
             </span>endorsement_count: ENDORSEMENT_COUNT,
             max_executed_denunciations_length: MAX_DENUNCIATION_CHANGES_LENGTH,
             max_denunciations_per_block_header: MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
@@ -2345,8 +2345,8 @@
     <span class="kw">fn </span>get_final_state() -&gt; FinalState {
         <span class="kw">let </span>(final_state_config, ledger_config) = get_final_state_config();
 
-        <span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">&quot;Unable to create a temp folder&quot;</span>);
-        <span class="comment">// println!(&quot;Using temp dir: {:?}&quot;, temp_dir.path());
+        <span class="kw">let </span>temp_dir_db = tempdir().expect(<span class="string">"Unable to create a temp folder"</span>);
+        <span class="comment">// println!("Using temp dir: {:?}", temp_dir.path());
 
         </span><span class="kw">let </span>db_config = MassaDBConfig {
             path: temp_dir_db.path().to_path_buf(),
@@ -2357,7 +2357,7 @@
             max_ledger_backups: <span class="number">10</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
-            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">&#39;static</span>)&gt;
+            Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
         ));
 
         <span class="kw">let </span>mip_stats_config = MipStatsConfig {
@@ -2365,7 +2365,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
         <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span>selector_controller = Box::new(MockSelectorController::new());
         <span class="kw">let </span>ledger = FinalLedger::new(ledger_config, db.clone());
@@ -2378,7 +2378,7 @@
             mip_store,
             <span class="bool-val">false</span>,
         )
-        .expect(<span class="string">&quot;Cannot init final state&quot;</span>)
+        .expect(<span class="string">"Cannot init final state"</span>)
     }
 
     <span class="kw">fn </span>get_state_changes() -&gt; StateChanges {
@@ -2386,12 +2386,12 @@
         <span class="kw">let </span>message = AsyncMessage::new(
             Slot::new(<span class="number">1</span>, <span class="number">0</span>),
             <span class="number">0</span>,
-            Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
-            Address::from_str(<span class="string">&quot;AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G&quot;</span>).unwrap(),
-            String::from(<span class="string">&quot;test&quot;</span>),
+            Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
+            Address::from_str(<span class="string">"AU12htxRWiEm8jDJpJptr6cwEhWNcCSFWstN1MLSa96DDkVM9Y42G"</span>).unwrap(),
+            String::from(<span class="string">"test"</span>),
             <span class="number">10000000</span>,
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
-            Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap(),
+            Amount::from_str(<span class="string">"1"</span>).unwrap(),
+            Amount::from_str(<span class="string">"1"</span>).unwrap(),
             Slot::new(<span class="number">2</span>, <span class="number">0</span>),
             Slot::new(<span class="number">3</span>, <span class="number">0</span>),
             <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>],
@@ -2404,7 +2404,7 @@
             </span>.insert(message.compute_id(), SetUpdateOrDelete::Set(message));
         state_changes.async_pool_changes = async_pool_changes;
 
-        <span class="kw">let </span>amount = Amount::from_str(<span class="string">&quot;1&quot;</span>).unwrap();
+        <span class="kw">let </span>amount = Amount::from_str(<span class="string">"1"</span>).unwrap();
         <span class="kw">let </span>bytecode = Bytecode(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
         <span class="kw">let </span>ledger_entry = LedgerEntryUpdate {
             balance: SetOrKeep::Set(amount),
@@ -2413,14 +2413,14 @@
         };
         <span class="kw">let </span><span class="kw-2">mut </span>ledger_changes = LedgerChanges::default();
         ledger_changes.<span class="number">0</span>.insert(
-            Address::from_str(<span class="string">&quot;AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x&quot;</span>).unwrap(),
+            Address::from_str(<span class="string">"AU12dG5xP1RDEB5ocdHkymNVvvSJmUL9BgHwCksDowqmGWxfpm93x"</span>).unwrap(),
             SetUpdateOrDelete::Update(ledger_entry),
         );
         state_changes.ledger_changes = ledger_changes;
 
         <span class="kw">let </span><span class="kw-2">mut </span>pos_changes = PoSChanges::default();
         pos_changes.roll_changes.insert(
-            Address::from_str(<span class="string">&quot;AU12r1iM79EcS3sa4dmtUp28TiaPxK1weQcLsATcFoynPdukjdMqM&quot;</span>).unwrap(),
+            Address::from_str(<span class="string">"AU12r1iM79EcS3sa4dmtUp28TiaPxK1weQcLsATcFoynPdukjdMqM"</span>).unwrap(),
             <span class="number">0</span>,
         );
         state_changes.pos_changes = pos_changes;
@@ -2447,7 +2447,7 @@
             .err()
             .unwrap()
             .to_string()
-            .contains(<span class="string">&quot;while the current slot is&quot;</span>));
+            .contains(<span class="string">"while the current slot is"</span>));
 
         <span class="macro">assert_eq!</span>(fstate.get_slot(), initial_slot);
 
@@ -2459,10 +2459,10 @@
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
             <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">match </span>e.downcast_ref() {
                 <span class="prelude-val">Some</span>(PosError::ContainerInconsistency(<span class="kw">_</span>)) =&gt; {
-                    <span class="macro">println!</span>(<span class="string">&quot;Received correct error: PosError:ContainerInconsistency...&quot;</span>);
+                    <span class="macro">println!</span>(<span class="string">"Received correct error: PosError:ContainerInconsistency..."</span>);
                 }
                 <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {
-                    <span class="macro">panic!</span>(<span class="string">&quot;Unknown error received: {}&quot;</span>, e);
+                    <span class="macro">panic!</span>(<span class="string">"Unknown error received: {}"</span>, e);
                 }
                 <span class="prelude-val">None </span>=&gt; <span class="macro">unreachable!</span>(),
             },
@@ -2506,7 +2506,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
         <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span>last_start_period_2 = <span class="number">2</span>;
         <span class="kw">let </span>fstate2_ = FinalState::new_derived_from_snapshot(
@@ -2566,7 +2566,7 @@
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>), <span class="comment">// In config.toml,
         </span>};
         <span class="kw">let </span>mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">&quot;Cannot create an empty MIP store&quot;</span>);
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span>last_start_period_2 = <span class="number">2 </span>+ (PERIODS_PER_CYCLE * <span class="number">2</span>);
         <span class="kw">let </span>fstate2_ = FinalState::new_derived_from_snapshot(
@@ -2612,7 +2612,7 @@
             .err()
             .unwrap()
             .to_string()
-            .starts_with(<span class="string">&quot;No execution trail hash&quot;</span>));
+            .starts_with(<span class="string">"No execution trail hash"</span>));
         <span class="comment">// Check final state fingerprint
         </span><span class="macro">assert_eq!</span>(
             fstate.get_fingerprint(),
