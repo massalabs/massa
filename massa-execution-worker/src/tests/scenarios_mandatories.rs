@@ -3224,7 +3224,10 @@ fn execution_trace() {
 
     assert_eq!(traces_1.len(), 1); // Only one op
     assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
-    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+    assert_eq!(
+        traces_1.first().unwrap().1.first().unwrap().name,
+        abi_name_1
+    );
 
     let abi_name_2 = "assembly_script_transfer_coins";
     let traces_2: Vec<(OperationId, Vec<AbiTrace>)> = broadcast_result
@@ -3243,13 +3246,16 @@ fn execution_trace() {
 
     assert_eq!(traces_2.len(), 1); // Only one op
     assert_eq!(traces_2.first().unwrap().1.len(), 1); // Only one transfer_coins
-    assert_eq!(traces_2.first().unwrap().1.get(0).unwrap().name, abi_name_2);
+    assert_eq!(
+        traces_2.first().unwrap().1.first().unwrap().name,
+        abi_name_2
+    );
     // println!(
     //     "params: {:?}",
-    //     traces_2.first().unwrap().1.get(0).unwrap().parameters
+    //     traces_2.first().unwrap().1.first().unwrap().parameters
     // );
     assert_eq!(
-        traces_2.first().unwrap().1.get(0).unwrap().parameters,
+        traces_2.first().unwrap().1.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
@@ -3346,7 +3352,10 @@ fn execution_trace_nested() {
 
     assert_eq!(traces_1.len(), 1); // Only one op
     assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one transfer_coins
-    assert_eq!(traces_1.first().unwrap().1.get(0).unwrap().name, abi_name_1);
+    assert_eq!(
+        traces_1.first().unwrap().1.first().unwrap().name,
+        abi_name_1
+    );
 
     // filter sub calls
     let abi_name_2 = "assembly_script_transfer_coins";
@@ -3354,7 +3363,7 @@ fn execution_trace_nested() {
         .first()
         .unwrap()
         .1
-        .get(0)
+        .first()
         .unwrap()
         .sub_calls
         .as_ref()
@@ -3364,9 +3373,9 @@ fn execution_trace_nested() {
         .cloned()
         .collect();
 
-    // println!("params: {:?}", sub_call.get(0).unwrap().parameters);
+    // println!("params: {:?}", sub_call.first().unwrap().parameters);
     assert_eq!(
-        sub_call.get(0).unwrap().parameters,
+        sub_call.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
