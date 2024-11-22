@@ -186,6 +186,7 @@ pub enum PeerManagementCmd {
     Stop,
 }
 
+#[allow(dead_code)]
 pub struct PeerManagementChannel {
     pub msg_sender: MassaSender<PeerMessageTuple>,
     pub command_sender: MassaSender<PeerManagementCmd>,

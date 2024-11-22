@@ -1,7 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use core::usize;
-
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U32VarIntDeserializer, U32VarIntSerializer,
     U64VarIntDeserializer, U64VarIntSerializer,

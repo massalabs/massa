@@ -2,9 +2,7 @@ use massa_models::{
     endorsement::{Endorsement, EndorsementDeserializer, SecureShareEndorsement},
     secure_share::{SecureShareDeserializer, SecureShareSerializer},
 };
-use massa_serialization::{
-    Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
-};
+use massa_serialization::{Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer};
 use nom::{
     error::{context, ContextError, ParseError},
     multi::length_count,
@@ -56,12 +54,8 @@ impl Serializer<EndorsementMessage> for EndorsementMessageSerializer {
         value: &EndorsementMessage,
         buffer: &mut Vec<u8>,
     ) -> Result<(), massa_serialization::SerializeError> {
-        self.id_serializer.serialize(
-            &MessageTypeId::from(value).try_into().map_err(|_| {
-                SerializeError::GeneralError(String::from("Failed to serialize id"))
-            })?,
-            buffer,
-        )?;
+        self.id_serializer
+            .serialize(&MessageTypeId::from(value).into(), buffer)?;
         match value {
             EndorsementMessage::Endorsements(endorsements) => {
                 self.length_endorsements_serializer
