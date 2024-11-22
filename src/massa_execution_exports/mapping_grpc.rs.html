@@ -470,13 +470,13 @@
             }
             <span class="comment">//TODO to be checked
             </span>exec::RequestItem::CycleInfos(value) =&gt; {
-                <span class="kw">let </span>addreses = value
+                <span class="kw">let </span>addresses = value
                     .restrict_to_addresses
                     .into_iter()
                     .map(|address| Address::from_str(<span class="kw-2">&amp;</span>address))
                     .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
-                <span class="kw">let </span><span class="kw-2">mut </span>addresses_set = PreHashSet::with_capacity(addreses.len());
-                addresses_set.extend(addreses);
+                <span class="kw">let </span><span class="kw-2">mut </span>addresses_set = PreHashSet::with_capacity(addresses.len());
+                addresses_set.extend(addresses);
                 <span class="prelude-val">Ok</span>(ExecutionQueryRequestItem::CycleInfos {
                     cycle: value.cycle,
                     restrict_to_addresses: <span class="prelude-val">Some</span>(addresses_set),

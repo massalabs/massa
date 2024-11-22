@@ -405,6 +405,7 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -412,11 +413,11 @@
 #![warn(unused_crate_dependencies)]
 
 </span><span class="kw">use </span>api_trait::MassaApiServer;
-<span class="kw">use </span>hyper::Method;
-<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
+<span class="kw">use </span>http::Method;
+<span class="kw">use </span>jsonrpsee::core::{client::Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
-<span class="kw">use </span>jsonrpsee::server::middleware::HostFilterLayer;
-<span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
+<span class="kw">use </span>jsonrpsee::server::middleware::http::HostFilterLayer;
+<span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, PingConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
 <span class="kw">use </span>massa_api_exports::execution::Transfer;
 <span class="kw">use </span>massa_api_exports::{
@@ -515,11 +516,11 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    <span class="doccomment">/// channels with informations broadcasted by the consensus
+    <span class="doccomment">/// channels with information broadcasted by the consensus
     </span><span class="kw">pub </span>consensus_broadcasts: ConsensusBroadcasts,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-    <span class="doccomment">/// channels with informations broadcasted by the pool
+    <span class="doccomment">/// channels with information broadcasted by the pool
     </span><span class="kw">pub </span>pool_broadcasts: PoolBroadcasts,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
@@ -557,6 +558,7 @@
     url: <span class="kw-2">&amp;</span>SocketAddr,
     api_config: <span class="kw-2">&amp;</span>APIConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, JsonRpseeError&gt; {
+    <span class="kw">let </span>ping_config = PingConfig::new().ping_interval(api_config.ping_interval.to_duration());
     <span class="kw">let </span><span class="kw-2">mut </span>server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
@@ -566,7 +568,7 @@
         } <span class="kw">else </span>{
             BatchRequestConfig::Disabled
         })
-        .ping_interval(api_config.ping_interval.to_duration());
+        .enable_ws_ping(ping_config);
 
     <span class="kw">if </span>api_config.enable_http &amp;&amp; !api_config.enable_ws {
         server_builder = server_builder.http_only();
@@ -581,7 +583,7 @@
         </span>.allow_methods([Method::POST, Method::OPTIONS])
         <span class="comment">// Allow requests from any origin
         </span>.allow_origin(Any)
-        .allow_headers([hyper::header::CONTENT_TYPE]);
+        .allow_headers([http::header::CONTENT_TYPE]);
 
     <span class="kw">let </span>hosts = <span class="kw">if </span>api_config.allow_hosts.is_empty() {
         <span class="macro">vec!</span>[<span class="string">"*:*"</span>]
@@ -600,7 +602,7 @@
         .layer(allowed_hosts);
 
     <span class="kw">let </span>server = server_builder
-        .set_middleware(middleware)
+        .set_http_middleware(middleware)
         .build(url)
         .<span class="kw">await
         </span>.expect(<span class="string">"failed to build server"</span>);

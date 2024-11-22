@@ -1504,6 +1504,32 @@
 <a href="#1504" id="1504">1504</a>
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1539,7 +1565,8 @@
 <span class="kw">use </span>massa_db_worker::MassaDB;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
-    ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts, StorageCostsConstants,
+    CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
+    StorageCostsConstants,
 };
 <span class="kw">use </span>massa_execution_worker::start_execution_worker;
 <span class="attr">#[cfg(all(
@@ -1593,7 +1620,13 @@
 <span class="kw">use </span>massa_models::config::{
     BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_MESSAGE_SIZE, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
+    MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
+    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
+    MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
+    MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
+    MAX_RUNTIME_MODULE_TABLE_INITIALIZER, POOL_CONTROLLER_DENUNCIATIONS_CHANNEL_SIZE,
     POOL_CONTROLLER_ENDORSEMENTS_CHANNEL_SIZE, POOL_CONTROLLER_OPERATIONS_CHANNEL_SIZE,
 };
 <span class="kw">use </span>massa_models::slot::Slot;
@@ -1961,11 +1994,27 @@
     };
 
     <span class="comment">// gas costs
-    </span><span class="kw">let </span>gas_costs = GasCosts::new(
-        SETTINGS.execution.abi_gas_costs_file.clone(),
-        SETTINGS.execution.wasm_gas_costs_file.clone(),
-    )
-    .expect(<span class="string">"Failed to load gas costs"</span>);
+    </span><span class="kw">let </span>gas_costs = GasCosts::new(SETTINGS.execution.abi_gas_costs_file.clone())
+        .expect(<span class="string">"Failed to load gas costs"</span>);
+
+    <span class="comment">// Limits imposed to wasm files so the compilation phase is smooth
+    </span><span class="kw">let </span>condom_limits = CondomLimits {
+        max_exports: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_EXPORTS),
+        max_functions: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_FUNCTIONS),
+        max_signature_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_SIGNATURE_LEN),
+        max_name_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_NAME_LEN),
+        max_imports_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_IMPORTS),
+        max_table_initializers_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_TABLE_INITIALIZER),
+        max_passive_elements_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_PASSIVE_ELEMENT),
+        max_passive_data_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_PASSIVE_DATA),
+        max_global_initializers_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_function_names_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN),
+        max_tables_count: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_TABLE),
+        max_memories_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_MEMORIES),
+        max_globals_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER),
+        max_custom_sections_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN),
+        max_custom_sections_data_len: <span class="prelude-val">Some</span>(MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN),
+    };
 
     <span class="kw">let </span>block_dump_folder_path = SETTINGS.block_dump.block_dump_folder_path.clone();
     <span class="kw">if </span>!block_dump_folder_path.exists() {
@@ -2024,6 +2073,9 @@
             .broadcast_slot_execution_traces_channel_capacity,
         max_execution_traces_slot_limit: SETTINGS.execution.execution_traces_limit,
         block_dump_folder_path,
+        max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
+        condom_limits,
+        max_event_per_operation: MAX_EVENT_PER_OPERATION,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
@@ -2907,7 +2959,7 @@
         <span class="kw-2">*</span>sig_int_toggled_clone
             .<span class="number">0
             </span>.lock()
-            .expect(<span class="string">"double-lock on interupt bool in ctrl-c handler"</span>) = <span class="bool-val">true</span>;
+            .expect(<span class="string">"double-lock on interrupt bool in ctrl-c handler"</span>) = <span class="bool-val">true</span>;
         sig_int_toggled_clone.<span class="number">1</span>.notify_all();
     })
     .expect(<span class="string">"Error setting Ctrl-C handler"</span>);
@@ -2959,11 +3011,11 @@
             </span><span class="kw">let </span>int_sig = sig_int_toggled
                 .<span class="number">0
                 </span>.lock()
-                .expect(<span class="string">"double-lock() on interupted signal mutex"</span>);
+                .expect(<span class="string">"double-lock() on interrupted signal mutex"</span>);
             <span class="kw">let </span>wake = sig_int_toggled
                 .<span class="number">1
                 </span>.wait_timeout(int_sig, Duration::from_millis(<span class="number">100</span>))
-                .expect(<span class="string">"interupt signal mutex poisoned"</span>);
+                .expect(<span class="string">"interrupt signal mutex poisoned"</span>);
             <span class="kw">if </span><span class="kw-2">*</span>wake.<span class="number">0 </span>{
                 <span class="macro">info!</span>(<span class="string">"interrupt signal received"</span>);
                 <span class="kw">break </span><span class="bool-val">false</span>;
