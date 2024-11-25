@@ -42,7 +42,7 @@ impl EventCacheWriterThread {
 
             // take current input data, resetting it
             let input_data: EventCacheWriterInputData = input_data_lock.take();
-
+            
             // Check if there is some input data
             if !input_data.events.is_empty() {
                 return (input_data, false);
