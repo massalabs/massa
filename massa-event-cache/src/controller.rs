@@ -1,5 +1,5 @@
 // std
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 // third-party
 use parking_lot::{Condvar, Mutex, RwLock};
@@ -23,7 +23,7 @@ impl EventCacheWriterInputData {
             events: Default::default(),
         }
     }
-
+    
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
     pub fn take(&mut self) -> Self {
@@ -108,10 +108,20 @@ impl EventCacheController for EventCacheControllerImpl {
             }
             Some(event)
         });
+        
+        let mut res_0: BTreeSet<SCOutputEvent> = it.cloned().collect();
+        // Drop the lock on the queue as soon as possible to avoid deadlocks
+        drop(lock_0);
 
         let lock = self.cache.read();
-        it.cloned()
-            .chain(lock.get_filtered_sc_output_events(filter))
-            .collect()
+        
+        let res_1 = lock.get_filtered_sc_output_events(filter);
+        // Drop the lock on the event cache db asap 
+        drop(lock);
+        
+        let res_1: BTreeSet<SCOutputEvent> = BTreeSet::from_iter(res_1);
+        
+        res_0.extend(res_1);
+        Vec::from_iter(res_0)
     }
 }
