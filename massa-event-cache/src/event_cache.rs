@@ -196,6 +196,8 @@ pub(crate) struct EventCache {
     max_events_per_operation: u64,
     /// Maximum number of operations per block
     max_operations_per_block: u64,
+    /// Max number of events returned by a query
+    max_events_per_query: usize,
 }
 
 impl EventCache {
@@ -210,6 +212,7 @@ impl EventCache {
         max_event_data_length: u64,
         max_events_per_operation: u64,
         max_operations_per_block: u64,
+        max_events_per_query: usize,
     ) -> Self {
         // Clear the db
         DB::destroy(&Options::default(), path).expect(DESTROY_ERROR);
@@ -255,6 +258,7 @@ impl EventCache {
             thread_count,
             max_events_per_operation,
             max_operations_per_block,
+            max_events_per_query
         }
     }
 
@@ -384,6 +388,7 @@ impl EventCache {
         let multi_args = filter_res_prev
             .unwrap()
             .into_iter()
+            .take(self.max_events_per_query)
             .collect::<Vec<Vec<u8>>>();
         let res = self.db.multi_get(multi_args);
 
@@ -742,9 +747,7 @@ mod tests {
     use serial_test::serial;
     use tempfile::TempDir;
     // internal
-    use massa_models::config::{
-        MAX_EVENT_DATA_SIZE, MAX_OPERATIONS_PER_BLOCK, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
-    };
+    use massa_models::config::{MAX_EVENT_DATA_SIZE, MAX_EVENTS_PER_QUERY, MAX_OPERATIONS_PER_BLOCK, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT};
     use massa_models::operation::OperationId;
     use massa_models::output_event::EventExecutionContext;
     use massa_models::slot::Slot;
@@ -762,6 +765,7 @@ mod tests {
             // MAX_EVENT_PER_OPERATION as u64,
             25u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
+            MAX_EVENTS_PER_QUERY,
         )
     }
 

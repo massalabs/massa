@@ -17,4 +17,6 @@ pub struct EventCacheConfig {
     pub max_events_per_operation: u64,
     /// Maximum number of operations per block
     pub max_operations_per_block: u64,
+    /// Maximum events returned in a query
+    pub max_events_per_query: usize,
 }
