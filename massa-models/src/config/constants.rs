@@ -315,6 +315,7 @@ pub const MAX_EVENT_PER_OPERATION: usize = 25;
 /// Maximum number of recursion for calls
 pub const MAX_RECURSIVE_CALLS_DEPTH: u16 = 25;
 
+
 //
 // Constants used in network
 //
@@ -391,6 +392,14 @@ pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
+
+
+//
+// Constants for event cache
+// 
+
+/// Maximum number of events that can be returned by a query
+pub const MAX_EVENTS_PER_QUERY: usize = 10000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
