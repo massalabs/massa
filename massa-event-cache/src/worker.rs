@@ -1,9 +1,11 @@
 // std
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 // third-party
 use parking_lot::{Condvar, Mutex, RwLock};
 use tracing::{debug, info};
+use massa_time::MassaTime;
 // internal
 use crate::config::EventCacheConfig;
 use crate::controller::{
@@ -17,16 +19,19 @@ pub(crate) struct EventCacheWriterThread {
     input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
     /// Event cache
     cache: Arc<RwLock<EventCache>>,
+    tick_delay: Duration,
 }
 
 impl EventCacheWriterThread {
     fn new(
         input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
         event_cache: Arc<RwLock<EventCache>>,
+        tick_delay: Duration,
     ) -> Self {
         Self {
             input_data,
             cache: event_cache,
+            tick_delay,
         }
     }
 
@@ -53,7 +58,16 @@ impl EventCacheWriterThread {
                 return (input_data, true);
             }
 
-            // FIXME / TODO: should we sleep here?
+            // Wait until deadline
+            let now = MassaTime::now();
+            let wakeup_deadline = now.saturating_add(
+                MassaTime::from_millis(self.tick_delay.as_millis() as u64));
+            let _ = self.input_data.0.wait_until(
+                &mut input_data_lock,
+                wakeup_deadline
+                    .estimate_instant()
+                    .expect("could not estimate instant"),
+            );
         }
     }
 
@@ -143,7 +157,7 @@ pub fn start_event_cache_writer_worker(
     let thread_builder = thread::Builder::new().name("event_cache".into());
     let thread_handle = thread_builder
         .spawn(move || {
-            EventCacheWriterThread::new(input_data_clone, event_cache).main_loop();
+            EventCacheWriterThread::new(input_data_clone, event_cache, cfg.tick_delay).main_loop();
         })
         .expect("failed to spawn thread : event_cache");
 
