@@ -3217,6 +3217,7 @@ version = "0.1.0"
 dependencies = [
  "massa_models",
  "massa_serialization",
+ "massa_time",
  "mockall",
  "mockall_wrap",
  "more-asserts 0.3.1",
