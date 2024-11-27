@@ -646,8 +646,7 @@ fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpB
     let builder = HttpClientBuilder::default()
         .max_request_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
-        // FIXME: the field max_concurrent_requests is private (jsonrpsee 0.24.6)
-        // .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
+        .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&http_config.client_config.headers));
 

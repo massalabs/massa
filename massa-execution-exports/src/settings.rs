@@ -110,4 +110,6 @@ pub struct ExecutionConfig {
     pub condom_limits: CondomLimits,
     /// deferred calls config
     pub deferred_calls_config: DeferredCallsConfig,
+    /// Maximum number of event that an operation can emit
+    pub max_event_per_operation: usize,
 }
