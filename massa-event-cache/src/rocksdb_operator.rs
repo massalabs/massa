@@ -5,7 +5,12 @@ pub fn counter_merge(
     existing_val: Option<&[u8]>,
     operands: &MergeOperands,
 ) -> Option<Vec<u8>> {
-    let counter_current_value = u64::from_be_bytes(existing_val?.try_into().unwrap());
+    let counter_current_value = if let Some(existing_val) = existing_val {
+        u64::from_be_bytes(existing_val.try_into().unwrap())
+    } else {
+        0
+    };
+
     let counter_value = operands.iter().fold(counter_current_value, |mut acc, x| {
         let incr_value = i64::from_be_bytes(x.try_into().unwrap());
         acc = acc.saturating_add_signed(incr_value);

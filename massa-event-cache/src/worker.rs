@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 // third-party
+use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use tracing::{debug, info};
-use massa_time::MassaTime;
 // internal
 use crate::config::EventCacheConfig;
 use crate::controller::{
@@ -60,8 +60,8 @@ impl EventCacheWriterThread {
 
             // Wait until deadline
             let now = MassaTime::now();
-            let wakeup_deadline = now.saturating_add(
-                MassaTime::from_millis(self.tick_delay.as_millis() as u64));
+            let wakeup_deadline =
+                now.saturating_add(MassaTime::from_millis(self.tick_delay.as_millis() as u64));
             let _ = self.input_data.0.wait_until(
                 &mut input_data_lock,
                 wakeup_deadline
