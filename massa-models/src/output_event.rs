@@ -1,7 +1,7 @@
 use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
 use serde::{Deserialize, Serialize};
-use std::{collections::VecDeque, fmt::Display};
 use std::cmp::Ordering;
+use std::{collections::VecDeque, fmt::Display};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 /// By product of a byte code execution
@@ -20,7 +20,8 @@ impl PartialOrd for SCOutputEvent {
 
 impl Ord for SCOutputEvent {
     fn cmp(&self, other: &Self) -> Ordering {
-        (self.context.slot, self.context.index_in_slot).cmp(&(other.context.slot, other.context.index_in_slot))
+        (self.context.slot, self.context.index_in_slot)
+            .cmp(&(other.context.slot, other.context.index_in_slot))
     }
 }
 
