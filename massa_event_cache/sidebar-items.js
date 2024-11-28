@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["config","controller","event_cache","rocksdb_operator","ser_deser","worker"]};
