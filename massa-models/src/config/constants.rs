@@ -315,7 +315,6 @@ pub const MAX_EVENT_PER_OPERATION: usize = 25;
 /// Maximum number of recursion for calls
 pub const MAX_RECURSIVE_CALLS_DEPTH: u16 = 25;
 
-
 //
 // Constants used in network
 //
@@ -413,10 +412,9 @@ pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_00
 /// deferred call call gas cost
 pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 
-
 //
 // Constants for event cache
-// 
+//
 
 /// Maximum number of events that can be returned by a query
 pub const MAX_EVENTS_PER_QUERY: usize = 10000;
