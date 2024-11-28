@@ -1386,11 +1386,9 @@ mod tests {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
                 if i < threshold {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_1]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_1]);
                 } else {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_2]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2]);
                 }
                 event
             })
@@ -1444,22 +1442,18 @@ mod tests {
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
 
         assert_eq!(filtered_events_1.len(), threshold);
-        filtered_events_1
-            .iter()
-            .for_each(|event| {
-                assert_eq!(event.context.slot, slot_1);
-                assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_1)
-            });
+        filtered_events_1.iter().for_each(|event| {
+            assert_eq!(event.context.slot, slot_1);
+            assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_1)
+        });
 
         {
             filter_1.emitter_address = Some(emit_addr_2);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
             assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
-            filtered_events_2
-                .iter()
-                .for_each(|event| {
-                    assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_2)
-                });
+            filtered_events_2.iter().for_each(|event| {
+                assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_2)
+            });
         }
         {
             filter_1.emitter_address = Some(dummy_addr);
@@ -1514,11 +1508,9 @@ mod tests {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
                 if i < threshold {
-                    event.context.call_stack =
-                        VecDeque::from(vec![caller_addr_1, dummy_addr]);
+                    event.context.call_stack = VecDeque::from(vec![caller_addr_1, dummy_addr]);
                 } else {
-                    event.context.call_stack =
-                        VecDeque::from(vec![caller_addr_2, dummy_addr]);
+                    event.context.call_stack = VecDeque::from(vec![caller_addr_2, dummy_addr]);
                 }
                 event
             })
@@ -1572,22 +1564,18 @@ mod tests {
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
 
         assert_eq!(filtered_events_1.len(), threshold);
-        filtered_events_1
-            .iter()
-            .for_each(|event| {
-                assert_eq!(event.context.slot, slot_1);
-                assert_eq!(*event.context.call_stack.front().unwrap(), caller_addr_1);
-            });
+        filtered_events_1.iter().for_each(|event| {
+            assert_eq!(event.context.slot, slot_1);
+            assert_eq!(*event.context.call_stack.front().unwrap(), caller_addr_1);
+        });
 
         {
             filter_1.original_caller_address = Some(caller_addr_2);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
             assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
-            filtered_events_2
-                .iter()
-                .for_each(|event| {
-                    assert_eq!(*event.context.call_stack.front().unwrap(), caller_addr_2);
-                });
+            filtered_events_2.iter().for_each(|event| {
+                assert_eq!(*event.context.call_stack.front().unwrap(), caller_addr_2);
+            });
         }
         {
             filter_1.original_caller_address = Some(dummy_addr);
@@ -1640,11 +1628,9 @@ mod tests {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
                 if i < threshold {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_1]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_1]);
                 } else {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_2]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2]);
                 }
                 event
             })
@@ -1765,11 +1751,9 @@ mod tests {
                 let mut event = event.clone();
                 event.context.index_in_slot = i as u64;
                 if i < threshold {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_1]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_1]);
                 } else {
-                    event.context.call_stack =
-                        VecDeque::from(vec![dummy_addr, emit_addr_2]);
+                    event.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2]);
                 }
                 event
             })
