@@ -204,17 +204,6 @@ impl ExecutionState {
             execution_context.clone(),
         ));
 
-        /*
-        let event_cache_controller = EventCacheController::new(EventCacheConfig {
-            event_cache_path: config.event_cache_path.clone(),
-            max_event_cache_length: config.event_cache_size,
-            snip_amount: config.event_snip_amount,
-            max_event_data_length: config.max_event_size as u64,
-            thread_count: config.thread_count,
-            max_recursive_call_depth: config.max_recursive_calls_depth,
-        });
-        */
-
         // build the execution state
         ExecutionState {
             final_state,
