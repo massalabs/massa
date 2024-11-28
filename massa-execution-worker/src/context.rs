@@ -1330,6 +1330,14 @@ impl ExecutionContext {
             ))),
         }
     }
+
+    /// Get the condom limits to pass to the VM depending on the current execution component version
+    pub fn get_condom_limits(&self) -> CondomLimits {
+        match self.execution_component_version {
+            0 => Default::default(),
+            _ => self.config.condom_limits.clone(),
+        }
+    }
 }
 
 /// Generate the execution trail hash

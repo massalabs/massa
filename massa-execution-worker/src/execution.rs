@@ -952,12 +952,12 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
-        let execution_component_version;
+        let condom_limits;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
 
-            execution_component_version = context.execution_component_version;
+            condom_limits = context.get_condom_limits();
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
             // * the context will give the operation's sender write access to its own ledger entry
@@ -969,11 +969,6 @@ impl ExecutionState {
                 owned_addresses: vec![sender_addr],
                 operation_datastore: Some(datastore.clone()),
             }];
-        };
-
-        let condom_limits = match execution_component_version {
-            0 => Default::default(),
-            _ => self.config.condom_limits.clone(),
         };
 
         // load the tmp module
@@ -1032,12 +1027,12 @@ impl ExecutionState {
 
         // prepare the current slot context for executing the operation
         let bytecode;
-        let execution_component_version;
+        let condom_limits;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
 
-            execution_component_version = context.execution_component_version;
+            condom_limits = context.get_condom_limits();
 
             // Set the call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
@@ -1083,11 +1078,6 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-
-        let condom_limits = match execution_component_version {
-            0 => Default::default(),
-            _ => self.config.condom_limits.clone(),
-        };
 
         let module =
             self.module_cache
@@ -1973,7 +1963,7 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
-                let execution_component_version = execution_context.execution_component_version;
+                let condom_limits = execution_context.get_condom_limits();
                 {
                     let mut context = context_guard!(self);
                     *context = execution_context;
@@ -1985,11 +1975,6 @@ impl ExecutionState {
                         context.transfer_coins(Some(*addr), None, fee, false)?;
                     }
                 }
-
-                let condom_limits = match execution_component_version {
-                    0 => CondomLimits::default(),
-                    _ => self.config.condom_limits.clone(),
-                };
 
                 // load the tmp module
                 let module = self.module_cache.read().load_tmp_module(
@@ -2023,7 +2008,7 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
-                let execution_component_version = execution_context.execution_component_version;
+                let condom_limits = execution_context.get_condom_limits();
                 {
                     let mut context = context_guard!(self);
                     *context = execution_context;
@@ -2045,11 +2030,6 @@ impl ExecutionState {
                         context.transfer_coins(Some(*from), Some(*to), coins, false)?;
                     }
                 }
-
-                let condom_limits = match execution_component_version {
-                    0 => CondomLimits::default(),
-                    _ => self.config.condom_limits.clone(),
-                };
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface

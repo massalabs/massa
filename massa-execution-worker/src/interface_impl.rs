@@ -21,7 +21,6 @@ use massa_models::{
 use massa_proto_rs::massa::model::v1::{
     AddressCategory, ComparisonResult, NativeAmount, NativeTime,
 };
-use massa_sc_runtime::CondomLimits;
 use massa_sc_runtime::RuntimeModule;
 use massa_sc_runtime::{Interface, InterfaceClone};
 use massa_signature::PublicKey;
@@ -342,18 +341,15 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
     fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        let execution_component_version = self.get_interface_version()?;
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
 
-        let condom_limits = match execution_component_version {
-            0 => CondomLimits::default(),
-            _ => self.config.condom_limits.clone(),
-        };
+        let ret = context
+            .module_cache
+            .write()
+            .load_module(bytecode, gas_limit, condom_limits)?;
 
-        Ok((context_guard!(self)).module_cache.write().load_module(
-            bytecode,
-            gas_limit,
-            condom_limits,
-        )?)
+        Ok(ret)
     }
 
     /// Compile and return a temporary module
@@ -361,17 +357,16 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
     fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        let execution_component_version = self.get_interface_version()?;
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
 
-        let condom_limits = match execution_component_version {
-            0 => CondomLimits::default(),
-            _ => self.config.condom_limits.clone(),
-        };
+        let ret =
+            context
+                .module_cache
+                .write()
+                .load_tmp_module(bytecode, gas_limit, condom_limits)?;
 
-        Ok((context_guard!(self))
-            .module_cache
-            .write()
-            .load_tmp_module(bytecode, gas_limit, condom_limits)?)
+        Ok(ret)
     }
 
     /// Gets the balance of the current address address (top of the stack).
