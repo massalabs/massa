@@ -1811,26 +1811,6 @@
 <a href="#1811" id="1811">1811</a>
 <a href="#1812" id="1812">1812</a>
 <a href="#1813" id="1813">1813</a>
-<a href="#1814" id="1814">1814</a>
-<a href="#1815" id="1815">1815</a>
-<a href="#1816" id="1816">1816</a>
-<a href="#1817" id="1817">1817</a>
-<a href="#1818" id="1818">1818</a>
-<a href="#1819" id="1819">1819</a>
-<a href="#1820" id="1820">1820</a>
-<a href="#1821" id="1821">1821</a>
-<a href="#1822" id="1822">1822</a>
-<a href="#1823" id="1823">1823</a>
-<a href="#1824" id="1824">1824</a>
-<a href="#1825" id="1825">1825</a>
-<a href="#1826" id="1826">1826</a>
-<a href="#1827" id="1827">1827</a>
-<a href="#1828" id="1828">1828</a>
-<a href="#1829" id="1829">1829</a>
-<a href="#1830" id="1830">1830</a>
-<a href="#1831" id="1831">1831</a>
-<a href="#1832" id="1832">1832</a>
-<a href="#1833" id="1833">1833</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -3219,11 +3199,9 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
                 <span class="kw">if </span>i &lt; threshold {
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1]);
                 } <span class="kw">else </span>{
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
                 }
                 event
             })
@@ -3235,7 +3213,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_1;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             event
         };
         <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
@@ -3243,7 +3221,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_2;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             event
         };
         events.push(event_slot_2.clone());
@@ -3277,24 +3255,18 @@
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
 
         <span class="macro">assert_eq!</span>(filtered_events_1.len(), threshold);
-        filtered_events_1
-            .iter()
-            .enumerate()
-            .for_each(|(_i, event)| {
-                <span class="macro">assert_eq!</span>(event.context.slot, slot_1);
-                <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.back().unwrap(), emit_addr_1)
-            });
+        filtered_events_1.iter().for_each(|event| {
+            <span class="macro">assert_eq!</span>(event.context.slot, slot_1);
+            <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.back().unwrap(), emit_addr_1)
+        });
 
         {
             filter_1.emitter_address = <span class="prelude-val">Some</span>(emit_addr_2);
             <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_2) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
             <span class="macro">assert_eq!</span>(filtered_events_2.len(), threshold + <span class="number">1 </span>+ <span class="number">2</span>);
-            filtered_events_2
-                .iter()
-                .enumerate()
-                .for_each(|(_i, event)| {
-                    <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.back().unwrap(), emit_addr_2)
-                });
+            filtered_events_2.iter().for_each(|event| {
+                <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.back().unwrap(), emit_addr_2)
+            });
         }
         {
             filter_1.emitter_address = <span class="prelude-val">Some</span>(dummy_addr);
@@ -3349,11 +3321,9 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
                 <span class="kw">if </span>i &lt; threshold {
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[caller_addr_1.clone(), dummy_addr.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_1, dummy_addr]);
                 } <span class="kw">else </span>{
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[caller_addr_2.clone(), dummy_addr]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_2, dummy_addr]);
                 }
                 event
             })
@@ -3365,7 +3335,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_1;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_2.clone(), dummy_addr]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_2, dummy_addr]);
             event
         };
         <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
@@ -3373,7 +3343,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_2;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_2.clone(), dummy_addr]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[caller_addr_2, dummy_addr]);
             event
         };
         events.push(event_slot_2.clone());
@@ -3407,24 +3377,18 @@
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
 
         <span class="macro">assert_eq!</span>(filtered_events_1.len(), threshold);
-        filtered_events_1
-            .iter()
-            .enumerate()
-            .for_each(|(_i, event)| {
-                <span class="macro">assert_eq!</span>(event.context.slot, slot_1);
-                <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.front().unwrap(), caller_addr_1);
-            });
+        filtered_events_1.iter().for_each(|event| {
+            <span class="macro">assert_eq!</span>(event.context.slot, slot_1);
+            <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.front().unwrap(), caller_addr_1);
+        });
 
         {
             filter_1.original_caller_address = <span class="prelude-val">Some</span>(caller_addr_2);
             <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_2) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
             <span class="macro">assert_eq!</span>(filtered_events_2.len(), threshold + <span class="number">1 </span>+ <span class="number">2</span>);
-            filtered_events_2
-                .iter()
-                .enumerate()
-                .for_each(|(_i, event)| {
-                    <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.front().unwrap(), caller_addr_2);
-                });
+            filtered_events_2.iter().for_each(|event| {
+                <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>event.context.call_stack.front().unwrap(), caller_addr_2);
+            });
         }
         {
             filter_1.original_caller_address = <span class="prelude-val">Some</span>(dummy_addr);
@@ -3477,11 +3441,9 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
                 <span class="kw">if </span>i &lt; threshold {
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1]);
                 } <span class="kw">else </span>{
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
                 }
                 event
             })
@@ -3493,7 +3455,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_1;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             event
         };
         <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
@@ -3501,7 +3463,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_2;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             event.context.is_error = <span class="bool-val">true</span>;
             event
         };
@@ -3536,7 +3498,7 @@
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
 
         <span class="macro">assert_eq!</span>(filtered_events_1.len(), <span class="number">1</span>);
-        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.is_error, <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(filtered_events_1[<span class="number">0</span>].context.is_error);
         <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.slot, slot_2);
         <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.index_in_slot, index_2_2);
 
@@ -3602,11 +3564,9 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
                 event.context.index_in_slot = i <span class="kw">as </span>u64;
                 <span class="kw">if </span>i &lt; threshold {
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_1]);
                 } <span class="kw">else </span>{
-                    event.context.call_stack =
-                        VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+                    event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
                 }
                 event
             })
@@ -3618,7 +3578,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_1;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             event
         };
         <span class="kw">let </span>index_2_2 = <span class="number">256u64</span>;
@@ -3626,7 +3586,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>event = event.clone();
             event.context.slot = slot_2;
             event.context.index_in_slot = index_2_2;
-            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2.clone()]);
+            event.context.call_stack = VecDeque::from(<span class="macro">vec!</span>[dummy_addr, emit_addr_2]);
             <span class="comment">// event.context.is_error = true;
             </span>event
         };
