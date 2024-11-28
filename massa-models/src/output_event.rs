@@ -14,7 +14,7 @@ pub struct SCOutputEvent {
 
 impl PartialOrd for SCOutputEvent {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (self.context.slot, self.context.index_in_slot).partial_cmp(&(other.context.slot, other.context.index_in_slot))
+        Some(self.cmp(other))
     }
 }
 
