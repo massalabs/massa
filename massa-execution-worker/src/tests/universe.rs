@@ -139,7 +139,7 @@ impl ExecutionForeignControllers {
                                 _ => (),
                             }
 
-                            return true;
+                            true
                         })
                         .collect::<Vec<SCOutputEvent>>()
                 });
