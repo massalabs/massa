@@ -1117,7 +1117,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_snip() {
-        // Test snip so we enfore that all db keys are removed
+        // Test snip so we enforce that all db keys are removed
 
         let mut cache = setup();
         cache.max_entry_count = 10;
@@ -1238,7 +1238,7 @@ mod tests {
             OperationId::from_str("O12n1vt8uTLh3H65J4TVuztaWfBh3oumjjVtRCkke7Ba5qWdXdjD").unwrap();
         let op_id_2 =
             OperationId::from_str("O1p5P691KF672fQ8tQougxzSERBwDKZF8FwtkifMSJbP14sEuGc").unwrap();
-        let op_id_uknown =
+        let op_id_unknown =
             OperationId::from_str("O1kvXTfsnVbQcmDERkC89vqAd2xRTLCb3q5b2E5WaVPHwFd7Qth").unwrap();
 
         let event = SCOutputEvent {
@@ -1339,7 +1339,7 @@ mod tests {
         }
 
         {
-            filter_1.original_operation_id = Some(op_id_uknown);
+            filter_1.original_operation_id = Some(op_id_unknown);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
             assert_eq!(filtered_events_2.len(), 0);
         }
