@@ -1217,20 +1217,23 @@ impl ExecutionState {
                 CondomLimits::default(),
             )?,
             _ => {
-                let Ok(_module) = self.module_cache.write().load_module(
+                match self.module_cache.write().load_module(
                     &bytecode,
                     message.max_gas,
                     self.config.condom_limits.clone(),
-                ) else {
-                    let err = ExecutionError::RuntimeError(
-                        "could not load module for async execution".into(),
-                    );
-                    let mut context = context_guard!(self);
-                    context.reset_to_snapshot(context_snapshot, err.clone());
-                    context.cancel_async_message(&message);
-                    return Err(err);
-                };
-                _module
+                ) {
+                    Ok(module) => module,
+                    Err(err) => {
+                        let err = ExecutionError::RuntimeError(format!(
+                            "could not load module for async execution: {}",
+                            err
+                        ));
+                        let mut context = context_guard!(self);
+                        context.reset_to_snapshot(context_snapshot, err.clone());
+                        context.cancel_async_message(&message);
+                        return Err(err);
+                    }
+                }
             }
         };
 
