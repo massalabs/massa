@@ -2470,26 +2470,6 @@
 <a href="#2470" id="2470">2470</a>
 <a href="#2471" id="2471">2471</a>
 <a href="#2472" id="2472">2472</a>
-<a href="#2473" id="2473">2473</a>
-<a href="#2474" id="2474">2474</a>
-<a href="#2475" id="2475">2475</a>
-<a href="#2476" id="2476">2476</a>
-<a href="#2477" id="2477">2477</a>
-<a href="#2478" id="2478">2478</a>
-<a href="#2479" id="2479">2479</a>
-<a href="#2480" id="2480">2480</a>
-<a href="#2481" id="2481">2481</a>
-<a href="#2482" id="2482">2482</a>
-<a href="#2483" id="2483">2483</a>
-<a href="#2484" id="2484">2484</a>
-<a href="#2485" id="2485">2485</a>
-<a href="#2486" id="2486">2486</a>
-<a href="#2487" id="2487">2487</a>
-<a href="#2488" id="2488">2488</a>
-<a href="#2489" id="2489">2489</a>
-<a href="#2490" id="2490">2490</a>
-<a href="#2491" id="2491">2491</a>
-<a href="#2492" id="2492">2492</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3444,12 +3424,12 @@
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"unexpected operation type"</span>),
         };
 
-        <span class="kw">let </span>execution_component_version;
+        <span class="kw">let </span>condom_limits;
         {
             <span class="comment">// acquire write access to the context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-            execution_component_version = context.execution_component_version;
+            condom_limits = context.get_condom_limits();
             <span class="comment">// Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
             // * the context will give the operation's sender write access to its own ledger entry
@@ -3461,11 +3441,6 @@
                 owned_addresses: <span class="macro">vec!</span>[sender_addr],
                 operation_datastore: <span class="prelude-val">Some</span>(datastore.clone()),
             }];
-        };
-
-        <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; Default::default(),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
         };
 
         <span class="comment">// load the tmp module
@@ -3524,12 +3499,12 @@
 
         <span class="comment">// prepare the current slot context for executing the operation
         </span><span class="kw">let </span>bytecode;
-        <span class="kw">let </span>execution_component_version;
+        <span class="kw">let </span>condom_limits;
         {
             <span class="comment">// acquire write access to the context
             </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-            execution_component_version = context.execution_component_version;
+            condom_limits = context.get_condom_limits();
 
             <span class="comment">// Set the call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
@@ -3576,12 +3551,7 @@
         <span class="comment">// load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
 
-        </span><span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; Default::default(),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
-        };
-
-        <span class="kw">let </span>module =
+        </span><span class="kw">let </span>module =
             <span class="self">self</span>.module_cache
                 .write()
                 .load_module(<span class="kw-2">&amp;</span>bytecode, max_gas, condom_limits.clone())<span class="question-mark">?</span>;
@@ -4465,7 +4435,7 @@
         <span class="comment">// run the interpreter according to the target type
         </span><span class="kw">let </span>exec_response = <span class="kw">match </span>req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) =&gt; {
-                <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
+                <span class="kw">let </span>condom_limits = execution_context.get_condom_limits();
                 {
                     <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                     <span class="kw-2">*</span>context = execution_context;
@@ -4477,11 +4447,6 @@
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>addr), <span class="prelude-val">None</span>, fee, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
                 }
-
-                <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-                    <span class="number">0 </span>=&gt; CondomLimits::default(),
-                    <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
-                };
 
                 <span class="comment">// load the tmp module
                 </span><span class="kw">let </span>module = <span class="self">self</span>.module_cache.read().load_tmp_module(
@@ -4515,7 +4480,7 @@
                     .unwrap_or_default()
                     .<span class="number">0</span>;
 
-                <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
+                <span class="kw">let </span>condom_limits = execution_context.get_condom_limits();
                 {
                     <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                     <span class="kw-2">*</span>context = execution_context;
@@ -4537,11 +4502,6 @@
                         context.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>from), <span class="prelude-val">Some</span>(<span class="kw-2">*</span>to), coins, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
                     }
                 }
-
-                <span class="kw">let </span>condom_limits = <span class="kw">match </span>execution_component_version {
-                    <span class="number">0 </span>=&gt; CondomLimits::default(),
-                    <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
-                };
 
                 <span class="comment">// load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface

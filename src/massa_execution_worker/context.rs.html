@@ -1375,6 +1375,14 @@
 <a href="#1375" id="1375">1375</a>
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -2705,6 +2713,14 @@
                 <span class="string">"The called address {} is not a smart contract address"</span>,
                 target_sc_address
             ))),
+        }
+    }
+
+    <span class="doccomment">/// Get the condom limits to pass to the VM depending on the current execution component version
+    </span><span class="kw">pub fn </span>get_condom_limits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CondomLimits {
+        <span class="kw">match </span><span class="self">self</span>.execution_component_version {
+            <span class="number">0 </span>=&gt; Default::default(),
+            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
         }
     }
 }
