@@ -18,11 +18,11 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
                     (MipComponent::Execution, 1),
                     (MipComponent::FinalState, 1),
                 ]),
-                start: MassaTime::from_millis(0), // TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
-                timeout: MassaTime::from_millis(0), // TODO: set when known
+                start: MassaTime::from_utc_ymd_hms(2024, 11, 28, 2, 0, 0).unwrap(), // TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
+                timeout: MassaTime::from_utc_ymd_hms(2025, 11, 28, 2, 0, 0).unwrap(), // TODO: set when known
                 activation_delay: MassaTime::from_millis(3 * 24 * 60 * 60 * 1000), // TODO: set when known, 3 days as an example
             },
-            MipState::new(MassaTime::from_millis(0)),
+            MipState::new(MassaTime::from_utc_ymd_hms(2024, 11, 28, 0, 0, 0).unwrap()),
         ), // TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch)
     ];
 
