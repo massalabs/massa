@@ -1553,6 +1553,18 @@
 <a href="#1553" id="1553">1553</a>
 <a href="#1554" id="1554">1554</a>
 <a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1586,7 +1598,6 @@
 <span class="kw">use </span>massa_consensus_worker::start_consensus_worker;
 <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
 <span class="kw">use </span>massa_db_worker::MassaDB;
-<span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
 <span class="kw">use </span>massa_execution_exports::{
     CondomLimits, ExecutionChannels, ExecutionConfig, ExecutionManager, GasCosts,
@@ -1615,21 +1626,21 @@
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::config::constants::{
     ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CALL_MAX_FUTURE_SLOTS, DELTA_F0,
-    DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
-    INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
-    LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
-    MAX_BLOCK_SIZE, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH, MAX_BYTECODE_LENGTH,
-    MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-    MAX_DENUNCIATION_CHANGES_LENGTH, MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH,
-    MAX_EXECUTED_OPS_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT,
-    MAX_LISTENERS_PER_PEER, MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE,
-    MAX_OPERATION_DATASTORE_ENTRY_COUNT, MAX_OPERATION_DATASTORE_KEY_LENGTH,
-    MAX_OPERATION_DATASTORE_VALUE_LENGTH, MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE,
-    MAX_PEERS_IN_ANNOUNCEMENT_LIST, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH,
-    MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY, MAX_SIZE_CHANNEL_COMMANDS_PEERS,
-    MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS, MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
+    CONSENSUS_BOOTSTRAP_PART_SIZE, DELTA_F0, DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT,
+    END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP, INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE,
+    LEDGER_ENTRY_BASE_COST, LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS,
+    MAX_ASYNC_POOL_LENGTH, MAX_BLOCK_SIZE, MAX_BOOTSTRAP_BLOCKS, MAX_BOOTSTRAP_ERROR_LENGTH,
+    MAX_BYTECODE_LENGTH, MAX_CONSENSUS_BLOCKS_IDS, MAX_DATASTORE_ENTRY_COUNT,
+    MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH,
+    MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_DENUNCIATION_CHANGES_LENGTH,
+    MAX_ENDORSEMENTS_PER_MESSAGE, MAX_EXECUTED_OPS_CHANGES_LENGTH, MAX_EXECUTED_OPS_LENGTH,
+    MAX_FUNCTION_NAME_LENGTH, MAX_GAS_PER_BLOCK, MAX_LEDGER_CHANGES_COUNT, MAX_LISTENERS_PER_PEER,
+    MAX_OPERATIONS_PER_BLOCK, MAX_OPERATIONS_PER_MESSAGE, MAX_OPERATION_DATASTORE_ENTRY_COUNT,
+    MAX_OPERATION_DATASTORE_KEY_LENGTH, MAX_OPERATION_DATASTORE_VALUE_LENGTH,
+    MAX_OPERATION_STORAGE_TIME, MAX_PARAMETERS_SIZE, MAX_PEERS_IN_ANNOUNCEMENT_LIST,
+    MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MAX_SIZE_CHANNEL_COMMANDS_CONNECTIVITY,
+    MAX_SIZE_CHANNEL_COMMANDS_PEERS, MAX_SIZE_CHANNEL_COMMANDS_PEER_TESTERS,
+    MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_ENDORSEMENTS,
     MAX_SIZE_CHANNEL_COMMANDS_PROPAGATION_OPERATIONS, MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_BLOCKS,
     MAX_SIZE_CHANNEL_COMMANDS_RETRIEVAL_ENDORSEMENTS,
@@ -1642,13 +1653,10 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    BASE_OPERATION_GAS_COST, CHAINID, DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
-    DEFERRED_CALL_CST_GAS_COST, DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-    DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
-    DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION,
-    MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    BASE_OPERATION_GAS_COST, CHAINID, EVENT_CACHE_TICK_DELAY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
+    MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
+    MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
     MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
     MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
@@ -1682,6 +1690,8 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 
+<span class="kw">use </span>massa_event_cache::config::EventCacheConfig;
+<span class="kw">use </span>massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 <span class="kw">use </span>survey::MassaSurveyStopper;
 <span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
@@ -1705,6 +1715,7 @@
     Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
+    Box&lt;<span class="kw">dyn </span>EventCacheManager&gt;,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -1757,25 +1768,9 @@
         endorsement_count: ENDORSEMENT_COUNT,
         keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     };
-    <span class="kw">let </span>deferred_calls_config = DeferredCallsConfig {
-        thread_count: THREAD_COUNT,
-        max_function_name_length: MAX_FUNCTION_NAME_LENGTH,
-        max_parameter_size: MAX_PARAMETERS_SIZE,
-        max_pool_changes: DEFERRED_CALL_MAX_POOL_CHANGES,
-        max_gas: DEFERRED_CALL_MAX_ASYNC_GAS,
-        max_future_slots: DEFERRED_CALL_MAX_FUTURE_SLOTS,
-        base_fee_max_max_change_denominator: DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
-        min_gas_increment: DEFERRED_CALL_MIN_GAS_INCREMENT,
-        min_gas_cost: DEFERRED_CALL_MIN_GAS_COST,
-        global_overbooking_penalty: DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
-        slot_overbooking_penalty: DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
-        call_cst_gas_cost: DEFERRED_CALL_CST_GAS_COST,
-        ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
-    };
     <span class="kw">let </span>final_state_config = FinalStateConfig {
         ledger_config: ledger_config.clone(),
         async_pool_config,
-        deferred_calls_config,
         pos_config,
         executed_ops_config,
         executed_denunciations_config,
@@ -2028,6 +2023,26 @@
         }
     }
 
+    <span class="comment">// Event cache thread
+    </span><span class="kw">let </span>event_cache_config = EventCacheConfig {
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        max_event_cache_length: SETTINGS.execution.event_cache_size,
+        snip_amount: SETTINGS.execution.event_snip_amount,
+        max_event_data_length: MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
+        thread_count: THREAD_COUNT,
+        <span class="comment">// Note: SCOutputEvent call stack comes from the execution module, and we assume
+        //       this should return a limited call stack length
+        //       The value remains for future use &amp; limitations
+        </span>max_call_stack_length: u16::MAX,
+
+        max_events_per_operation: <span class="number">25u64</span>, <span class="comment">// MAX_EVENTS_PER_OPERATION - TODO: rebase
+        </span>max_operations_per_block: MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64,
+        max_events_per_query: MAX_EVENTS_PER_QUERY,
+        tick_delay: Duration::from_millis(EVENT_CACHE_TICK_DELAY),
+    };
+    <span class="kw">let </span>(event_cache_manager, event_cache_controller) =
+        start_event_cache_writer_worker(event_cache_config);
+
     <span class="comment">// Storage costs constants
     </span><span class="kw">let </span>storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
@@ -2119,8 +2134,10 @@
         block_dump_folder_path,
         max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
         condom_limits,
-        deferred_calls_config,
         max_event_per_operation: MAX_EVENT_PER_OPERATION,
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        event_cache_size: SETTINGS.execution.event_cache_size,
+        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
@@ -2159,6 +2176,7 @@
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
+        event_cache_controller,
         <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
         </span>block_storage_backend.clone(),
     );
@@ -2482,7 +2500,6 @@
         chain_id: <span class="kw-2">*</span>CHAINID,
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
-        deferred_calls_config,
     };
 
     <span class="comment">// spawn Massa API
@@ -2695,6 +2712,7 @@
         pool_manager,
         protocol_manager,
         factory_manager,
+        event_cache_manager,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -2790,6 +2808,7 @@
     pool_manager: Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     protocol_manager: Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
+    event_cache_manager: Box&lt;<span class="kw">dyn </span>EventCacheManager&gt;,
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
@@ -2803,6 +2822,7 @@
         <span class="kw-2">mut </span>pool_manager,
         <span class="kw-2">mut </span>protocol_manager,
         <span class="kw-2">mut </span>factory_manager,
+        <span class="kw-2">mut </span>event_cache_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -2874,7 +2894,9 @@
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
-</span>}
+
+    </span>event_cache_manager.stop();
+}
 
 <span class="attr">#[derive(Parser)]
 #[command(version = <span class="macro">crate_version!</span>())]
@@ -3023,6 +3045,7 @@
             pool_manager,
             protocol_manager,
             factory_manager,
+            event_cache_manager,
             api_private_handle,
             api_public_handle,
             api_handle,
@@ -3089,6 +3112,7 @@
                 pool_manager,
                 protocol_manager,
                 factory_manager,
+                event_cache_manager,
             },
             api_private_handle,
             api_public_handle,
