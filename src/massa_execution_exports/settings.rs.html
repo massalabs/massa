@@ -112,6 +112,10 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -205,9 +209,7 @@
     <span class="doccomment">/// slot execution outputs channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_output_channel_capacity: usize,
     <span class="doccomment">/// max size of event data, in bytes
-    </span><span class="kw">pub </span>max_event_size_v0: usize,
-    <span class="doccomment">/// max size of event data, in bytes
-    </span><span class="kw">pub </span>max_event_size_v1: usize,
+    </span><span class="kw">pub </span>max_event_size: usize,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
     <span class="doccomment">/// whether slot execution traces broadcast is enabled
@@ -225,5 +227,11 @@
     </span><span class="kw">pub </span>condom_limits: CondomLimits,
     <span class="doccomment">/// Maximum number of event that an operation can emit
     </span><span class="kw">pub </span>max_event_per_operation: usize,
+    <span class="doccomment">/// Path to the hard drive event cache storage
+    </span><span class="kw">pub </span>event_cache_path: PathBuf,
+    <span class="doccomment">/// Maximum number of entries we want to keep in the Event cache
+    </span><span class="kw">pub </span>event_cache_size: usize,
+    <span class="doccomment">/// Amount of entries removed when `event_cache_size` is reached
+    </span><span class="kw">pub </span>event_snip_amount: usize,
 }
 </code></pre></div></section></main></body></html>
