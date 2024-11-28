@@ -1695,6 +1695,9 @@ impl Interface for InterfaceImpl {
         let addr = Address::from_str(to_check)?;
         let execution_component_version = context_guard!(self).execution_component_version;
 
+        // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
+        // We keep the previous (bugged) code if the execution component version is 0
+        // to avoid a breaking change
         match (addr, execution_component_version) {
             (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
             (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
