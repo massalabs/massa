@@ -298,12 +298,9 @@ impl LedgerDB {
     ) {
         let db = self.db.read();
 
-        match final_state_component_version {
-            0 => {}
-            _ => {
-                // Ensures any potential previous entry is fully deleted.
-                delete_datastore_entries(addr, &db, batch, final_state_component_version);
-            }
+        if final_state_component_version > 0 {
+            // Ensures any potential previous entry is fully deleted.
+            delete_datastore_entries(addr, &db, batch, final_state_component_version);
         }
 
         // Version
