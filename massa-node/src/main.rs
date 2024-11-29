@@ -489,7 +489,7 @@ async fn launch(
         //       The value remains for future use & limitations
         max_call_stack_length: u16::MAX,
 
-        max_events_per_operation: MAX_EVENT_PER_OPERATION as u64, 
+        max_events_per_operation: MAX_EVENT_PER_OPERATION as u64,
         max_operations_per_block: MAX_OPERATIONS_PER_BLOCK as u64,
         max_events_per_query: MAX_EVENTS_PER_QUERY,
         tick_delay: Duration::from_millis(EVENT_CACHE_TICK_DELAY),

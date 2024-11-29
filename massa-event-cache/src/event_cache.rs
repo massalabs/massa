@@ -66,9 +66,9 @@ impl DbKeyBuilder {
 
     /// Low level key builder function
     /// There is no guarantees that the key will be unique
-    /// Recommended to use high level function like: 
-    /// `key_from_event`, `prefix_key_from_indent`, 
-    /// `prefix_key_from_filter_item` or `counter_key_from_filter_item` 
+    /// Recommended to use high level function like:
+    /// `key_from_event`, `prefix_key_from_indent`,
+    /// `prefix_key_from_filter_item` or `counter_key_from_filter_item`
     fn key(
         &self,
         indent: &KeyIndent,
@@ -76,7 +76,6 @@ impl DbKeyBuilder {
         _is_prefix: bool,
         is_counter: bool,
     ) -> Vec<u8> {
-
         let mut key_base = if is_counter {
             vec![u8::from(KeyIndent::Counter), u8::from(*indent)]
         } else {
@@ -122,7 +121,6 @@ impl DbKeyBuilder {
         is_prefix: bool,
         is_counter: bool,
     ) -> Option<Vec<u8>> {
-        
         // High level key builder function
         // Db format:
         // * Regular keys:
@@ -132,12 +130,12 @@ impl DbKeyBuilder {
         //   * Emitter address prefix key: [Counter indent][Emitter Address Indent][Addr][Addr len]
         // * Counter keys:
         //   * Emitter address counter key: [Counter indent][Emitter Address Indent][Addr][Addr len][Event key] -> u64
-        
+
         let key = match indent {
             KeyIndent::Event => {
                 let item = KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
                 Some(self.key(indent, item, is_prefix, is_counter))
-            },
+            }
             KeyIndent::EmitterAddress => {
                 if let Some(addr) = event.context.call_stack.back() {
                     let item = KeyBuilderType::Address(addr);
@@ -151,7 +149,7 @@ impl DbKeyBuilder {
                 } else {
                     None
                 }
-            },
+            }
             KeyIndent::OriginalCallerAddress => {
                 if let Some(addr) = event.context.call_stack.front() {
                     let item = KeyBuilderType::Address(addr);
@@ -165,7 +163,7 @@ impl DbKeyBuilder {
                 } else {
                     None
                 }
-            },
+            }
             KeyIndent::OriginalOperationId => {
                 if let Some(op_id) = event.context.origin_operation_id.as_ref() {
                     let item = KeyBuilderType::OperationId(op_id);
@@ -180,7 +178,7 @@ impl DbKeyBuilder {
                 } else {
                     None
                 }
-            },
+            }
             KeyIndent::IsError => {
                 let item = KeyBuilderType::Bool(event.context.is_error);
                 let mut key = self.key(indent, item, is_prefix, is_counter);
@@ -189,7 +187,7 @@ impl DbKeyBuilder {
                     key.extend(self.key(&KeyIndent::Event, item, false, false));
                 }
                 Some(key)
-            },
+            }
             _ => unreachable!(),
         };
 
@@ -523,8 +521,11 @@ impl EventCache {
             .collect::<Vec<Vec<u8>>>();
 
         let res = self.db.multi_get(multi_args);
-        debug!("Filter will try to deserialize to SCOutputEvent {} values", res.len());
-        
+        debug!(
+            "Filter will try to deserialize to SCOutputEvent {} values",
+            res.len()
+        );
+
         let events = res
             .into_iter()
             .map(|value| {
@@ -547,7 +548,6 @@ impl EventCache {
         result: &mut BTreeSet<Vec<u8>>,
         seen: Option<&BTreeSet<Vec<u8>>>,
     ) -> u64 {
-        
         let mut query_count: u64 = 0;
 
         if *indent == KeyIndent::Event {
@@ -585,7 +585,6 @@ impl EventCache {
             #[allow(clippy::manual_flatten)]
             for kvb in self.db.iterator_opt(IteratorMode::Start, opts) {
                 if let Ok(kvb) = kvb {
-                    
                     if !kvb.0.starts_with(&[*indent as u8]) {
                         // Stop as soon as our key does not start with the right indent
                         break;
@@ -741,7 +740,6 @@ impl EventCache {
 
     /// Try to remove some entries from the db
     fn snip(&mut self, snip_amount: Option<usize>) {
-        
         let mut iter = self.db.iterator(IteratorMode::Start);
         let mut batch = WriteBatch::default();
         let mut snipped_count: usize = 0;
@@ -830,7 +828,7 @@ impl EventCache {
         // delete the key and reduce entry_count
         self.db.write(batch).expect(CRUD_ERROR);
         self.entry_count = self.entry_count.saturating_sub(snipped_count);
-        
+
         // delete key counters where value == 0
         let mut batch_counters = WriteBatch::default();
         const U64_ZERO_BYTES: [u8; 8] = 0u64.to_be_bytes();
@@ -1304,9 +1302,9 @@ mod tests {
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
         cache.insert_multi_it(events.into_iter());
-        
+
         let mut filter_1 = EventFilter {
-            start: None, 
+            start: None,
             end: None,
             emitter_address: None,
             original_caller_address: None,
@@ -1418,7 +1416,7 @@ mod tests {
         cache.insert_multi_it(events.into_iter());
 
         let mut filter_1 = EventFilter {
-            start: None, 
+            start: None,
             end: None,
             emitter_address: Some(emit_addr_1),
             original_caller_address: None,
@@ -1656,7 +1654,7 @@ mod tests {
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
         assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_2);
     }
-    
+
     #[test]
     #[serial]
     fn test_filter_optimisations() {
@@ -1727,7 +1725,7 @@ mod tests {
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
         cache.insert_multi_it(events.into_iter());
-        
+
         // Check if we correctly count the number of events in the DB with emit_addr_1 & emit_addr_2
         let emit_addr_1_count = cache
             .filter_item_estimate_count(
@@ -1741,26 +1739,23 @@ mod tests {
                 &FilterItem::EmitterAddress(emit_addr_2),
             )
             .unwrap();
-        
-        
+
         assert_eq!(emit_addr_1_count, (threshold) as u64);
         assert_eq!(emit_addr_2_count, (threshold + 1 + 2) as u64);
-    
+
         // Check if we query first by emitter address then is_error
-        
-        let filter_1 = {
-            let mut filter = EventFilter::default();
-            filter.emitter_address = Some(emit_addr_1);
-            filter.is_error = Some(true);
-            filter
+
+        let filter_1 = EventFilter {
+            emitter_address: Some(emit_addr_1),
+            is_error: Some(true),
+            ..Default::default()
         };
-        
-        let (query_counts, _filtered_events_1) = cache
-            .get_filtered_sc_output_events(&filter_1);
+
+        let (query_counts, _filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
         println!("threshold: {:?}", threshold);
         println!("query_counts: {:?}", query_counts);
-        
-        // Check that we iter no more than needed (here: only 2 (== threshold) event with emit addr 1) 
+
+        // Check that we iter no more than needed (here: only 2 (== threshold) event with emit addr 1)
         assert_eq!(query_counts[0], threshold as u64);
         // For second filter (is_error) we could have iter more (all events have is_error = true)
         // but as soon as we found 2 items we could return (as the previous filter already limit the final count)
