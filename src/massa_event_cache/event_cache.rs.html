@@ -1728,40 +1728,6 @@
 <a href="#1728" id="1728">1728</a>
 <a href="#1729" id="1729">1729</a>
 <a href="#1730" id="1730">1730</a>
-<a href="#1731" id="1731">1731</a>
-<a href="#1732" id="1732">1732</a>
-<a href="#1733" id="1733">1733</a>
-<a href="#1734" id="1734">1734</a>
-<a href="#1735" id="1735">1735</a>
-<a href="#1736" id="1736">1736</a>
-<a href="#1737" id="1737">1737</a>
-<a href="#1738" id="1738">1738</a>
-<a href="#1739" id="1739">1739</a>
-<a href="#1740" id="1740">1740</a>
-<a href="#1741" id="1741">1741</a>
-<a href="#1742" id="1742">1742</a>
-<a href="#1743" id="1743">1743</a>
-<a href="#1744" id="1744">1744</a>
-<a href="#1745" id="1745">1745</a>
-<a href="#1746" id="1746">1746</a>
-<a href="#1747" id="1747">1747</a>
-<a href="#1748" id="1748">1748</a>
-<a href="#1749" id="1749">1749</a>
-<a href="#1750" id="1750">1750</a>
-<a href="#1751" id="1751">1751</a>
-<a href="#1752" id="1752">1752</a>
-<a href="#1753" id="1753">1753</a>
-<a href="#1754" id="1754">1754</a>
-<a href="#1755" id="1755">1755</a>
-<a href="#1756" id="1756">1756</a>
-<a href="#1757" id="1757">1757</a>
-<a href="#1758" id="1758">1758</a>
-<a href="#1759" id="1759">1759</a>
-<a href="#1760" id="1760">1760</a>
-<a href="#1761" id="1761">1761</a>
-<a href="#1762" id="1762">1762</a>
-<a href="#1763" id="1763">1763</a>
-<a href="#1764" id="1764">1764</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -1885,8 +1851,7 @@
         is_prefix: bool,
         is_counter: bool,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="comment">// High level key builder function
-        // Db format:
+        <span class="comment">// Db format:
         // * Regular keys:
         //   * Event key: [Event Indent][Slot][Index] -&gt; Event value: Event serialized
         //   * Emitter address key: [Emitter Address Indent][Addr][Addr len][Event key] -&gt; []
@@ -1935,8 +1900,7 @@
                     <span class="kw">let </span>item =
                         KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
                     <span class="kw">if </span>!is_prefix &amp;&amp; !is_counter {
-                        <span class="comment">// key.extend(self.key_from_item(indent, item, false, false));
-                        </span>key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
+                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
                     }
                     <span class="prelude-val">Some</span>(key)
                 } <span class="kw">else </span>{
@@ -1960,14 +1924,12 @@
 
     <span class="doccomment">/// Prefix key to iterate over all events / emitter_address / ...
     </span><span class="kw">fn </span>prefix_key_from_indent(<span class="kw-2">&amp;</span><span class="self">self</span>, indent: <span class="kw-2">&amp;</span>KeyIndent) -&gt; Vec&lt;u8&gt; {
-        <span class="comment">// High level key builder function
-        </span><span class="self">self</span>.key(indent, KeyBuilderType::None, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+        <span class="self">self</span>.key(indent, KeyBuilderType::None, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
     }
 
     <span class="doccomment">/// Prefix key to iterate over specific emitter_address / operation_id / ...
     </span><span class="kw">fn </span>prefix_key_from_filter_item(<span class="kw-2">&amp;</span><span class="self">self</span>, filter_item: <span class="kw-2">&amp;</span>FilterItem, indent: <span class="kw-2">&amp;</span>KeyIndent) -&gt; Vec&lt;u8&gt; {
-        <span class="comment">// High level key builder function
-        </span><span class="kw">match </span>(indent, filter_item) {
+        <span class="kw">match </span>(indent, filter_item) {
             (KeyIndent::Event, FilterItem::SlotStartEnd(_start, _end)) =&gt; {
                 <span class="macro">unimplemented!</span>()
             }
@@ -2708,8 +2670,8 @@
     <span class="kw">use </span>tempfile::TempDir;
     <span class="comment">// internal
     </span><span class="kw">use </span>massa_models::config::{
-        MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_OPERATIONS_PER_BLOCK,
-        MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
+        MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION,
+        MAX_OPERATIONS_PER_BLOCK, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
     };
     <span class="kw">use </span>massa_models::operation::OperationId;
     <span class="kw">use </span>massa_models::output_event::EventExecutionContext;
@@ -2724,9 +2686,7 @@
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
             MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
-            <span class="comment">// TODO: rebase
-            // MAX_EVENT_PER_OPERATION as u64,
-            </span><span class="number">25u64</span>,
+            MAX_EVENT_PER_OPERATION <span class="kw">as </span>u64,
             MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64,
             MAX_EVENTS_PER_QUERY,
         )
@@ -2986,22 +2946,15 @@
 
         <span class="kw">let </span>filter_1 = EventFilter {
             start: <span class="prelude-val">Some</span>(Slot::new(<span class="number">2</span>, <span class="number">0</span>)),
-            end: <span class="prelude-val">None</span>,
-            emitter_address: <span class="prelude-val">None</span>,
-            original_caller_address: <span class="prelude-val">None</span>,
-            original_operation_id: <span class="prelude-val">None</span>,
-            is_final: <span class="prelude-val">None</span>,
-            is_error: <span class="prelude-val">None</span>,
+            ..Default::default()
         };
 
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
 
         <span class="macro">assert_eq!</span>(filtered_events_1.len(), <span class="number">2</span>);
-        <span class="comment">// println!("filtered_events_1[0]: {:?}", filtered_events_1[0]);
-        </span><span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.slot, slot_2);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.slot, slot_2);
         <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.index_in_slot, index_2_1);
-        <span class="comment">// println!("filtered_events_1[1]: {:?}", filtered_events_1[1]);
-        </span><span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">1</span>].context.slot, slot_2);
+        <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">1</span>].context.slot, slot_2);
         <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">1</span>].context.index_in_slot, index_2_2);
     }
 
@@ -3068,13 +3021,8 @@
         cache.insert_multi_it(events.into_iter());
 
         <span class="kw">let </span><span class="kw-2">mut </span>filter_1 = EventFilter {
-            start: <span class="prelude-val">None</span>,
-            end: <span class="prelude-val">None</span>,
-            emitter_address: <span class="prelude-val">None</span>,
-            original_caller_address: <span class="prelude-val">None</span>,
             original_operation_id: <span class="prelude-val">Some</span>(op_id_1),
-            is_final: <span class="prelude-val">None</span>,
-            is_error: <span class="prelude-val">None</span>,
+            ..Default::default()
         };
 
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
@@ -3180,13 +3128,8 @@
         cache.insert_multi_it(events.into_iter());
 
         <span class="kw">let </span><span class="kw-2">mut </span>filter_1 = EventFilter {
-            start: <span class="prelude-val">None</span>,
-            end: <span class="prelude-val">None</span>,
             emitter_address: <span class="prelude-val">Some</span>(emit_addr_1),
-            original_caller_address: <span class="prelude-val">None</span>,
-            original_operation_id: <span class="prelude-val">None</span>,
-            is_final: <span class="prelude-val">None</span>,
-            is_error: <span class="prelude-val">None</span>,
+            ..Default::default()
         };
 
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
@@ -3293,13 +3236,8 @@
         cache.insert_multi_it(events.into_iter());
 
         <span class="kw">let </span><span class="kw-2">mut </span>filter_1 = EventFilter {
-            start: <span class="prelude-val">None</span>,
-            end: <span class="prelude-val">None</span>,
-            emitter_address: <span class="prelude-val">None</span>,
             original_caller_address: <span class="prelude-val">Some</span>(caller_addr_1),
-            original_operation_id: <span class="prelude-val">None</span>,
-            is_final: <span class="prelude-val">None</span>,
-            is_error: <span class="prelude-val">None</span>,
+            ..Default::default()
         };
 
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
@@ -3402,17 +3340,11 @@
         cache.insert_multi_it(events.into_iter());
 
         <span class="kw">let </span>filter_1 = EventFilter {
-            start: <span class="prelude-val">None</span>, <span class="comment">// Some(Slot::new(2, 0)),
-            </span>end: <span class="prelude-val">None</span>,
-            emitter_address: <span class="prelude-val">None</span>,
-            original_caller_address: <span class="prelude-val">None</span>,
-            original_operation_id: <span class="prelude-val">None</span>,
-            is_final: <span class="prelude-val">None</span>,
             is_error: <span class="prelude-val">Some</span>(<span class="bool-val">true</span>),
+            ..Default::default()
         };
 
         <span class="kw">let </span>(<span class="kw">_</span>, filtered_events_1) = cache.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
-
         <span class="macro">assert_eq!</span>(filtered_events_1.len(), <span class="number">1</span>);
         <span class="macro">assert!</span>(filtered_events_1[<span class="number">0</span>].context.is_error);
         <span class="macro">assert_eq!</span>(filtered_events_1[<span class="number">0</span>].context.slot, slot_2);
