@@ -201,32 +201,30 @@ impl SpeculativeDeferredCallRegistry {
             std::cmp::Ordering::Equal => prev_slot_base_fee,
             // more gas was booked than expected: increase the base fee
             std::cmp::Ordering::Greater => {
-                let gas_used_delta = avg_booked_gas.saturating_sub(TARGET_BOOKING);
+                let gas_used_delta = avg_booked_gas.saturating_sub(TARGET_BOOKING) as u64;
 
-                let factor = gas_used_delta
-                    .saturating_div(TARGET_BOOKING)
-                    .saturating_div(self.config.base_fee_max_max_change_denominator as u128)
-                    as u64;
+                let raw_v = prev_slot_base_fee.to_raw().saturating_add(max(
+                    gas_used_delta
+                        .saturating_div(self.config.base_fee_max_max_change_denominator as u64),
+                    self.config.min_gas_increment,
+                ));
 
-                prev_slot_base_fee.saturating_add(max(
-                    prev_slot_base_fee.saturating_mul_u64(factor),
-                    Amount::from_raw(self.config.min_gas_increment),
-                ))
+                Amount::from_raw(min(1_000_000_000, raw_v))
             }
             // less gas was booked than expected: decrease the base fee
             std::cmp::Ordering::Less => {
-                let gas_used_delta = TARGET_BOOKING.saturating_sub(avg_booked_gas);
+                let gas_used_delta = TARGET_BOOKING.saturating_sub(avg_booked_gas) as u64;
 
-                let factor = gas_used_delta
-                    .saturating_div(TARGET_BOOKING)
-                    .saturating_div(self.config.base_fee_max_max_change_denominator as u128)
-                    as u64;
-
-                max(
+                let raw_v = max(
                     prev_slot_base_fee
-                        .saturating_sub(prev_slot_base_fee.saturating_mul_u64(factor)),
-                    Amount::from_raw(self.config.min_gas_cost),
-                )
+                        .to_raw()
+                        .saturating_sub(gas_used_delta.saturating_div(
+                            self.config.base_fee_max_max_change_denominator as u64,
+                        )),
+                    self.config.min_gas_cost,
+                );
+
+                Amount::from_raw(min(1_000_000_000, raw_v))
             }
         };
 
