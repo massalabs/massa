@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["DEFERRED_CALL_ID_PREFIX"],"enum":["DeferredCallId"],"macro":["DeferredCallId","DeferredCallIdVariant"],"struct":["DeferredCallIdDeserializer","DeferredCallIdSerializer","DeferredCallIdV0"]};
