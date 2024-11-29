@@ -124,7 +124,7 @@ impl EventCacheKeyBuilder {
             KeyIndent::Event => {
                 let item = KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
                 Some(self.key(indent, item, is_prefix, is_counter))
-            }
+            },
             KeyIndent::EmitterAddress => {
                 if let Some(addr) = event.context.call_stack.back() {
                     let item = KeyBuilderType::Address(addr);
@@ -138,7 +138,7 @@ impl EventCacheKeyBuilder {
                 } else {
                     None
                 }
-            }
+            },
             KeyIndent::OriginalCallerAddress => {
                 if let Some(addr) = event.context.call_stack.front() {
                     let item = KeyBuilderType::Address(addr);
@@ -152,7 +152,7 @@ impl EventCacheKeyBuilder {
                 } else {
                     None
                 }
-            }
+            },
             KeyIndent::OriginalOperationId => {
                 if let Some(op_id) = event.context.origin_operation_id.as_ref() {
                     let item = KeyBuilderType::OperationId(op_id);
@@ -167,7 +167,7 @@ impl EventCacheKeyBuilder {
                 } else {
                     None
                 }
-            }
+            },
             KeyIndent::IsError => {
                 let item = KeyBuilderType::Bool(event.context.is_error);
                 let mut key = self.key(indent, item, is_prefix, is_counter);
@@ -176,7 +176,7 @@ impl EventCacheKeyBuilder {
                     key.extend(self.key(&KeyIndent::Event, item, false, false));
                 }
                 Some(key)
-            }
+            },
             _ => unreachable!(),
         };
 
@@ -486,7 +486,7 @@ impl EventCache {
 
         // Step 2: apply filter from the lowest counter to the highest counter
 
-        let mut query_counts = vec![];
+        let mut query_counts = Vec::with_capacity(map.len());
         let mut filter_res_prev = None;
         for ((_counter, indent), filter_item) in map.iter() {
             let mut filter_res = BTreeSet::new();
@@ -1739,9 +1739,9 @@ mod tests {
                 call_stack: Default::default(),
                 origin_operation_id: None,
                 is_final: true,
-                is_error: false,
+                is_error: true,
             },
-            data: "message foo bar".to_string(),
+            data: "error foo bar".to_string(),
         };
 
         let to_insert_count = cache.max_entry_count - 5;
@@ -1781,33 +1781,44 @@ mod tests {
         events.push(event_slot_2_2.clone());
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
-        // println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
-
         cache.insert_multi_it(events.into_iter());
-
-        // println!("db iter all:");
-        // for (k, v) in cache.iter_all(None) {
-        //      println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
-
+        
+        // Check if we correctly count the number of events in the DB with emit_addr_1 & emit_addr_2
         let emit_addr_1_count = cache
             .filter_item_estimate_count(
                 &KeyIndent::EmitterAddress,
                 &FilterItem::EmitterAddress(emit_addr_1),
             )
             .unwrap();
-        assert_eq!(emit_addr_1_count, (threshold) as u64);
         let emit_addr_2_count = cache
             .filter_item_estimate_count(
                 &KeyIndent::EmitterAddress,
                 &FilterItem::EmitterAddress(emit_addr_2),
             )
             .unwrap();
+        
+        
+        assert_eq!(emit_addr_1_count, (threshold) as u64);
         assert_eq!(emit_addr_2_count, (threshold + 1 + 2) as u64);
+    
+        // Check if we query first by emitter address then is_error
+        
+        let filter_1 = {
+            let mut filter = EventFilter::default();
+            filter.emitter_address = Some(emit_addr_1);
+            filter.is_error = Some(true);
+            filter
+        };
+        
+        let (query_counts, _filtered_events_1) = cache
+            .get_filtered_sc_output_events(&filter_1);
+        println!("threshold: {:?}", threshold);
+        println!("query_counts: {:?}", query_counts);
+        
+        // Check that we iter no more then needed (here: only 2 (== threshold) event with emit addr 1) 
+        assert_eq!(query_counts[0], threshold as u64);
+        // For second filter (is_error) we could have iter more (all events have is_error = true)
+        // but as soon as we found 2 items we could return (as the previous filter already limit the final count)
+        assert_eq!(query_counts[1], threshold as u64);
     }
 }
