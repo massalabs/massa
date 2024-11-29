@@ -42,6 +42,7 @@ enum KeyIndent {
     IsFinal,
 }
 
+/// Key type that we want to get
 enum KeyBuilderType<'a> {
     Slot(&'a Slot),
     Event(&'a Slot, u64),
@@ -51,18 +52,23 @@ enum KeyBuilderType<'a> {
     None,
 }
 
-struct EventCacheKeyBuilder {
+struct DbKeyBuilder {
     /// Operation Id Serializer
     op_id_ser: OperationIdSerializer,
 }
 
-impl EventCacheKeyBuilder {
+impl DbKeyBuilder {
     fn new() -> Self {
         Self {
             op_id_ser: OperationIdSerializer::new(),
         }
     }
 
+    /// Low level key builder function
+    /// There is no guarantees that the key will be unique
+    /// Recommended to use high level function like: 
+    /// `key_from_event`, `prefix_key_from_indent`, 
+    /// `prefix_key_from_filter_item` or `counter_key_from_filter_item` 
     fn key(
         &self,
         indent: &KeyIndent,
@@ -70,9 +76,6 @@ impl EventCacheKeyBuilder {
         _is_prefix: bool,
         is_counter: bool,
     ) -> Vec<u8> {
-        // Low level key builder function
-        // There is no guarantees that the key will be unique
-        // Use key_from_event OR key_from... unless you know what you're doing
 
         let mut key_base = if is_counter {
             vec![u8::from(KeyIndent::Counter), u8::from(*indent)]
@@ -111,6 +114,7 @@ impl EventCacheKeyBuilder {
         key_base
     }
 
+    /// Key usually used to populate the DB
     fn key_from_event(
         &self,
         event: &SCOutputEvent,
@@ -118,8 +122,17 @@ impl EventCacheKeyBuilder {
         is_prefix: bool,
         is_counter: bool,
     ) -> Option<Vec<u8>> {
+        
         // High level key builder function
-
+        // Db format:
+        // * Regular keys:
+        //   * Event key: [Event Indent][Slot][Index] -> Event value: Event serialized
+        //   * Emitter address key: [Emitter Address Indent][Addr][Addr len][Event key] -> []
+        // * Prefix keys:
+        //   * Emitter address prefix key: [Counter indent][Emitter Address Indent][Addr][Addr len]
+        // * Counter keys:
+        //   * Emitter address counter key: [Counter indent][Emitter Address Indent][Addr][Addr len][Event key] -> u64
+        
         let key = match indent {
             KeyIndent::Event => {
                 let item = KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
@@ -256,6 +269,7 @@ impl EventCacheKeyBuilder {
     }
 }
 
+/// Disk based event cache db (rocksdb based)
 pub(crate) struct EventCache {
     /// RocksDB database
     db: DB,
@@ -272,7 +286,7 @@ pub(crate) struct EventCache {
     /// Event deserializer
     event_deser: SCOutputEventDeserializer,
     /// Key builder
-    key_builder: EventCacheKeyBuilder,
+    key_builder: DbKeyBuilder,
     /// First event slot in db
     first_slot: Slot,
     /// Last event slot in db
@@ -311,7 +325,7 @@ impl EventCache {
         };
         let db = DB::open(&options, path).expect(OPEN_ERROR);
 
-        let key_builder_2 = EventCacheKeyBuilder::new();
+        let key_builder_2 = DbKeyBuilder::new();
 
         Self {
             db,
@@ -482,7 +496,7 @@ impl EventCache {
         });
 
         let map = BTreeMap::from_iter(it);
-        // println!("map: {:?}", map);
+        debug!("Filter items map: {:?}", map);
 
         // Step 2: apply filter from the lowest counter to the highest counter
 
@@ -508,10 +522,9 @@ impl EventCache {
             .take(self.max_events_per_query)
             .collect::<Vec<Vec<u8>>>();
 
-        // println!("multi_args len: {:?}", multi_args.len());
-        // println!("multi_args: {:?}", multi_args);
         let res = self.db.multi_get(multi_args);
-
+        debug!("Filter will try to deserialize to SCOutputEvent {} values", res.len());
+        
         let events = res
             .into_iter()
             .map(|value| {
@@ -534,6 +547,7 @@ impl EventCache {
         result: &mut BTreeSet<Vec<u8>>,
         seen: Option<&BTreeSet<Vec<u8>>>,
     ) -> u64 {
+        
         let mut query_count: u64 = 0;
 
         if *indent == KeyIndent::Event {
@@ -571,7 +585,9 @@ impl EventCache {
             #[allow(clippy::manual_flatten)]
             for kvb in self.db.iterator_opt(IteratorMode::Start, opts) {
                 if let Ok(kvb) = kvb {
+                    
                     if !kvb.0.starts_with(&[*indent as u8]) {
+                        // Stop as soon as our key does not start with the right indent
                         break;
                     }
 
@@ -615,10 +631,12 @@ impl EventCache {
             for kvb in self.db.prefix_iterator(prefix_filter.as_slice()) {
                 if let Ok(kvb) = kvb {
                     if !kvb.0.starts_with(&[*indent as u8]) {
+                        // Stop as soon as our key does not start with the right indent
                         break;
                     }
 
                     if !kvb.0.starts_with(prefix_filter.as_slice()) {
+                        // Stop as soon as our key does not start with our current prefix
                         break;
                     }
 
@@ -651,7 +669,7 @@ impl EventCache {
         query_count
     }
 
-    /// Estimate for a given KeyIndent & FilterItem the number of row to process
+    /// Estimate for a given KeyIndent & FilterItem the number of row to iterate
     fn filter_item_estimate_count(
         &self,
         key_indent: &KeyIndent,
@@ -682,9 +700,7 @@ impl EventCache {
                 let counter_key = self
                     .key_builder
                     .counter_key_from_filter_item(filter_item, key_indent);
-                println!("counter_key: {:?}", counter_key);
                 let counter = self.db.get(counter_key).expect(COUNTER_ERROR);
-                println!("counter: {:?}", counter);
                 let counter_value = counter
                     .map(|b| u64::from_be_bytes(b.try_into().unwrap()))
                     .unwrap_or(0);
@@ -725,6 +741,7 @@ impl EventCache {
 
     /// Try to remove some entries from the db
     fn snip(&mut self, snip_amount: Option<usize>) {
+        
         let mut iter = self.db.iterator(IteratorMode::Start);
         let mut batch = WriteBatch::default();
         let mut snipped_count: usize = 0;
@@ -813,11 +830,13 @@ impl EventCache {
         // delete the key and reduce entry_count
         self.db.write(batch).expect(CRUD_ERROR);
         self.entry_count = self.entry_count.saturating_sub(snipped_count);
-
+        
+        // delete key counters where value == 0
         let mut batch_counters = WriteBatch::default();
+        const U64_ZERO_BYTES: [u8; 8] = 0u64.to_be_bytes();
         for (value, key) in self.db.multi_get(&counter_keys).iter().zip(counter_keys) {
             if let Ok(Some(value)) = value {
-                if *value == 0u64.to_be_bytes().to_vec() {
+                if *value == U64_ZERO_BYTES.to_vec() {
                     batch_counters.delete(key);
                 }
             }
@@ -848,7 +867,7 @@ impl EventCache {
     }
 }
 
-/// A filter parameter - used to decompose EventFilter in multiple filters
+/// A filter parameter - used to decompose an EventFilter in multiple filters
 #[derive(Debug)]
 enum FilterItem {
     SlotStart(Slot),
@@ -1154,7 +1173,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_event_filter() {
-        // Test that the data will be correctly ordered (when iterated from start) in db
+        // Test that the data will be correctly ordered (when filtered) in db
 
         let mut cache = setup();
         let slot_1 = Slot::new(1, 0);
@@ -1284,21 +1303,10 @@ mod tests {
         events.push(event_slot_2_2.clone());
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
-        // println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
-
         cache.insert_multi_it(events.into_iter());
-
-        // for (k, v) in cache.iter_all(None) {
-        //     println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
-
+        
         let mut filter_1 = EventFilter {
-            start: None, // Some(Slot::new(2, 0)),
+            start: None, 
             end: None,
             emitter_address: None,
             original_caller_address: None,
@@ -1311,24 +1319,15 @@ mod tests {
 
         assert_eq!(filtered_events_1.len(), cache.max_entry_count - 5);
         filtered_events_1.iter().enumerate().for_each(|(i, event)| {
-            // println!("checking event #{}: {:?}", i, event);
             assert_eq!(event.context.slot, slot_1);
             assert_eq!(event.context.index_in_slot, i as u64);
         });
-
-        // println!("filtered_events_1[0]: {:?}", filtered_events_1[0]);
-        // assert_eq!(filtered_events_1[0].context.slot, slot_2);
-        // assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_1);
-        // println!("filtered_events_1[1]: {:?}", filtered_events_1[1]);
-        // assert_eq!(filtered_events_1[1].context.slot, slot_2);
-        // assert_eq!(filtered_events_1[1].context.index_in_slot, index_2_2);
 
         {
             filter_1.original_operation_id = Some(op_id_2);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
             assert_eq!(filtered_events_2.len(), 2);
             filtered_events_2.iter().enumerate().for_each(|(i, event)| {
-                // println!("checking event #{}: {:?}", i, event);
                 assert_eq!(event.context.slot, slot_2);
                 if i == 0 {
                     assert_eq!(event.context.index_in_slot, i as u64);
@@ -1415,22 +1414,11 @@ mod tests {
         events.push(event_slot_2_2.clone());
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
-        // println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
 
         cache.insert_multi_it(events.into_iter());
 
-        // println!("db iter all:");
-        // for (k, v) in cache.iter_all(None) {
-        //     println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
-
         let mut filter_1 = EventFilter {
-            start: None, // Some(Slot::new(2, 0)),
+            start: None, 
             end: None,
             emitter_address: Some(emit_addr_1),
             original_caller_address: None,
@@ -1447,6 +1435,7 @@ mod tests {
             assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_1)
         });
 
+        // filter with emit_addr_2
         {
             filter_1.emitter_address = Some(emit_addr_2);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
@@ -1455,11 +1444,13 @@ mod tests {
                 assert_eq!(*event.context.call_stack.back().unwrap(), emit_addr_2)
             });
         }
+        // filter with dummy_addr
         {
             filter_1.emitter_address = Some(dummy_addr);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
             assert_eq!(filtered_events_2.len(), 0);
         }
+        // filter with address that is not in the DB
         {
             filter_1.emitter_address = Some(emit_addr_unknown);
             let (_, filtered_events_2) = cache.get_filtered_sc_output_events(&filter_1);
@@ -1537,22 +1528,10 @@ mod tests {
         events.push(event_slot_2_2.clone());
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
-        // println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
-
         cache.insert_multi_it(events.into_iter());
 
-        // println!("db iter all:");
-        // for (k, v) in cache.iter_all(None) {
-        //     println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
-
         let mut filter_1 = EventFilter {
-            start: None, // Some(Slot::new(2, 0)),
+            start: None,
             end: None,
             emitter_address: None,
             original_caller_address: Some(caller_addr_1),
@@ -1658,19 +1637,7 @@ mod tests {
         events.push(event_slot_2_2.clone());
         // Randomize the events so we insert in random orders in the DB
         events.shuffle(&mut thread_rng());
-        // println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
-
         cache.insert_multi_it(events.into_iter());
-
-        // println!("db iter all:");
-        // for (k, v) in cache.iter_all(None) {
-        //     println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
 
         let filter_1 = EventFilter {
             start: None, // Some(Slot::new(2, 0)),
@@ -1688,33 +1655,11 @@ mod tests {
         assert!(filtered_events_1[0].context.is_error);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
         assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_2);
-
-        // filtered_events_1
-        //     .iter()
-        //     .enumerate()
-        //     .for_each(|(_i, event)| {
-        //         assert_eq!(event.context.slot, slot_1);
-        //         assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_1);
-        //     });
-
-        /*
-        {
-            filter_1.original_caller_address = Some(emit_addr_2);
-            let filtered_events_2 = cache
-                .get_filtered_sc_output_events(&filter_1);
-            assert_eq!(filtered_events_2.len(), threshold + 1 + 2);
-            filtered_events_2
-                .iter()
-                .enumerate()
-                .for_each(|(_i, event)| {
-                    assert_eq!(*event.context.call_stack.front().unwrap(), emit_addr_2);
-                });
-        }
-        */
     }
+    
     #[test]
     #[serial]
-    fn test_filter_optim() {
+    fn test_filter_optimisations() {
         // Test we iterate over the right number of rows when filtering
 
         let mut cache = setup();
@@ -1815,7 +1760,7 @@ mod tests {
         println!("threshold: {:?}", threshold);
         println!("query_counts: {:?}", query_counts);
         
-        // Check that we iter no more then needed (here: only 2 (== threshold) event with emit addr 1) 
+        // Check that we iter no more than needed (here: only 2 (== threshold) event with emit addr 1) 
         assert_eq!(query_counts[0], threshold as u64);
         // For second filter (is_error) we could have iter more (all events have is_error = true)
         // but as soon as we found 2 items we could return (as the previous filter already limit the final count)
