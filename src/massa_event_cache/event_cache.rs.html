@@ -1811,6 +1811,17 @@
 <a href="#1811" id="1811">1811</a>
 <a href="#1812" id="1812">1812</a>
 <a href="#1813" id="1813">1813</a>
+<a href="#1814" id="1814">1814</a>
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
+<a href="#1819" id="1819">1819</a>
+<a href="#1820" id="1820">1820</a>
+<a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+<a href="#1823" id="1823">1823</a>
+<a href="#1824" id="1824">1824</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -1937,7 +1948,7 @@
             KeyIndent::Event =&gt; {
                 <span class="kw">let </span>item = KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
                 <span class="prelude-val">Some</span>(<span class="self">self</span>.key(indent, item, is_prefix, is_counter))
-            }
+            },
             KeyIndent::EmitterAddress =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = event.context.call_stack.back() {
                     <span class="kw">let </span>item = KeyBuilderType::Address(addr);
@@ -1951,7 +1962,7 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
-            }
+            },
             KeyIndent::OriginalCallerAddress =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = event.context.call_stack.front() {
                     <span class="kw">let </span>item = KeyBuilderType::Address(addr);
@@ -1965,7 +1976,7 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
-            }
+            },
             KeyIndent::OriginalOperationId =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(op_id) = event.context.origin_operation_id.as_ref() {
                     <span class="kw">let </span>item = KeyBuilderType::OperationId(op_id);
@@ -1980,7 +1991,7 @@
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
                 </span>}
-            }
+            },
             KeyIndent::IsError =&gt; {
                 <span class="kw">let </span>item = KeyBuilderType::Bool(event.context.is_error);
                 <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, is_prefix, is_counter);
@@ -1989,7 +2000,7 @@
                     key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
                 }
                 <span class="prelude-val">Some</span>(key)
-            }
+            },
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
         };
 
@@ -2299,7 +2310,7 @@
 
         // Step 2: apply filter from the lowest counter to the highest counter
 
-        </span><span class="kw">let </span><span class="kw-2">mut </span>query_counts = <span class="macro">vec!</span>[];
+        </span><span class="kw">let </span><span class="kw-2">mut </span>query_counts = Vec::with_capacity(map.len());
         <span class="kw">let </span><span class="kw-2">mut </span>filter_res_prev = <span class="prelude-val">None</span>;
         <span class="kw">for </span>((_counter, indent), filter_item) <span class="kw">in </span>map.iter() {
             <span class="kw">let </span><span class="kw-2">mut </span>filter_res = BTreeSet::new();
@@ -3552,9 +3563,9 @@
                 call_stack: Default::default(),
                 origin_operation_id: <span class="prelude-val">None</span>,
                 is_final: <span class="bool-val">true</span>,
-                is_error: <span class="bool-val">false</span>,
+                is_error: <span class="bool-val">true</span>,
             },
-            data: <span class="string">"message foo bar"</span>.to_string(),
+            data: <span class="string">"error foo bar"</span>.to_string(),
         };
 
         <span class="kw">let </span>to_insert_count = cache.max_entry_count - <span class="number">5</span>;
@@ -3594,34 +3605,45 @@
         events.push(event_slot_2_2.clone());
         <span class="comment">// Randomize the events so we insert in random orders in the DB
         </span>events.shuffle(<span class="kw-2">&amp;mut </span>thread_rng());
-        <span class="comment">// println!("inserting events:");
-        // for evt in events.iter() {
-        //     println!("{:?}", evt);
-        // }
-        // println!("{}", "#".repeat(32));
-
-        </span>cache.insert_multi_it(events.into_iter());
-
-        <span class="comment">// println!("db iter all:");
-        // for (k, v) in cache.iter_all(None) {
-        //      println!("k: {:?}, v: {:?}", k, v);
-        // }
-        // println!("{}", "#".repeat(32));
-
+        cache.insert_multi_it(events.into_iter());
+        
+        <span class="comment">// Check if we correctly count the number of events in the DB with emit_addr_1 &amp; emit_addr_2
         </span><span class="kw">let </span>emit_addr_1_count = cache
             .filter_item_estimate_count(
                 <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress,
                 <span class="kw-2">&amp;</span>FilterItem::EmitterAddress(emit_addr_1),
             )
             .unwrap();
-        <span class="macro">assert_eq!</span>(emit_addr_1_count, (threshold) <span class="kw">as </span>u64);
         <span class="kw">let </span>emit_addr_2_count = cache
             .filter_item_estimate_count(
                 <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress,
                 <span class="kw-2">&amp;</span>FilterItem::EmitterAddress(emit_addr_2),
             )
             .unwrap();
+        
+        
+        <span class="macro">assert_eq!</span>(emit_addr_1_count, (threshold) <span class="kw">as </span>u64);
         <span class="macro">assert_eq!</span>(emit_addr_2_count, (threshold + <span class="number">1 </span>+ <span class="number">2</span>) <span class="kw">as </span>u64);
+    
+        <span class="comment">// Check if we query first by emitter address then is_error
+        
+        </span><span class="kw">let </span>filter_1 = {
+            <span class="kw">let </span><span class="kw-2">mut </span>filter = EventFilter::default();
+            filter.emitter_address = <span class="prelude-val">Some</span>(emit_addr_1);
+            filter.is_error = <span class="prelude-val">Some</span>(<span class="bool-val">true</span>);
+            filter
+        };
+        
+        <span class="kw">let </span>(query_counts, _filtered_events_1) = cache
+            .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter_1);
+        <span class="macro">println!</span>(<span class="string">"threshold: {:?}"</span>, threshold);
+        <span class="macro">println!</span>(<span class="string">"query_counts: {:?}"</span>, query_counts);
+        
+        <span class="comment">// Check that we iter no more then needed (here: only 2 (== threshold) event with emit addr 1) 
+        </span><span class="macro">assert_eq!</span>(query_counts[<span class="number">0</span>], threshold <span class="kw">as </span>u64);
+        <span class="comment">// For second filter (is_error) we could have iter more (all events have is_error = true)
+        // but as soon as we found 2 items we could return (as the previous filter already limit the final count)
+        </span><span class="macro">assert_eq!</span>(query_counts[<span class="number">1</span>], threshold <span class="kw">as </span>u64);
     }
 }
 </code></pre></div></section></main></body></html>
