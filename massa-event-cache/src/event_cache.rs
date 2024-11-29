@@ -121,7 +121,6 @@ impl DbKeyBuilder {
         is_prefix: bool,
         is_counter: bool,
     ) -> Option<Vec<u8>> {
-        // High level key builder function
         // Db format:
         // * Regular keys:
         //   * Event key: [Event Indent][Slot][Index] -> Event value: Event serialized
@@ -171,7 +170,6 @@ impl DbKeyBuilder {
                     let item =
                         KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
                     if !is_prefix && !is_counter {
-                        // key.extend(self.key_from_item(indent, item, false, false));
                         key.extend(self.key(&KeyIndent::Event, item, false, false));
                     }
                     Some(key)
@@ -196,13 +194,11 @@ impl DbKeyBuilder {
 
     /// Prefix key to iterate over all events / emitter_address / ...
     fn prefix_key_from_indent(&self, indent: &KeyIndent) -> Vec<u8> {
-        // High level key builder function
         self.key(indent, KeyBuilderType::None, false, false)
     }
 
     /// Prefix key to iterate over specific emitter_address / operation_id / ...
     fn prefix_key_from_filter_item(&self, filter_item: &FilterItem, indent: &KeyIndent) -> Vec<u8> {
-        // High level key builder function
         match (indent, filter_item) {
             (KeyIndent::Event, FilterItem::SlotStartEnd(_start, _end)) => {
                 unimplemented!()
@@ -944,8 +940,8 @@ mod tests {
     use tempfile::TempDir;
     // internal
     use massa_models::config::{
-        MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_OPERATIONS_PER_BLOCK,
-        MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
+        MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION,
+        MAX_OPERATIONS_PER_BLOCK, MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
     };
     use massa_models::operation::OperationId;
     use massa_models::output_event::EventExecutionContext;
@@ -960,9 +956,7 @@ mod tests {
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
             MAX_EVENT_DATA_SIZE as u64,
-            // TODO: rebase
-            // MAX_EVENT_PER_OPERATION as u64,
-            25u64,
+            MAX_EVENT_PER_OPERATION as u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
             MAX_EVENTS_PER_QUERY,
         )
@@ -1222,21 +1216,14 @@ mod tests {
 
         let filter_1 = EventFilter {
             start: Some(Slot::new(2, 0)),
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: None,
-            is_final: None,
-            is_error: None,
+            ..Default::default()
         };
 
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
 
         assert_eq!(filtered_events_1.len(), 2);
-        // println!("filtered_events_1[0]: {:?}", filtered_events_1[0]);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
         assert_eq!(filtered_events_1[0].context.index_in_slot, index_2_1);
-        // println!("filtered_events_1[1]: {:?}", filtered_events_1[1]);
         assert_eq!(filtered_events_1[1].context.slot, slot_2);
         assert_eq!(filtered_events_1[1].context.index_in_slot, index_2_2);
     }
@@ -1304,13 +1291,8 @@ mod tests {
         cache.insert_multi_it(events.into_iter());
 
         let mut filter_1 = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
             original_operation_id: Some(op_id_1),
-            is_final: None,
-            is_error: None,
+            ..Default::default()
         };
 
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
@@ -1416,13 +1398,8 @@ mod tests {
         cache.insert_multi_it(events.into_iter());
 
         let mut filter_1 = EventFilter {
-            start: None,
-            end: None,
             emitter_address: Some(emit_addr_1),
-            original_caller_address: None,
-            original_operation_id: None,
-            is_final: None,
-            is_error: None,
+            ..Default::default()
         };
 
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
@@ -1529,13 +1506,8 @@ mod tests {
         cache.insert_multi_it(events.into_iter());
 
         let mut filter_1 = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
             original_caller_address: Some(caller_addr_1),
-            original_operation_id: None,
-            is_final: None,
-            is_error: None,
+            ..Default::default()
         };
 
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
@@ -1638,17 +1610,11 @@ mod tests {
         cache.insert_multi_it(events.into_iter());
 
         let filter_1 = EventFilter {
-            start: None, // Some(Slot::new(2, 0)),
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: None,
-            is_final: None,
             is_error: Some(true),
+            ..Default::default()
         };
 
         let (_, filtered_events_1) = cache.get_filtered_sc_output_events(&filter_1);
-
         assert_eq!(filtered_events_1.len(), 1);
         assert!(filtered_events_1[0].context.is_error);
         assert_eq!(filtered_events_1[0].context.slot, slot_2);
