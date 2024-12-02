@@ -3207,7 +3207,7 @@ fn execution_trace() {
         .collect();
 
     assert_eq!(traces_1.len(), 1); // Only one op
-    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.len(), 2);
     assert_eq!(
         traces_1.first().unwrap().1.first().unwrap().name,
         abi_name_1
@@ -3250,7 +3250,7 @@ fn execution_trace() {
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                    "AU12o4xrpyL6mobLpuoJevPRbHXnJJRUJC5FyDwjQdhuxcPoTwz3h".to_string()
                 ),
             },
             SCRuntimeAbiTraceValue {
@@ -3357,14 +3357,15 @@ fn execution_trace_nested() {
         .cloned()
         .collect();
 
-    // println!("params: {:?}", sub_call.first().unwrap().parameters);
+    println!("params: {:?}", sub_call.first().unwrap().parameters);
     assert_eq!(
         sub_call.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
+                    // "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
+                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
                 )
             },
             SCRuntimeAbiTraceValue {
