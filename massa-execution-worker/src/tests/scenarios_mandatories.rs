@@ -3207,7 +3207,7 @@ fn execution_trace() {
         .collect();
 
     assert_eq!(traces_1.len(), 1); // Only one op
-    assert_eq!(traces_1.first().unwrap().1.len(), 2); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.len(), 2);
     assert_eq!(
         traces_1.first().unwrap().1.first().unwrap().name,
         abi_name_1
