@@ -98,7 +98,7 @@ impl ExecutionInputData {
 #[derive(Clone)]
 /// implementation of the execution controller
 pub struct ExecutionControllerImpl {
-    /// input data to process in the VM loop
+    /// input data to process in the Execution controller loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
@@ -132,7 +132,7 @@ impl ExecutionController for ExecutionControllerImpl {
             input_data.new_blockclique = new_blockclique;
         }
 
-        // wake up VM loop
+        // wake up execution controller loop
         self.input_data.0.notify_one();
     }
 
@@ -525,7 +525,7 @@ impl ExecutionController for ExecutionControllerImpl {
 /// Execution manager
 /// Allows stopping the execution worker
 pub struct ExecutionManagerImpl {
-    /// input data to process in the VM loop
+    /// input data to process in the Execution manager loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// handle used to join the worker thread
@@ -535,7 +535,7 @@ pub struct ExecutionManagerImpl {
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
-        info!("Stopping Execution controller...");
+        info!("Stopping Execution manager...");
         // notify the worker thread to stop
         {
             let mut input_wlock = self.input_data.1.lock();
@@ -544,8 +544,8 @@ impl ExecutionManager for ExecutionManagerImpl {
         }
         // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
-            join_handle.join().expect("VM controller thread panicked");
+            join_handle.join().expect("Execution manager thread panicked");
         }
-        info!("Execution controller stopped");
+        info!("Execution manager stopped");
     }
 }
