@@ -549,6 +549,8 @@
 <a href="#549" id="549">549</a>
 <a href="#550" id="550">550</a>
 <a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -1095,7 +1097,9 @@
         }
         <span class="comment">// join the execution thread
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
-            join_handle.join().expect(<span class="string">"Execution manager thread panicked"</span>);
+            join_handle
+                .join()
+                .expect(<span class="string">"Execution manager thread panicked"</span>);
         }
         <span class="macro">info!</span>(<span class="string">"Execution manager stopped"</span>);
     }
