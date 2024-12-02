@@ -311,9 +311,6 @@
 <a href="#311" id="311">311</a>
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This module allows launching the execution worker thread, returning objects to communicate with it.
@@ -329,7 +326,6 @@
     request_queue::RequestQueue,
     slot_sequencer::SlotSequencer,
 };
-<span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -575,7 +571,6 @@
     channels: ExecutionChannels,
     wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
     massa_metrics: MassaMetrics,
-    event_cache: Box&lt;<span class="kw">dyn </span>EventCacheController&gt;,
     <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
 ) -&gt; (Box&lt;<span class="kw">dyn </span>ExecutionManager&gt;, Box&lt;<span class="kw">dyn </span>ExecutionController&gt;) {
     <span class="kw">if </span>config.hd_cache_size &lt; config.snip_amount {
@@ -591,7 +586,6 @@
         channels,
         wallet,
         massa_metrics,
-        event_cache,
         <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
         </span>block_storage_backend,
     )));

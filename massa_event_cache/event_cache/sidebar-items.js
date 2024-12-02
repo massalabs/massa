@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["COUNTER_ERROR","COUNTER_KEY_CREATION_ERROR","CRUD_ERROR","DESTROY_ERROR","EVENT_DESER_ERROR","OPEN_ERROR","OPERATION_ID_DESER_ERROR"],"enum":["FilterItem","KeyBuilderType","KeyIndent"],"fn":["from_event_filter"],"struct":["DbKeyBuilder","EventCache"]};

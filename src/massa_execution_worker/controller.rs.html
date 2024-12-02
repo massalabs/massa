@@ -649,7 +649,7 @@
 <span class="attr">#[derive(Clone)]
 </span><span class="doccomment">/// implementation of the execution controller
 </span><span class="kw">pub struct </span>ExecutionControllerImpl {
-    <span class="doccomment">/// input data to process in the VM loop
+    <span class="doccomment">/// input data to process in the Execution controller loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
     <span class="doccomment">/// current execution state (see execution.rs for details)
@@ -683,7 +683,7 @@
             input_data.new_blockclique = new_blockclique;
         }
 
-        <span class="comment">// wake up VM loop
+        <span class="comment">// wake up execution controller loop
         </span><span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
     }
 
@@ -1076,7 +1076,7 @@
 <span class="doccomment">/// Execution manager
 /// Allows stopping the execution worker
 </span><span class="kw">pub struct </span>ExecutionManagerImpl {
-    <span class="doccomment">/// input data to process in the VM loop
+    <span class="doccomment">/// input data to process in the Execution manager loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
     <span class="doccomment">/// handle used to join the worker thread
@@ -1086,7 +1086,7 @@
 <span class="kw">impl </span>ExecutionManager <span class="kw">for </span>ExecutionManagerImpl {
     <span class="doccomment">/// stops the worker
     </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">info!</span>(<span class="string">"Stopping Execution controller..."</span>);
+        <span class="macro">info!</span>(<span class="string">"Stopping Execution manager..."</span>);
         <span class="comment">// notify the worker thread to stop
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>input_wlock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
@@ -1095,9 +1095,9 @@
         }
         <span class="comment">// join the execution thread
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
-            join_handle.join().expect(<span class="string">"VM controller thread panicked"</span>);
+            join_handle.join().expect(<span class="string">"Execution manager thread panicked"</span>);
         }
-        <span class="macro">info!</span>(<span class="string">"Execution controller stopped"</span>);
+        <span class="macro">info!</span>(<span class="string">"Execution manager stopped"</span>);
     }
 }
 </code></pre></div></section></main></body></html>

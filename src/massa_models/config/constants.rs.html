@@ -399,15 +399,6 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -801,15 +792,6 @@
 </span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
 <span class="doccomment">/// Maximum size of executed denunciations
 </span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
-
-<span class="comment">//
-// Constants for event cache
-//
-
-</span><span class="doccomment">/// Maximum number of events that can be returned by a query
-</span><span class="kw">pub const </span>MAX_EVENTS_PER_QUERY: usize = <span class="number">10000</span>;
-<span class="doccomment">/// Delay between writes in event cache writer thread
-</span><span class="kw">pub const </span>EVENT_CACHE_TICK_DELAY: u64 = <span class="number">100</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]
