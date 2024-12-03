@@ -392,6 +392,15 @@ pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
 
+//
+// Constants for event cache
+//
+
+/// Maximum number of events that can be returned by a query
+pub const MAX_EVENTS_PER_QUERY: usize = 10000;
+/// Delay between writes in event cache writer thread
+pub const EVENT_CACHE_TICK_DELAY: u64 = 100;
+
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

@@ -2747,6 +2747,7 @@ dependencies = [
  "massa_consensus_worker",
  "massa_db_exports",
  "massa_db_worker",
+ "massa_event_cache",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_execution_worker",
@@ -3059,6 +3060,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "massa_event_cache"
+version = "0.1.0"
+dependencies = [
+ "massa_models",
+ "massa_serialization",
+ "massa_time",
+ "mockall",
+ "mockall_wrap",
+ "more-asserts 0.3.1",
+ "nom",
+ "num_enum",
+ "parking_lot",
+ "rand",
+ "rocksdb",
+ "serial_test",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "massa_executed_ops"
 version = "2.5.0"
 dependencies = [
@@ -3112,6 +3133,7 @@ dependencies = [
  "massa_channel",
  "massa_db_exports",
  "massa_db_worker",
+ "massa_event_cache",
  "massa_executed_ops",
  "massa_execution_exports",
  "massa_final_state",

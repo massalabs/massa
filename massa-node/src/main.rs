@@ -86,11 +86,12 @@ use massa_models::config::constants::{
     VERSION,
 };
 use massa_models::config::{
-    BASE_OPERATION_GAS_COST, CHAINID, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+    BASE_OPERATION_GAS_COST, CHAINID, EVENT_CACHE_TICK_DELAY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
     MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH,
-    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
-    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_EVENTS_PER_QUERY, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
+    MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
     MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
@@ -122,6 +123,8 @@ use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 use std::{path::Path, process, sync::Arc};
 
+use massa_event_cache::config::EventCacheConfig;
+use massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 use survey::MassaSurveyStopper;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
@@ -145,6 +148,7 @@ async fn launch(
     Box<dyn PoolManager>,
     Box<dyn ProtocolManager>,
     Box<dyn FactoryManager>,
+    Box<dyn EventCacheManager>,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -452,6 +456,26 @@ async fn launch(
         }
     }
 
+    // Event cache thread
+    let event_cache_config = EventCacheConfig {
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        max_event_cache_length: SETTINGS.execution.event_cache_size,
+        snip_amount: SETTINGS.execution.event_snip_amount,
+        max_event_data_length: MAX_EVENT_DATA_SIZE as u64,
+        thread_count: THREAD_COUNT,
+        // Note: SCOutputEvent call stack comes from the execution module, and we assume
+        //       this should return a limited call stack length
+        //       The value remains for future use & limitations
+        max_call_stack_length: u16::MAX,
+
+        max_events_per_operation: MAX_EVENT_PER_OPERATION as u64,
+        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK as u64,
+        max_events_per_query: MAX_EVENTS_PER_QUERY,
+        tick_delay: Duration::from_millis(EVENT_CACHE_TICK_DELAY),
+    };
+    let (event_cache_manager, event_cache_controller) =
+        start_event_cache_writer_worker(event_cache_config);
+
     // Storage costs constants
     let storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
@@ -544,6 +568,9 @@ async fn launch(
         max_recursive_calls_depth: MAX_RECURSIVE_CALLS_DEPTH,
         condom_limits,
         max_event_per_operation: MAX_EVENT_PER_OPERATION,
+        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
+        event_cache_size: SETTINGS.execution.event_cache_size,
+        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     let execution_channels = ExecutionChannels {
@@ -582,6 +609,7 @@ async fn launch(
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
+        event_cache_controller,
         #[cfg(feature = "dump-block")]
         block_storage_backend.clone(),
     );
@@ -1117,6 +1145,7 @@ async fn launch(
         pool_manager,
         protocol_manager,
         factory_manager,
+        event_cache_manager,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -1212,6 +1241,7 @@ struct Managers {
     pool_manager: Box<dyn PoolManager>,
     protocol_manager: Box<dyn ProtocolManager>,
     factory_manager: Box<dyn FactoryManager>,
+    event_cache_manager: Box<dyn EventCacheManager>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1225,6 +1255,7 @@ async fn stop(
         mut pool_manager,
         mut protocol_manager,
         mut factory_manager,
+        mut event_cache_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -1296,6 +1327,8 @@ async fn stop(
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
+
+    event_cache_manager.stop();
 }
 
 #[derive(Parser)]
@@ -1445,6 +1478,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
             pool_manager,
             protocol_manager,
             factory_manager,
+            event_cache_manager,
             api_private_handle,
             api_public_handle,
             api_handle,
@@ -1511,6 +1545,7 @@ async fn run(args: Args) -> anyhow::Result<()> {
                 pool_manager,
                 protocol_manager,
                 factory_manager,
+                event_cache_manager,
             },
             api_private_handle,
             api_public_handle,
