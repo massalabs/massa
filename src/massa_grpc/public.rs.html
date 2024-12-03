@@ -2532,7 +2532,7 @@
     }
 
     <span class="kw">if </span>queries.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_query_items_per_request {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_query_items_per_request)));
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_operation_ids_per_request)));
     }
 
     <span class="kw">let </span>response = grpc
