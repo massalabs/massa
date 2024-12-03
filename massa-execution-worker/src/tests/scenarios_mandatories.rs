@@ -4270,15 +4270,21 @@ fn execution_trace_nested() {
         .collect();
 
     println!("params: {:?}", sub_call.first().unwrap().parameters);
+
+    let from_addr = match *CHAINID {
+        77 => "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string(),
+        77658377 => "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string(),
+        _ => {
+            panic!("Invalid chain id for this test");
+        }
+    };
+
     assert_eq!(
         sub_call.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
-                value: SCRuntimeAbiTraceType::String(
-                    // "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
-                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
-                )
+                value: SCRuntimeAbiTraceType::String(from_addr)
             },
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
