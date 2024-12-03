@@ -28,7 +28,7 @@ impl SpeculativeExecutedDenunciations {
     /// Creates a new `SpeculativeExecutedDenunciations`
     ///
     /// # Arguments
-    /// * `final_state`: thread-safe shared access the the final state
+    /// * `final_state`: thread-safe shared access the final state
     /// * `active_history`: thread-safe shared access the speculative execution history
     pub fn new(
         final_state: Arc<RwLock<dyn FinalStateController>>,

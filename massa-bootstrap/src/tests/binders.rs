@@ -396,7 +396,7 @@ fn test_partial_msg() {
                 client.handshake(version()).unwrap();
 
                 // write the signature.
-                // This test  assumes that the the signature is not checked until the message is read in
+                // This test  assumes that the signature is not checked until the message is read in
                 // its entirety. The signature here would cause the message exchange to fail on that basis
                 // if this assumption is broken.
                 client_clone
@@ -766,7 +766,7 @@ fn test_client_drip_feed() {
                 client.handshake(version()).unwrap();
 
                 // write the signature.
-                // This test  assumes that the the signature is not checked until the message is read in
+                // This test  assumes that the signature is not checked until the message is read in
                 // its entirety. The signature here would cause the message exchange to fail on that basis
                 // if this assumption is broken.
                 client_clone

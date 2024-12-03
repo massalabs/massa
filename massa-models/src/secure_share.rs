@@ -23,7 +23,7 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
-    /// Reference contents. Not required for the the security protocols.
+    /// Reference contents. Not required for the security protocols.
     ///
     /// Use the Lightweight equivilant structures when you need verifiable
     /// serialized data, but do not need to read the values directly (such as when sending)
