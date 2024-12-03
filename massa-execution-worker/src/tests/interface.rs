@@ -39,8 +39,11 @@ fn test_evm_signature_verify() {
     // build original public key
     let private_key = libsecp256k1::SecretKey::parse_slice(&private_key_).unwrap();
     let public_key = libsecp256k1::PublicKey::from_secret_key(&private_key);
-
-    let result = interface.evm_signature_verify(message_, &signature_, &public_key.serialize());
+    let public_key_bytes = libsecp256k1::PublicKey::from_secret_key(&private_key).serialize();
+    
+    // println!("public_key: {:?}", public_key.serialize());
+    
+    let result = interface.evm_signature_verify(message_, &signature_, &public_key_bytes[0..65]);
     assert!(result.is_ok());
 
     // Invalid v
