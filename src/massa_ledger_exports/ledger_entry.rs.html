@@ -203,10 +203,10 @@
 </span><span class="doccomment">//! This file defines the structure representing an entry in the `FinalLedger`
 
 </span><span class="kw">use </span><span class="kw">crate</span>::ledger_changes::LedgerEntryUpdate;
-<span class="kw">use </span><span class="kw">crate</span>::types::{Applicable, SetOrDelete};
 <span class="kw">use </span>massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 <span class="kw">use </span>massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 <span class="kw">use </span>massa_models::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrDelete};
 <span class="kw">use </span>massa_serialization::{Deserializer, SerializeError, Serializer};
 <span class="kw">use </span>nom::error::{context, ContextError, ParseError};
 <span class="kw">use </span>nom::sequence::tuple;

@@ -396,6 +396,7 @@
 <a href="#396" id="396">396</a>
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -407,8 +408,9 @@
     AsyncPoolChanges,
 };
 <span class="kw">use </span>massa_final_state::FinalStateController;
-<span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetUpdateOrDelete};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::slot::Slot;
+<span class="kw">use </span>massa_models::types::{Applicable, SetUpdateOrDelete};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap},
