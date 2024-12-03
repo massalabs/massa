@@ -3364,7 +3364,7 @@ fn execution_trace_nested() {
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
+                    "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string()
                 )
             },
             SCRuntimeAbiTraceValue {
