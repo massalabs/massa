@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_ProtocolError"],"enum":["NetworkConnectionErrorType","ProtocolError"]};
+window.SIDEBAR_ITEMS = {"enum":["NetworkConnectionErrorType","ProtocolError"]};
