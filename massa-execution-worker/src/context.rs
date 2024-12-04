@@ -221,7 +221,7 @@ impl ExecutionContext {
             config.genesis_timestamp,
             slot,
         )
-        .unwrap();
+        .expect("Time overflow when getting block slot timestamp for MIP");
 
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
@@ -370,7 +370,7 @@ impl ExecutionContext {
             config.genesis_timestamp,
             slot,
         )
-        .unwrap();
+        .expect("Time overflow when getting block slot timestamp for MIP");
 
         // return readonly context
         ExecutionContext {
@@ -462,7 +462,7 @@ impl ExecutionContext {
             config.genesis_timestamp,
             slot,
         )
-        .unwrap();
+        .expect("Time overflow when getting block slot timestamp for MIP");
 
         // return active slot execution context
         ExecutionContext {

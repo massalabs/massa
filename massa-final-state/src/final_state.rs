@@ -434,7 +434,7 @@ impl FinalState {
             self.config.genesis_timestamp,
             slot,
         )
-        .unwrap();
+        .expect("Time overflow when getting block slot timestamp for MIP");
 
         let final_state_component_version = self
             .get_mip_store()

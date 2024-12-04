@@ -331,7 +331,8 @@ impl SpeculativeAsyncPool {
     }
 
     fn get_execution_component_version(&self, slot: &Slot) -> u32 {
-        let ts = get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, *slot).unwrap();
+        let ts = get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, *slot)
+            .expect("Time overflow when getting block slot timestamp for MIP");
 
         self.final_state
             .read()
