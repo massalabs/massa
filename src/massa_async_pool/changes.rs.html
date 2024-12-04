@@ -363,7 +363,7 @@
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
-<span class="kw">use </span>massa_ledger_exports::{
+<span class="kw">use </span>massa_models::types::{
     Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
@@ -582,7 +582,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
+    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
     <span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot};
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 
@@ -683,7 +683,7 @@
                 <span class="macro">assert!</span>(msg.can_be_executed);
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">panic!</span>(<span class="string">"Unexpect value"</span>);
+                <span class="macro">panic!</span>(<span class="string">"Unexpected value"</span>);
             }
         }
 
