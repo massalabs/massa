@@ -400,6 +400,7 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -429,6 +430,7 @@
     <span class="kw">pub </span>stats_time_window_duration: MassaTime,
     <span class="kw">pub </span>max_read_only_gas: u64,
     <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
     <span class="kw">pub </span>hd_cache_path: PathBuf,
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,

@@ -423,7 +423,7 @@
 
         <span class="comment">// Time since last failed peer test, more recent = less priority
         </span><span class="kw">let </span>test_failure_check = <span class="kw">match </span>(<span class="self">self</span>.last_test_failure, other.last_test_failure) {
-            (<span class="prelude-val">Some</span>(st), <span class="prelude-val">Some</span>(other_)) =&gt; <span class="prelude-val">Some</span>(st.cmp(<span class="kw-2">&amp;</span>other_)),
+            (<span class="prelude-val">Some</span>(st), <span class="prelude-val">Some</span>(ot)) =&gt; <span class="prelude-val">Some</span>(st.cmp(<span class="kw-2">&amp;</span>ot)),
             (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>(Ordering::Greater),
             (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>(Ordering::Less),
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
@@ -434,7 +434,7 @@
 
         <span class="comment">// Time since last succeeded peer test, more recent = more priority
         </span><span class="kw">let </span>test_success_check = <span class="kw">match </span>(<span class="self">self</span>.last_test_success, other.last_test_success) {
-            (<span class="prelude-val">Some</span>(st), <span class="prelude-val">Some</span>(other_)) =&gt; <span class="prelude-val">Some</span>(st.cmp(<span class="kw-2">&amp;</span>other_).reverse()),
+            (<span class="prelude-val">Some</span>(st), <span class="prelude-val">Some</span>(ot)) =&gt; <span class="prelude-val">Some</span>(st.cmp(<span class="kw-2">&amp;</span>ot).reverse()),
             (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Some</span>(Ordering::Less),
             (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Some</span>(Ordering::Greater),
             (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,

@@ -714,15 +714,6 @@
 <a href="#714" id="714">714</a>
 <a href="#715" id="715">715</a>
 <a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! Utilities for a massa client
 
@@ -1300,7 +1291,7 @@
     <span class="doccomment">/// New produced blocks
     </span><span class="kw">pub async fn </span>subscribe_new_blocks(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;BlockInfo&gt;, jsonrpsee::core::client::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;BlockInfo&gt;, jsonrpsee::core::Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(client) = <span class="self">self</span>.ws_client.as_ref() {
             client
                 .subscribe(
@@ -1317,8 +1308,7 @@
     <span class="doccomment">/// New produced blocks headers
     </span><span class="kw">pub async fn </span>subscribe_new_blocks_headers(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;SecureShare&lt;BlockHeader, BlockId&gt;&gt;, jsonrpsee::core::client::Error&gt;
-    {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;SecureShare&lt;BlockHeader, BlockId&gt;&gt;, jsonrpsee::core::Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(client) = <span class="self">self</span>.ws_client.as_ref() {
             client
                 .subscribe(
@@ -1335,7 +1325,7 @@
     <span class="doccomment">/// New produced blocks with operations content.
     </span><span class="kw">pub async fn </span>subscribe_new_filled_blocks(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;FilledBlock&gt;, jsonrpsee::core::client::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;FilledBlock&gt;, jsonrpsee::core::Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(client) = <span class="self">self</span>.ws_client.as_ref() {
             client
                 .subscribe(
@@ -1352,7 +1342,7 @@
     <span class="doccomment">/// New produced operations.
     </span><span class="kw">pub async fn </span>subscribe_new_operations(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;Operation&gt;, jsonrpsee::core::client::error::Error&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Subscription&lt;Operation&gt;, jsonrpsee::core::Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(client) = <span class="self">self</span>.ws_client.as_ref() {
             client
                 .subscribe(
@@ -1368,24 +1358,20 @@
 }
 
 <span class="kw">fn </span>http_client_from_url(url: <span class="kw-2">&amp;</span>str, http_config: <span class="kw-2">&amp;</span>HttpConfig) -&gt; HttpClient&lt;HttpBackend&gt; {
-    <span class="kw">let </span>builder = HttpClientBuilder::default()
+    <span class="kw">let </span><span class="kw-2">mut </span>builder = HttpClientBuilder::default()
         .max_request_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(<span class="kw-2">&amp;</span>http_config.client_config.headers));
 
-    <span class="comment">// Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match http_config.client_config.certificate_store.as_str() {
-        "Native" =&gt; builder = builder.use_native_rustls(),
-        "WebPki" =&gt; builder = builder.use_webpki_rustls(),
-        _ =&gt; {}
+    <span class="kw">match </span>http_config.client_config.certificate_store.as_str() {
+        <span class="string">"Native" </span>=&gt; builder = builder.use_native_rustls(),
+        <span class="string">"WebPki" </span>=&gt; builder = builder.use_webpki_rustls(),
+        <span class="kw">_ </span>=&gt; {}
     }
-    */
 
-    </span>builder
+    builder
         .build(url)
         .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"unable to create Http client for {}"</span>, url))
 }
@@ -1394,7 +1380,7 @@
 <span class="kw">where
     </span>WsClient: SubscriptionClientT,
 {
-    <span class="kw">let </span>builder = WsClientBuilder::default()
+    <span class="kw">let </span><span class="kw-2">mut </span>builder = WsClientBuilder::default()
         .max_request_size(ws_config.client_config.max_request_body_size)
         .request_timeout(ws_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
@@ -1403,17 +1389,13 @@
         .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
         .max_redirections(ws_config.max_redirections);
 
-    <span class="comment">// Note: use_*_rustls() are not available anymore
-    //       keep the config for compatibility reason but this will be unused
-    /*
-    match ws_config.client_config.certificate_store.as_str() {
-        "Native" =&gt; builder = builder.use_native_rustls(),
-        "WebPki" =&gt; builder = builder.use_webpki_rustls(),
-        _ =&gt; {}
+    <span class="kw">match </span>ws_config.client_config.certificate_store.as_str() {
+        <span class="string">"Native" </span>=&gt; builder = builder.use_native_rustls(),
+        <span class="string">"WebPki" </span>=&gt; builder = builder.use_webpki_rustls(),
+        <span class="kw">_ </span>=&gt; {}
     }
-    */
 
-    </span>builder
+    builder
         .build(url)
         .<span class="kw">await
         </span>.unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">"unable to create WebSocket client for {}"</span>, url))

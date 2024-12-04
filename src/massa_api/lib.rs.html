@@ -405,31 +405,6 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -437,16 +412,13 @@
 #![warn(unused_crate_dependencies)]
 
 </span><span class="kw">use </span>api_trait::MassaApiServer;
-<span class="kw">use </span>http::Method;
-<span class="kw">use </span>jsonrpsee::core::{client::Error <span class="kw">as </span>JsonRpseeError, RpcResult};
+<span class="kw">use </span>hyper::Method;
+<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult};
 <span class="kw">use </span>jsonrpsee::proc_macros::rpc;
-<span class="kw">use </span>jsonrpsee::server::middleware::http::HostFilterLayer;
-<span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, PingConfig, ServerBuilder, ServerHandle};
+<span class="kw">use </span>jsonrpsee::server::middleware::HostFilterLayer;
+<span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
-<span class="kw">use </span>massa_api_exports::execution::{
-    DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
-    DeferredCallsSlotResponse, Transfer,
-};
+<span class="kw">use </span>massa_api_exports::execution::Transfer;
 <span class="kw">use </span>massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
@@ -543,11 +515,11 @@
 </span><span class="kw">pub struct </span>ApiV2 {
     <span class="doccomment">/// link to the consensus component
     </span><span class="kw">pub </span>consensus_controller: Box&lt;<span class="kw">dyn </span>ConsensusController&gt;,
-    <span class="doccomment">/// channels with information broadcasted by the consensus
+    <span class="doccomment">/// channels with informations broadcasted by the consensus
     </span><span class="kw">pub </span>consensus_broadcasts: ConsensusBroadcasts,
     <span class="doccomment">/// link to the execution component
     </span><span class="kw">pub </span>execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
-    <span class="doccomment">/// channels with information broadcasted by the pool
+    <span class="doccomment">/// channels with informations broadcasted by the pool
     </span><span class="kw">pub </span>pool_broadcasts: PoolBroadcasts,
     <span class="doccomment">/// API settings
     </span><span class="kw">pub </span>api_settings: APIConfig,
@@ -585,7 +557,6 @@
     url: <span class="kw-2">&amp;</span>SocketAddr,
     api_config: <span class="kw-2">&amp;</span>APIConfig,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, JsonRpseeError&gt; {
-    <span class="kw">let </span>ping_config = PingConfig::new().ping_interval(api_config.ping_interval.to_duration());
     <span class="kw">let </span><span class="kw-2">mut </span>server_builder = ServerBuilder::new()
         .max_request_body_size(api_config.max_request_body_size)
         .max_response_body_size(api_config.max_response_body_size)
@@ -595,7 +566,7 @@
         } <span class="kw">else </span>{
             BatchRequestConfig::Disabled
         })
-        .enable_ws_ping(ping_config);
+        .ping_interval(api_config.ping_interval.to_duration());
 
     <span class="kw">if </span>api_config.enable_http &amp;&amp; !api_config.enable_ws {
         server_builder = server_builder.http_only();
@@ -610,7 +581,7 @@
         </span>.allow_methods([Method::POST, Method::OPTIONS])
         <span class="comment">// Allow requests from any origin
         </span>.allow_origin(Any)
-        .allow_headers([http::header::CONTENT_TYPE]);
+        .allow_headers([hyper::header::CONTENT_TYPE]);
 
     <span class="kw">let </span>hosts = <span class="kw">if </span>api_config.allow_hosts.is_empty() {
         <span class="macro">vec!</span>[<span class="string">"*:*"</span>]
@@ -629,7 +600,7 @@
         .layer(allowed_hosts);
 
     <span class="kw">let </span>server = server_builder
-        .set_http_middleware(middleware)
+        .set_middleware(middleware)
         .build(url)
         .<span class="kw">await
         </span>.expect(<span class="string">"failed to build server"</span>);
@@ -836,27 +807,6 @@
     <span class="doccomment">/// Get OpenRPC specification.
     </span><span class="attr">#[method(name = <span class="string">"rpc.discover"</span>)]
     </span><span class="kw">async fn </span>get_openrpc_spec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RpcResult&lt;Value&gt;;
-
-    <span class="doccomment">/// DeferredCall quote
-    </span><span class="attr">#[method(name = <span class="string">"get_deferred_call_quote"</span>)]
-    </span><span class="kw">async fn </span>get_deferred_call_quote(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        arg: Vec&lt;DeferredCallsQuoteRequest&gt;,
-    ) -&gt; RpcResult&lt;Vec&lt;DeferredCallsQuoteResponse&gt;&gt;;
-
-    <span class="doccomment">/// DeferredCall get info
-    </span><span class="attr">#[method(name = <span class="string">"get_deferred_call_info"</span>)]
-    </span><span class="kw">async fn </span>get_deferred_call_info(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        arg: Vec&lt;String&gt;,
-    ) -&gt; RpcResult&lt;Vec&lt;DeferredCallResponse&gt;&gt;;
-
-    <span class="doccomment">/// List deferred calls for given slot
-    </span><span class="attr">#[method(name = <span class="string">"get_deferred_call_ids_by_slot"</span>)]
-    </span><span class="kw">async fn </span>get_deferred_call_ids_by_slot(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        arg: Vec&lt;Slot&gt;,
-    ) -&gt; RpcResult&lt;Vec&lt;DeferredCallsSlotResponse&gt;&gt;;
 }
 
 <span class="kw">fn </span>wrong_api&lt;T&gt;() -&gt; RpcResult&lt;T&gt; {
