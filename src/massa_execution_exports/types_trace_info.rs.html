@@ -146,8 +146,6 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
 </pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>std::collections::VecDeque;
 
@@ -173,8 +171,6 @@
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// asc call stacks
     </span><span class="kw">pub </span>asc_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
-    <span class="doccomment">/// deferred call stacks
-    </span><span class="kw">pub </span>deferred_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
     <span class="doccomment">/// operation call stacks
     </span><span class="kw">pub </span>operation_call_stacks: PreHashMap&lt;OperationId, Vec&lt;AbiTrace&gt;&gt;,
 }
@@ -240,7 +236,7 @@
         <span class="kw">while </span>!to_process.is_empty() {
             <span class="kw">let </span>t = to_process.pop_front();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(trace) = t {
-                <span class="kw">if </span>abi_names.iter().any(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name) {
+                <span class="kw">if </span>abi_names.iter().find(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name).is_some() {
                     <span class="comment">// filtered.extend(&amp;trace)
                     </span>filtered.push(trace);
                 }
