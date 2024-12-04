@@ -439,6 +439,7 @@ mod test {
         let state_changes_1 = StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_1,
+            deferred_call_changes: Default::default(),
             pos_changes: Default::default(),
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
@@ -447,6 +448,7 @@ mod test {
         let state_changes_2 = StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_2,
+            deferred_call_changes: Default::default(),
             pos_changes: Default::default(),
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
