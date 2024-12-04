@@ -3100,6 +3100,7 @@ name = "massa_execution_worker"
 version = "2.5.0"
 dependencies = [
  "anyhow",
+ "assert_matches",
  "blake3",
  "bs58",
  "cfg-if",
