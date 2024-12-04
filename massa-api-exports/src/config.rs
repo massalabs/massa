@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::amount::Amount;
 use massa_signature::KeyPair;
 use massa_time::MassaTime;
@@ -84,4 +85,6 @@ pub struct APIConfig {
     pub deferred_credits_delta: MassaTime,
     /// minimal fees to include an operation in a block
     pub minimal_fees: Amount,
+    /// deferred calls config
+    pub deferred_calls_config: DeferredCallsConfig,
 }

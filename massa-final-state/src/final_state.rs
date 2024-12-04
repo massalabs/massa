@@ -16,14 +16,15 @@ use massa_db_exports::{
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 use massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::ExecutedDenunciations;
 use massa_executed_ops::ExecutedOps;
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerController;
-use massa_ledger_exports::SetOrKeep;
 use massa_models::operation::OperationId;
 use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::types::SetOrKeep;
 use massa_pos_exports::{PoSFinalState, SelectorController};
 use massa_versioning::versioning::MipStore;
 use tracing::{debug, info, warn};
@@ -36,6 +37,8 @@ pub struct FinalState {
     pub ledger: Box<dyn LedgerController>,
     /// asynchronous pool containing messages sorted by priority and their data
     pub async_pool: AsyncPool,
+    /// deferred calls
+    pub deferred_call_registry: DeferredCallRegistry,
     /// proof of stake state containing cycle history and deferred credits
     pub pos_state: PoSFinalState,
     /// executed operations
@@ -106,9 +109,13 @@ impl FinalState {
         let executed_denunciations =
             ExecutedDenunciations::new(config.executed_denunciations_config.clone(), db.clone());
 
+        let deferred_call_registry =
+            DeferredCallRegistry::new(db.clone(), config.deferred_calls_config);
+
         let mut final_state = FinalState {
             ledger,
             async_pool,
+            deferred_call_registry,
             pos_state,
             config,
             executed_ops,
@@ -453,6 +460,9 @@ impl FinalState {
             .apply_changes_to_batch(changes.ledger_changes, &mut db_batch);
         self.executed_ops
             .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
+
+        self.deferred_call_registry
+            .apply_changes_to_batch(changes.deferred_call_changes, &mut db_batch);
 
         self.executed_denunciations.apply_changes_to_batch(
             changes.executed_denunciations_changes,
@@ -917,6 +927,10 @@ impl FinalStateController for FinalState {
     fn get_mip_store(&self) -> &MipStore {
         &self.mip_store
     }
+
+    fn get_deferred_call_registry(&self) -> &DeferredCallRegistry {
+        &self.deferred_call_registry
+    }
 }
 
 #[cfg(test)]
@@ -926,6 +940,7 @@ mod test {
     use std::str::FromStr;
     use std::sync::Arc;
 
+    use massa_deferred_calls::config::DeferredCallsConfig;
     use num::rational::Ratio;
     use parking_lot::RwLock;
     use tempfile::tempdir;
@@ -935,11 +950,12 @@ mod test {
     use massa_db_worker::MassaDB;
     use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
     use massa_hash::Hash;
-    use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetUpdateOrDelete};
+    use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
     use massa_ledger_worker::FinalLedger;
     use massa_models::address::Address;
     use massa_models::amount::Amount;
     use massa_models::bytecode::Bytecode;
+    use massa_models::types::SetUpdateOrDelete;
 
     use massa_models::config::{
         DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
@@ -995,9 +1011,11 @@ mod test {
             keep_executed_history_extra_periods: KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
         };
 
+        let deferred_calls_config = DeferredCallsConfig::default();
         let final_state_config = FinalStateConfig {
             ledger_config: ledger_config.clone(),
             async_pool_config,
+            deferred_calls_config,
             pos_config,
             executed_ops_config,
             executed_denunciations_config,

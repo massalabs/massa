@@ -252,7 +252,8 @@ macro_rules! gen_varint {
 gen_varint! {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`";
+u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, "`u128`"
 }
 
 #[derive(Clone)]

@@ -196,7 +196,7 @@ pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
 /// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
 /// Maximum length function name in call SC
-pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
+pub const MAX_FUNCTION_NAME_LENGTH: u16 = 255;
 /// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
@@ -391,6 +391,26 @@ pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
+/// Maximum size of deferred call pool changes
+// TODO define this value
+// TODO: set to a reasonable value max pool changes
+pub const DEFERRED_CALL_MAX_POOL_CHANGES: u64 = 100_000;
+/// Maximum size of deferred call future slots (1 week)
+pub const DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = 1209600;
+/// maximum gas for deferred call
+pub const DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
+/// max change denominator  
+pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 8;
+/// deferred call min gas increment (1 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
+/// deferred call min gas cost (10 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
+/// deferred call global overbooking penalty
+pub const DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000);
+/// deferred call slot overbooking penalty
+pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000 / 10_000);
+/// deferred call call gas cost
+pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
