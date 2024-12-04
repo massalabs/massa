@@ -554,6 +554,8 @@
 <a href="#554" id="554">554</a>
 <a href="#555" id="555">555</a>
 <a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
@@ -995,6 +997,7 @@
         <span class="kw">let </span>state_changes_1 = StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_1,
+            deferred_call_changes: Default::default(),
             pos_changes: Default::default(),
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
@@ -1003,6 +1006,7 @@
         <span class="kw">let </span>state_changes_2 = StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_2,
+            deferred_call_changes: Default::default(),
             pos_changes: Default::default(),
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
