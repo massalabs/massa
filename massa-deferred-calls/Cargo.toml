@@ -1,0 +1,25 @@
+[package]
+name = "massa_deferred_calls"
+version = "2.2.0"
+authors = ["Massa Labs <info@massa.net>"]
+edition = "2021"
+
+[features]
+test-exports = []
+sandbox = []
+
+[dependencies]
+serde = { workspace = true, "features" = ["derive"] }
+nom = { workspace = true }
+massa_db_exports = { workspace = true }
+massa_ledger_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_serialization = { workspace = true }
+serde_with = { workspace = true }
+serde_json = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+massa_db_worker = { workspace = true }
+parking_lot = { workspace = true }

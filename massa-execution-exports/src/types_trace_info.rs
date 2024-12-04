@@ -23,6 +23,8 @@ pub struct SlotAbiCallStack {
     pub slot: Slot,
     /// asc call stacks
     pub asc_call_stacks: Vec<Vec<AbiTrace>>,
+    /// deferred call stacks
+    pub deferred_call_stacks: Vec<Vec<AbiTrace>>,
     /// operation call stacks
     pub operation_call_stacks: PreHashMap<OperationId, Vec<AbiTrace>>,
 }

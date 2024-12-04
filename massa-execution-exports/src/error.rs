@@ -67,6 +67,9 @@ pub enum ExecutionError {
 
     /// Factory error: {0}
     FactoryError(#[from] FactoryError),
+
+    /// Autonomous smart contract call error: {0}
+    DeferredCallsError(String),
 }
 
 /// Execution query errors

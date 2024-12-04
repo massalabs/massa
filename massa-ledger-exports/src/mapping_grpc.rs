@@ -1,6 +1,8 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::{LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep};
+use crate::{LedgerEntry, LedgerEntryUpdate};
+
+use massa_models::types::{SetOrDelete, SetOrKeep};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 
 impl From<LedgerEntry> for grpc_model::LedgerEntry {

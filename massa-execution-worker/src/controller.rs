@@ -331,6 +331,35 @@ impl ExecutionController for ExecutionControllerImpl {
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
+                ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot,
+                    max_gas_request,
+                    params_size,
+                } => {
+                    let result = execution_lock.deferred_call_quote(
+                        target_slot,
+                        max_gas_request,
+                        params_size,
+                    );
+                    Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                        result.0, result.1, result.2, result.3,
+                    ))
+                }
+                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => execution_lock
+                    .deferred_call_info(&deferred_call_id)
+                    .ok_or_else(|| {
+                        ExecutionQueryError::NotFound(format!(
+                            "Deferred call id {}",
+                            deferred_call_id
+                        ))
+                    })
+                    .map(|call| {
+                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
+                    }),
+                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) => {
+                    let res = execution_lock.get_deferred_calls_by_slot(slot);
+                    Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+                }
             };
             resp.responses.push(resp_item);
         }

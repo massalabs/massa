@@ -9,12 +9,15 @@
 
 use crate::active_history::HistorySearchResult;
 use crate::speculative_async_pool::SpeculativeAsyncPool;
+use crate::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
 use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
+use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
+use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -22,12 +25,14 @@ use massa_execution_exports::{
 };
 use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
-use massa_ledger_exports::{LedgerChanges, SetOrKeep};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
+use massa_models::types::SetOrKeep;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -58,6 +63,9 @@ pub struct ExecutionContextSnapshot {
 
     /// speculative asynchronous pool messages emitted so far in the context
     pub async_pool_changes: AsyncPoolChanges,
+
+    /// speculative deferred calls changes
+    pub deferred_calls_changes: DeferredCallRegistryChanges,
 
     /// the associated message infos for the speculative async pool
     pub message_infos: BTreeMap<AsyncMessageId, AsyncMessageInfo>,
@@ -126,6 +134,9 @@ pub struct ExecutionContext {
     /// speculative asynchronous pool state,
     /// as seen after everything that happened so far in the context
     speculative_async_pool: SpeculativeAsyncPool,
+
+    /// speculative deferred calls state,
+    speculative_deferred_calls: SpeculativeDeferredCallRegistry,
 
     /// speculative roll state,
     /// as seen after everything that happened so far in the context
@@ -236,6 +247,11 @@ impl ExecutionContext {
                 final_state.clone(),
                 active_history.clone(),
             ),
+            speculative_deferred_calls: SpeculativeDeferredCallRegistry::new(
+                final_state.clone(),
+                active_history.clone(),
+                config.deferred_calls_config,
+            ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
                 active_history.clone(),
@@ -280,6 +296,7 @@ impl ExecutionContext {
         ExecutionContextSnapshot {
             ledger_changes: self.speculative_ledger.get_snapshot(),
             async_pool_changes,
+            deferred_calls_changes: self.speculative_deferred_calls.get_snapshot(),
             message_infos,
             pos_changes: self.speculative_roll_state.get_snapshot(),
             executed_ops: self.speculative_executed_ops.get_snapshot(),
@@ -303,11 +320,20 @@ impl ExecutionContext {
     /// * `snapshot`: a saved snapshot to be restored
     /// * `error`: an execution error to emit as an event conserved after snapshot reset.
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
+        // Emit the error event.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        self.event_emit(self.event_create(
+            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
+            true,
+        ));
+
         // Reset context to snapshot.
         self.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         self.speculative_async_pool
             .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
+        self.speculative_deferred_calls
+            .reset_to_snapshot(snapshot.deferred_calls_changes);
         self.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         self.speculative_executed_ops
@@ -326,13 +352,6 @@ impl ExecutionContext {
         for event in self.events.0.range_mut(snapshot.event_count..) {
             event.context.is_error = true;
         }
-
-        // Emit the error event.
-        // Note that the context event counter is properly handled by event_emit (see doc).
-        self.event_emit(self.event_create(
-            serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
-            true,
-        ));
     }
 
     /// Create a new `ExecutionContext` for read-only execution
@@ -1137,6 +1156,7 @@ impl ExecutionContext {
         let state_changes = StateChanges {
             ledger_changes: self.speculative_ledger.take(),
             async_pool_changes: self.speculative_async_pool.take(),
+            deferred_call_changes: self.speculative_deferred_calls.take(),
             pos_changes: self.speculative_roll_state.take(),
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),
@@ -1329,6 +1349,123 @@ impl ExecutionContext {
                 target_sc_address
             ))),
         }
+    }
+
+    pub fn deferred_calls_advance_slot(&mut self, current_slot: Slot) -> DeferredSlotCalls {
+        self.speculative_deferred_calls.advance_slot(current_slot)
+    }
+
+    /// Get the price it would cost to reserve "gas" with params at target slot "slot".
+    pub fn deferred_calls_compute_call_fee(
+        &self,
+        target_slot: Slot,
+        max_gas_request: u64,
+        current_slot: Slot,
+        params_size: u64,
+    ) -> Result<Amount, ExecutionError> {
+        self.speculative_deferred_calls.compute_call_fee(
+            target_slot,
+            max_gas_request,
+            current_slot,
+            params_size,
+        )
+    }
+
+    pub fn deferred_call_register(
+        &mut self,
+        call: DeferredCall,
+    ) -> Result<DeferredCallId, ExecutionError> {
+        self.speculative_deferred_calls
+            .register_call(call, self.execution_trail_hash)
+    }
+
+    /// Check if a deferred call exists
+    /// If it exists, check if it has been cancelled
+    /// If it has been cancelled, return false
+    pub fn deferred_call_exists(&self, call_id: &DeferredCallId) -> bool {
+        if let Some(call) = self.speculative_deferred_calls.get_call(call_id) {
+            return !call.cancelled;
+        }
+        false
+    }
+
+    /// Get a deferred call by its id
+    pub fn get_deferred_call(&self, call_id: &DeferredCallId) -> Option<DeferredCall> {
+        self.speculative_deferred_calls.get_call(call_id)
+    }
+
+    /// when a deferred call execution fails we need to refund the coins to the caller
+    pub fn deferred_call_fail_exec(
+        &mut self,
+        id: &DeferredCallId,
+        call: &DeferredCall,
+    ) -> Option<(Address, Result<Amount, String>)> {
+        #[allow(unused_assignments, unused_mut)]
+        let mut result = None;
+
+        let transfer_result =
+            self.transfer_coins(None, Some(call.sender_address), call.coins, false);
+        if let Err(e) = transfer_result.as_ref() {
+            debug!(
+                "deferred call cancel: reimbursement of {} failed: {}",
+                call.sender_address, e
+            );
+        }
+
+        let event = self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
+        self.event_emit(event);
+
+        #[cfg(feature = "execution-info")]
+        if let Err(e) = transfer_result {
+            result = Some((call.sender_address, Err(e.to_string())))
+        } else {
+            result = Some((call.sender_address, Ok(call.coins)));
+        }
+
+        result
+    }
+
+    /// when a deferred call is cancelled we need to refund the coins to the caller
+    pub fn deferred_call_cancel(
+        &mut self,
+        call_id: &DeferredCallId,
+        caller_address: Address,
+    ) -> Result<(), ExecutionError> {
+        match self.speculative_deferred_calls.get_call(call_id) {
+            Some(call) => {
+                // check that the caller is the one who registered the deferred call
+                if call.sender_address != caller_address {
+                    return Err(ExecutionError::DeferredCallsError(format!(
+                        "only the caller {} can cancel the deferred call",
+                        call.sender_address
+                    )));
+                }
+
+                let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
+
+                // refund the coins to the caller
+                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                if let Err(e) = transfer_result.as_ref() {
+                    debug!(
+                        "deferred call cancel: reimbursement of {} failed: {}",
+                        address, e
+                    );
+                }
+
+                Ok(())
+            }
+            _ => Err(ExecutionError::DeferredCallsError(format!(
+                "deferred call {} does not exist",
+                call_id
+            )))?,
+        }
+    }
+
+    /// find the deferred calls for a given slot
+    pub fn get_deferred_calls_by_slot(&self, slot: Slot) -> BTreeMap<DeferredCallId, DeferredCall> {
+        self.speculative_deferred_calls
+            .get_calls_by_slot(slot)
+            .slot_calls
     }
 
     /// Get the condom limits to pass to the VM depending on the current execution component version

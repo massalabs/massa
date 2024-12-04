@@ -70,6 +70,7 @@ pub(crate) fn get_apiv2_server(addr: &SocketAddr) -> (API<ApiV2>, APIConfig) {
         chain_id: *CHAINID,
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
+        deferred_calls_config: Default::default(),
     };
 
     // let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();
@@ -146,6 +147,7 @@ pub(crate) fn start_public_api(addr: SocketAddr) -> (API<Public>, APIConfig) {
         chain_id: *CHAINID,
         deferred_credits_delta: MassaTime::from_millis(24 * 3600 * 2),
         minimal_fees: Amount::zero(),
+        deferred_calls_config: Default::default(),
     };
 
     let shared_storage: massa_storage::Storage = massa_storage::Storage::create_root();

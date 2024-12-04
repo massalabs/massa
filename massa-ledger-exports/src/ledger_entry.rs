@@ -3,10 +3,10 @@
 //! This file defines the structure representing an entry in the `FinalLedger`
 
 use crate::ledger_changes::LedgerEntryUpdate;
-use crate::types::{Applicable, SetOrDelete};
 use massa_models::amount::{Amount, AmountDeserializer, AmountSerializer};
 use massa_models::bytecode::{Bytecode, BytecodeDeserializer, BytecodeSerializer};
 use massa_models::datastore::{Datastore, DatastoreDeserializer, DatastoreSerializer};
+use massa_models::types::{Applicable, SetOrDelete};
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::error::{context, ContextError, ParseError};
 use nom::sequence::tuple;

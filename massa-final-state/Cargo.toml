@@ -42,6 +42,7 @@ massa-proto-rs = { workspace = true, "features" = ["tonic"] }
 massa_versioning = { workspace = true }
 massa_time = { workspace = true }
 massa_hash = { workspace = true }
+massa_deferred_calls = { workspace = true }
 
 serde_json = { workspace = true, optional = true }
 parking_lot = { workspace = true, "features" = [

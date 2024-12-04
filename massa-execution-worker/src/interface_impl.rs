@@ -8,10 +8,12 @@
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
+use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -93,8 +95,9 @@ impl InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
         use massa_final_state::test_exports::get_sample_state;
-        use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_ledger_exports::LedgerEntry;
         use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        use massa_models::types::SetUpdateOrDelete;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
         use massa_pos_worker::start_selector_worker;
@@ -1518,6 +1521,147 @@ impl Interface for InterfaceImpl {
     /// The byte array of the resulting hash
     fn hash_blake3(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         Ok(blake3::hash(bytes).into())
+    }
+
+    /// Get the number of fees needed to reserve space in the target slot
+    ///
+    /// # Arguments
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * gas_limit: the gas limit for the call
+    ///
+    /// # Returns
+    /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
+    fn get_deferred_call_quote(
+        &self,
+        target_slot: (u64, u8),
+        gas_limit: u64,
+        params_size: u64,
+    ) -> Result<(bool, u64)> {
+        // write-lock context
+
+        let context = context_guard!(self);
+
+        let current_slot = context.slot;
+
+        let target_slot = Slot::new(target_slot.0, target_slot.1);
+
+        let gas_request =
+            gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
+
+        match context.deferred_calls_compute_call_fee(
+            target_slot,
+            gas_request,
+            current_slot,
+            params_size,
+        ) {
+            Ok(fee) => Ok((true, fee.to_raw())),
+            Err(_) => Ok((false, 0)),
+        }
+    }
+
+    /// Register deferred call
+    ///
+    /// # Arguments
+    /// * target_addr: string representation of the target address
+    /// * target_func: string representation of the target function
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * max_gas: the gas limit for the call
+    /// * coins: the amount of coins to send
+    /// * params: byte array of the parameters
+    ///
+    /// # Returns
+    /// The id of the call
+    fn deferred_call_register(
+        &self,
+        target_addr: &str,
+        target_func: &str,
+        target_slot: (u64, u8),
+        max_gas: u64,
+        params: &[u8],
+        coins: u64,
+    ) -> Result<String> {
+        // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
+
+        let target_addr = Address::from_str(target_addr)?;
+
+        // check that the target address is an SC address
+        if !matches!(target_addr, Address::SC(..)) {
+            bail!("target address is not a smart contract address")
+        }
+
+        // Length verifications
+        if target_func.len() > self.config.max_function_length as usize {
+            bail!("Function name is too large");
+        }
+        if params.len() > self.config.max_parameter_length as usize {
+            bail!("Parameter size is too large");
+        }
+
+        // check fee, slot, gas
+        let (available, fee_raw) =
+            self.get_deferred_call_quote(target_slot, max_gas, params.len() as u64)?;
+        if !available {
+            bail!("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
+        }
+        let fee = Amount::from_raw(fee_raw);
+        let coins = Amount::from_raw(coins);
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get caller address
+        let sender_address = context.get_current_address()?;
+
+        // make sender pay coins + fee
+        // coins + cost for booking the deferred call
+        context.transfer_coins(Some(sender_address), None, coins.saturating_add(fee), true)?;
+
+        let call = DeferredCall::new(
+            sender_address,
+            Slot::new(target_slot.0, target_slot.1),
+            target_addr,
+            target_func.to_string(),
+            params.to_vec(),
+            coins,
+            max_gas,
+            fee,
+            false,
+        );
+
+        let call_id = context.deferred_call_register(call)?;
+        Ok(call_id.to_string())
+    }
+
+    /// Check if an deferred call exists
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    ///
+    /// # Returns
+    /// true if the call exists, false otherwise
+    fn deferred_call_exists(&self, id: &str) -> Result<bool> {
+        // write-lock context
+        let call_id = DeferredCallId::from_str(id)?;
+        let context = context_guard!(self);
+        Ok(context.deferred_call_exists(&call_id))
+    }
+
+    /// Cancel a deferred call
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    fn deferred_call_cancel(&self, id: &str) -> Result<()> {
+        // Reimburses coins to the sender but not the deferred call fee to avoid spam. Cancelled items are not removed from storage to avoid manipulation, just ignored when it is their turn to be executed.
+
+        let mut context = context_guard!(self);
+
+        // Can only be called by the creator of the deferred call.
+        let caller = context.get_current_address()?;
+
+        let call_id = DeferredCallId::from_str(id)?;
+
+        context.deferred_call_cancel(&call_id, caller)?;
+        Ok(())
     }
 
     #[allow(unused_variables)]
