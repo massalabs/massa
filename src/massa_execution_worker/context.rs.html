@@ -1311,78 +1311,6 @@
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
-<a href="#1314" id="1314">1314</a>
-<a href="#1315" id="1315">1315</a>
-<a href="#1316" id="1316">1316</a>
-<a href="#1317" id="1317">1317</a>
-<a href="#1318" id="1318">1318</a>
-<a href="#1319" id="1319">1319</a>
-<a href="#1320" id="1320">1320</a>
-<a href="#1321" id="1321">1321</a>
-<a href="#1322" id="1322">1322</a>
-<a href="#1323" id="1323">1323</a>
-<a href="#1324" id="1324">1324</a>
-<a href="#1325" id="1325">1325</a>
-<a href="#1326" id="1326">1326</a>
-<a href="#1327" id="1327">1327</a>
-<a href="#1328" id="1328">1328</a>
-<a href="#1329" id="1329">1329</a>
-<a href="#1330" id="1330">1330</a>
-<a href="#1331" id="1331">1331</a>
-<a href="#1332" id="1332">1332</a>
-<a href="#1333" id="1333">1333</a>
-<a href="#1334" id="1334">1334</a>
-<a href="#1335" id="1335">1335</a>
-<a href="#1336" id="1336">1336</a>
-<a href="#1337" id="1337">1337</a>
-<a href="#1338" id="1338">1338</a>
-<a href="#1339" id="1339">1339</a>
-<a href="#1340" id="1340">1340</a>
-<a href="#1341" id="1341">1341</a>
-<a href="#1342" id="1342">1342</a>
-<a href="#1343" id="1343">1343</a>
-<a href="#1344" id="1344">1344</a>
-<a href="#1345" id="1345">1345</a>
-<a href="#1346" id="1346">1346</a>
-<a href="#1347" id="1347">1347</a>
-<a href="#1348" id="1348">1348</a>
-<a href="#1349" id="1349">1349</a>
-<a href="#1350" id="1350">1350</a>
-<a href="#1351" id="1351">1351</a>
-<a href="#1352" id="1352">1352</a>
-<a href="#1353" id="1353">1353</a>
-<a href="#1354" id="1354">1354</a>
-<a href="#1355" id="1355">1355</a>
-<a href="#1356" id="1356">1356</a>
-<a href="#1357" id="1357">1357</a>
-<a href="#1358" id="1358">1358</a>
-<a href="#1359" id="1359">1359</a>
-<a href="#1360" id="1360">1360</a>
-<a href="#1361" id="1361">1361</a>
-<a href="#1362" id="1362">1362</a>
-<a href="#1363" id="1363">1363</a>
-<a href="#1364" id="1364">1364</a>
-<a href="#1365" id="1365">1365</a>
-<a href="#1366" id="1366">1366</a>
-<a href="#1367" id="1367">1367</a>
-<a href="#1368" id="1368">1368</a>
-<a href="#1369" id="1369">1369</a>
-<a href="#1370" id="1370">1370</a>
-<a href="#1371" id="1371">1371</a>
-<a href="#1372" id="1372">1372</a>
-<a href="#1373" id="1373">1373</a>
-<a href="#1374" id="1374">1374</a>
-<a href="#1375" id="1375">1375</a>
-<a href="#1376" id="1376">1376</a>
-<a href="#1377" id="1377">1377</a>
-<a href="#1378" id="1378">1378</a>
-<a href="#1379" id="1379">1379</a>
-<a href="#1380" id="1380">1380</a>
-<a href="#1381" id="1381">1381</a>
-<a href="#1382" id="1382">1382</a>
-<a href="#1383" id="1383">1383</a>
-<a href="#1384" id="1384">1384</a>
-<a href="#1385" id="1385">1385</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1394,12 +1322,15 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::HistorySearchResult;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_async_pool::SpeculativeAsyncPool;
+<span class="kw">use </span><span class="kw">crate</span>::speculative_deferred_calls::SpeculativeDeferredCallRegistry;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
 <span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
+<span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
+<span class="kw">use </span>massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 <span class="kw">use </span>massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -1407,12 +1338,14 @@
 };
 <span class="kw">use </span>massa_final_state::{FinalStateController, StateChanges};
 <span class="kw">use </span>massa_hash::Hash;
-<span class="kw">use </span>massa_ledger_exports::{LedgerChanges, SetOrKeep};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+<span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::types::SetOrKeep;
 <span class="kw">use </span>massa_models::{
     address::Address,
     amount::Amount,
@@ -1423,10 +1356,9 @@
 };
 <span class="kw">use </span>massa_module_cache::controller::ModuleCache;
 <span class="kw">use </span>massa_pos_exports::PoSChanges;
-<span class="kw">use </span>massa_sc_runtime::CondomLimits;
 <span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>massa_versioning::address_factory::{AddressArgs, AddressFactory};
-<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>rand::SeedableRng;
@@ -1443,6 +1375,9 @@
 
     <span class="doccomment">/// speculative asynchronous pool messages emitted so far in the context
     </span><span class="kw">pub </span>async_pool_changes: AsyncPoolChanges,
+
+    <span class="doccomment">/// speculative deferred calls changes
+    </span><span class="kw">pub </span>deferred_calls_changes: DeferredCallRegistryChanges,
 
     <span class="doccomment">/// the associated message infos for the speculative async pool
     </span><span class="kw">pub </span>message_infos: BTreeMap&lt;AsyncMessageId, AsyncMessageInfo&gt;,
@@ -1512,6 +1447,9 @@
     /// as seen after everything that happened so far in the context
     </span>speculative_async_pool: SpeculativeAsyncPool,
 
+    <span class="doccomment">/// speculative deferred calls state,
+    </span>speculative_deferred_calls: SpeculativeDeferredCallRegistry,
+
     <span class="doccomment">/// speculative roll state,
     /// as seen after everything that happened so far in the context
     </span>speculative_roll_state: SpeculativeRollState,
@@ -1571,9 +1509,6 @@
     /// so *excluding* the gas used by the last sc call.
     </span><span class="kw">pub </span>gas_remaining_before_subexecution: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
-    <span class="doccomment">/// The version of the execution component
-    </span><span class="kw">pub </span>execution_component_version: u32,
-
     <span class="doccomment">/// recursion counter, incremented for each new nested call
     </span><span class="kw">pub </span>recursion_counter: u16,
 }
@@ -1599,15 +1534,6 @@
         mip_store: MipStore,
         execution_trail_hash: massa_hash::Hash,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>slot = Slot::new(<span class="number">0</span>, <span class="number">0</span>);
-        <span class="kw">let </span>ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect(<span class="string">"Time overflow when getting block slot timestamp for MIP"</span>);
-
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
@@ -1620,6 +1546,11 @@
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
                 active_history.clone(),
+            ),
+            speculative_deferred_calls: SpeculativeDeferredCallRegistry::new(
+                final_state.clone(),
+                active_history.clone(),
+                config.deferred_calls_config,
             ),
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
@@ -1634,7 +1565,7 @@
                 active_history,
             ),
             creator_min_balance: Default::default(),
-            slot,
+            slot: Slot::new(<span class="number">0</span>, <span class="number">0</span>),
             created_addr_index: Default::default(),
             created_event_index: Default::default(),
             created_message_index: Default::default(),
@@ -1647,13 +1578,9 @@
             origin_operation_id: Default::default(),
             module_cache,
             config,
-            address_factory: AddressFactory {
-                mip_store: mip_store.clone(),
-            },
+            address_factory: AddressFactory { mip_store },
             execution_trail_hash,
             gas_remaining_before_subexecution: <span class="prelude-val">None</span>,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
             recursion_counter: <span class="number">0</span>,
         }
     }
@@ -1665,6 +1592,7 @@
         ExecutionContextSnapshot {
             ledger_changes: <span class="self">self</span>.speculative_ledger.get_snapshot(),
             async_pool_changes,
+            deferred_calls_changes: <span class="self">self</span>.speculative_deferred_calls.get_snapshot(),
             message_infos,
             pos_changes: <span class="self">self</span>.speculative_roll_state.get_snapshot(),
             executed_ops: <span class="self">self</span>.speculative_executed_ops.get_snapshot(),
@@ -1688,11 +1616,20 @@
     /// * `snapshot`: a saved snapshot to be restored
     /// * `error`: an execution error to emit as an event conserved after snapshot reset.
     </span><span class="kw">pub fn </span>reset_to_snapshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
+        <span class="comment">// Emit the error event.
+        // Note that the context event counter is properly handled by event_emit (see doc).
+        </span><span class="self">self</span>.event_emit(<span class="self">self</span>.event_create(
+            <span class="macro">serde_json::json!</span>({ <span class="string">"massa_execution_error"</span>: <span class="macro">format!</span>(<span class="string">"{}"</span>, error) }).to_string(),
+            <span class="bool-val">true</span>,
+        ));
+
         <span class="comment">// Reset context to snapshot.
         </span><span class="self">self</span>.speculative_ledger
             .reset_to_snapshot(snapshot.ledger_changes);
         <span class="self">self</span>.speculative_async_pool
             .reset_to_snapshot((snapshot.async_pool_changes, snapshot.message_infos));
+        <span class="self">self</span>.speculative_deferred_calls
+            .reset_to_snapshot(snapshot.deferred_calls_changes);
         <span class="self">self</span>.speculative_roll_state
             .reset_to_snapshot(snapshot.pos_changes);
         <span class="self">self</span>.speculative_executed_ops
@@ -1711,13 +1648,6 @@
         </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.event_count..) {
             event.context.is_error = <span class="bool-val">true</span>;
         }
-
-        <span class="comment">// Emit the error event.
-        // Note that the context event counter is properly handled by event_emit (see doc).
-        </span><span class="self">self</span>.event_emit(<span class="self">self</span>.event_create(
-            <span class="macro">serde_json::json!</span>({ <span class="string">"massa_execution_error"</span>: <span class="macro">format!</span>(<span class="string">"{}"</span>, error) }).to_string(),
-            <span class="bool-val">true</span>,
-        ));
     }
 
     <span class="doccomment">/// Create a new `ExecutionContext` for read-only execution
@@ -1749,21 +1679,11 @@
         <span class="kw">let </span>execution_trail_hash =
             generate_execution_trail_hash(<span class="kw-2">&amp;</span>prev_execution_trail_hash, <span class="kw-2">&amp;</span>slot, <span class="prelude-val">None</span>, <span class="bool-val">true</span>);
 
-        <span class="kw">let </span>ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect(<span class="string">"Time overflow when getting block slot timestamp for MIP"</span>);
-
         <span class="comment">// return readonly context
         </span>ExecutionContext {
             slot,
             stack: call_stack,
             read_only: <span class="bool-val">true</span>,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -1784,19 +1704,7 @@
     /// A vector of `(Option&lt;Bytecode&gt;, AsyncMessage)` pairs where:
     /// * `Option&lt;Bytecode&gt;` is the bytecode to execute (or `None` if not found)
     /// * `AsyncMessage` is the asynchronous message to execute
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_async_batch_v0(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        max_gas: u64,
-        async_msg_cst_gas_cost: u64,
-    ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, AsyncMessage)&gt; {
-        <span class="self">self</span>.speculative_async_pool
-            .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
-            .collect()
-    }
-
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_async_batch_v1(
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take_async_batch(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
@@ -1841,20 +1749,10 @@
             <span class="bool-val">false</span>,
         );
 
-        <span class="kw">let </span>ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect(<span class="string">"Time overflow when getting block slot timestamp for MIP"</span>);
-
         <span class="comment">// return active slot execution context
         </span>ExecutionContext {
             slot,
             opt_block_id,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -2220,76 +2118,6 @@
         denounced_addr: <span class="kw-2">&amp;</span>Address,
         roll_count: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.execution_component_version;
-
-        <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; <span class="self">self</span>.try_slash_rolls_v0(denounced_addr, roll_count),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.try_slash_rolls_v1(denounced_addr, roll_count),
-        }
-    }
-
-    <span class="kw">pub fn </span>try_slash_rolls_v0(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        denounced_addr: <span class="kw-2">&amp;</span>Address,
-        roll_count: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
-        <span class="comment">// try to slash as many roll as available
-        </span><span class="kw">let </span>slashed_rolls = <span class="self">self
-            </span>.speculative_roll_state
-            .try_slash_rolls(denounced_addr, roll_count);
-        <span class="comment">// convert slashed rolls to coins (as deferred credits =&gt; coins)
-        </span><span class="kw">let </span><span class="kw-2">mut </span>slashed_coins = <span class="self">self
-            </span>.config
-            .roll_price
-            .checked_mul_u64(slashed_rolls.unwrap_or_default())
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">"Cannot multiply roll price by {}"</span>,
-                    roll_count
-                ))
-            })<span class="question-mark">?</span>;
-
-        <span class="comment">// what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
-        </span><span class="kw">let </span>amount_remaining_to_slash = <span class="self">self
-            </span>.config
-            .roll_price
-            .checked_mul_u64(roll_count)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">"Cannot multiply roll price by {}"</span>,
-                    roll_count
-                ))
-            })<span class="question-mark">?
-            </span>.saturating_sub(slashed_coins);
-
-        <span class="kw">if </span>amount_remaining_to_slash &gt; Amount::zero() {
-            <span class="comment">// There is still an amount to slash for this denunciation so we need to slash
-            // in deferred credits
-            </span><span class="kw">let </span>slashed_coins_in_deferred_credits = <span class="self">self
-                </span>.speculative_roll_state
-                .try_slash_deferred_credits(<span class="kw-2">&amp;</span><span class="self">self</span>.slot, denounced_addr, <span class="kw-2">&amp;</span>amount_remaining_to_slash);
-
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
-
-            <span class="kw">let </span>amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
-            <span class="kw">if </span>amount_remaining_to_slash_2 &gt; Amount::zero() {
-                <span class="comment">// Use saturating_mul_u64 to avoid an error (for just a warn!(..))
-                </span><span class="macro">warn!</span>(<span class="string">"Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins"</span>,
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
-                    <span class="self">self</span>.config.roll_price.saturating_mul_u64(roll_count)
-                );
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(slashed_coins)
-    }
-
-    <span class="kw">pub fn </span>try_slash_rolls_v1(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        denounced_addr: <span class="kw-2">&amp;</span>Address,
-        roll_count: u64,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
         <span class="comment">// try to slash as many roll as available
         </span><span class="kw">let </span>slashed_rolls = <span class="self">self
             </span>.speculative_roll_state
@@ -2400,91 +2228,23 @@
         result
     }
 
-    <span class="kw">fn </span>settle_slot_v0(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;) -&gt; ExecutionOutput {
-        <span class="kw">let </span>slot = <span class="self">self</span>.slot;
-        <span class="comment">// execute the deferred credits coming from roll sells
-        </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
-
-        <span class="comment">// take the ledger changes first as they are needed for async messages and cache
-        </span><span class="kw">let </span>ledger_changes = <span class="self">self</span>.speculative_ledger.take();
-
-        <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages =
-            <span class="self">self</span>.speculative_async_pool
-                .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span>ledger_changes, <span class="bool-val">false</span>);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
-        <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(t) = <span class="self">self</span>.cancel_async_message(<span class="kw-2">&amp;</span>msg) {
-                cancel_async_message_transfers.push(t)
-            }
-        }
-
-        <span class="comment">// update module cache
-        </span><span class="kw">let </span>bc_updates = ledger_changes.get_bytecode_updates();
-
-        {
-            <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
-            <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
-                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, CondomLimits::default());
-            }
-        }
-        <span class="comment">// if the current slot is last in cycle check the production stats and act accordingly
-        </span><span class="kw">let </span>auto_sell_rolls = <span class="kw">if </span><span class="self">self
-            </span>.slot
-            .is_last_of_cycle(<span class="self">self</span>.config.periods_per_cycle, <span class="self">self</span>.config.thread_count)
-        {
-            <span class="self">self</span>.speculative_roll_state.settle_production_stats(
-                <span class="kw-2">&amp;</span>slot,
-                <span class="self">self</span>.config.periods_per_cycle,
-                <span class="self">self</span>.config.thread_count,
-                <span class="self">self</span>.config.roll_price,
-                <span class="self">self</span>.config.max_miss_ratio,
-            )
-        } <span class="kw">else </span>{
-            <span class="macro">vec!</span>[]
-        };
-
-        <span class="comment">// generate the execution output
-        </span><span class="kw">let </span>state_changes = StateChanges {
-            ledger_changes,
-            async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
-            pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
-            executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
-            executed_denunciations_changes: <span class="self">self</span>.speculative_executed_denunciations.take(),
-            execution_trail_hash_change: SetOrKeep::Set(<span class="self">self</span>.execution_trail_hash),
-        };
-        std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.opt_block_id);
-        ExecutionOutput {
-            slot,
-            block_info,
-            state_changes,
-            events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
-            <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-            </span>slot_trace: <span class="prelude-val">None</span>,
-            <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
-            </span>storage: <span class="prelude-val">None</span>,
-            deferred_credits_execution: deferred_credits_transfers,
-            cancel_async_message_execution: cancel_async_message_transfers,
-            auto_sell_execution: auto_sell_rolls,
-        }
-    }
-
-    <span class="kw">fn </span>settle_slot_with_fixed_ledger_change_handling(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;,
-    ) -&gt; ExecutionOutput {
+    <span class="doccomment">/// Finishes a slot and generates the execution output.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;) -&gt; ExecutionOutput {
         <span class="kw">let </span>slot = <span class="self">self</span>.slot;
 
         <span class="comment">// execute the deferred credits coming from roll sells
         </span><span class="kw">let </span>deferred_credits_transfers = <span class="self">self</span>.execute_deferred_credits(<span class="kw-2">&amp;</span>slot);
 
         <span class="comment">// settle emitted async messages and reimburse the senders of deleted messages
-        </span><span class="kw">let </span>deleted_messages = <span class="self">self</span>.speculative_async_pool.settle_slot(
-            <span class="kw-2">&amp;</span>slot,
-            <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes,
-            <span class="bool-val">true</span>,
-        );
+        </span><span class="kw">let </span>deleted_messages = <span class="self">self
+            </span>.speculative_async_pool
+            .settle_slot(<span class="kw-2">&amp;</span>slot, <span class="kw-2">&amp;</span><span class="self">self</span>.speculative_ledger.added_changes);
 
         <span class="kw">let </span><span class="kw-2">mut </span>cancel_async_message_transfers = <span class="macro">vec!</span>[];
         <span class="kw">for </span>(_msg_id, msg) <span class="kw">in </span>deleted_messages {
@@ -2498,7 +2258,7 @@
         {
             <span class="kw">let </span><span class="kw-2">mut </span>cache_write_lock = <span class="self">self</span>.module_cache.write();
             <span class="kw">for </span>bytecode <span class="kw">in </span>bc_updates {
-                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>, <span class="self">self</span>.config.condom_limits.clone());
+                cache_write_lock.save_module(<span class="kw-2">&amp;</span>bytecode.<span class="number">0</span>);
             }
         }
 
@@ -2522,6 +2282,7 @@
         </span><span class="kw">let </span>state_changes = StateChanges {
             ledger_changes: <span class="self">self</span>.speculative_ledger.take(),
             async_pool_changes: <span class="self">self</span>.speculative_async_pool.take(),
+            deferred_call_changes: <span class="self">self</span>.speculative_deferred_calls.take(),
             pos_changes: <span class="self">self</span>.speculative_roll_state.take(),
             executed_ops_changes: <span class="self">self</span>.speculative_executed_ops.take(),
             executed_denunciations_changes: <span class="self">self</span>.speculative_executed_denunciations.take(),
@@ -2541,20 +2302,6 @@
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
-        }
-    }
-
-    <span class="doccomment">/// Finishes a slot and generates the execution output.
-    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    </span><span class="kw">pub fn </span>settle_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, block_info: <span class="prelude-ty">Option</span>&lt;ExecutedBlockInfo&gt;) -&gt; ExecutionOutput {
-        <span class="kw">match </span><span class="self">self</span>.execution_component_version {
-            <span class="number">0 </span>=&gt; <span class="self">self</span>.settle_slot_v0(block_info),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.settle_slot_with_fixed_ledger_change_handling(block_info),
         }
     }
 
@@ -2716,12 +2463,121 @@
         }
     }
 
-    <span class="doccomment">/// Get the condom limits to pass to the VM depending on the current execution component version
-    </span><span class="kw">pub fn </span>get_condom_limits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CondomLimits {
-        <span class="kw">match </span><span class="self">self</span>.execution_component_version {
-            <span class="number">0 </span>=&gt; Default::default(),
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.condom_limits.clone(),
+    <span class="kw">pub fn </span>deferred_calls_advance_slot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, current_slot: Slot) -&gt; DeferredSlotCalls {
+        <span class="self">self</span>.speculative_deferred_calls.advance_slot(current_slot)
+    }
+
+    <span class="doccomment">/// Get the price it would cost to reserve "gas" with params at target slot "slot".
+    </span><span class="kw">pub fn </span>deferred_calls_compute_call_fee(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        target_slot: Slot,
+        max_gas_request: u64,
+        current_slot: Slot,
+        params_size: u64,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Amount, ExecutionError&gt; {
+        <span class="self">self</span>.speculative_deferred_calls.compute_call_fee(
+            target_slot,
+            max_gas_request,
+            current_slot,
+            params_size,
+        )
+    }
+
+    <span class="kw">pub fn </span>deferred_call_register(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        call: DeferredCall,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;DeferredCallId, ExecutionError&gt; {
+        <span class="self">self</span>.speculative_deferred_calls
+            .register_call(call, <span class="self">self</span>.execution_trail_hash)
+    }
+
+    <span class="doccomment">/// Check if a deferred call exists
+    /// If it exists, check if it has been cancelled
+    /// If it has been cancelled, return false
+    </span><span class="kw">pub fn </span>deferred_call_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, call_id: <span class="kw-2">&amp;</span>DeferredCallId) -&gt; bool {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(call) = <span class="self">self</span>.speculative_deferred_calls.get_call(call_id) {
+            <span class="kw">return </span>!call.cancelled;
         }
+        <span class="bool-val">false
+    </span>}
+
+    <span class="doccomment">/// Get a deferred call by its id
+    </span><span class="kw">pub fn </span>get_deferred_call(<span class="kw-2">&amp;</span><span class="self">self</span>, call_id: <span class="kw-2">&amp;</span>DeferredCallId) -&gt; <span class="prelude-ty">Option</span>&lt;DeferredCall&gt; {
+        <span class="self">self</span>.speculative_deferred_calls.get_call(call_id)
+    }
+
+    <span class="doccomment">/// when a deferred call execution fails we need to refund the coins to the caller
+    </span><span class="kw">pub fn </span>deferred_call_fail_exec(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        id: <span class="kw-2">&amp;</span>DeferredCallId,
+        call: <span class="kw-2">&amp;</span>DeferredCall,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt; {
+        <span class="attr">#[allow(unused_assignments, unused_mut)]
+        </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="prelude-val">None</span>;
+
+        <span class="kw">let </span>transfer_result =
+            <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(call.sender_address), call.coins, <span class="bool-val">false</span>);
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
+            <span class="macro">debug!</span>(
+                <span class="string">"deferred call cancel: reimbursement of {} failed: {}"</span>,
+                call.sender_address, e
+            );
+        }
+
+        <span class="kw">let </span>event = <span class="self">self</span>.event_create(<span class="macro">format!</span>(<span class="string">"DeferredCall execution fail call_id:{}"</span>, id), <span class="bool-val">true</span>);
+        <span class="self">self</span>.event_emit(event);
+
+        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
+        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
+            result = <span class="prelude-val">Some</span>((call.sender_address, <span class="prelude-val">Err</span>(e.to_string())))
+        } <span class="kw">else </span>{
+            result = <span class="prelude-val">Some</span>((call.sender_address, <span class="prelude-val">Ok</span>(call.coins)));
+        }
+
+        result
+    }
+
+    <span class="doccomment">/// when a deferred call is cancelled we need to refund the coins to the caller
+    </span><span class="kw">pub fn </span>deferred_call_cancel(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        call_id: <span class="kw-2">&amp;</span>DeferredCallId,
+        caller_address: Address,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
+        <span class="kw">match </span><span class="self">self</span>.speculative_deferred_calls.get_call(call_id) {
+            <span class="prelude-val">Some</span>(call) =&gt; {
+                <span class="comment">// check that the caller is the one who registered the deferred call
+                </span><span class="kw">if </span>call.sender_address != caller_address {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::DeferredCallsError(<span class="macro">format!</span>(
+                        <span class="string">"only the caller {} can cancel the deferred call"</span>,
+                        call.sender_address
+                    )));
+                }
+
+                <span class="kw">let </span>(address, amount) = <span class="self">self</span>.speculative_deferred_calls.cancel_call(call_id)<span class="question-mark">?</span>;
+
+                <span class="comment">// refund the coins to the caller
+                </span><span class="kw">let </span>transfer_result = <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(address), amount, <span class="bool-val">false</span>);
+                <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
+                    <span class="macro">debug!</span>(
+                        <span class="string">"deferred call cancel: reimbursement of {} failed: {}"</span>,
+                        address, e
+                    );
+                }
+
+                <span class="prelude-val">Ok</span>(())
+            }
+            <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(ExecutionError::DeferredCallsError(<span class="macro">format!</span>(
+                <span class="string">"deferred call {} does not exist"</span>,
+                call_id
+            )))<span class="question-mark">?</span>,
+        }
+    }
+
+    <span class="doccomment">/// find the deferred calls for a given slot
+    </span><span class="kw">pub fn </span>get_deferred_calls_by_slot(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: Slot) -&gt; BTreeMap&lt;DeferredCallId, DeferredCall&gt; {
+        <span class="self">self</span>.speculative_deferred_calls
+            .get_calls_by_slot(slot)
+            .slot_calls
     }
 }
 

@@ -554,14 +554,12 @@
 <a href="#554" id="554">554</a>
 <a href="#555" id="555">555</a>
 <a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
-<span class="kw">use </span>massa_ledger_exports::{
-    Applicable, LedgerEntry, LedgerEntryUpdate, SetOrDelete, SetOrKeep, SetUpdateOrDelete,
-};
+<span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, bytecode::Bytecode, operation::OperationId, slot::Slot,
 };
