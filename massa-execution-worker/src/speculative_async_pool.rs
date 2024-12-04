@@ -300,7 +300,7 @@ impl SpeculativeAsyncPool {
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
-                        e.apply(msg_update.clone());
+                        *e = msg_update.clone();
                     });
                     return true;
                 }

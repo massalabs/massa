@@ -1477,11 +1477,11 @@ fn local_execution() {
 /// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
 ///
 /// 1. a block is created with one ExecuteSC operation containing
-///    a deployment sc as bytecode to execute and a deployed sc as an op datatsore entry
+///    a deployment sc as bytecode to execute and a deployed sc as an op datastore entry
 /// 2. store and set the block as final
 /// 3. wait for execution
 /// 4. retrieve events emitted by the initial an sub functions
-/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
+/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behavior
 #[test]
 fn sc_deployment() {
     // setup the period duration
@@ -3223,7 +3223,7 @@ fn execution_trace() {
         .collect();
 
     assert_eq!(traces_1.len(), 1); // Only one op
-    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.len(), 2);
     assert_eq!(
         traces_1.first().unwrap().1.first().unwrap().name,
         abi_name_1
@@ -3266,7 +3266,7 @@ fn execution_trace() {
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                    "AU12o4xrpyL6mobLpuoJevPRbHXnJJRUJC5FyDwjQdhuxcPoTwz3h".to_string()
                 ),
             },
             SCRuntimeAbiTraceValue {
@@ -3373,15 +3373,22 @@ fn execution_trace_nested() {
         .cloned()
         .collect();
 
-    // println!("params: {:?}", sub_call.first().unwrap().parameters);
+    println!("params: {:?}", sub_call.first().unwrap().parameters);
+
+    let from_addr = match *CHAINID {
+        77 => "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string(),
+        77658377 => "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string(),
+        _ => {
+            panic!("Invalid chain id for this test");
+        }
+    };
+
     assert_eq!(
         sub_call.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
-                value: SCRuntimeAbiTraceType::String(
-                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
-                )
+                value: SCRuntimeAbiTraceType::String(from_addr)
             },
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
