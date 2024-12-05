@@ -6,7 +6,7 @@
 //! of operations that can contain executable bytecode and managing interactions with the ledger.
 //! When the worker is launched, a `ExecutionManager` and a `ExecutionController` are returned.
 //! `ExecutionManager` allows stopping the worker,
-//! and `ExecutionController` is the clonable structure through which users interact with the worker.
+//! and `ExecutionController` is the cloneable structure through which users interact with the worker.
 //!
 //! The worker is fed through the `ExecutionController` with information about blockclique changes and newly finalized blocks
 //! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.
@@ -87,6 +87,7 @@ mod interface_impl;
 mod request_queue;
 mod slot_sequencer;
 mod speculative_async_pool;
+mod speculative_deferred_calls;
 mod speculative_executed_denunciations;
 mod speculative_executed_ops;
 mod speculative_ledger;

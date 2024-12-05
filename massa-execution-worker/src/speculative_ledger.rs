@@ -9,9 +9,10 @@ use crate::active_history::{ActiveHistory, HistorySearchResult};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
-use massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::types::{Applicable, SetOrDelete, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::cmp::Ordering;
@@ -34,19 +35,6 @@ pub(crate) struct SpeculativeLedger {
     active_history: Arc<RwLock<ActiveHistory>>,
 
     /// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    #[cfg(all(
-        not(feature = "gas_calibration"),
-        not(feature = "benchmarking"),
-        not(feature = "test-exports"),
-        not(test)
-    ))]
-    added_changes: LedgerChanges,
-    #[cfg(any(
-        feature = "gas_calibration",
-        feature = "benchmarking",
-        feature = "test-exports",
-        test
-    ))]
     pub added_changes: LedgerChanges,
 
     /// max datastore key length

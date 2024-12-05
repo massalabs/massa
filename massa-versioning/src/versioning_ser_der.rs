@@ -668,7 +668,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
                 ))
             })?;
 
-        let (rem3, latest_annoucements_) = context(
+        let (rem3, latest_announcements_) = context(
             "Failed MipStoreStats latest announcements der",
             length_count(
                 context("Failed latest announcements count der", |input| {
@@ -714,7 +714,7 @@ impl Deserializer<MipStoreStats> for MipStoreStatsDeserializer {
             rem4,
             MipStoreStats {
                 config: self.config.clone(),
-                latest_announcements: latest_annoucements_.into_iter().collect(),
+                latest_announcements: latest_announcements_.into_iter().collect(),
                 network_version_counters: network_version_counters.into_iter().collect(),
             },
         ))

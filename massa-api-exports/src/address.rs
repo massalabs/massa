@@ -156,7 +156,7 @@ impl std::fmt::Display for CompactAddressInfo {
     }
 }
 
-/// filter used when retrieving address informations
+/// filter used when retrieving address information
 #[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct AddressFilter {
     /// Address

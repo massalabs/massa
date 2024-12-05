@@ -11,17 +11,45 @@ use massa_models::{address::Address, node::NodeId};
 use massa_signature::KeyPair;
 use massa_test_framework::TestUniverse;
 use serial_test::serial;
-use std::path::PathBuf;
+use std::collections::HashSet;
+use std::fs::File;
+use std::net::IpAddr;
+use std::str::FromStr;
+use tempfile::NamedTempFile;
 
 #[test]
 #[serial]
 fn test_bootstrap_not_whitelisted() {
     let port = 8069;
     let server_keypair = KeyPair::generate(0).unwrap();
+
+    let bootstrap_whitelist_file = NamedTempFile::new().expect("unable to create temp file");
+
+    let ips_str = vec![
+        "149.202.86.103",
+        "149.202.89.125",
+        "158.69.120.215",
+        "158.69.23.120",
+        "198.27.74.5",
+        "51.75.60.228",
+        "2001:41d0:1004:67::",
+        "2001:41d0:a:7f7d::",
+        "2001:41d0:602:21e4::",
+    ];
+
+    let mut bootstrap_whitelist = HashSet::new();
+    for ip_str in ips_str {
+        bootstrap_whitelist.insert(IpAddr::from_str(ip_str).unwrap());
+    }
+
+    serde_json::to_writer_pretty::<&File, HashSet<IpAddr>>(
+        bootstrap_whitelist_file.as_file(),
+        &bootstrap_whitelist,
+    )
+    .expect("unable to write bootstrap whitelist temp file");
+
     let bootstrap_server_config = BootstrapConfig {
-        bootstrap_whitelist_path: PathBuf::from(
-            "../massa-node/base_config/bootstrap_whitelist.json",
-        ),
+        bootstrap_whitelist_path: bootstrap_whitelist_file.path().to_path_buf(),
         ..Default::default()
     };
     let server_universe = BootstrapServerTestUniverseBuilder::new()

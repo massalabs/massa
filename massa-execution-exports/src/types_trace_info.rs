@@ -23,6 +23,8 @@ pub struct SlotAbiCallStack {
     pub slot: Slot,
     /// asc call stacks
     pub asc_call_stacks: Vec<Vec<AbiTrace>>,
+    /// deferred call stacks
+    pub deferred_call_stacks: Vec<Vec<AbiTrace>>,
     /// operation call stacks
     pub operation_call_stacks: PreHashMap<OperationId, Vec<AbiTrace>>,
 }
@@ -88,7 +90,7 @@ impl AbiTrace {
         while !to_process.is_empty() {
             let t = to_process.pop_front();
             if let Some(trace) = t {
-                if abi_names.iter().find(|t| *(*t) == trace.name).is_some() {
+                if abi_names.iter().any(|t| *(*t) == trace.name) {
                     // filtered.extend(&trace)
                     filtered.push(trace);
                 }

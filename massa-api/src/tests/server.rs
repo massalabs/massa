@@ -83,13 +83,11 @@ async fn max_request_size() {
         OperationId::from_str("O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC").unwrap(),
         OperationId::from_str("O1q4CBcuYo8YANEV34W4JRWVHrzcYns19VJfyAB7jT4qfitAnMC").unwrap(),
     ]];
-    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::client::Error> =
         client.request("get_operations", params).await;
 
-    assert!(response
-        .unwrap_err()
-        .to_string()
-        .contains("status code: 413"));
+    let response_str = response.unwrap_err().to_string();
+    assert!(response_str.contains("Request rejected `413`"));
 
     api_handle.stop().await;
 }
@@ -142,13 +140,11 @@ async fn http_disabled() {
         ))
         .unwrap();
 
-    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::client::Error> =
         client.request("get_operations", rpc_params![]).await;
 
-    assert!(response
-        .unwrap_err()
-        .to_string()
-        .contains("status code: 403"));
+    let response_str = response.unwrap_err().to_string();
+    assert!(response_str.contains("Request rejected `403`"));
 
     api_handle.stop().await;
 }
@@ -178,7 +174,7 @@ async fn host_allowed() {
         ))
         .unwrap();
 
-    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::client::Error> =
         client.request("get_operations", rpc_params![]).await;
 
     // response OK but invalid params (no params provided)
@@ -205,14 +201,12 @@ async fn host_allowed() {
         ))
         .unwrap();
 
-    let response: Result<Vec<OperationInfo>, jsonrpsee::core::Error> =
+    let response: Result<Vec<OperationInfo>, jsonrpsee::core::client::Error> =
         client.request("get_operations", rpc_params![]).await;
 
     // host not allowed
-    assert!(response
-        .unwrap_err()
-        .to_string()
-        .contains("status code: 403"));
+    let response_str = response.unwrap_err().to_string();
+    assert!(response_str.contains("Request rejected `403`"));
 
     api_handle.stop().await;
     api_handle2.stop().await;

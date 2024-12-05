@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "MAIN.2.4",
+        "version": "MAIN.2.5",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/docs/build/api/jsonrpc",
         "termsOfService": "https://open-rpc.org",
         "contact": {
@@ -484,6 +484,105 @@
             "name": "get_status",
             "summary": "Summary of the current state",
             "description": "Summary of the current state: time, last final blocks (hash, thread, slot, timestamp), clique count, connected nodes count."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "req",
+                    "description": "Deferred calls quote request",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/DeferredCallsQuoteRequest"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/DeferredCallsQuoteResponse"
+                    }
+                },
+                "name": "DeferredCallsQuoteResponse"
+            },
+            "name": "get_deferred_call_quote",
+            "summary": "Get deferred call quote",
+            "description": "Returns if slot is available and the price to book the requested gas."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "arg",
+                    "description": "Deferred calls ids",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/DeferredCallResponse"
+                    }
+                },
+                "name": "DeferredCallResponse"
+            },
+            "name": "get_deferred_call_info",
+            "summary": "Get deferred calls information",
+            "description": "Returns information about deferred calls."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
+                    "name": "slots",
+                    "description": "Deferred calls ids",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Slot"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/DeferredCallsSlotResponse"
+                    }
+                },
+                "name": "DeferredCallResponse"
+            },
+            "name": "get_deferred_call_ids_by_slot",
+            "summary": "List deferred call ids by slot",
+            "description": "Returns deferred calls list for given slots."
         },
         {
             "tags": [
@@ -1909,6 +2008,123 @@
                 },
                 "additionalProperties": false
             },
+            "DeferredCall": {
+                "type": "object",
+                "required": [
+                    "sender_address",
+                    "target_slot",
+                    "target_address",
+                    "target_function",
+                    "parameters",
+                    "coins",
+                    "max_gas",
+                    "fee",
+                    "cancelled"
+                ],
+                "properties": {
+                    "sender_address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "target_slot": {
+                        "$ref": "#/components/schemas/Slot"
+                    },
+                    "target_address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "target_function": {
+                        "type": "string"
+                    },
+                    "parameters": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "coins": {
+                        "type": "number"
+                    },
+                    "max_gas": {
+                        "type": "number"
+                    },
+                    "fee": {
+                        "type": "number"
+                    },
+                    "cancelled": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "DeferredCallsQuoteRequest": {
+                "type": "object",
+                "required": [
+                    "target_slot",
+                    "max_gas_request",
+                    "params_size"
+                ],
+                "properties": {
+                    "target_slot": {
+                        "$ref": "#/components/schemas/Slot"
+                    },
+                    "max_gas_request": {
+                        "type": "number"
+                    },
+                    "params_size": {
+                        "type": "number"
+                    }
+                }
+            },
+            "DeferredCallsQuoteResponse": {
+                "type": "object",
+                "required": [
+                    "target_slot",
+                    "max_gas_request",
+                    "available",
+                    "price"
+                ],
+                "properties": {
+                    "target_slot": {
+                        "$ref": "#/components/schemas/Slot"
+                    },
+                    "max_gas_request": {
+                        "type": "number"
+                    },
+                    "available": {
+                        "type": "boolean"
+                    },
+                    "price": {
+                        "type": "number"
+                    }
+                }
+            },
+            "DeferredCallResponse": {
+                "type": "object",
+                "required": [
+                    "call_id",
+                    "call"
+                ],
+                "properties": {
+                    "call_id": {
+                        "type": "string"
+                    },
+                    "call": {
+                        "$ref": "#/components/schemas/DeferredCall"
+                    }
+                }
+            },
+            "DeferredCallsSlotResponse": {
+                "type": "object",
+                "properties": {
+                    "slot": {
+                        "$ref": "#/components/schemas/Slot"
+                    },
+                    "call_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "Denunciation": {
                 "oneOf": [
                     {
@@ -3215,6 +3431,7 @@
                 "required": [
                     "async_pool_changes",
                     "executed_ops_changes",
+                    "deferred_call_changes",
                     "ledger_changes",
                     "pos_changes",
                     "executed_denunciations_changes",
@@ -3239,6 +3456,10 @@
                     },
                     "executed_ops_changes": {
                         "description": "executed operations changes",
+                        "type": "object"
+                    },
+                    "deferred_call_changes": {
+                        "description": "deferred call changes",
                         "type": "object"
                     },
                     "executed_denunciations_changes": {

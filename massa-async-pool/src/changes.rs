@@ -14,7 +14,7 @@ use crate::{
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
-use massa_ledger_exports::{
+use massa_models::types::{
     Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
     SetUpdateOrDeleteSerializer,
 };
@@ -233,7 +233,7 @@ impl AsyncPoolChanges {
 mod tests {
     use std::str::FromStr;
 
-    use massa_ledger_exports::SetUpdateOrDelete;
+    use massa_models::types::SetUpdateOrDelete;
     use massa_models::{address::Address, amount::Amount, slot::Slot};
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
 
@@ -334,7 +334,7 @@ mod tests {
                 assert!(msg.can_be_executed);
             }
             _ => {
-                panic!("Unexpect value");
+                panic!("Unexpected value");
             }
         }
 

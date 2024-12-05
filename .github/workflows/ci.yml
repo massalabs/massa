@@ -22,28 +22,31 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Actions doc / www page:
+# actions/checkout: https://github.com/actions/checkout
+# Swatinem/rust-cache: https://github.com/Swatinem/rust-cache
+# dtolnay/rust-toolchain: https://github.com/dtolnay/rust-toolchain
+# codecov/codecov-action: https://github.com/codecov/codecov-action
+# JamesIves/github-pages-deploy-action: https://github.com/JamesIves/github-pages-deploy-action
+# typos: https://github.com/crate-ci/typos/blob/master/docs/github-action.md
+
 jobs:
   # Quick tests on each commit/PR
   sanity:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
           components: rustfmt
-          override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "sanity"
           save-if: ${{ github.ref_name == 'main' }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - run: cargo fmt --all --check
 
   check:
     if: github.ref != 'refs/heads/staging'
@@ -51,12 +54,11 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
       - uses: Swatinem/rust-cache@v2
         with:
@@ -66,9 +68,7 @@ jobs:
         with:
           version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
+      - run: cargo check
 
   clippy:
     if: github.ref != 'refs/heads/staging'
@@ -76,15 +76,13 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
           components: clippy
-          override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "clippy"
@@ -93,10 +91,7 @@ jobs:
         with:
           version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --no-deps --all-targets
+      - run: cargo clippy --no-deps --all-targets
 
   security:
     if: github.ref != 'refs/heads/staging'
@@ -104,11 +99,40 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       # - uses: actions-rust-lang/audit@v1
       #   name: Audit Rust Dependencies
+
+  typos:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: crate-ci/typos@master
+
+  misc:
+    if: github.ref != 'refs/heads/staging'
+    needs: sanity
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.81.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "clippy"
+          save-if: ${{ github.ref_name == 'main' }}
+      - run: cargo xtask check_gas_cost_definitions
 
   # Full cross-platform tests required to merge on main branch
   full:
@@ -185,14 +209,12 @@ jobs:
         if: runner.os == 'Linux'
         run: df -h
       - uses: ilammy/setup-nasm@v1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
-          override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "massa"
@@ -202,22 +224,11 @@ jobs:
           version: "23.x"
           include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-nextest --locked
-      - uses: actions-rs/cargo@v1
-        with:
-          command: nextest
-          args: run --retries 10 --profile ci --all-features
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clean
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc
-      - uses: codecov/codecov-action@v3
+      - run: cargo install cargo-nextest --locked
+      - run: cargo nextest run --retries 10 --profile ci --all-features
+      - run: cargo clean
+      - run: cargo test --doc
+      - uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           fail_ci_if_error: false
@@ -233,21 +244,19 @@ jobs:
     if: github.ref != 'refs/heads/staging' && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
           components: rustfmt
-          override: true
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: massalabs/gas-calibration
           path: gas-calibration
           ref: main
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: massalabs/massa-as-sdk
           path: massa-as-sdk
@@ -268,15 +277,13 @@ jobs:
   doc:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: 1.81.0
           components: rustfmt
-          override: true
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "doc"
@@ -285,11 +292,8 @@ jobs:
         with:
           version: '23.x'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --document-private-items
-      - uses: JamesIves/github-pages-deploy-action@4.1.7
+      - run: cargo doc --no-deps --document-private-items
+      - uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: target/doc
@@ -297,7 +301,7 @@ jobs:
   unit_tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: "recursive"
       - name: setup_tests
