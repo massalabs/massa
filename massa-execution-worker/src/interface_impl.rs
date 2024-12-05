@@ -1538,24 +1538,30 @@ impl Interface for InterfaceImpl {
         params_size: u64,
     ) -> Result<(bool, u64)> {
         // write-lock context
-
         let context = context_guard!(self);
 
-        let current_slot = context.slot;
+        match context.execution_component_version {
+            0 => {
+                bail!("Deferred calls are not supported in this execution component version")
+            }
+            _ => {
+                let current_slot = context.slot;
 
-        let target_slot = Slot::new(target_slot.0, target_slot.1);
+                let target_slot = Slot::new(target_slot.0, target_slot.1);
 
-        let gas_request =
-            gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
+                let gas_request =
+                    gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
 
-        match context.deferred_calls_compute_call_fee(
-            target_slot,
-            gas_request,
-            current_slot,
-            params_size,
-        ) {
-            Ok(fee) => Ok((true, fee.to_raw())),
-            Err(_) => Ok((false, 0)),
+                match context.deferred_calls_compute_call_fee(
+                    target_slot,
+                    gas_request,
+                    current_slot,
+                    params_size,
+                ) {
+                    Ok(fee) => Ok((true, fee.to_raw())),
+                    Err(_) => Ok((false, 0)),
+                }
+            }
         }
     }
 
@@ -1580,6 +1586,10 @@ impl Interface for InterfaceImpl {
         params: &[u8],
         coins: u64,
     ) -> Result<String> {
+        if context_guard!(self).execution_component_version == 0 {
+            bail!("Deferred calls are not supported in this execution component version")
+        }
+
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
 
         let target_addr = Address::from_str(target_addr)?;
@@ -1641,8 +1651,12 @@ impl Interface for InterfaceImpl {
     /// true if the call exists, false otherwise
     fn deferred_call_exists(&self, id: &str) -> Result<bool> {
         // write-lock context
-        let call_id = DeferredCallId::from_str(id)?;
         let context = context_guard!(self);
+        if context.execution_component_version == 0 {
+            bail!("Deferred calls are not supported in this execution component version")
+        }
+
+        let call_id = DeferredCallId::from_str(id)?;
         Ok(context.deferred_call_exists(&call_id))
     }
 
@@ -1654,6 +1668,10 @@ impl Interface for InterfaceImpl {
         // Reimburses coins to the sender but not the deferred call fee to avoid spam. Cancelled items are not removed from storage to avoid manipulation, just ignored when it is their turn to be executed.
 
         let mut context = context_guard!(self);
+
+        if context.execution_component_version == 0 {
+            bail!("Deferred calls are not supported in this execution component version")
+        }
 
         // Can only be called by the creator of the deferred call.
         let caller = context.get_current_address()?;

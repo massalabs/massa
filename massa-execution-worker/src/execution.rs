@@ -1356,6 +1356,7 @@ impl ExecutionState {
                 let module = self.module_cache.write().load_module(
                     &bytecode,
                     call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost),
+                    self.config.condom_limits.clone(),
                 )?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
@@ -1454,38 +1455,56 @@ impl ExecutionState {
             self.mip_store.clone(),
         );
 
-        // Deferred calls
-        let calls = execution_context.deferred_calls_advance_slot(*slot);
+        let execution_version = execution_context.execution_component_version;
 
-        // Apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
+        let mut deferred_calls_slot_gas = 0;
 
-        for (id, call) in calls.slot_calls {
-            let cancelled = call.cancelled;
-            match self.execute_deferred_call(&id, call) {
-                Ok(_exec) => {
-                    if cancelled {
-                        continue;
-                    }
-                    info!("executed deferred call: {:?}", id);
-                    cfg_if::cfg_if! {
-                        if #[cfg(feature = "execution-trace")] {
-                            // Safe to unwrap
-                            slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
-                        } else if #[cfg(feature = "execution-info")] {
-                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
-                            exec_info.deferred_calls_messages.push(Ok(_exec));
+        // deferred calls execution
+
+        match execution_version {
+            0 => {
+                // Apply the created execution context for slot execution
+                *context_guard!(self) = execution_context;
+            }
+            _ => {
+                // Deferred calls
+                let calls = execution_context.deferred_calls_advance_slot(*slot);
+
+                deferred_calls_slot_gas = calls.effective_slot_gas;
+
+                // Apply the created execution context for slot execution
+                *context_guard!(self) = execution_context;
+
+                for (id, call) in calls.slot_calls {
+                    let cancelled = call.cancelled;
+                    match self.execute_deferred_call(&id, call) {
+                        Ok(_exec) => {
+                            if cancelled {
+                                continue;
+                            }
+                            info!("executed deferred call: {:?}", id);
+                            cfg_if::cfg_if! {
+                                if #[cfg(feature = "execution-trace")] {
+                                    // Safe to unwrap
+                                    slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
+                                } else if #[cfg(feature = "execution-info")] {
+                                    slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
+                                    exec_info.deferred_calls_messages.push(Ok(_exec));
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            let msg = format!("failed executing deferred call: {}", err);
+                            #[cfg(feature = "execution-info")]
+                            exec_info.deferred_calls_messages.push(Err(msg.clone()));
+                            dbg!(msg);
                         }
                     }
                 }
-                Err(err) => {
-                    let msg = format!("failed executing deferred call: {}", err);
-                    #[cfg(feature = "execution-info")]
-                    exec_info.deferred_calls_messages.push(Err(msg.clone()));
-                    dbg!(msg);
-                }
             }
         }
+
+        // Block execution
 
         let mut block_info: Option<ExecutedBlockInfo> = None;
         // Set block gas (max_gas_per_block - gas used by deferred calls)
@@ -1844,17 +1863,15 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
-        let execution_version = execution_context.execution_component_version;
+        // Async msg execution
+
         match execution_version {
             0 => {
                 // Get asynchronous messages to execute
-                let messages = execution_context.take_async_batch_v0(
+                let messages = context_guard!(self).take_async_batch_v0(
                     self.config.max_async_gas,
                     self.config.async_msg_cst_gas_cost,
                 );
-
-                // Apply the created execution context for slot execution
-                *context_guard!(self) = execution_context;
 
                 // Try executing asynchronous messages.
                 // Effects are cancelled on failure and the sender is reimbursed.
@@ -1882,13 +1899,18 @@ impl ExecutionState {
             }
             _ => {
                 // Get asynchronous messages to execute
-                let messages = execution_context.take_async_batch_v1(
-                    self.config.max_async_gas,
+                // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+                let async_msg_gas_available = self
+                    .config
+                    .max_async_gas
+                    .saturating_sub(deferred_calls_slot_gas)
+                    .saturating_add(remaining_block_gas);
+
+                // Get asynchronous messages to execute
+                let messages = context_guard!(self).take_async_batch_v1(
+                    async_msg_gas_available,
                     self.config.async_msg_cst_gas_cost,
                 );
-
-                // Apply the created execution context for slot execution
-                *context_guard!(self) = execution_context;
 
                 // Try executing asynchronous messages.
                 // Effects are cancelled on failure and the sender is reimbursed.

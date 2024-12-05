@@ -1087,6 +1087,7 @@ impl ExecutionContext {
             executed_ops_changes: self.speculative_executed_ops.take(),
             executed_denunciations_changes: self.speculative_executed_denunciations.take(),
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
+            deferred_call_changes: self.speculative_deferred_calls.take(),
         };
         std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
