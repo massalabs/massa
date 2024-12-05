@@ -103,12 +103,25 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
 
-</span><span class="kw">use </span>massa_models::amount::Amount;
-<span class="kw">use </span>massa_sc_runtime::GasCosts;
+</span><span class="kw">use </span>massa_deferred_calls::config::DeferredCallsConfig;
+<span class="kw">use </span>massa_models::amount::Amount;
+<span class="kw">use </span>massa_sc_runtime::{CondomLimits, GasCosts};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="kw">use </span>num::rational::Ratio;
 <span class="kw">use </span>std::path::PathBuf;
@@ -196,7 +209,9 @@
     <span class="doccomment">/// slot execution outputs channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_output_channel_capacity: usize,
     <span class="doccomment">/// max size of event data, in bytes
-    </span><span class="kw">pub </span>max_event_size: usize,
+    </span><span class="kw">pub </span>max_event_size_v0: usize,
+    <span class="doccomment">/// max size of event data, in bytes
+    </span><span class="kw">pub </span>max_event_size_v1: usize,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
     <span class="doccomment">/// whether slot execution traces broadcast is enabled
@@ -207,5 +222,14 @@
     </span><span class="kw">pub </span>max_execution_traces_slot_limit: usize,
     <span class="doccomment">/// Where to dump blocks
     </span><span class="kw">pub </span>block_dump_folder_path: PathBuf,
+    <span class="doccomment">/// Max recursive calls depth in SC
+    /// Used to limit the recursion_counter value in the context, to avoid stack overflow issues.
+    </span><span class="kw">pub </span>max_recursive_calls_depth: u16,
+    <span class="doccomment">/// Runtime condom middleware limits
+    </span><span class="kw">pub </span>condom_limits: CondomLimits,
+    <span class="doccomment">/// deferred calls config
+    </span><span class="kw">pub </span>deferred_calls_config: DeferredCallsConfig,
+    <span class="doccomment">/// Maximum number of event that an operation can emit
+    </span><span class="kw">pub </span>max_event_per_operation: usize,
 }
 </code></pre></div></section></main></body></html>

@@ -723,6 +723,7 @@
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
 <a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -977,7 +978,8 @@
 <span class="macro">gen_varint!</span> {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string">"`u16`"</span>;
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">"`u32`"</span>;
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">"`u64`"
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">"`u64`"</span>;
+u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, <span class="string">"`u128`"
 </span>}
 
 <span class="attr">#[derive(Clone)]
@@ -1211,7 +1213,7 @@ u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string
     <span class="kw">use </span>num::rational::Ratio;
     <span class="kw">use </span>paste::paste;
 
-    <span class="comment">// This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
+    <span class="comment">// This macro creates a suite of tests for all types of numbers declared as parameters. This list of the
     // tests for each type :
     // - Test with a normal case that everything works
     // - Test with a normal case but a more bigger number that everything works
