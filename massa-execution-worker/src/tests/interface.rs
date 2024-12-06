@@ -12,6 +12,8 @@ use massa_sc_runtime::Interface;
 
 #[test]
 fn test_hash_sha256() {
+    // test hashing using sha256 algo
+
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
@@ -25,6 +27,8 @@ fn test_hash_sha256() {
 
 #[test]
 fn test_evm_signature_verify() {
+    // Test that we can verify an Ethereum signature
+
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
@@ -55,6 +59,8 @@ fn test_evm_signature_verify() {
 
 #[test]
 fn test_evm_get_pubkey_from_signature() {
+    // Test that we can retrieve the public key from an Ethereum signature
+
     let interface = InterfaceImpl::new_default(
         Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
         None,
@@ -79,7 +85,7 @@ fn test_evm_get_pubkey_from_signature() {
     assert!(result.is_ok());
     assert_eq!(public_key.serialize(), result.unwrap().as_ref());
 
-    // Invalid s
+    // Invalid s - expect failure
     {
         let mut signature_2 =
             libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
@@ -89,13 +95,40 @@ fn test_evm_get_pubkey_from_signature() {
         assert!(result.is_err());
     }
 
-    // Invalid v
+    // Invalid v - expect failure
     {
         let mut signature_2_ = signature_;
         signature_2_[64] ^= 1;
         let result = interface.evm_get_pubkey_from_signature(&full_hash, &signature_2_);
         assert!(result.is_err());
     }
+}
+
+#[test]
+fn test_evm_address() {
+    // Test that we can retrieve an Ethereum address from an Ethereum public key (from a private key)
+
+    let interface = InterfaceImpl::new_default(
+        Address::from_str("AU12cMW9zRKFDS43Z2W88VCmdQFxmHjAo54XvuVV34UzJeXRLXW9M").unwrap(),
+        None,
+        None,
+    );
+
+    let _address = hex!("807a7bb5193edf9898b9092c1597bb966fe52514");
+    // let message_ = b"test";
+    // let signature_ = hex!("d0d05c35080635b5e865006c6c4f5b5d457ec342564d8fc67ce40edc264ccdab3f2f366b5bd1e38582538fed7fa6282148e86af97970a10cb3302896f5d68ef51b");
+    let private_key_ = hex!("ed6602758bdd68dc9df67a6936ed69807a74b8cc89bdc18f3939149d02db17f3");
+
+    // build original public key
+    let private_key = libsecp256k1::SecretKey::parse_slice(&private_key_).unwrap();
+
+    let public_key = libsecp256k1::PublicKey::from_secret_key(&private_key);
+    let res = interface
+        .evm_get_address_from_pubkey(&public_key.serialize())
+        .unwrap();
+    // println!("***result: {:?}", res.to_vec());
+    // println!("***add: {:?}", _address);
+    assert_eq!(res, _address);
 }
 
 #[test]
