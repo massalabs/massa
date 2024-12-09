@@ -399,6 +399,7 @@
 <a href="#399" id="399">399</a>
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -641,7 +642,8 @@
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
         <span class="self">self</span>.executed_ops_changes
             .extend(changes.executed_ops_changes);
-        <span class="self">self</span>.executed_denunciations_changes
+        <span class="comment">// Note: no need to version the changes, as this function is not used in the codebase
+        </span><span class="self">self</span>.executed_denunciations_changes
             .extend(changes.executed_denunciations_changes);
         <span class="self">self</span>.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);

@@ -397,6 +397,48 @@
 <a href="#397" id="397">397</a>
 <a href="#398" id="398">398</a>
 <a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
@@ -409,8 +451,13 @@
 };
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
-<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_models::types::{Applicable, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::{
+    config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},
+    slot::Slot,
+    timeslots::get_block_slot_timestamp,
+};
+<span class="kw">use </span>massa_versioning::versioning::MipComponent;
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::{
     collections::{BTreeMap, HashMap},
@@ -530,6 +577,7 @@
                     <span class="kw-2">&amp;</span>slot,
                     <span class="kw-2">&amp;</span>message_info.validity_start,
                     <span class="kw-2">&amp;</span>message_info.validity_end,
+                    <span class="self">self</span>.get_execution_component_version(<span class="kw-2">&amp;</span>slot),
                 )
                 &amp;&amp; message_info.can_be_executed
             {
@@ -561,14 +609,16 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         ledger_changes: <span class="kw-2">&amp;</span>LedgerChanges,
+        fix_eliminated_msg: bool,
     ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
         <span class="comment">// Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>eliminated_infos = Vec::new();
+        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_execution_component_version(slot);
         <span class="self">self</span>.message_infos.retain(|id, info| {
-            <span class="kw">if </span><span class="self">Self</span>::is_message_expired(slot, <span class="kw-2">&amp;</span>info.validity_end) {
+            <span class="kw">if </span><span class="self">Self</span>::is_message_expired(slot, <span class="kw-2">&amp;</span>info.validity_end, execution_component_version) {
                 eliminated_infos.push((<span class="kw-2">*</span>id, info.clone()));
                 <span class="bool-val">false
             </span>} <span class="kw">else </span>{
@@ -579,7 +629,11 @@
         <span class="kw">let </span><span class="kw-2">mut </span>eliminated_new_messages = Vec::new();
         <span class="self">self</span>.pool_changes.<span class="number">0</span>.retain(|k, v| <span class="kw">match </span>v {
             SetUpdateOrDelete::Set(message) =&gt; {
-                <span class="kw">if </span><span class="self">Self</span>::is_message_expired(slot, <span class="kw-2">&amp;</span>message.validity_end) {
+                <span class="kw">if </span><span class="self">Self</span>::is_message_expired(
+                    slot,
+                    <span class="kw-2">&amp;</span>message.validity_end,
+                    execution_component_version,
+                ) {
                     eliminated_new_messages.push((<span class="kw-2">*</span>k, v.clone()));
                     <span class="bool-val">false
                 </span>} <span class="kw">else </span>{
@@ -629,12 +683,13 @@
         <span class="comment">// Query eliminated messages
         </span><span class="kw">let </span><span class="kw-2">mut </span>eliminated_msg =
             <span class="self">self</span>.fetch_msgs(eliminated_infos.iter().map(|(id, <span class="kw">_</span>)| id).collect(), <span class="bool-val">true</span>);
-
-        eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| <span class="kw">match </span>v {
-            SetUpdateOrDelete::Set(v) =&gt; <span class="prelude-val">Some</span>((<span class="kw-2">*</span>k, v.clone())),
-            SetUpdateOrDelete::Update(_v) =&gt; <span class="prelude-val">None</span>,
-            SetUpdateOrDelete::Delete =&gt; <span class="prelude-val">None</span>,
-        }));
+        <span class="kw">if </span>fix_eliminated_msg {
+            eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| <span class="kw">match </span>v {
+                SetUpdateOrDelete::Set(v) =&gt; <span class="prelude-val">Some</span>((<span class="kw-2">*</span>k, v.clone())),
+                SetUpdateOrDelete::Update(_v) =&gt; <span class="prelude-val">None</span>,
+                SetUpdateOrDelete::Delete =&gt; <span class="prelude-val">None</span>,
+            }));
+        }
         eliminated_msg
     }
 
@@ -717,12 +772,29 @@
         msgs
     }
 
+    <span class="kw">fn </span>get_execution_component_version(<span class="kw-2">&amp;</span><span class="self">self</span>, slot: <span class="kw-2">&amp;</span>Slot) -&gt; u32 {
+        <span class="kw">let </span>ts = get_block_slot_timestamp(THREAD_COUNT, T0, <span class="kw-2">*</span>GENESIS_TIMESTAMP, <span class="kw-2">*</span>slot)
+            .expect(<span class="string">"Time overflow when getting block slot timestamp for MIP"</span>);
+
+        <span class="self">self</span>.final_state
+            .read()
+            .get_mip_store()
+            .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts)
+    }
+
     <span class="doccomment">/// Return true if a message (given its validity end) is expired
     /// Must be consistent with is_message_valid
-    </span><span class="kw">fn </span>is_message_expired(slot: <span class="kw-2">&amp;</span>Slot, message_validity_end: <span class="kw-2">&amp;</span>Slot) -&gt; bool {
+    </span><span class="kw">fn </span>is_message_expired(
+        slot: <span class="kw-2">&amp;</span>Slot,
+        message_validity_end: <span class="kw-2">&amp;</span>Slot,
+        execution_component_version: u32,
+    ) -&gt; bool {
         <span class="comment">// Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
-        </span><span class="kw-2">*</span>slot &gt; <span class="kw-2">*</span>message_validity_end
+        </span><span class="kw">match </span>execution_component_version {
+            <span class="number">0 </span>=&gt; <span class="kw-2">*</span>slot &gt;= <span class="kw-2">*</span>message_validity_end,
+            <span class="kw">_ </span>=&gt; <span class="kw-2">*</span>slot &gt; <span class="kw-2">*</span>message_validity_end,
+        }
     }
 
     <span class="doccomment">/// Return true if a message (given its validity_start &amp; validity end) is ready to execute
@@ -731,10 +803,14 @@
         slot: <span class="kw-2">&amp;</span>Slot,
         message_validity_start: <span class="kw-2">&amp;</span>Slot,
         message_validity_end: <span class="kw-2">&amp;</span>Slot,
+        execution_component_version: u32,
     ) -&gt; bool {
         <span class="comment">// Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
-        </span>slot &gt;= message_validity_start &amp;&amp; slot &lt;= message_validity_end
+        </span><span class="kw">match </span>execution_component_version {
+            <span class="number">0 </span>=&gt; slot &gt;= message_validity_start &amp;&amp; slot &lt; message_validity_end,
+            <span class="kw">_ </span>=&gt; slot &gt;= message_validity_start &amp;&amp; slot &lt;= message_validity_end,
+        }
     }
 }
 
@@ -757,43 +833,51 @@
 
         <span class="macro">assert!</span>(!SpeculativeAsyncPool::is_message_expired(
             <span class="kw-2">&amp;</span>slot1,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
         <span class="macro">assert!</span>(SpeculativeAsyncPool::is_message_ready_to_execute(
             <span class="kw-2">&amp;</span>slot1,
             <span class="kw-2">&amp;</span>slot_validity_start,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
 
         <span class="macro">assert!</span>(!SpeculativeAsyncPool::is_message_expired(
             <span class="kw-2">&amp;</span>slot_validity_start,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
         <span class="macro">assert!</span>(SpeculativeAsyncPool::is_message_ready_to_execute(
             <span class="kw-2">&amp;</span>slot_validity_start,
             <span class="kw-2">&amp;</span>slot_validity_start,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
 
         <span class="macro">assert!</span>(!SpeculativeAsyncPool::is_message_expired(
             <span class="kw-2">&amp;</span>slot_validity_end,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
         <span class="macro">assert!</span>(SpeculativeAsyncPool::is_message_ready_to_execute(
             <span class="kw-2">&amp;</span>slot_validity_end,
             <span class="kw-2">&amp;</span>slot_validity_start,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
 
         <span class="macro">assert!</span>(SpeculativeAsyncPool::is_message_expired(
             <span class="kw-2">&amp;</span>slot2,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
         <span class="macro">assert!</span>(!SpeculativeAsyncPool::is_message_ready_to_execute(
             <span class="kw-2">&amp;</span>slot2,
             <span class="kw-2">&amp;</span>slot_validity_start,
-            <span class="kw-2">&amp;</span>slot_validity_end
-        ));
+            <span class="kw-2">&amp;</span>slot_validity_end,
+            <span class="number">1
+        </span>));
     }
 }
 </code></pre></div></section></main></body></html>
