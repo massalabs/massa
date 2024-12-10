@@ -85,9 +85,12 @@ impl EventCacheWriterThread {
                 break;
             }
 
-            let mut lock = self.cache.write();
-            lock.insert_multi_it(input_data.events.into_iter());
-            drop(lock);
+            {
+                let mut lock = self.cache.write();
+                lock.insert_multi_it(input_data.events.into_iter());
+                // drop the lock as early as possible
+                drop(lock);
+            }
         }
     }
 }
