@@ -146,7 +146,11 @@ impl SpeculativeAsyncPool {
             }
         }
 
-        let taken = self.fetch_msgs(wanted_messages, true);
+        let taken = self.fetch_msgs(
+            wanted_messages,
+            true,
+            self.get_execution_component_version(&slot),
+        );
 
         for (message_id, _) in taken.iter() {
             self.message_infos.remove(message_id);
@@ -170,12 +174,13 @@ impl SpeculativeAsyncPool {
         ledger_changes: &LedgerChanges,
         fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let execution_component_version = self.get_execution_component_version(slot);
+
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
         let mut eliminated_infos = Vec::new();
-        let execution_component_version = self.get_execution_component_version(slot);
         self.message_infos.retain(|id, info| {
             if Self::is_message_expired(slot, &info.validity_end, execution_component_version) {
                 eliminated_infos.push((*id, info.clone()));
@@ -232,16 +237,22 @@ impl SpeculativeAsyncPool {
         }
 
         // Query triggered messages
-        let triggered_msg =
-            self.fetch_msgs(triggered_info.iter().map(|(id, _)| id).collect(), false);
+        let triggered_msg = self.fetch_msgs(
+            triggered_info.iter().map(|(id, _)| id).collect(),
+            false,
+            execution_component_version,
+        );
 
         for (msg_id, _msg) in triggered_msg.iter() {
             self.pool_changes.push_activate(*msg_id);
         }
 
         // Query eliminated messages
-        let mut eliminated_msg =
-            self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
+        let mut eliminated_msg = self.fetch_msgs(
+            eliminated_infos.iter().map(|(id, _)| id).collect(),
+            true,
+            execution_component_version,
+        );
         if fix_eliminated_msg {
             eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
                 SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
@@ -256,6 +267,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         mut wanted_ids: Vec<&AsyncMessageId>,
         delete_existing: bool,
+        execution_component_version: u32,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut msgs = Vec::new();
 
@@ -290,6 +302,7 @@ impl SpeculativeAsyncPool {
             match self.active_history.read().fetch_message(
                 message_id,
                 current_changes.get(message_id).cloned().unwrap_or_default(),
+                execution_component_version,
             ) {
                 Present(SetUpdateOrDelete::Set(mut msg)) => {
                     msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
@@ -301,7 +314,14 @@ impl SpeculativeAsyncPool {
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
-                        *e = msg_update.clone();
+                        match execution_component_version {
+                            0 => {
+                                e.apply(msg_update.clone());
+                            }
+                            _ => {
+                                *e = msg_update.clone();
+                            }
+                        }
                     });
                     return true;
                 }
