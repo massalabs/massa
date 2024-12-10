@@ -132,6 +132,8 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::collections::{BTreeSet, VecDeque};
 <span class="kw">use </span>std::sync::Arc;
@@ -143,7 +145,7 @@
 <span class="kw">use </span>massa_models::output_event::SCOutputEvent;
 
 <span class="doccomment">/// structure used to communicate with controller
-</span><span class="attr">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug, Default)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>EventCacheWriterInputData {
     <span class="doccomment">/// set stop to true to stop the thread
     </span><span class="kw">pub </span>stop: bool,
@@ -158,15 +160,17 @@
         }
     }
 
-    <span class="doccomment">/// Takes the current input data into a clone that is returned,
+    <span class="comment">/*
+    /// Takes the current input data into a clone that is returned,
     /// and resets self.
-    </span><span class="kw">pub fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            stop: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.stop),
-            events: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.events),
+    pub fn take(&amp;mut self) -&gt; Self {
+        Self {
+            stop: std::mem::take(&amp;mut self.stop),
+            events: std::mem::take(&amp;mut self.events),
         }
     }
-}
+    */
+</span>}
 
 <span class="doccomment">/// interface that communicates with the worker thread
 </span><span class="attr">#[cfg_attr(feature = <span class="string">"test-exports"</span>, mockall_wrap::wrap, mockall::automock)]

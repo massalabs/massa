@@ -173,13 +173,16 @@
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
 <a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Duration;
 <span class="comment">// third-party
-</span><span class="kw">use </span>massa_time::MassaTime;
-<span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
+// use massa_time::MassaTime;
+</span><span class="kw">use </span>parking_lot::{Condvar, Mutex, RwLock};
 <span class="kw">use </span>tracing::{debug, info};
 <span class="comment">// internal
 </span><span class="kw">use </span><span class="kw">crate</span>::config::EventCacheConfig;
@@ -194,7 +197,7 @@
     </span>input_data: Arc&lt;(Condvar, Mutex&lt;EventCacheWriterInputData&gt;)&gt;,
     <span class="doccomment">/// Event cache
     </span>cache: Arc&lt;RwLock&lt;EventCache&gt;&gt;,
-    tick_delay: Duration,
+    _tick_delay: Duration,
 }
 
 <span class="kw">impl </span>EventCacheWriterThread {
@@ -206,7 +209,7 @@
         <span class="self">Self </span>{
             input_data,
             cache: event_cache,
-            tick_delay,
+            _tick_delay: tick_delay,
         }
     }
 
@@ -221,7 +224,7 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>input_data_lock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
 
             <span class="comment">// take current input data, resetting it
-            </span><span class="kw">let </span>input_data: EventCacheWriterInputData = input_data_lock.take();
+            </span><span class="kw">let </span>input_data: EventCacheWriterInputData = std::mem::take(<span class="kw-2">&amp;mut </span>input_data_lock);
 
             <span class="comment">// Check if there is some input data
             </span><span class="kw">if </span>!input_data.events.is_empty() {
@@ -233,17 +236,20 @@
                 <span class="kw">return </span>(input_data, <span class="bool-val">true</span>);
             }
 
-            <span class="comment">// Wait until deadline
-            </span><span class="kw">let </span>now = MassaTime::now();
-            <span class="kw">let </span>wakeup_deadline =
-                now.saturating_add(MassaTime::from_millis(<span class="self">self</span>.tick_delay.as_millis() <span class="kw">as </span>u64));
-            <span class="kw">let _ </span>= <span class="self">self</span>.input_data.<span class="number">0</span>.wait_until(
-                <span class="kw-2">&amp;mut </span>input_data_lock,
+            <span class="comment">// Should not be needed - will be removed after careful testing
+            /*
+            // Wait until deadline
+            let now = MassaTime::now();
+            let wakeup_deadline =
+                now.saturating_add(MassaTime::from_millis(self.tick_delay.as_millis() as u64));
+            let _ = self.input_data.0.wait_until(
+                &amp;mut input_data_lock,
                 wakeup_deadline
                     .estimate_instant()
-                    .expect(<span class="string">"could not estimate instant"</span>),
+                    .expect("could not estimate instant"),
             );
-        }
+            */
+        </span>}
     }
 
     <span class="doccomment">/// Main loop of the worker
