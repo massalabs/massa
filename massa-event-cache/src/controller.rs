@@ -62,65 +62,72 @@ impl EventCacheController for EventCacheControllerImpl {
     }
 
     fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent> {
-        let lock_0 = self.input_data.1.lock();
-        #[allow(clippy::unnecessary_filter_map)]
-        let it = lock_0.events.iter().filter_map(|event| {
-            if let Some(start) = filter.start {
-                if event.context.slot < start {
-                    return None;
+        let mut res_0 = {
+            // Read from new events first
+            let lock_0 = self.input_data.1.lock();
+            #[allow(clippy::unnecessary_filter_map)]
+            let it = lock_0.events.iter().filter_map(|event| {
+                if let Some(start) = filter.start {
+                    if event.context.slot < start {
+                        return None;
+                    }
                 }
-            }
-            if let Some(end) = filter.end {
-                if event.context.slot >= end {
-                    return None;
+                if let Some(end) = filter.end {
+                    if event.context.slot >= end {
+                        return None;
+                    }
                 }
-            }
-            if let Some(is_final) = filter.is_final {
-                if event.context.is_final != is_final {
-                    return None;
+                if let Some(is_final) = filter.is_final {
+                    if event.context.is_final != is_final {
+                        return None;
+                    }
                 }
-            }
-            if let Some(is_error) = filter.is_error {
-                if event.context.is_error != is_error {
-                    return None;
+                if let Some(is_error) = filter.is_error {
+                    if event.context.is_error != is_error {
+                        return None;
+                    }
                 }
-            }
-            match (
-                filter.original_caller_address,
-                event.context.call_stack.front(),
-            ) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
-            }
-            match (filter.emitter_address, event.context.call_stack.back()) {
-                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
-            }
-            match (
-                filter.original_operation_id,
-                event.context.origin_operation_id,
-            ) {
-                (Some(addr1), Some(addr2)) if addr1 != addr2 => return None,
-                (Some(_), None) => return None,
-                _ => (),
-            }
-            Some(event)
-        });
+                match (
+                    filter.original_caller_address,
+                    event.context.call_stack.front(),
+                ) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                match (filter.emitter_address, event.context.call_stack.back()) {
+                    (Some(addr1), Some(addr2)) if addr1 != *addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                match (
+                    filter.original_operation_id,
+                    event.context.origin_operation_id,
+                ) {
+                    (Some(addr1), Some(addr2)) if addr1 != addr2 => return None,
+                    (Some(_), None) => return None,
+                    _ => (),
+                }
+                Some(event)
+            });
 
-        let mut res_0: BTreeSet<SCOutputEvent> = it.cloned().collect();
-        // Drop the lock on the queue as soon as possible to avoid deadlocks
-        drop(lock_0);
+            let res_0: BTreeSet<SCOutputEvent> = it.cloned().collect();
+            // Drop the lock on the queue as soon as possible to avoid deadlocks
+            drop(lock_0);
+            res_0
+        };
 
-        let lock = self.cache.read();
+        let res_1 = {
+            // Read from db (on disk) events
+            let lock = self.cache.read();
+            let (_, res_1) = lock.get_filtered_sc_output_events(filter);
+            // Drop the lock on the event cache db asap
+            drop(lock);
+            res_1
+        };
 
-        let (_, res_1) = lock.get_filtered_sc_output_events(filter);
-        // Drop the lock on the event cache db asap
-        drop(lock);
-
+        // Merge results
         let res_1: BTreeSet<SCOutputEvent> = BTreeSet::from_iter(res_1);
-
         res_0.extend(res_1);
         Vec::from_iter(res_0)
     }
