@@ -1164,6 +1164,70 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_counter_0() {
+        // Test snip so we enforce that all db keys are removed
+
+        let mut cache = setup();
+        cache.max_entry_count = 10;
+
+        let dummy_addr =
+            Address::from_str("AU12qePoXhNbYWE1jZuafqJong7bbq1jw3k89RgbMawbrdZpaasoA").unwrap();
+        let emit_addr_1 =
+            Address::from_str("AU122Em8qkqegdLb1eyH8rdkSCNEf7RZLeTJve4Q2inRPGiTJ2xNv").unwrap();
+        let emit_addr_2 =
+            Address::from_str("AU12WuVR1Td74q9eAbtYZUnk5jnRbUuUacyhQFwm217bV5v1mNqTZ").unwrap();
+
+        let event = SCOutputEvent {
+            context: EventExecutionContext {
+                slot: Slot::new(1, 0),
+                block: None,
+                read_only: false,
+                index_in_slot: 0,
+                call_stack: VecDeque::from(vec![dummy_addr, emit_addr_1]),
+                origin_operation_id: None,
+                is_final: true,
+                is_error: false,
+            },
+            data: "message foo bar".to_string(),
+        };
+
+        let event_2 = {
+            let mut evt = event.clone();
+            evt.context.slot = Slot::new(2, 0);
+            evt.context.call_stack = VecDeque::from(vec![dummy_addr, emit_addr_2]);
+            evt
+        };
+
+        cache.insert_multi_it([event, event_2].into_iter());
+
+        let key_counter_1 = cache.key_builder.counter_key_from_filter_item(
+            &FilterItem::EmitterAddress(emit_addr_1),
+            &KeyIndent::EmitterAddress,
+        );
+        let key_counter_2 = cache.key_builder.counter_key_from_filter_item(
+            &FilterItem::EmitterAddress(emit_addr_2),
+            &KeyIndent::EmitterAddress,
+        );
+
+        let v1 = cache.db.get(key_counter_1.clone());
+        let v2 = cache.db.get(key_counter_2.clone());
+
+        // println!("v1: {:?} - v2: {:?}", v1, v2);
+        assert_eq!(v1, Ok(Some(1u64.to_be_bytes().to_vec())));
+        assert_eq!(v2, Ok(Some(1u64.to_be_bytes().to_vec())));
+
+        cache.snip(Some(1));
+
+        let v1 = cache.db.get(key_counter_1);
+        let v2 = cache.db.get(key_counter_2);
+
+        // println!("v1: {:?} - v2: {:?}", v1, v2);
+        assert_eq!(v1, Ok(None)); // counter has been removed
+        assert_eq!(v2, Ok(Some(1u64.to_be_bytes().to_vec())));
+    }
+
+    #[test]
+    #[serial]
     fn test_event_filter() {
         // Test that the data will be correctly ordered (when filtered) in db
 
