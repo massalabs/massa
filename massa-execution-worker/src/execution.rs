@@ -16,7 +16,6 @@ use crate::stats::ExecutionStatsCounter;
 use crate::storage_backend::StorageBackend;
 use massa_async_pool::AsyncMessage;
 use massa_deferred_calls::DeferredCall;
-use massa_event_cache::config::EventCacheConfig;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
     ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionError,
