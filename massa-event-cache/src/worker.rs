@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 // third-party
-use massa_time::MassaTime;
+// use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
 use tracing::{debug, info};
 // internal
@@ -19,7 +19,7 @@ pub(crate) struct EventCacheWriterThread {
     input_data: Arc<(Condvar, Mutex<EventCacheWriterInputData>)>,
     /// Event cache
     cache: Arc<RwLock<EventCache>>,
-    tick_delay: Duration,
+    _tick_delay: Duration,
 }
 
 impl EventCacheWriterThread {
@@ -31,7 +31,7 @@ impl EventCacheWriterThread {
         Self {
             input_data,
             cache: event_cache,
-            tick_delay,
+            _tick_delay: tick_delay,
         }
     }
 
@@ -46,7 +46,7 @@ impl EventCacheWriterThread {
             let mut input_data_lock = self.input_data.1.lock();
 
             // take current input data, resetting it
-            let input_data: EventCacheWriterInputData = input_data_lock.take();
+            let input_data: EventCacheWriterInputData = std::mem::take(&mut input_data_lock);
 
             // Check if there is some input data
             if !input_data.events.is_empty() {
@@ -58,6 +58,8 @@ impl EventCacheWriterThread {
                 return (input_data, true);
             }
 
+            // Should not be needed - will be removed after careful testing
+            /*
             // Wait until deadline
             let now = MassaTime::now();
             let wakeup_deadline =
@@ -68,6 +70,7 @@ impl EventCacheWriterThread {
                     .estimate_instant()
                     .expect("could not estimate instant"),
             );
+            */
         }
     }
 

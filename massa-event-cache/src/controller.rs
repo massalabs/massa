@@ -9,7 +9,7 @@ use massa_models::execution::EventFilter;
 use massa_models::output_event::SCOutputEvent;
 
 /// structure used to communicate with controller
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct EventCacheWriterInputData {
     /// set stop to true to stop the thread
     pub stop: bool,
@@ -24,6 +24,7 @@ impl EventCacheWriterInputData {
         }
     }
 
+    /*
     /// Takes the current input data into a clone that is returned,
     /// and resets self.
     pub fn take(&mut self) -> Self {
@@ -32,6 +33,7 @@ impl EventCacheWriterInputData {
             events: std::mem::take(&mut self.events),
         }
     }
+    */
 }
 
 /// interface that communicates with the worker thread
