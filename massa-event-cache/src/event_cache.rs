@@ -42,7 +42,7 @@ enum KeyIndent {
     IsFinal,
 }
 
-/// Key type that we want to get
+/// Key for this type of data that we want to get
 enum KeyBuilderType<'a> {
     Slot(&'a Slot),
     Event(&'a Slot, u64),
@@ -50,6 +50,12 @@ enum KeyBuilderType<'a> {
     OperationId(&'a OperationId),
     Bool(bool),
     None,
+}
+
+enum KeyKind {
+    Regular,
+    Prefix,
+    Counter,
 }
 
 struct DbKeyBuilder {
@@ -69,14 +75,8 @@ impl DbKeyBuilder {
     /// Recommended to use high level function like:
     /// `key_from_event`, `prefix_key_from_indent`,
     /// `prefix_key_from_filter_item` or `counter_key_from_filter_item`
-    fn key(
-        &self,
-        indent: &KeyIndent,
-        key_type: KeyBuilderType,
-        _is_prefix: bool,
-        is_counter: bool,
-    ) -> Vec<u8> {
-        let mut key_base = if is_counter {
+    fn key(&self, indent: &KeyIndent, key_type: KeyBuilderType, key_kind: &KeyKind) -> Vec<u8> {
+        let mut key_base = if matches!(key_kind, KeyKind::Counter) {
             vec![u8::from(KeyIndent::Counter), u8::from(*indent)]
         } else {
             vec![u8::from(*indent)]
@@ -118,31 +118,30 @@ impl DbKeyBuilder {
         &self,
         event: &SCOutputEvent,
         indent: &KeyIndent,
-        is_prefix: bool,
-        is_counter: bool,
+        key_kind: &KeyKind,
     ) -> Option<Vec<u8>> {
         // Db format:
         // * Regular keys:
         //   * Event key: [Event Indent][Slot][Index] -> Event value: Event serialized
         //   * Emitter address key: [Emitter Address Indent][Addr][Addr len][Event key] -> []
         // * Prefix keys:
-        //   * Emitter address prefix key: [Counter indent][Emitter Address Indent][Addr][Addr len]
+        //   * Emitter address prefix key: [Emitter Address Indent][Addr][Addr len]
         // * Counter keys:
         //   * Emitter address counter key: [Counter indent][Emitter Address Indent][Addr][Addr len][Event key] -> u64
 
         let key = match indent {
             KeyIndent::Event => {
                 let item = KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
-                Some(self.key(indent, item, is_prefix, is_counter))
+                Some(self.key(indent, item, key_kind))
             }
             KeyIndent::EmitterAddress => {
                 if let Some(addr) = event.context.call_stack.back() {
                     let item = KeyBuilderType::Address(addr);
-                    let mut key = self.key(indent, item, is_prefix, is_counter);
+                    let mut key = self.key(indent, item, key_kind);
                     let item =
                         KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
-                    if !is_prefix && !is_counter {
-                        key.extend(self.key(&KeyIndent::Event, item, false, false));
+                    if matches!(key_kind, KeyKind::Regular) {
+                        key.extend(self.key(&KeyIndent::Event, item, &KeyKind::Regular));
                     }
                     Some(key)
                 } else {
@@ -152,11 +151,11 @@ impl DbKeyBuilder {
             KeyIndent::OriginalCallerAddress => {
                 if let Some(addr) = event.context.call_stack.front() {
                     let item = KeyBuilderType::Address(addr);
-                    let mut key = self.key(indent, item, is_prefix, is_counter);
+                    let mut key = self.key(indent, item, key_kind);
                     let item =
                         KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
-                    if !is_prefix && !is_counter {
-                        key.extend(self.key(&KeyIndent::Event, item, false, false));
+                    if matches!(key_kind, KeyKind::Regular) {
+                        key.extend(self.key(&KeyIndent::Event, item, &KeyKind::Regular));
                     }
                     Some(key)
                 } else {
@@ -166,11 +165,11 @@ impl DbKeyBuilder {
             KeyIndent::OriginalOperationId => {
                 if let Some(op_id) = event.context.origin_operation_id.as_ref() {
                     let item = KeyBuilderType::OperationId(op_id);
-                    let mut key = self.key(indent, item, is_prefix, is_counter);
+                    let mut key = self.key(indent, item, key_kind);
                     let item =
                         KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
-                    if !is_prefix && !is_counter {
-                        key.extend(self.key(&KeyIndent::Event, item, false, false));
+                    if matches!(key_kind, KeyKind::Regular) {
+                        key.extend(self.key(&KeyIndent::Event, item, &KeyKind::Regular));
                     }
                     Some(key)
                 } else {
@@ -179,10 +178,10 @@ impl DbKeyBuilder {
             }
             KeyIndent::IsError => {
                 let item = KeyBuilderType::Bool(event.context.is_error);
-                let mut key = self.key(indent, item, is_prefix, is_counter);
+                let mut key = self.key(indent, item, key_kind);
                 let item = KeyBuilderType::Event(&event.context.slot, event.context.index_in_slot);
-                if !is_prefix && !is_counter {
-                    key.extend(self.key(&KeyIndent::Event, item, false, false));
+                if matches!(key_kind, KeyKind::Regular) {
+                    key.extend(self.key(&KeyIndent::Event, item, &KeyKind::Regular));
                 }
                 Some(key)
             }
@@ -194,7 +193,7 @@ impl DbKeyBuilder {
 
     /// Prefix key to iterate over all events / emitter_address / ...
     fn prefix_key_from_indent(&self, indent: &KeyIndent) -> Vec<u8> {
-        self.key(indent, KeyBuilderType::None, false, false)
+        self.key(indent, KeyBuilderType::None, &KeyKind::Regular)
     }
 
     /// Prefix key to iterate over specific emitter_address / operation_id / ...
@@ -204,22 +203,22 @@ impl DbKeyBuilder {
                 unimplemented!()
             }
             (KeyIndent::Event, FilterItem::SlotStart(start)) => {
-                self.key(indent, KeyBuilderType::Slot(start), true, false)
+                self.key(indent, KeyBuilderType::Slot(start), &KeyKind::Prefix)
             }
             (KeyIndent::Event, FilterItem::SlotEnd(end)) => {
-                self.key(indent, KeyBuilderType::Slot(end), true, false)
+                self.key(indent, KeyBuilderType::Slot(end), &KeyKind::Prefix)
             }
             (KeyIndent::EmitterAddress, FilterItem::EmitterAddress(addr)) => {
-                self.key(indent, KeyBuilderType::Address(addr), true, false)
+                self.key(indent, KeyBuilderType::Address(addr), &KeyKind::Prefix)
             }
             (KeyIndent::OriginalCallerAddress, FilterItem::OriginalCallerAddress(addr)) => {
-                self.key(indent, KeyBuilderType::Address(addr), true, false)
+                self.key(indent, KeyBuilderType::Address(addr), &KeyKind::Prefix)
             }
             (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) => {
-                self.key(indent, KeyBuilderType::OperationId(op_id), true, false)
+                self.key(indent, KeyBuilderType::OperationId(op_id), &KeyKind::Prefix)
             }
             (KeyIndent::IsError, FilterItem::IsError(v)) => {
-                self.key(indent, KeyBuilderType::Bool(*v), true, false)
+                self.key(indent, KeyBuilderType::Bool(*v), &KeyKind::Prefix)
             }
             _ => {
                 unreachable!()
@@ -239,22 +238,24 @@ impl DbKeyBuilder {
                 unimplemented!()
             }
             (KeyIndent::Event, FilterItem::SlotStart(start)) => {
-                self.key(indent, KeyBuilderType::Slot(start), false, true)
+                self.key(indent, KeyBuilderType::Slot(start), &KeyKind::Counter)
             }
             (KeyIndent::Event, FilterItem::SlotEnd(end)) => {
-                self.key(indent, KeyBuilderType::Slot(end), false, true)
+                self.key(indent, KeyBuilderType::Slot(end), &KeyKind::Counter)
             }
             (KeyIndent::EmitterAddress, FilterItem::EmitterAddress(addr)) => {
-                self.key(indent, KeyBuilderType::Address(addr), false, true)
+                self.key(indent, KeyBuilderType::Address(addr), &KeyKind::Counter)
             }
             (KeyIndent::OriginalCallerAddress, FilterItem::OriginalCallerAddress(addr)) => {
-                self.key(indent, KeyBuilderType::Address(addr), false, true)
+                self.key(indent, KeyBuilderType::Address(addr), &KeyKind::Counter)
             }
-            (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) => {
-                self.key(indent, KeyBuilderType::OperationId(op_id), false, true)
-            }
+            (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) => self.key(
+                indent,
+                KeyBuilderType::OperationId(op_id),
+                &KeyKind::Counter,
+            ),
             (KeyIndent::IsError, FilterItem::IsError(v)) => {
-                self.key(indent, KeyBuilderType::Bool(*v), false, true)
+                self.key(indent, KeyBuilderType::Bool(*v), &KeyKind::Counter)
             }
             _ => {
                 unreachable!()
@@ -349,47 +350,49 @@ impl EventCache {
 
         batch.put(
             self.key_builder
-                .key_from_event(&event, &KeyIndent::Event, false, false)
+                .key_from_event(&event, &KeyIndent::Event, &KeyKind::Regular)
                 .unwrap(),
             event_buffer,
         );
 
         if let Some(key) =
             self.key_builder
-                .key_from_event(&event, &KeyIndent::EmitterAddress, false, false)
-        {
-            let key_counter =
-                self.key_builder
-                    .key_from_event(&event, &KeyIndent::EmitterAddress, false, true);
-            batch.put(key, vec![]);
-            let key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
-            batch.merge(key_counter, 1i64.to_be_bytes());
-        }
-
-        if let Some(key) =
-            self.key_builder
-                .key_from_event(&event, &KeyIndent::OriginalCallerAddress, false, false)
+                .key_from_event(&event, &KeyIndent::EmitterAddress, &KeyKind::Regular)
         {
             let key_counter = self.key_builder.key_from_event(
                 &event,
-                &KeyIndent::OriginalCallerAddress,
-                false,
-                true,
+                &KeyIndent::EmitterAddress,
+                &KeyKind::Counter,
             );
             batch.put(key, vec![]);
             let key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
             batch.merge(key_counter, 1i64.to_be_bytes());
         }
 
-        if let Some(key) =
-            self.key_builder
-                .key_from_event(&event, &KeyIndent::OriginalOperationId, false, false)
-        {
+        if let Some(key) = self.key_builder.key_from_event(
+            &event,
+            &KeyIndent::OriginalCallerAddress,
+            &KeyKind::Regular,
+        ) {
+            let key_counter = self.key_builder.key_from_event(
+                &event,
+                &KeyIndent::OriginalCallerAddress,
+                &KeyKind::Counter,
+            );
+            batch.put(key, vec![]);
+            let key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
+            batch.merge(key_counter, 1i64.to_be_bytes());
+        }
+
+        if let Some(key) = self.key_builder.key_from_event(
+            &event,
+            &KeyIndent::OriginalOperationId,
+            &KeyKind::Regular,
+        ) {
             let key_counter = self.key_builder.key_from_event(
                 &event,
                 &KeyIndent::OriginalOperationId,
-                false,
-                true,
+                &KeyKind::Counter,
             );
             batch.put(key, vec![]);
             let key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
@@ -399,11 +402,11 @@ impl EventCache {
         {
             if let Some(key) =
                 self.key_builder
-                    .key_from_event(&event, &KeyIndent::IsError, false, false)
+                    .key_from_event(&event, &KeyIndent::IsError, &KeyKind::Regular)
             {
                 let key_counter =
                     self.key_builder
-                        .key_from_event(&event, &KeyIndent::IsError, false, true);
+                        .key_from_event(&event, &KeyIndent::IsError, &KeyKind::Counter);
                 let key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
                 batch.put(key, vec![]);
                 batch.merge(key_counter, 1i64.to_be_bytes());
@@ -763,13 +766,14 @@ impl EventCache {
                 .unwrap();
 
             // delete all associated key
-            if let Some(key) =
-                self.key_builder
-                    .key_from_event(&event, &KeyIndent::EmitterAddress, false, false)
-            {
+            if let Some(key) = self.key_builder.key_from_event(
+                &event,
+                &KeyIndent::EmitterAddress,
+                &KeyKind::Regular,
+            ) {
                 let key_counter = self
                     .key_builder
-                    .key_from_event(&event, &KeyIndent::EmitterAddress, false, true)
+                    .key_from_event(&event, &KeyIndent::EmitterAddress, &KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -778,12 +782,11 @@ impl EventCache {
             if let Some(key) = self.key_builder.key_from_event(
                 &event,
                 &KeyIndent::OriginalCallerAddress,
-                false,
-                false,
+                &KeyKind::Regular,
             ) {
                 let key_counter = self
                     .key_builder
-                    .key_from_event(&event, &KeyIndent::OriginalCallerAddress, false, true)
+                    .key_from_event(&event, &KeyIndent::OriginalCallerAddress, &KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -793,12 +796,11 @@ impl EventCache {
             if let Some(key) = self.key_builder.key_from_event(
                 &event,
                 &KeyIndent::OriginalOperationId,
-                false,
-                false,
+                &KeyKind::Regular,
             ) {
                 let key_counter = self
                     .key_builder
-                    .key_from_event(&event, &KeyIndent::OriginalOperationId, false, true)
+                    .key_from_event(&event, &KeyIndent::OriginalOperationId, &KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -806,11 +808,11 @@ impl EventCache {
             }
             if let Some(key) =
                 self.key_builder
-                    .key_from_event(&event, &KeyIndent::IsError, false, false)
+                    .key_from_event(&event, &KeyIndent::IsError, &KeyKind::Regular)
             {
                 let key_counter = self
                     .key_builder
-                    .key_from_event(&event, &KeyIndent::IsError, false, true)
+                    .key_from_event(&event, &KeyIndent::IsError, &KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -1199,6 +1201,28 @@ mod tests {
         };
 
         cache.insert_multi_it([event, event_2].into_iter());
+
+        // Check counters key length
+        let key_counters = cache
+            .key_builder
+            .prefix_key_from_indent(&KeyIndent::Counter);
+        let kvbs: Result<Vec<(_, _)>, _> = cache
+            .db
+            .prefix_iterator(key_counters)
+            .take_while(|kvb| {
+                kvb.as_ref()
+                    .unwrap()
+                    .0
+                    .starts_with(&[u8::from(KeyIndent::Counter)])
+            })
+            .collect();
+        // println!("kvbs: {:#?}", kvbs);
+
+        // Expected 4 counters:
+        // 2 for emitter address (emit_addr_1 & emit_addr_2)
+        // 1 for original caller address (dummy_addr)
+        // 1 for is_error(false)
+        assert_eq!(kvbs.unwrap().len(), 4);
 
         let key_counter_1 = cache.key_builder.counter_key_from_filter_item(
             &FilterItem::EmitterAddress(emit_addr_1),
