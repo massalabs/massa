@@ -1792,6 +1792,30 @@
 <a href="#1792" id="1792">1792</a>
 <a href="#1793" id="1793">1793</a>
 <a href="#1794" id="1794">1794</a>
+<a href="#1795" id="1795">1795</a>
+<a href="#1796" id="1796">1796</a>
+<a href="#1797" id="1797">1797</a>
+<a href="#1798" id="1798">1798</a>
+<a href="#1799" id="1799">1799</a>
+<a href="#1800" id="1800">1800</a>
+<a href="#1801" id="1801">1801</a>
+<a href="#1802" id="1802">1802</a>
+<a href="#1803" id="1803">1803</a>
+<a href="#1804" id="1804">1804</a>
+<a href="#1805" id="1805">1805</a>
+<a href="#1806" id="1806">1806</a>
+<a href="#1807" id="1807">1807</a>
+<a href="#1808" id="1808">1808</a>
+<a href="#1809" id="1809">1809</a>
+<a href="#1810" id="1810">1810</a>
+<a href="#1811" id="1811">1811</a>
+<a href="#1812" id="1812">1812</a>
+<a href="#1813" id="1813">1813</a>
+<a href="#1814" id="1814">1814</a>
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -1836,7 +1860,7 @@
     IsFinal,
 }
 
-<span class="doccomment">/// Key type that we want to get
+<span class="doccomment">/// Key for this type of data that we want to get
 </span><span class="kw">enum </span>KeyBuilderType&lt;<span class="lifetime">'a</span>&gt; {
     Slot(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Slot),
     Event(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Slot, u64),
@@ -1844,6 +1868,12 @@
     OperationId(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>OperationId),
     Bool(bool),
     <span class="prelude-val">None</span>,
+}
+
+<span class="kw">enum </span>KeyKind {
+    Regular,
+    Prefix,
+    Counter,
 }
 
 <span class="kw">struct </span>DbKeyBuilder {
@@ -1863,14 +1893,8 @@
     /// Recommended to use high level function like:
     /// `key_from_event`, `prefix_key_from_indent`,
     /// `prefix_key_from_filter_item` or `counter_key_from_filter_item`
-    </span><span class="kw">fn </span>key(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        indent: <span class="kw-2">&amp;</span>KeyIndent,
-        key_type: KeyBuilderType,
-        _is_prefix: bool,
-        is_counter: bool,
-    ) -&gt; Vec&lt;u8&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>key_base = <span class="kw">if </span>is_counter {
+    </span><span class="kw">fn </span>key(<span class="kw-2">&amp;</span><span class="self">self</span>, indent: <span class="kw-2">&amp;</span>KeyIndent, key_type: KeyBuilderType, key_kind: <span class="kw-2">&amp;</span>KeyKind) -&gt; Vec&lt;u8&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>key_base = <span class="kw">if </span><span class="macro">matches!</span>(key_kind, KeyKind::Counter) {
             <span class="macro">vec!</span>[u8::from(KeyIndent::Counter), u8::from(<span class="kw-2">*</span>indent)]
         } <span class="kw">else </span>{
             <span class="macro">vec!</span>[u8::from(<span class="kw-2">*</span>indent)]
@@ -1912,31 +1936,30 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         event: <span class="kw-2">&amp;</span>SCOutputEvent,
         indent: <span class="kw-2">&amp;</span>KeyIndent,
-        is_prefix: bool,
-        is_counter: bool,
+        key_kind: <span class="kw-2">&amp;</span>KeyKind,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="comment">// Db format:
         // * Regular keys:
         //   * Event key: [Event Indent][Slot][Index] -&gt; Event value: Event serialized
         //   * Emitter address key: [Emitter Address Indent][Addr][Addr len][Event key] -&gt; []
         // * Prefix keys:
-        //   * Emitter address prefix key: [Counter indent][Emitter Address Indent][Addr][Addr len]
+        //   * Emitter address prefix key: [Emitter Address Indent][Addr][Addr len]
         // * Counter keys:
         //   * Emitter address counter key: [Counter indent][Emitter Address Indent][Addr][Addr len][Event key] -&gt; u64
 
         </span><span class="kw">let </span>key = <span class="kw">match </span>indent {
             KeyIndent::Event =&gt; {
                 <span class="kw">let </span>item = KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
-                <span class="prelude-val">Some</span>(<span class="self">self</span>.key(indent, item, is_prefix, is_counter))
+                <span class="prelude-val">Some</span>(<span class="self">self</span>.key(indent, item, key_kind))
             }
             KeyIndent::EmitterAddress =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = event.context.call_stack.back() {
                     <span class="kw">let </span>item = KeyBuilderType::Address(addr);
-                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, is_prefix, is_counter);
+                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, key_kind);
                     <span class="kw">let </span>item =
                         KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
-                    <span class="kw">if </span>!is_prefix &amp;&amp; !is_counter {
-                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
+                    <span class="kw">if </span><span class="macro">matches!</span>(key_kind, KeyKind::Regular) {
+                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="kw-2">&amp;</span>KeyKind::Regular));
                     }
                     <span class="prelude-val">Some</span>(key)
                 } <span class="kw">else </span>{
@@ -1946,11 +1969,11 @@
             KeyIndent::OriginalCallerAddress =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(addr) = event.context.call_stack.front() {
                     <span class="kw">let </span>item = KeyBuilderType::Address(addr);
-                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, is_prefix, is_counter);
+                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, key_kind);
                     <span class="kw">let </span>item =
                         KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
-                    <span class="kw">if </span>!is_prefix &amp;&amp; !is_counter {
-                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
+                    <span class="kw">if </span><span class="macro">matches!</span>(key_kind, KeyKind::Regular) {
+                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="kw-2">&amp;</span>KeyKind::Regular));
                     }
                     <span class="prelude-val">Some</span>(key)
                 } <span class="kw">else </span>{
@@ -1960,11 +1983,11 @@
             KeyIndent::OriginalOperationId =&gt; {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(op_id) = event.context.origin_operation_id.as_ref() {
                     <span class="kw">let </span>item = KeyBuilderType::OperationId(op_id);
-                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, is_prefix, is_counter);
+                    <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, key_kind);
                     <span class="kw">let </span>item =
                         KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
-                    <span class="kw">if </span>!is_prefix &amp;&amp; !is_counter {
-                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
+                    <span class="kw">if </span><span class="macro">matches!</span>(key_kind, KeyKind::Regular) {
+                        key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="kw-2">&amp;</span>KeyKind::Regular));
                     }
                     <span class="prelude-val">Some</span>(key)
                 } <span class="kw">else </span>{
@@ -1973,10 +1996,10 @@
             }
             KeyIndent::IsError =&gt; {
                 <span class="kw">let </span>item = KeyBuilderType::Bool(event.context.is_error);
-                <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, is_prefix, is_counter);
+                <span class="kw">let </span><span class="kw-2">mut </span>key = <span class="self">self</span>.key(indent, item, key_kind);
                 <span class="kw">let </span>item = KeyBuilderType::Event(<span class="kw-2">&amp;</span>event.context.slot, event.context.index_in_slot);
-                <span class="kw">if </span>!is_prefix &amp;&amp; !is_counter {
-                    key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="bool-val">false</span>, <span class="bool-val">false</span>));
+                <span class="kw">if </span><span class="macro">matches!</span>(key_kind, KeyKind::Regular) {
+                    key.extend(<span class="self">self</span>.key(<span class="kw-2">&amp;</span>KeyIndent::Event, item, <span class="kw-2">&amp;</span>KeyKind::Regular));
                 }
                 <span class="prelude-val">Some</span>(key)
             }
@@ -1988,7 +2011,7 @@
 
     <span class="doccomment">/// Prefix key to iterate over all events / emitter_address / ...
     </span><span class="kw">fn </span>prefix_key_from_indent(<span class="kw-2">&amp;</span><span class="self">self</span>, indent: <span class="kw-2">&amp;</span>KeyIndent) -&gt; Vec&lt;u8&gt; {
-        <span class="self">self</span>.key(indent, KeyBuilderType::None, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+        <span class="self">self</span>.key(indent, KeyBuilderType::None, <span class="kw-2">&amp;</span>KeyKind::Regular)
     }
 
     <span class="doccomment">/// Prefix key to iterate over specific emitter_address / operation_id / ...
@@ -1998,22 +2021,22 @@
                 <span class="macro">unimplemented!</span>()
             }
             (KeyIndent::Event, FilterItem::SlotStart(start)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(start), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(start), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             (KeyIndent::Event, FilterItem::SlotEnd(end)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(end), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(end), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             (KeyIndent::EmitterAddress, FilterItem::EmitterAddress(addr)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             (KeyIndent::OriginalCallerAddress, FilterItem::OriginalCallerAddress(addr)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::OperationId(op_id), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::OperationId(op_id), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             (KeyIndent::IsError, FilterItem::IsError(v)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Bool(<span class="kw-2">*</span>v), <span class="bool-val">true</span>, <span class="bool-val">false</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Bool(<span class="kw-2">*</span>v), <span class="kw-2">&amp;</span>KeyKind::Prefix)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">unreachable!</span>()
@@ -2033,22 +2056,24 @@
                 <span class="macro">unimplemented!</span>()
             }
             (KeyIndent::Event, FilterItem::SlotStart(start)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(start), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(start), <span class="kw-2">&amp;</span>KeyKind::Counter)
             }
             (KeyIndent::Event, FilterItem::SlotEnd(end)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(end), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Slot(end), <span class="kw-2">&amp;</span>KeyKind::Counter)
             }
             (KeyIndent::EmitterAddress, FilterItem::EmitterAddress(addr)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="kw-2">&amp;</span>KeyKind::Counter)
             }
             (KeyIndent::OriginalCallerAddress, FilterItem::OriginalCallerAddress(addr)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Address(addr), <span class="kw-2">&amp;</span>KeyKind::Counter)
             }
-            (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::OperationId(op_id), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
-            }
+            (KeyIndent::OriginalOperationId, FilterItem::OriginalOperationId(op_id)) =&gt; <span class="self">self</span>.key(
+                indent,
+                KeyBuilderType::OperationId(op_id),
+                <span class="kw-2">&amp;</span>KeyKind::Counter,
+            ),
             (KeyIndent::IsError, FilterItem::IsError(v)) =&gt; {
-                <span class="self">self</span>.key(indent, KeyBuilderType::Bool(<span class="kw-2">*</span>v), <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                <span class="self">self</span>.key(indent, KeyBuilderType::Bool(<span class="kw-2">*</span>v), <span class="kw-2">&amp;</span>KeyKind::Counter)
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="macro">unreachable!</span>()
@@ -2143,47 +2168,49 @@
 
         batch.put(
             <span class="self">self</span>.key_builder
-                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::Event, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::Event, <span class="kw-2">&amp;</span>KeyKind::Regular)
                 .unwrap(),
             event_buffer,
         );
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
             <span class="self">self</span>.key_builder
-                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
-        {
-            <span class="kw">let </span>key_counter =
-                <span class="self">self</span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
-            batch.put(key, <span class="macro">vec!</span>[]);
-            <span class="kw">let </span>key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
-            batch.merge(key_counter, <span class="number">1i64</span>.to_be_bytes());
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
-            <span class="self">self</span>.key_builder
-                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="kw-2">&amp;</span>KeyKind::Regular)
         {
             <span class="kw">let </span>key_counter = <span class="self">self</span>.key_builder.key_from_event(
                 <span class="kw-2">&amp;</span>event,
-                <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress,
-                <span class="bool-val">false</span>,
-                <span class="bool-val">true</span>,
+                <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress,
+                <span class="kw-2">&amp;</span>KeyKind::Counter,
             );
             batch.put(key, <span class="macro">vec!</span>[]);
             <span class="kw">let </span>key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
             batch.merge(key_counter, <span class="number">1i64</span>.to_be_bytes());
         }
 
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
-            <span class="self">self</span>.key_builder
-                .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
-        {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.key_builder.key_from_event(
+            <span class="kw-2">&amp;</span>event,
+            <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress,
+            <span class="kw-2">&amp;</span>KeyKind::Regular,
+        ) {
+            <span class="kw">let </span>key_counter = <span class="self">self</span>.key_builder.key_from_event(
+                <span class="kw-2">&amp;</span>event,
+                <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress,
+                <span class="kw-2">&amp;</span>KeyKind::Counter,
+            );
+            batch.put(key, <span class="macro">vec!</span>[]);
+            <span class="kw">let </span>key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
+            batch.merge(key_counter, <span class="number">1i64</span>.to_be_bytes());
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.key_builder.key_from_event(
+            <span class="kw-2">&amp;</span>event,
+            <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId,
+            <span class="kw-2">&amp;</span>KeyKind::Regular,
+        ) {
             <span class="kw">let </span>key_counter = <span class="self">self</span>.key_builder.key_from_event(
                 <span class="kw-2">&amp;</span>event,
                 <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId,
-                <span class="bool-val">false</span>,
-                <span class="bool-val">true</span>,
+                <span class="kw-2">&amp;</span>KeyKind::Counter,
             );
             batch.put(key, <span class="macro">vec!</span>[]);
             <span class="kw">let </span>key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
@@ -2193,11 +2220,11 @@
         {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
                 <span class="self">self</span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="kw-2">&amp;</span>KeyKind::Regular)
             {
                 <span class="kw">let </span>key_counter =
                     <span class="self">self</span>.key_builder
-                        .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="bool-val">false</span>, <span class="bool-val">true</span>);
+                        .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="kw-2">&amp;</span>KeyKind::Counter);
                 <span class="kw">let </span>key_counter = key_counter.expect(COUNTER_KEY_CREATION_ERROR);
                 batch.put(key, <span class="macro">vec!</span>[]);
                 batch.merge(key_counter, <span class="number">1i64</span>.to_be_bytes());
@@ -2557,13 +2584,14 @@
                 .unwrap();
 
             <span class="comment">// delete all associated key
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
-                <span class="self">self</span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
-            {
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.key_builder.key_from_event(
+                <span class="kw-2">&amp;</span>event,
+                <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress,
+                <span class="kw-2">&amp;</span>KeyKind::Regular,
+            ) {
                 <span class="kw">let </span>key_counter = <span class="self">self
                     </span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::EmitterAddress, <span class="kw-2">&amp;</span>KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -2572,12 +2600,11 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.key_builder.key_from_event(
                 <span class="kw-2">&amp;</span>event,
                 <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress,
-                <span class="bool-val">false</span>,
-                <span class="bool-val">false</span>,
+                <span class="kw-2">&amp;</span>KeyKind::Regular,
             ) {
                 <span class="kw">let </span>key_counter = <span class="self">self
                     </span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress, <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalCallerAddress, <span class="kw-2">&amp;</span>KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -2587,12 +2614,11 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(key) = <span class="self">self</span>.key_builder.key_from_event(
                 <span class="kw-2">&amp;</span>event,
                 <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId,
-                <span class="bool-val">false</span>,
-                <span class="bool-val">false</span>,
+                <span class="kw-2">&amp;</span>KeyKind::Regular,
             ) {
                 <span class="kw">let </span>key_counter = <span class="self">self
                     </span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId, <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::OriginalOperationId, <span class="kw-2">&amp;</span>KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -2600,11 +2626,11 @@
             }
             <span class="kw">if let </span><span class="prelude-val">Some</span>(key) =
                 <span class="self">self</span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="bool-val">false</span>, <span class="bool-val">false</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="kw-2">&amp;</span>KeyKind::Regular)
             {
                 <span class="kw">let </span>key_counter = <span class="self">self
                     </span>.key_builder
-                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="bool-val">false</span>, <span class="bool-val">true</span>)
+                    .key_from_event(<span class="kw-2">&amp;</span>event, <span class="kw-2">&amp;</span>KeyIndent::IsError, <span class="kw-2">&amp;</span>KeyKind::Counter)
                     .expect(COUNTER_ERROR);
                 batch.delete(key);
                 counter_keys.push(key_counter.clone());
@@ -2993,6 +3019,28 @@
         };
 
         cache.insert_multi_it([event, event_2].into_iter());
+
+        <span class="comment">// Check counters key length
+        </span><span class="kw">let </span>key_counters = cache
+            .key_builder
+            .prefix_key_from_indent(<span class="kw-2">&amp;</span>KeyIndent::Counter);
+        <span class="kw">let </span>kvbs: <span class="prelude-ty">Result</span>&lt;Vec&lt;(<span class="kw">_</span>, <span class="kw">_</span>)&gt;, <span class="kw">_</span>&gt; = cache
+            .db
+            .prefix_iterator(key_counters)
+            .take_while(|kvb| {
+                kvb.as_ref()
+                    .unwrap()
+                    .<span class="number">0
+                    </span>.starts_with(<span class="kw-2">&amp;</span>[u8::from(KeyIndent::Counter)])
+            })
+            .collect();
+        <span class="comment">// println!("kvbs: {:#?}", kvbs);
+
+        // Expected 4 counters:
+        // 2 for emitter address (emit_addr_1 &amp; emit_addr_2)
+        // 1 for original caller address (dummy_addr)
+        // 1 for is_error(false)
+        </span><span class="macro">assert_eq!</span>(kvbs.unwrap().len(), <span class="number">4</span>);
 
         <span class="kw">let </span>key_counter_1 = cache.key_builder.counter_key_from_filter_item(
             <span class="kw-2">&amp;</span>FilterItem::EmitterAddress(emit_addr_1),
