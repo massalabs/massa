@@ -992,11 +992,13 @@ pub(crate) fn query_state(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
+    let current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
     let queries = request
         .into_inner()
         .queries
         .into_iter()
-        .map(to_querystate_filter)
+        .map(|q| to_querystate_filter(q, current_network_version))
         .collect::<Result<Vec<_>, _>>()?;
 
     if queries.is_empty() {
