@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::time::Duration;
 
 pub struct EventCacheConfig {
     /// Path to the hard drive cache storage

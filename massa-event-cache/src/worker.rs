@@ -1,7 +1,6 @@
 // std
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
 // third-party
 // use massa_time::MassaTime;
 use parking_lot::{Condvar, Mutex, RwLock};
