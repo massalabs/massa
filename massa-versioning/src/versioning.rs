@@ -45,6 +45,8 @@ pub enum MipComponent {
     Block,
     VM,
     FinalStateHashKind,
+    Execution,
+    FinalState,
     #[doc(hidden)]
     #[num_enum(default)]
     __Nonexhaustive,
@@ -1308,6 +1310,12 @@ impl MipStoreRaw {
         self.store = new_store;
         self.stats = new_stats;
         Ok(())
+    }
+
+    // get network versions stats
+    // <network_version, count>
+    pub fn get_network_versions_stats(&self) -> HashMap<u32, u64> {
+        self.stats.network_version_counters.clone()
     }
 
     // Final state
