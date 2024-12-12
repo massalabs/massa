@@ -412,15 +412,6 @@ pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_00
 /// deferred call call gas cost
 pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 
-//
-// Constants for event cache
-//
-
-/// Maximum number of events that can be returned by a query
-pub const MAX_EVENTS_PER_QUERY: usize = 10000;
-/// Delay between writes in event cache writer thread
-pub const EVENT_CACHE_TICK_DELAY: u64 = 100;
-
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]
 const _: () = {

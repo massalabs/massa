@@ -20,6 +20,4 @@ pub struct EventCacheConfig {
     pub max_operations_per_block: u64,
     /// Maximum events returned in a query
     pub max_events_per_query: usize,
-    /// Delay to wait between 2 writes in event cache writer in milliseconds
-    pub tick_delay: Duration,
 }
