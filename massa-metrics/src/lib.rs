@@ -786,7 +786,7 @@ impl MassaMetrics {
                     actual_counter.set(count as i64);
                 } else {
                     let label = format!("network_version_votes_{}", version);
-                    let counter = IntGauge::new(label, "").unwrap();
+                    let counter = IntGauge::new(label, "vote counter for network version").unwrap();
                     counter.set(count as i64);
                     let _ = prometheus::register(Box::new(counter.clone()));
                     write.insert(version, counter);
