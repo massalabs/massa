@@ -156,6 +156,13 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -166,6 +173,7 @@
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::info;
 <span class="comment">// use std::time::Duration;
 </span><span class="kw">use </span>tracing::warn;
@@ -203,6 +211,7 @@
         pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
+        mip_store: MipStore,
     ) -&gt; MassaSurveyStopper {
         <span class="kw">if </span>massa_metrics.is_enabled() {
             <span class="attr">#[cfg(all(not(feature = <span class="string">"sandbox"</span>), not(test)))]
@@ -287,6 +296,11 @@
                                     .unwrap_or(std::num::NonZeroUsize::MIN)
                                     .get();
                                     massa_metrics.set_available_processors(count);
+                                }
+
+                                {
+                                    <span class="kw">let </span>network_stats= mip_store.<span class="number">0</span>.read().get_network_versions_stats();
+                                    massa_metrics.update_network_version_vote(network_stats);
                                 }
                             }
                         }

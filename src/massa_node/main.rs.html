@@ -1555,37 +1555,6 @@
 <a href="#1555" id="1555">1555</a>
 <a href="#1556" id="1556">1556</a>
 <a href="#1557" id="1557">1557</a>
-<a href="#1558" id="1558">1558</a>
-<a href="#1559" id="1559">1559</a>
-<a href="#1560" id="1560">1560</a>
-<a href="#1561" id="1561">1561</a>
-<a href="#1562" id="1562">1562</a>
-<a href="#1563" id="1563">1563</a>
-<a href="#1564" id="1564">1564</a>
-<a href="#1565" id="1565">1565</a>
-<a href="#1566" id="1566">1566</a>
-<a href="#1567" id="1567">1567</a>
-<a href="#1568" id="1568">1568</a>
-<a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
-<a href="#1572" id="1572">1572</a>
-<a href="#1573" id="1573">1573</a>
-<a href="#1574" id="1574">1574</a>
-<a href="#1575" id="1575">1575</a>
-<a href="#1576" id="1576">1576</a>
-<a href="#1577" id="1577">1577</a>
-<a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
-<a href="#1580" id="1580">1580</a>
-<a href="#1581" id="1581">1581</a>
-<a href="#1582" id="1582">1582</a>
-<a href="#1583" id="1583">1583</a>
-<a href="#1584" id="1584">1584</a>
-<a href="#1585" id="1585">1585</a>
-<a href="#1586" id="1586">1586</a>
-<a href="#1587" id="1587">1587</a>
-<a href="#1588" id="1588">1588</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1680,10 +1649,10 @@
     DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
     DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
     KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION,
-    MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
-    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
-    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_DATA_SIZE_V1,
+    MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
+    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
     MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
@@ -1715,8 +1684,6 @@
 <span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>std::{path::Path, process, sync::Arc};
 
-<span class="kw">use </span>massa_event_cache::config::EventCacheConfig;
-<span class="kw">use </span>massa_event_cache::worker::{start_event_cache_writer_worker, EventCacheManager};
 <span class="kw">use </span>survey::MassaSurveyStopper;
 <span class="kw">use </span>tokio::sync::broadcast;
 <span class="kw">use </span>tracing::{debug, error, info, warn};
@@ -1740,7 +1707,6 @@
     Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
-    Box&lt;<span class="kw">dyn </span>EventCacheManager&gt;,
     StopHandle,
     StopHandle,
     StopHandle,
@@ -2064,25 +2030,6 @@
         }
     }
 
-    <span class="comment">// Event cache thread
-    </span><span class="kw">let </span>event_cache_config = EventCacheConfig {
-        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
-        max_event_cache_length: SETTINGS.execution.event_cache_size,
-        snip_amount: SETTINGS.execution.event_snip_amount,
-        max_event_data_length: MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
-        thread_count: THREAD_COUNT,
-        <span class="comment">// Note: SCOutputEvent call stack comes from the execution module, and we assume
-        //       this should return a limited call stack length
-        //       The value remains for future use &amp; limitations
-        </span>max_call_stack_length: u16::MAX,
-
-        max_events_per_operation: MAX_EVENT_PER_OPERATION <span class="kw">as </span>u64,
-        max_operations_per_block: MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64,
-        max_events_per_query: SETTINGS.execution.max_event_per_query,
-    };
-    <span class="kw">let </span>(event_cache_manager, event_cache_controller) =
-        start_event_cache_writer_worker(event_cache_config);
-
     <span class="comment">// Storage costs constants
     </span><span class="kw">let </span>storage_costs_constants = StorageCostsConstants {
         ledger_cost_per_byte: LEDGER_COST_PER_BYTE,
@@ -2159,7 +2106,8 @@
         broadcast_slot_execution_output_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_output_channel_capacity,
-        max_event_size: MAX_EVENT_DATA_SIZE,
+        max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
+        max_event_size_v1: MAX_EVENT_DATA_SIZE_V1,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: <span class="kw-2">*</span>CHAINID,
@@ -2176,9 +2124,6 @@
         condom_limits,
         deferred_calls_config,
         max_event_per_operation: MAX_EVENT_PER_OPERATION,
-        event_cache_path: SETTINGS.execution.event_cache_path.clone(),
-        event_cache_size: SETTINGS.execution.event_cache_size,
-        event_snip_amount: SETTINGS.execution.event_snip_amount,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
@@ -2217,7 +2162,6 @@
         execution_channels.clone(),
         node_wallet.clone(),
         massa_metrics.clone(),
-        event_cache_controller,
         <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
         </span>block_storage_backend.clone(),
     );
@@ -2714,6 +2658,7 @@
             api_config.periods_per_cycle,
             api_config.last_start_period,
         ),
+        mip_store,
     );
 
     <span class="attr">#[cfg(feature = <span class="string">"deadlock_detection"</span>)]
@@ -2754,7 +2699,6 @@
         pool_manager,
         protocol_manager,
         factory_manager,
-        event_cache_manager,
         api_private_handle,
         api_public_handle,
         api_handle,
@@ -2850,7 +2794,6 @@
     pool_manager: Box&lt;<span class="kw">dyn </span>PoolManager&gt;,
     protocol_manager: Box&lt;<span class="kw">dyn </span>ProtocolManager&gt;,
     factory_manager: Box&lt;<span class="kw">dyn </span>FactoryManager&gt;,
-    event_cache_manager: Box&lt;<span class="kw">dyn </span>EventCacheManager&gt;,
 }
 
 <span class="attr">#[allow(clippy::too_many_arguments)]
@@ -2864,7 +2807,6 @@
         <span class="kw-2">mut </span>pool_manager,
         <span class="kw-2">mut </span>protocol_manager,
         <span class="kw-2">mut </span>factory_manager,
-        <span class="kw-2">mut </span>event_cache_manager,
     }: Managers,
     api_private_handle: StopHandle,
     api_public_handle: StopHandle,
@@ -2936,9 +2878,7 @@
     //let protocol_pool_event_receiver = pool_manager.stop().await.expect("pool shutdown failed");
 
     // note that FinalLedger gets destroyed as soon as its Arc count goes to zero
-
-    </span>event_cache_manager.stop();
-}
+</span>}
 
 <span class="attr">#[derive(Parser)]
 #[command(version = <span class="macro">crate_version!</span>())]
@@ -3087,7 +3027,6 @@
             pool_manager,
             protocol_manager,
             factory_manager,
-            event_cache_manager,
             api_private_handle,
             api_public_handle,
             api_handle,
@@ -3154,7 +3093,6 @@
                 pool_manager,
                 protocol_manager,
                 factory_manager,
-                event_cache_manager,
             },
             api_private_handle,
             api_public_handle,

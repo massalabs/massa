@@ -11,7 +11,6 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_db_exports",["",[],["constants.rs","controller.rs","db_batch.rs","error.rs","lib.rs","settings.rs"]]],\
 ["massa_db_worker",["",[],["lib.rs","massa_db.rs"]]],\
 ["massa_deferred_calls",["",[],["call.rs","config.rs","lib.rs","macros.rs","registry_changes.rs","slot_changes.rs"]]],\
-["massa_event_cache",["",[],["config.rs","controller.rs","event_cache.rs","lib.rs","rocksdb_operator.rs","ser_deser.rs","worker.rs"]]],\
 ["massa_executed_ops",["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]]],\
 ["massa_execution_exports",["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs","types_trace_info.rs"]]],\
 ["massa_execution_worker",["",[],["active_history.rs","context.rs","controller.rs","execution.rs","execution_info.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_deferred_calls.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","storage_backend.rs","worker.rs"]]],\

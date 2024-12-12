@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["EventCacheControllerImpl","EventCacheWriterInputData"],"trait":["EventCacheController"]};
