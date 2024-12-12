@@ -1100,6 +1100,7 @@ async fn launch(
             api_config.periods_per_cycle,
             api_config.last_start_period,
         ),
+        mip_store,
     );
 
     #[cfg(feature = "deadlock_detection")]

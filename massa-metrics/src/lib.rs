@@ -199,6 +199,9 @@ pub struct MassaMetrics {
     // peer bandwidth (bytes sent, bytes received)
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 
+    // network versions votes <version, votes>
+    network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
+
     pub tick_delay: Duration,
 
     // deferred calls metrics
@@ -557,6 +560,7 @@ impl MassaMetrics {
                 final_cursor_thread,
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+                network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
                 tick_delay,
                 deferred_calls_executed,
                 deferred_calls_failed,
@@ -754,6 +758,41 @@ impl MassaMetrics {
 
     pub fn inc_deferred_calls_failed(&self) {
         self.deferred_calls_failed.inc();
+    }
+
+    // Update the network version vote metrics
+    pub fn update_network_version_vote(&self, data: HashMap<u32, u64>) {
+        if self.enabled {
+            let mut write = self.network_versions_votes.write().unwrap();
+
+            {
+                let missing_version = write
+                    .keys()
+                    .filter(|key| !data.contains_key(key))
+                    .cloned()
+                    .collect::<Vec<u32>>();
+
+                for key in missing_version {
+                    if let Some(counter) = write.remove(&key) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_{} : {}", key, e);
+                        }
+                    }
+                }
+            }
+
+            for (version, count) in data.into_iter() {
+                if let Some(actual_counter) = write.get_mut(&version) {
+                    actual_counter.set(count as i64);
+                } else {
+                    let label = format!("network_version_votes_{}", version);
+                    let counter = IntGauge::new(label, "").unwrap();
+                    counter.set(count as i64);
+                    let _ = prometheus::register(Box::new(counter.clone()));
+                    write.insert(version, counter);
+                }
+            }
+        }
     }
 
     /// Update the bandwidth metrics for all peers

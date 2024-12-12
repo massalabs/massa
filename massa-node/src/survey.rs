@@ -8,6 +8,7 @@ use massa_metrics::MassaMetrics;
 use massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
 use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
+use massa_versioning::versioning::MipStore;
 use tracing::info;
 // use std::time::Duration;
 use tracing::warn;
@@ -45,6 +46,7 @@ impl MassaSurvey {
         pool_controller: Box<dyn PoolController>,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
+        mip_store: MipStore,
     ) -> MassaSurveyStopper {
         if massa_metrics.is_enabled() {
             #[cfg(all(not(feature = "sandbox"), not(test)))]
@@ -129,6 +131,11 @@ impl MassaSurvey {
                                     .unwrap_or(std::num::NonZeroUsize::MIN)
                                     .get();
                                     massa_metrics.set_available_processors(count);
+                                }
+
+                                {
+                                    let network_stats= mip_store.0.read().get_network_versions_stats();
+                                    massa_metrics.update_network_version_vote(network_stats);
                                 }
                             }
                         }
