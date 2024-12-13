@@ -1299,6 +1299,18 @@
 <a href="#1299" id="1299">1299</a>
 <a href="#1300" id="1300">1300</a>
 <a href="#1301" id="1301">1301</a>
+<a href="#1302" id="1302">1302</a>
+<a href="#1303" id="1303">1303</a>
+<a href="#1304" id="1304">1304</a>
+<a href="#1305" id="1305">1305</a>
+<a href="#1306" id="1306">1306</a>
+<a href="#1307" id="1307">1307</a>
+<a href="#1308" id="1308">1308</a>
+<a href="#1309" id="1309">1309</a>
+<a href="#1310" id="1310">1310</a>
+<a href="#1311" id="1311">1311</a>
+<a href="#1312" id="1312">1312</a>
+<a href="#1313" id="1313">1313</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -2002,12 +2014,24 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(from_addr) = <span class="kw-2">&amp;</span>from_addr {
             <span class="comment">// check access rights
-            // ensure we can't spend from an address on which we have no write access
-            </span><span class="kw">if </span>check_rights &amp;&amp; !<span class="self">self</span>.has_write_rights_on(from_addr) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">"spending from address {} is not allowed in this context"</span>,
-                    from_addr
-                )));
+            </span><span class="kw">if </span>check_rights {
+                <span class="comment">// ensure we can't spend from an address on which we have no write access
+                </span><span class="kw">if </span>!<span class="self">self</span>.has_write_rights_on(from_addr) {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                        <span class="string">"spending from address {} is not allowed in this context"</span>,
+                        from_addr
+                    )));
+                }
+
+                <span class="comment">// ensure we can't transfer towards SC addresses on which we have no write access
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(to_addr) = <span class="kw-2">&amp;</span>to_addr {
+                    <span class="kw">if </span><span class="macro">matches!</span>(to_addr, Address::SC(..)) &amp;&amp; !<span class="self">self</span>.has_write_rights_on(to_addr) {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                            <span class="string">"crediting SC address {} is not allowed without write access to it"</span>,
+                            to_addr
+                        )));
+                    }
+                }
             }
         }
 

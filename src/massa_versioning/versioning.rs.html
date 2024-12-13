@@ -2737,6 +2737,12 @@
 <a href="#2737" id="2737">2737</a>
 <a href="#2738" id="2738">2738</a>
 <a href="#2739" id="2739">2739</a>
+<a href="#2740" id="2740">2740</a>
+<a href="#2741" id="2741">2741</a>
+<a href="#2742" id="2742">2742</a>
+<a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
+<a href="#2745" id="2745">2745</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -4047,6 +4053,12 @@
         <span class="self">self</span>.store = new_store;
         <span class="self">self</span>.stats = new_stats;
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="comment">// get network versions stats
+    // &lt;network_version, count&gt;
+    </span><span class="kw">pub fn </span>get_network_versions_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;u32, u64&gt; {
+        <span class="self">self</span>.stats.network_version_counters.clone()
     }
 
     <span class="comment">// Final state

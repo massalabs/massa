@@ -654,11 +654,6 @@
 <a href="#654" id="654">654</a>
 <a href="#655" id="655">655</a>
 <a href="#656" id="656">656</a>
-<a href="#657" id="657">657</a>
-<a href="#658" id="658">658</a>
-<a href="#659" id="659">659</a>
-<a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -838,11 +833,6 @@
                     ))
                 })<span class="question-mark">?</span>;
                 changes.set_balance(to_addr, new_balance);
-            } <span class="kw">else if </span><span class="macro">matches!</span>(to_addr, Address::SC(..)) {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
-                    <span class="string">"cannot transfer coins to non-existing smart contract address {}"</span>,
-                    to_addr
-                )));
             } <span class="kw">else if let </span><span class="prelude-val">Some</span>(remaining_coins) =
                 amount.checked_sub(<span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost)
             {
