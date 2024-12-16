@@ -2566,10 +2566,43 @@ fn send_and_receive_transaction() {
     // setup the period duration
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    // Set various addresses to test the execution's behavior
+    let existing_user_recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let non_existing_user_recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let existing_sc_recipient_address =
+        Address::from_str("AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu").unwrap();
+    let non_existing_sc_recipient_address =
+        Address::from_str("AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR").unwrap();
+    let non_existing_recipient_addresses = [
+        non_existing_user_recipient_address,
+        non_existing_sc_recipient_address,
+    ];
+    let recipient_addresses = vec![
+        existing_user_recipient_address,
+        existing_sc_recipient_address,
+        non_existing_user_recipient_address,
+        non_existing_sc_recipient_address,
+    ];
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |address| {
+                    if non_existing_recipient_addresses.contains(address) {
+                        None
+                    } else {
+                        Some(Amount::from_str("100").unwrap())
+                    }
+                });
+        });
     let finalized_waitpoint = WaitPoint::new();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
-    let recipient_address =
-        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
     selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
@@ -2588,17 +2621,38 @@ fn send_and_receive_transaction() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
+            // 110 because 100 in the get_balance in the `final_state_boilerplate` and 10 from the transfer.
             assert_eq!(
                 changes
                     .ledger_changes
-                    .get_balance_or_else(&recipient_address, || None),
-                Some(Amount::from_str("190").unwrap())
+                    .get_balance_or_else(&existing_user_recipient_address, || None),
+                Some(Amount::from_str("110").unwrap())
+            );
+            // 9.999 because -0.001 for address creation and 10 from the transfer.
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&non_existing_user_recipient_address, || None),
+                Some(Amount::from_str("9.999").unwrap())
+            );
+            // 110 because 100 in the get_balance in the `final_state_boilerplate` and 10 from the transfer.
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&existing_sc_recipient_address, || None),
+                Some(Amount::from_str("110").unwrap())
+            );
+            // Cannot transfer coins to a non-existing smart contract
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&non_existing_sc_recipient_address, || None),
+                None
             );
             // block rewards computation
             let total_rewards = exec_cfg
                 .block_reward
-                .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
+                .saturating_add(Amount::from_str("20").unwrap()); // add 20 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
@@ -2608,6 +2662,13 @@ fn send_and_receive_transaction() {
                         .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
                         .expect("critical: total_rewards checked_rem factor is 0"),
                 );
+            // 100 initial balance, + block rewards - transferred amount (3*10) - fees (4*5)
+            let sender_expected_balance = Amount::from_str("100")
+                .unwrap()
+                .saturating_add(rewards_for_block_creator)
+                .saturating_sub(Amount::from_str("30").unwrap())
+                .saturating_sub(Amount::from_str("20").unwrap());
+
             assert_eq!(
                 changes.ledger_changes.get_balance_or_else(
                     &Address::from_public_key(
@@ -2615,38 +2676,56 @@ fn send_and_receive_transaction() {
                     ),
                     || None
                 ),
-                Some(rewards_for_block_creator)
+                Some(sender_expected_balance)
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // create the operation
-    let operation = Operation::new_verifiable(
-        Operation {
-            fee: Amount::from_str("10").unwrap(),
-            expire_period: 10,
-            op: OperationType::Transaction {
-                recipient_address,
-                amount: Amount::from_str("90").unwrap(),
+    // create the operations
+    let mut operation_vec = Vec::new();
+    for recipient_address in recipient_addresses {
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::from_str("5").unwrap(),
+                expire_period: 10,
+                op: OperationType::Transaction {
+                    recipient_address,
+                    amount: Amount::from_str("10").unwrap(),
+                },
             },
-        },
-        OperationSerializer::new(),
-        &KeyPair::from_str(TEST_SK_1).unwrap(),
-        *CHAINID,
-    )
-    .unwrap();
+            OperationSerializer::new(),
+            &KeyPair::from_str(TEST_SK_1).unwrap(),
+            *CHAINID,
+        )
+        .unwrap();
+        operation_vec.push(operation.clone());
+    }
+
     // create the block containing the transaction operation
-    universe.storage.store_operations(vec![operation.clone()]);
+    universe.storage.store_operations(operation_vec.clone());
     let block = ExecutionTestUniverse::create_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
-        vec![operation],
+        operation_vec,
         vec![],
         vec![],
     );
     // store the block in storage
     universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
+
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            is_error: Some(true),
+            ..Default::default()
+        });
+    // match the events
+    println!("{:?}", events);
+    assert!(events.len() == 1, "1 event was expected");
+    assert!(events[0]
+        .data
+        .contains("cannot transfer coins to non-existing smart contract address"));
 }
 
 #[test]
