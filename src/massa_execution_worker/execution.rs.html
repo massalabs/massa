@@ -2518,7 +2518,6 @@
 <a href="#2518" id="2518">2518</a>
 <a href="#2519" id="2519">2519</a>
 <a href="#2520" id="2520">2520</a>
-<a href="#2521" id="2521">2521</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2537,18 +2536,17 @@
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
 <span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
+<span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_execution_exports::{
-    EventStore, ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig,
-    ExecutionError, ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo,
-    ExecutionStackElement, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
-    ReadOnlyExecutionTarget, SlotExecutionOutput,
+    ExecutedBlockInfo, ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionError,
+    ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryStakerInfo, ExecutionStackElement,
+    ReadOnlyExecutionOutput, ReadOnlyExecutionRequest, ReadOnlyExecutionTarget,
+    SlotExecutionOutput,
 };
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::types::{SetOrDelete, SetUpdateOrDelete};
-
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -2557,6 +2555,7 @@
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
+<span class="kw">use </span>massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     address::Address,
     block_id::BlockId,
@@ -2634,7 +2633,7 @@
     <span class="comment">// a cursor pointing to the highest executed final slot
     </span><span class="kw">pub </span>final_cursor: Slot,
     <span class="comment">// store containing execution events that became final
-    </span>final_events: EventStore,
+    </span>final_events_cache: Box&lt;<span class="kw">dyn </span>EventCacheController&gt;,
     <span class="comment">// final state with atomic R/W access
     </span>final_state: Arc&lt;RwLock&lt;<span class="kw">dyn </span>FinalStateController&gt;&gt;,
     <span class="comment">// execution context (see documentation in context.rs)
@@ -2681,6 +2680,7 @@
         channels: ExecutionChannels,
         wallet: Arc&lt;RwLock&lt;Wallet&gt;&gt;,
         massa_metrics: MassaMetrics,
+        event_cache: Box&lt;<span class="kw">dyn </span>EventCacheController&gt;,
         <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)] </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
     ) -&gt; ExecutionState {
         <span class="comment">// Get the slot at the output of which the final state is attached.
@@ -2731,7 +2731,8 @@
             <span class="comment">// empty execution output history: it is not recovered through bootstrap
             </span>active_history,
             <span class="comment">// empty final event store: it is not recovered through bootstrap
-            </span>final_events: Default::default(),
+            // final_events: Default::default(),
+            </span>final_events_cache: event_cache,
             <span class="comment">// no active slots executed yet: set active_cursor to the last final block
             </span>active_cursor: last_final_slot,
             final_cursor: last_final_slot,
@@ -2820,8 +2821,7 @@
 
         <span class="comment">// append generated events to the final event store
         </span>exec_out.events.finalize();
-        <span class="self">self</span>.final_events.extend(exec_out.events);
-        <span class="self">self</span>.final_events.prune(<span class="self">self</span>.config.max_final_events);
+        <span class="self">self</span>.final_events_cache.save_events(exec_out.events.<span class="number">0</span>);
 
         <span class="comment">// update the prometheus metrics
         </span><span class="self">self</span>.massa_metrics
@@ -4792,10 +4792,8 @@
     </span><span class="kw">pub fn </span>get_filtered_sc_output_event(<span class="kw-2">&amp;</span><span class="self">self</span>, filter: EventFilter) -&gt; Vec&lt;SCOutputEvent&gt; {
         <span class="kw">match </span>filter.is_final {
             <span class="prelude-val">Some</span>(<span class="bool-val">true</span>) =&gt; <span class="self">self
-                </span>.final_events
-                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
-                .into_iter()
-                .collect(),
+                </span>.final_events_cache
+                .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter),
             <span class="prelude-val">Some</span>(<span class="bool-val">false</span>) =&gt; <span class="self">self
                 </span>.active_history
                 .read()
@@ -4804,7 +4802,7 @@
                 .flat_map(|item| item.events.get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter))
                 .collect(),
             <span class="prelude-val">None </span>=&gt; <span class="self">self
-                </span>.final_events
+                </span>.final_events_cache
                 .get_filtered_sc_output_events(<span class="kw-2">&amp;</span>filter)
                 .into_iter()
                 .chain(

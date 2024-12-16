@@ -31,15 +31,15 @@ This allows for fast hash updates when adding or deleting an item in the db.</p>
 <li>if we want to delete item a: 1000 ^ 0011 == 1011 (== item b)</li>
 <li>if we want to delete item b: 1000 ^ 1011 == 0011 (== item a)</li>
 </ul>
-<p>Note that this does not provides “Proof of present” nor “Proof of Absence”
+<p>Note that this does not provide “Proof of present” nor “Proof of Absence”
 (operations avail with Merkle trees)</p>
 <p>For more details here: https://github.com/massalabs/massa/discussions/3852#discussioncomment-6188158</p>
 <p>This hash is often referred as ‘final state hash’.</p>
 <h2 id="caches"><a class="doc-anchor" href="#caches">§</a>Caches</h2>
 <p>A cache of db changes is kept in memory allowing to easily stream it
-(by streaming, we means: sending it to another massa node (aka bootstrap))
+(by streaming, we mean: sending it to another massa node (aka bootstrap))
 There is 2 separate caches: one for ‘state’ and one for ‘versioning’</p>
-<p>These caches is stored as a key, value: slot -&gt; insertion_data|deletion_data.</p>
+<p>These caches are stored as a key, value: slot -&gt; insertion_data|deletion_data.</p>
 <h2 id="streaming-steps"><a class="doc-anchor" href="#streaming-steps">§</a>Streaming steps</h2>
 <p>1- Streaming always starts by reading data from disk (from rocksdb). Data is send by chunk.
 2- As this process can be slow (e.g. db size is high, network is slow), updates can happen simultaneously

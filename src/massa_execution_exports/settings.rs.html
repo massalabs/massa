@@ -113,6 +113,12 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -227,5 +233,11 @@
     </span><span class="kw">pub </span>deferred_calls_config: DeferredCallsConfig,
     <span class="doccomment">/// Maximum number of event that an operation can emit
     </span><span class="kw">pub </span>max_event_per_operation: usize,
+    <span class="doccomment">/// Path to the hard drive event cache storage
+    </span><span class="kw">pub </span>event_cache_path: PathBuf,
+    <span class="doccomment">/// Maximum number of entries we want to keep in the Event cache
+    </span><span class="kw">pub </span>event_cache_size: usize,
+    <span class="doccomment">/// Amount of entries removed when `event_cache_size` is reached
+    </span><span class="kw">pub </span>event_snip_amount: usize,
 }
 </code></pre></div></section></main></body></html>
