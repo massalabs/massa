@@ -1004,7 +1004,7 @@ impl Interface for InterfaceImpl {
         let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
 
         // compute the hash of the public key
-        let hash = sha3::Keccak256::digest(public_key.serialize());
+        let hash = sha3::Keccak256::digest(&public_key.serialize()[1..]);
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();
