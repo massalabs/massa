@@ -1524,8 +1524,6 @@
 <a href="#1524" id="1524">1524</a>
 <a href="#1525" id="1525">1525</a>
 <a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2520,13 +2518,11 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::QueryStateRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::QueryStateResponse, GrpcError&gt; {
-    <span class="kw">let </span>current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
     <span class="kw">let </span>queries = request
         .into_inner()
         .queries
         .into_iter()
-        .map(|q| to_querystate_filter(q, current_network_version))
+        .map(to_querystate_filter)
         .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">if </span>queries.is_empty() {
