@@ -2518,6 +2518,9 @@
 <a href="#2518" id="2518">2518</a>
 <a href="#2519" id="2519">2519</a>
 <a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2993,7 +2996,10 @@
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
             context.transfer_coins(<span class="prelude-val">Some</span>(sender_addr), <span class="prelude-val">None</span>, operation.content.fee, <span class="bool-val">false</span>)
         {
-            <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">"could not spend fees: {}"</span>, err);
+            <span class="kw">let </span><span class="kw-2">mut </span>error = <span class="macro">format!</span>(<span class="string">"could not spend fees: {}"</span>, err);
+            <span class="kw">if </span>error.len() &gt; <span class="self">self</span>.config.max_event_size {
+                error.truncate(<span class="self">self</span>.config.max_event_size);
+            }
             <span class="kw">let </span>event = context.event_create(error.clone(), <span class="bool-val">true</span>);
             context.event_emit(event);
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::IncludeOperationError(error));

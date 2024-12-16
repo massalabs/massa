@@ -1311,6 +1311,14 @@
 <a href="#1311" id="1311">1311</a>
 <a href="#1312" id="1312">1312</a>
 <a href="#1313" id="1313">1313</a>
+<a href="#1314" id="1314">1314</a>
+<a href="#1315" id="1315">1315</a>
+<a href="#1316" id="1316">1316</a>
+<a href="#1317" id="1317">1317</a>
+<a href="#1318" id="1318">1318</a>
+<a href="#1319" id="1319">1319</a>
+<a href="#1320" id="1320">1320</a>
+<a href="#1321" id="1321">1321</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1618,10 +1626,14 @@
     </span><span class="kw">pub fn </span>reset_to_snapshot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         <span class="comment">// Emit the error event.
         // Note that the context event counter is properly handled by event_emit (see doc).
-        </span><span class="self">self</span>.event_emit(<span class="self">self</span>.event_create(
+        </span><span class="kw">let </span><span class="kw-2">mut </span>event = <span class="self">self</span>.event_create(
             <span class="macro">serde_json::json!</span>({ <span class="string">"massa_execution_error"</span>: <span class="macro">format!</span>(<span class="string">"{}"</span>, error) }).to_string(),
             <span class="bool-val">true</span>,
-        ));
+        );
+        <span class="kw">if </span>event.data.len() &gt; <span class="self">self</span>.config.max_event_size {
+            event.data.truncate(<span class="self">self</span>.config.max_event_size);
+        }
+        <span class="self">self</span>.event_emit(event);
 
         <span class="comment">// Reset context to snapshot.
         </span><span class="self">self</span>.speculative_ledger
@@ -2524,7 +2536,11 @@
             );
         }
 
-        <span class="kw">let </span>event = <span class="self">self</span>.event_create(<span class="macro">format!</span>(<span class="string">"DeferredCall execution fail call_id:{}"</span>, id), <span class="bool-val">true</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>event =
+            <span class="self">self</span>.event_create(<span class="macro">format!</span>(<span class="string">"DeferredCall execution fail call_id:{}"</span>, id), <span class="bool-val">true</span>);
+        <span class="kw">if </span>event.data.len() &gt; <span class="self">self</span>.config.max_event_size {
+            event.data.truncate(<span class="self">self</span>.config.max_event_size);
+        }
         <span class="self">self</span>.event_emit(event);
 
         <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
