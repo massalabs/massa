@@ -592,6 +592,7 @@ impl ExecutionContext {
             self.get_current_address()?,
             address,
             bytecode,
+            self.execution_component_version,
         )?;
 
         // add the address to owned addresses
@@ -663,8 +664,13 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger
-            .set_data_entry(&self.get_current_address()?, address, key, data)
+        self.speculative_ledger.set_data_entry(
+            &self.get_current_address()?,
+            address,
+            key,
+            data,
+            self.execution_component_version,
+        )
     }
 
     /// Appends data to a datastore entry for an address in the speculative ledger.
@@ -704,8 +710,13 @@ impl ExecutionContext {
         res_data.extend(data);
 
         // set data entry
-        self.speculative_ledger
-            .set_data_entry(&self.get_current_address()?, address, key, res_data)
+        self.speculative_ledger.set_data_entry(
+            &self.get_current_address()?,
+            address,
+            key,
+            res_data,
+            self.execution_component_version,
+        )
     }
 
     /// Deletes a datastore entry for an address.
@@ -728,8 +739,12 @@ impl ExecutionContext {
         }
 
         // delete entry
-        self.speculative_ledger
-            .delete_data_entry(&self.get_current_address()?, address, key)
+        self.speculative_ledger.delete_data_entry(
+            &self.get_current_address()?,
+            address,
+            key,
+            self.execution_component_version,
+        )
     }
 
     /// Transfers coins from one address to another.
@@ -748,20 +763,54 @@ impl ExecutionContext {
         amount: Amount,
         check_rights: bool,
     ) -> Result<(), ExecutionError> {
+        let execution_component_version = self.execution_component_version;
+
         if let Some(from_addr) = &from_addr {
             // check access rights
             // ensure we can't spend from an address on which we have no write access
-            if check_rights && !self.has_write_rights_on(from_addr) {
-                return Err(ExecutionError::RuntimeError(format!(
-                    "spending from address {} is not allowed in this context",
-                    from_addr
-                )));
+            // If execution component version is 0, we need to disallow sending to SC addresses
+
+            match execution_component_version {
+                0 => {
+                    if check_rights {
+                        if !self.has_write_rights_on(from_addr) {
+                            return Err(ExecutionError::RuntimeError(format!(
+                                "spending from address {} is not allowed in this context",
+                                from_addr
+                            )));
+                        }
+
+                        // ensure we can't transfer towards SC addresses on which we have no write access
+                        if let Some(to_addr) = &to_addr {
+                            if matches!(to_addr, Address::SC(..))
+                                && !self.has_write_rights_on(to_addr)
+                            {
+                                return Err(ExecutionError::RuntimeError(format!(
+                                    "crediting SC address {} is not allowed without write access to it",
+                                    to_addr
+                                )));
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    if check_rights && !self.has_write_rights_on(from_addr) {
+                        return Err(ExecutionError::RuntimeError(format!(
+                            "spending from address {} is not allowed in this context",
+                            from_addr
+                        )));
+                    }
+                }
             }
         }
 
         // do the transfer
-        self.speculative_ledger
-            .transfer_coins(from_addr, to_addr, amount)
+        self.speculative_ledger.transfer_coins(
+            from_addr,
+            to_addr,
+            amount,
+            execution_component_version,
+        )
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -1211,8 +1260,12 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger
-            .set_bytecode(&self.get_current_address()?, address, bytecode)
+        self.speculative_ledger.set_bytecode(
+            &self.get_current_address()?,
+            address,
+            bytecode,
+            self.execution_component_version,
+        )
     }
 
     /// Creates a new event but does not emit it.
