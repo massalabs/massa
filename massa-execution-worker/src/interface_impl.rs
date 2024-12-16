@@ -1000,10 +1000,9 @@ impl Interface for InterfaceImpl {
     /// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
-
         let execution_component_version = self.get_interface_version()?;
 
-        let hash = match execution {
+        let hash = match execution_component_version {
             0 => {
                 // parse the public key
                 let public_key = libsecp256k1::PublicKey::parse_slice(
@@ -1012,14 +1011,14 @@ impl Interface for InterfaceImpl {
                 )?;
                 // compute the hash of the public key
                 sha3::Keccak256::digest(public_key.serialize())
-            },
+            }
             _ => {
                 // parse the public key
                 let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
                 // compute the hash of the public key
                 sha3::Keccak256::digest(&public_key.serialize()[1..])
             }
-        };        
+        };
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();

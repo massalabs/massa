@@ -450,7 +450,6 @@ mod test {
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
             execution_trail_hash_change: Default::default(),
-            deferred_call_changes: Default::default(),
         };
         let state_changes_2 = StateChanges {
             ledger_changes: Default::default(),
@@ -460,7 +459,6 @@ mod test {
             executed_ops_changes: Default::default(),
             executed_denunciations_changes: Default::default(),
             execution_trail_hash_change: Default::default(),
-            deferred_call_changes: Default::default(),
         };
 
         let exec_output_1 = ExecutionOutput {
