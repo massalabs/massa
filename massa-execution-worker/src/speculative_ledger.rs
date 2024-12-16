@@ -177,6 +177,11 @@ impl SpeculativeLedger {
                     ))
                 })?;
                 changes.set_balance(to_addr, new_balance);
+            } else if matches!(to_addr, Address::SC(..)) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "cannot transfer coins to non-existing smart contract address {}",
+                    to_addr
+                )));
             } else if let Some(remaining_coins) =
                 amount.checked_sub(self.storage_costs_constants.ledger_entry_base_cost)
             {

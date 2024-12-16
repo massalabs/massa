@@ -750,24 +750,12 @@ impl ExecutionContext {
     ) -> Result<(), ExecutionError> {
         if let Some(from_addr) = &from_addr {
             // check access rights
-            if check_rights {
-                // ensure we can't spend from an address on which we have no write access
-                if !self.has_write_rights_on(from_addr) {
-                    return Err(ExecutionError::RuntimeError(format!(
-                        "spending from address {} is not allowed in this context",
-                        from_addr
-                    )));
-                }
-
-                // ensure we can't transfer towards SC addresses on which we have no write access
-                if let Some(to_addr) = &to_addr {
-                    if matches!(to_addr, Address::SC(..)) && !self.has_write_rights_on(to_addr) {
-                        return Err(ExecutionError::RuntimeError(format!(
-                            "crediting SC address {} is not allowed without write access to it",
-                            to_addr
-                        )));
-                    }
-                }
+            // ensure we can't spend from an address on which we have no write access
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
             }
         }
 
