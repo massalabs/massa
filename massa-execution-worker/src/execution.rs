@@ -473,7 +473,10 @@ impl ExecutionState {
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
-            let error = format!("could not spend fees: {}", err);
+            let mut error = format!("could not spend fees: {}", err);
+            if error.len() > self.config.max_event_size {
+                error.truncate(self.config.max_event_size);
+            }
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
             return Err(ExecutionError::IncludeOperationError(error));

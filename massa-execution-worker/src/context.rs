@@ -305,10 +305,14 @@ impl ExecutionContext {
     pub fn reset_to_snapshot(&mut self, snapshot: ExecutionContextSnapshot, error: ExecutionError) {
         // Emit the error event.
         // Note that the context event counter is properly handled by event_emit (see doc).
-        self.event_emit(self.event_create(
+        let mut event = self.event_create(
             serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
             true,
-        ));
+        );
+        if event.data.len() > self.config.max_event_size {
+            event.data.truncate(self.config.max_event_size);
+        }
+        self.event_emit(event);
 
         // Reset context to snapshot.
         self.speculative_ledger
@@ -1211,7 +1215,11 @@ impl ExecutionContext {
             );
         }
 
-        let event = self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
+        let mut event =
+            self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
+        if event.data.len() > self.config.max_event_size {
+            event.data.truncate(self.config.max_event_size);
+        }
         self.event_emit(event);
 
         #[cfg(feature = "execution-info")]
