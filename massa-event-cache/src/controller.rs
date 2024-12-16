@@ -59,8 +59,8 @@ impl EventCacheController for EventCacheControllerImpl {
         // lock input data
         let mut input_data = self.input_data.1.lock();
         input_data.events.extend(events);
-        // wake up VM loop
-        self.input_data.0.notify_one();
+        // Wake up the condvar in EventCacheWriterThread waiting for events
+        self.input_data.0.notify_all();
     }
 
     fn get_filtered_sc_output_events(&self, filter: &EventFilter) -> Vec<SCOutputEvent> {
