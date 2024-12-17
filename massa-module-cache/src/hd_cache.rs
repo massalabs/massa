@@ -60,7 +60,11 @@ impl HDCache {
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         let db = DB::open_default(path).expect(OPEN_ERROR);
-        let entry_count = db.iterator(IteratorMode::Start).count();
+        let nb_db_entries = db.iterator(IteratorMode::Start).count();
+        if nb_db_entries % 2 != 0 {
+            panic!("massa-module-cache db incoherence: odd number of entries");
+        }
+        let entry_count = nb_db_entries / 2;
 
         Self {
             db,
