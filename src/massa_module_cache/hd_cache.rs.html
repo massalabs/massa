@@ -335,6 +335,19 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
@@ -342,9 +355,9 @@
 <span class="kw">use </span>massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
 <span class="kw">use </span>rand::RngCore;
-<span class="kw">use </span>rocksdb::{Direction, IteratorMode, WriteBatch, DB};
+<span class="kw">use </span>rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
 <span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">const </span>OPEN_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb open operation failed"</span>;
 <span class="kw">const </span>CRUD_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb crud operation failed"</span>;
@@ -395,9 +408,22 @@
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
+    ///
+    /// Note: entry_count refers to the number of modules stored in the db, which is half the number of (key, value) pairs in the db
     </span><span class="kw">pub fn </span>new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>db = DB::open_default(path).expect(OPEN_ERROR);
-        <span class="kw">let </span>entry_count = db.iterator(IteratorMode::Start).count();
+        <span class="kw">let </span><span class="kw-2">mut </span>db = DB::open_default(path.clone()).expect(OPEN_ERROR);
+        <span class="kw">let </span><span class="kw-2">mut </span>nb_db_entries = db.iterator(IteratorMode::Start).count();
+        <span class="kw">if </span>nb_db_entries % <span class="number">2 </span>!= <span class="number">0 </span>{
+            <span class="macro">warn!</span>(
+                <span class="string">"massa-module-cache db incoherence: odd number of entries, clearing the db cache"
+            </span>);
+            drop(db);
+            <span class="kw">let </span>opts = Options::default();
+            DB::destroy(<span class="kw-2">&amp;</span>opts, path.clone()).expect(<span class="string">"Failed to destroy the database"</span>);
+            db = DB::open_default(path).expect(OPEN_ERROR);
+            nb_db_entries = <span class="number">0</span>;
+        }
+        <span class="kw">let </span>entry_count = nb_db_entries / <span class="number">2</span>;
 
         <span class="self">Self </span>{
             db,
