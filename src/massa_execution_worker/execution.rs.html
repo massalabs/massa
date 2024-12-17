@@ -2702,6 +2702,18 @@
 <a href="#2702" id="2702">2702</a>
 <a href="#2703" id="2703">2703</a>
 <a href="#2704" id="2704">2704</a>
+<a href="#2705" id="2705">2705</a>
+<a href="#2706" id="2706">2706</a>
+<a href="#2707" id="2707">2707</a>
+<a href="#2708" id="2708">2708</a>
+<a href="#2709" id="2709">2709</a>
+<a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2844,6 +2856,7 @@
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) execution_info: Arc&lt;RwLock&lt;ExecutionInfo&gt;&gt;,
     <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
     </span>block_storage_backend: Arc&lt;RwLock&lt;<span class="kw">dyn </span>StorageBackend&gt;&gt;,
+    cur_execution_version: u32,
 }
 
 <span class="kw">impl </span>ExecutionState {
@@ -2900,6 +2913,11 @@
             execution_trail_hash,
         )));
 
+        <span class="kw">let </span>cur_execution_version;
+        {
+            cur_execution_version = execution_context.lock().execution_component_version;
+        }
+
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
         </span><span class="kw">let </span>execution_interface = Box::new(InterfaceImpl::new(
             config.clone(),
@@ -2940,6 +2958,7 @@
             config,
             <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
             </span>block_storage_backend,
+            cur_execution_version,
         }
     }
 
@@ -4130,7 +4149,7 @@
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     </span><span class="kw">pub fn </span>execute_slot(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         slot: <span class="kw-2">&amp;</span>Slot,
         exec_target: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>(BlockId, ExecutionBlockMetadata)&gt;,
         selector: Box&lt;<span class="kw">dyn </span>SelectorController&gt;,
@@ -4160,6 +4179,11 @@
         );
 
         <span class="kw">let </span>execution_version = execution_context.execution_component_version;
+        <span class="kw">if </span><span class="self">self</span>.cur_execution_version != execution_version {
+            <span class="comment">// Reset the cache because a new execution version has become active
+            </span><span class="self">self</span>.module_cache.write().reset();
+            <span class="self">self</span>.cur_execution_version = execution_version;
+        }
 
         <span class="kw">let </span><span class="kw-2">mut </span>deferred_calls_slot_gas = <span class="number">0</span>;
 
