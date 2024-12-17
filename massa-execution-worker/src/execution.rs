@@ -201,7 +201,7 @@ impl ExecutionState {
         let cur_execution_version;
         {
             cur_execution_version = execution_context.lock().execution_component_version;
-        } 
+        }
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
@@ -1465,7 +1465,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(
-        &self,
+        &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
