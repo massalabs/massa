@@ -39,6 +39,11 @@ impl ModuleCache {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.lru_cache.reset();
+        self.hd_cache.reset();
+    }
+
     /// Internal function to compile and build `ModuleInfo`
     fn compile_cached(
         &mut self,

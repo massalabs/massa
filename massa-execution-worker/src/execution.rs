@@ -140,6 +140,7 @@ pub(crate) struct ExecutionState {
     pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
     #[cfg(feature = "dump-block")]
     block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
+    cur_execution_version: u32,
 }
 
 impl ExecutionState {
@@ -197,6 +198,11 @@ impl ExecutionState {
             execution_trail_hash,
         )));
 
+        let cur_execution_version;
+        {
+            cur_execution_version = execution_context.lock().execution_component_version;
+        } 
+
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
             config.clone(),
@@ -238,6 +244,7 @@ impl ExecutionState {
             config,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
+            cur_execution_version,
         }
     }
 
@@ -1488,6 +1495,11 @@ impl ExecutionState {
         );
 
         let execution_version = execution_context.execution_component_version;
+        if self.cur_execution_version != execution_version {
+            // Reset the cache because a new execution version has become active
+            self.module_cache.write().reset();
+            self.cur_execution_version = execution_version;
+        }
 
         let mut deferred_calls_slot_gas = 0;
 
