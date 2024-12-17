@@ -58,7 +58,7 @@ impl HDCache {
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
-    /// 
+    ///
     /// Note: entry_count refers to the number of modules stored in the db, which is half the number of (key, value) pairs in the db
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         let mut db = DB::open_default(path.clone()).expect(OPEN_ERROR);
