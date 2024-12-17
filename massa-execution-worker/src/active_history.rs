@@ -91,7 +91,10 @@ impl ActiveHistory {
             }
         }
 
-        HistorySearchResult::NoInfo
+        // Note:
+        // Return Present here as we can have a message in the final state and only an update
+        // in the active history. So in this case, we return the current updates
+        HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
     }
 
     /// Lazily query (from end to beginning) the active list of executed denunciations.
@@ -554,11 +557,19 @@ mod test {
             }
         }
 
-        // Test fetch_message with message_id_3_2 (expect HistorySearchResult::NoInfo)
+        // Test fetch_message with message_id_3_2 (expect HistorySearchResult::Update)
+        // Expect updates to be empty (or default) here
         {
             let current_updates = AsyncMessageUpdate::default();
             let fetched = active_history.fetch_message(&message_id_3_2, current_updates);
-            assert_matches!(fetched, HistorySearchResult::NoInfo);
+            if let HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
+                assert_eq!(updates, AsyncMessageUpdate::default());
+            } else {
+                panic!(
+                    "Expected a HistorySearchResult::Present(...) and not: {:?}",
+                    fetched
+                );
+            }
         }
     }
 }
