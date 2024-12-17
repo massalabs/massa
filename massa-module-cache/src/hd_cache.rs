@@ -5,9 +5,9 @@ use massa_hash::Hash;
 use massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
-use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
+use rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
 use std::path::PathBuf;
-use tracing::debug;
+use tracing::{debug, warn};
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
@@ -58,11 +58,20 @@ impl HDCache {
     /// * path: where to store the db
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
+    /// 
+    /// Note: entry_count refers to the number of modules stored in the db, which is half the number of (key, value) pairs in the db
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
-        let db = DB::open_default(path).expect(OPEN_ERROR);
-        let nb_db_entries = db.iterator(IteratorMode::Start).count();
+        let mut db = DB::open_default(path.clone()).expect(OPEN_ERROR);
+        let mut nb_db_entries = db.iterator(IteratorMode::Start).count();
         if nb_db_entries % 2 != 0 {
-            panic!("massa-module-cache db incoherence: odd number of entries");
+            warn!(
+                "massa-module-cache db incoherence: odd number of entries, clearing the db cache"
+            );
+            drop(db);
+            let opts = Options::default();
+            DB::destroy(&opts, path.clone()).expect("Failed to destroy the database");
+            db = DB::open_default(path).expect(OPEN_ERROR);
+            nb_db_entries = 0;
         }
         let entry_count = nb_db_entries / 2;
 
