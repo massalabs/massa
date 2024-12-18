@@ -2,7 +2,7 @@
     "openrpc": "1.2.4",
     "info": {
         "title": "Massa OpenRPC Specification",
-        "version": "MAIN.2.5",
+        "version": "DEVN.28.5",
         "description": "Massa OpenRPC Specification document. Find more information on https://docs.massa.net/docs/build/api/jsonrpc",
         "termsOfService": "https://open-rpc.org",
         "contact": {
