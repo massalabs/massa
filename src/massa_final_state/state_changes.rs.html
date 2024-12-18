@@ -635,18 +635,18 @@
 <span class="kw">impl </span>StateChanges {
     <span class="doccomment">/// extends the current `StateChanges` with another one
     </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
-        <span class="comment">// TODO deferred_call_changes ?
-        </span><span class="kw">use </span>massa_models::types::Applicable;
+        <span class="kw">use </span>massa_models::types::Applicable;
         <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
         <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
         <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
         <span class="self">self</span>.executed_ops_changes
             .extend(changes.executed_ops_changes);
-        <span class="comment">// Note: no need to version the changes, as this function is not used in the codebase
-        </span><span class="self">self</span>.executed_denunciations_changes
+        <span class="self">self</span>.executed_denunciations_changes
             .extend(changes.executed_denunciations_changes);
         <span class="self">self</span>.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);
+        <span class="self">self</span>.deferred_call_changes
+            .apply(changes.deferred_call_changes);
     }
 }
 
@@ -677,16 +677,16 @@
 
     <span class="kw">impl </span>PartialEq&lt;StateChanges&gt; <span class="kw">for </span>StateChanges {
         <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>StateChanges) -&gt; bool {
-            <span class="self">self</span>.ledger_changes == other.ledger_changes &amp;&amp;
-                <span class="self">self</span>.async_pool_changes == other.async_pool_changes &amp;&amp;
-                <span class="comment">// pos_changes
-                </span><span class="self">self</span>.pos_changes.seed_bits == other.pos_changes.seed_bits &amp;&amp;
-                <span class="self">self</span>.pos_changes.roll_changes == other.pos_changes.roll_changes &amp;&amp;
-                <span class="self">self</span>.pos_changes.production_stats == other.pos_changes.production_stats &amp;&amp;
-                <span class="self">self</span>.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &amp;&amp;
-                <span class="self">self</span>.executed_ops_changes == other.executed_ops_changes &amp;&amp;
-                <span class="self">self</span>.executed_denunciations_changes == other.executed_denunciations_changes &amp;&amp;
-                <span class="self">self</span>.execution_trail_hash_change == other.execution_trail_hash_change
+            <span class="self">self</span>.ledger_changes == other.ledger_changes
+                &amp;&amp; <span class="self">self</span>.async_pool_changes == other.async_pool_changes
+                &amp;&amp; <span class="self">self</span>.pos_changes.seed_bits == other.pos_changes.seed_bits
+                &amp;&amp; <span class="self">self</span>.pos_changes.roll_changes == other.pos_changes.roll_changes
+                &amp;&amp; <span class="self">self</span>.pos_changes.production_stats == other.pos_changes.production_stats
+                &amp;&amp; <span class="self">self</span>.pos_changes.deferred_credits.credits
+                    == other.pos_changes.deferred_credits.credits
+                &amp;&amp; <span class="self">self</span>.executed_ops_changes == other.executed_ops_changes
+                &amp;&amp; <span class="self">self</span>.executed_denunciations_changes == other.executed_denunciations_changes
+                &amp;&amp; <span class="self">self</span>.execution_trail_hash_change == other.execution_trail_hash_change
         }
     }
 
