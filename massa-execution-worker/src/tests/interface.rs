@@ -161,7 +161,7 @@ fn test_emit_event_too_large() {
     // emit 2 events and check that the 2nd event is rejected (because the msg is too large)
 
     let config = ExecutionConfig {
-        max_event_size: 10,
+        max_event_size_v1: 10,
         ..Default::default()
     };
 
@@ -171,9 +171,9 @@ fn test_emit_event_too_large() {
         Some(config.clone()),
     );
 
-    let res = interface.generate_event("a".repeat(config.max_event_size).to_string());
+    let res = interface.generate_event("a".repeat(config.max_event_size_v1).to_string());
     assert!(res.is_ok());
-    let res_2 = interface.generate_event("b".repeat(config.max_event_size + 1).to_string());
+    let res_2 = interface.generate_event("b".repeat(config.max_event_size_v1 + 1).to_string());
     assert!(res_2.is_err());
     println!("res_2: {:?}", res_2);
     if let Err(e) = res_2 {

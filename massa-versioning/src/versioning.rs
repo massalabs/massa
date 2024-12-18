@@ -45,6 +45,8 @@ pub enum MipComponent {
     Block,
     VM,
     FinalStateHashKind,
+    Execution,
+    FinalState,
     #[doc(hidden)]
     #[num_enum(default)]
     __Nonexhaustive,
