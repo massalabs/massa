@@ -1,6 +1,6 @@
 [package]
 name = "massa_executed_ops"
-version = "2.5.0"
+version = "28.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
