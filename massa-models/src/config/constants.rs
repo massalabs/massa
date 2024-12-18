@@ -400,7 +400,7 @@ pub const DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = 1209600;
 /// maximum gas for deferred call
 pub const DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
 /// max change denominator  
-pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 8;
+pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 1250;
 /// deferred call min gas increment (1 nanomassa)
 pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
 /// deferred call min gas cost (10 nanomassa)
