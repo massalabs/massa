@@ -197,7 +197,7 @@ impl ExecutionState {
             execution_trail_hash,
         )));
 
-        let cur_execution_version;
+        let cur_execution_version = execution_context.lock().execution_component_version;
         {
             cur_execution_version = execution_context.lock().execution_component_version;
         }
