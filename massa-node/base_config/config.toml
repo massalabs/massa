@@ -360,16 +360,11 @@
 
 [bootstrap]
     # list of bootstrap (ip, node id)
-    bootstrap_list = [
-        ["149.202.86.103:31245", "N16noomm9akwBSTkvhs4KX6kjbhVhYkLqrzneCwBdo2SUE8axHx"],
-        ["149.202.89.125:31245", "N12bYghvuhCuQ38iSAGQvKTb1iXtwzPZhNJLhWQPYcmgz8PDPAGo"],
-        ["158.69.120.215:31245", "N1jRVjMZK8ZEmUGxDbLgHv3BTeQy8wHnazKCdcpQy4sFxu9d8GW"],
-        ["158.69.23.120:31245", "N12B7LqdyVVBXr8TMygU28R7JYxUR2dsLLp63YXtH9XAR1R2NUrY"],
-        ["198.27.74.5:31245", "N1FoYxXoSC39ZamAvwi7srz3oRrJ8JC3EvRhcqXPCD7vaQZTHKV"],
-        ["51.75.60.228:31245", "N1nRDdGq7DFD7AvSz5pgAsXCvkcqoL5Xf3kHr8Yd3TTUgtBcBun"],
-        ["[2001:41d0:1004:67::]:31245", "N16noomm9akwBSTkvhs4KX6kjbhVhYkLqrzneCwBdo2SUE8axHx"],
-        ["[2001:41d0:a:7f7d::]:31245", "N12bYghvuhCuQ38iSAGQvKTb1iXtwzPZhNJLhWQPYcmgz8PDPAGo"],
-        ["[2001:41d0:602:21e4::]:31245", "N1nRDdGq7DFD7AvSz5pgAsXCvkcqoL5Xf3kHr8Yd3TTUgtBcBun"],
+    bootstrap_list = [ 
+        [ "149.202.84.7:31245", "N1kKfgrCveVnosUkxTzaBw5cf9f2cbTvK3R5Ssb2Pf76au8xwmH",],
+        [ "149.202.84.39:31245", "N12sNdL7YwSawpnJrk9XCWDjKbgfNamAobp62AX5qfkgpBkGh2wC",],
+        [ "37.187.156.118:31245", "N1NnuSW48GKGaYZamAVKXfXbbnt3StxWoHpYtBZSJvY9e8U1BTC",],
+        [ "149.202.65.130:31245", "N1DZb3ao8BEtdsYP1KYyWacpTENHDrQboxGaYDL4U8MQppaxvzo",],
     ]
     # force the bootstrap protocol to use: "IPv4", "IPv6", or "Both". Defaults to using both protocols.
     bootstrap_protocol = "Both"
