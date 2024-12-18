@@ -1,5 +1,3 @@
-use std::{collections::BTreeMap, ops::Bound};
-
 use massa_models::{
     amount::Amount,
     deferred_calls::DeferredCallId,
@@ -18,6 +16,8 @@ use nom::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::collections::btree_map::Entry;
+use std::{collections::BTreeMap, ops::Bound};
 
 use crate::{
     config::DeferredCallsConfig,
@@ -50,6 +50,24 @@ impl Default for DeferredCallRegistryChanges {
 }
 
 impl DeferredCallRegistryChanges {
+    pub fn apply(&mut self, changes: DeferredCallRegistryChanges) {
+        for (slot, changes) in changes.slots_change.into_iter() {
+            match self.slots_change.entry(slot) {
+                Entry::Occupied(mut occ) => {
+                    // apply incoming change if a change on this entry already exists
+                    *occ.get_mut() = changes;
+                }
+                Entry::Vacant(vac) => {
+                    // otherwise insert the incoming change
+                    vac.insert(changes);
+                }
+            }
+        }
+
+        self.effective_total_gas = changes.effective_total_gas;
+        self.total_calls_registered = changes.total_calls_registered;
+    }
+
     pub fn delete_call(&mut self, target_slot: Slot, id: &DeferredCallId) {
         self.slots_change
             .entry(target_slot)

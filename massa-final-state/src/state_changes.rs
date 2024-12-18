@@ -233,7 +233,6 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
 impl StateChanges {
     /// extends the current `StateChanges` with another one
     pub fn apply(&mut self, changes: StateChanges) {
-        // TODO deferred_call_changes ?
         use massa_models::types::Applicable;
         self.ledger_changes.apply(changes.ledger_changes);
         self.async_pool_changes.apply(changes.async_pool_changes);
@@ -244,6 +243,8 @@ impl StateChanges {
             .extend(changes.executed_denunciations_changes);
         self.execution_trail_hash_change
             .apply(changes.execution_trail_hash_change);
+        self.deferred_call_changes
+            .apply(changes.deferred_call_changes);
     }
 }
 
@@ -274,16 +275,16 @@ mod test {
 
     impl PartialEq<StateChanges> for StateChanges {
         fn eq(&self, other: &StateChanges) -> bool {
-            self.ledger_changes == other.ledger_changes &&
-                self.async_pool_changes == other.async_pool_changes &&
-                // pos_changes
-                self.pos_changes.seed_bits == other.pos_changes.seed_bits &&
-                self.pos_changes.roll_changes == other.pos_changes.roll_changes &&
-                self.pos_changes.production_stats == other.pos_changes.production_stats &&
-                self.pos_changes.deferred_credits.credits == other.pos_changes.deferred_credits.credits &&
-                self.executed_ops_changes == other.executed_ops_changes &&
-                self.executed_denunciations_changes == other.executed_denunciations_changes &&
-                self.execution_trail_hash_change == other.execution_trail_hash_change
+            self.ledger_changes == other.ledger_changes
+                && self.async_pool_changes == other.async_pool_changes
+                && self.pos_changes.seed_bits == other.pos_changes.seed_bits
+                && self.pos_changes.roll_changes == other.pos_changes.roll_changes
+                && self.pos_changes.production_stats == other.pos_changes.production_stats
+                && self.pos_changes.deferred_credits.credits
+                    == other.pos_changes.deferred_credits.credits
+                && self.executed_ops_changes == other.executed_ops_changes
+                && self.executed_denunciations_changes == other.executed_denunciations_changes
+                && self.execution_trail_hash_change == other.execution_trail_hash_change
         }
     }
 
