@@ -1813,12 +1813,6 @@
 <a href="#1813" id="1813">1813</a>
 <a href="#1814" id="1814">1814</a>
 <a href="#1815" id="1815">1815</a>
-<a href="#1816" id="1816">1816</a>
-<a href="#1817" id="1817">1817</a>
-<a href="#1818" id="1818">1818</a>
-<a href="#1819" id="1819">1819</a>
-<a href="#1820" id="1820">1820</a>
-<a href="#1821" id="1821">1821</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2541,15 +2535,9 @@
     }
 
     <span class="doccomment">/// Reset the database, and attach it to the given slot.
-    ///
-    /// This function is used in the FinalStateController::reset method which is used in the Bootstrap
-    /// process when the bootstrap fails (Bootstrap slot too old). A bootstrap to another node will likely occur
-    /// after this reset.
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>, slot: Slot) {
-        <span class="comment">// For dev: please take care of correctly reset the db to avoid any issue when the bootstrap
-        //          process is restarted
-        </span><span class="self">self</span>.set_initial_change_id(slot); <span class="comment">// Note: this also reset the field: current_batch
-        </span><span class="self">self</span>.change_history.clear();
+        <span class="self">self</span>.set_initial_change_id(slot);
+        <span class="self">self</span>.change_history.clear();
         <span class="self">self</span>.change_history_versioning.clear();
     }
 
