@@ -92,7 +92,9 @@ pub struct ExecutionConfig {
     /// slot execution outputs channel capacity
     pub broadcast_slot_execution_output_channel_capacity: usize,
     /// max size of event data, in bytes
-    pub max_event_size: usize,
+    pub max_event_size_v0: usize,
+    /// max size of event data, in bytes
+    pub max_event_size_v1: usize,
     /// chain id
     pub chain_id: u64,
     /// whether slot execution traces broadcast is enabled

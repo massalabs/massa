@@ -41,7 +41,10 @@ use massa_pos_exports::MockSelectorControllerWrapper;
 use massa_signature::KeyPair;
 use massa_storage::Storage;
 use massa_test_framework::TestUniverse;
-use massa_versioning::versioning::{MipStatsConfig, MipStore};
+use massa_versioning::{
+    mips::get_mip_list,
+    versioning::{MipStatsConfig, MipStore},
+};
 use massa_wallet::test_exports::create_test_wallet;
 use num::rational::Ratio;
 use parking_lot::RwLock;
@@ -176,7 +179,12 @@ impl TestUniverse for ExecutionTestUniverse {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store = MipStore::try_from(([], mip_stats_config)).unwrap();
+        let mip_list: [(
+            massa_versioning::versioning::MipInfo,
+            massa_versioning::versioning::MipState,
+        ); 1] = get_mip_list();
+        let mip_store =
+            MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
         let (tx, rx) = broadcast::channel(16);
         #[cfg(feature = "execution-trace")]
         let (tx_traces, rx_traces) = broadcast::channel(16);

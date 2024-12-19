@@ -101,7 +101,10 @@ impl InterfaceImpl {
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
         use massa_pos_worker::start_selector_worker;
-        use massa_versioning::versioning::{MipStatsConfig, MipStore};
+        use massa_versioning::{
+            mips::get_mip_list,
+            versioning::{MipStatsConfig, MipStore},
+        };
         use parking_lot::RwLock;
         use tempfile::TempDir;
 
@@ -143,8 +146,8 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
+            .expect("Cannot create an empty MIP store");
 
         let mut execution_context = ExecutionContext::new(
             config.clone(),
@@ -232,12 +235,21 @@ impl Interface for InterfaceImpl {
         Ok(())
     }
 
+    fn get_interface_version(&self) -> Result<u32> {
+        let context = context_guard!(self);
+        Ok(context.execution_component_version)
+    }
+
     fn increment_recursion_counter(&self) -> Result<()> {
+        let execution_component_version = self.get_interface_version()?;
+
         let mut context = context_guard!(self);
 
         context.recursion_counter += 1;
 
-        if context.recursion_counter > self.config.max_recursive_calls_depth {
+        if execution_component_version > 0
+            && context.recursion_counter > self.config.max_recursive_calls_depth
+        {
             bail!("recursion depth limit reached");
         }
 
@@ -332,10 +344,15 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
     fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        Ok((context_guard!(self))
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
+
+        let ret = context
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit)?)
+            .load_module(bytecode, gas_limit, condom_limits)?;
+
+        Ok(ret)
     }
 
     /// Compile and return a temporary module
@@ -343,10 +360,16 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
     fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        Ok((context_guard!(self))
-            .module_cache
-            .write()
-            .load_tmp_module(bytecode, gas_limit)?)
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
+
+        let ret =
+            context
+                .module_cache
+                .write()
+                .load_tmp_module(bytecode, gas_limit, condom_limits)?;
+
+        Ok(ret)
     }
 
     /// Gets the balance of the current address address (top of the stack).
@@ -905,13 +928,21 @@ impl Interface for InterfaceImpl {
         signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
+        let execution_component_version = self.get_interface_version()?;
+
         // check the signature length
         if signature_.len() != 65 {
             return Err(anyhow!("invalid signature length in evm_signature_verify"));
         }
 
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
+        let public_key = match execution_component_version {
+            0 => libsecp256k1::PublicKey::parse_slice(
+                public_key_,
+                Some(libsecp256k1::PublicKeyFormat::Raw),
+            )?,
+            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)?,
+        };
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -925,34 +956,36 @@ impl Interface for InterfaceImpl {
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // see test_evm_verify for an example of its usage
-        let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
-        // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
-        //       restrict to only 27 & 28 (=> 0 & 1)
-        if recovery_id != 0 && recovery_id != 1 {
-            // Note:
-            // The v value in an EVM signature serves as a recovery ID,
-            // aiding in the recovery of the public key from the signature.
-            // Typically, v should be either 27 or 28
-            // (or sometimes 0 or 1, depending on the implementation).
-            // Ensuring that v is within the expected range is crucial
-            // for correctly recovering the public key.
-            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-            return Err(anyhow!(
-                "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
-            ));
-        }
-
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
 
-        // Note:
-        // The s value in an EVM signature should be in the lower half of the elliptic curve
-        // in order to prevent malleability attacks.
-        // If s is in the high-order range, it can be converted to its low-order equivalent,
-        // which should be enforced during signature verification.
-        if signature.s.is_high() {
-            return Err(anyhow!(
-                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-            ));
+        if execution_component_version != 0 {
+            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
+            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+            //       restrict to only 27 & 28 (=> 0 & 1)
+            if recovery_id != 0 && recovery_id != 1 {
+                // Note:
+                // The v value in an EVM signature serves as a recovery ID,
+                // aiding in the recovery of the public key from the signature.
+                // Typically, v should be either 27 or 28
+                // (or sometimes 0 or 1, depending on the implementation).
+                // Ensuring that v is within the expected range is crucial
+                // for correctly recovering the public key.
+                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+                return Err(anyhow!(
+                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+                ));
+            }
+
+            // Note:
+            // The s value in an EVM signature should be in the lower half of the elliptic curve
+            // in order to prevent malleability attacks.
+            // If s is in the high-order range, it can be converted to its low-order equivalent,
+            // which should be enforced during signature verification.
+            if signature.s.is_high() {
+                return Err(anyhow!(
+                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+                ));
+            }
         }
 
         // verify the signature
@@ -967,11 +1000,25 @@ impl Interface for InterfaceImpl {
     /// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
-        // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
+        let execution_component_version = self.get_interface_version()?;
 
-        // compute the hash of the public key
-        let hash = sha3::Keccak256::digest(&public_key.serialize()[1..]);
+        let hash = match execution_component_version {
+            0 => {
+                // parse the public key
+                let public_key = libsecp256k1::PublicKey::parse_slice(
+                    public_key_,
+                    Some(libsecp256k1::PublicKeyFormat::Raw),
+                )?;
+                // compute the hash of the public key
+                sha3::Keccak256::digest(public_key.serialize())
+            }
+            _ => {
+                // parse the public key
+                let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
+                // compute the hash of the public key
+                sha3::Keccak256::digest(&public_key.serialize()[1..])
+            }
+        };
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();
@@ -982,6 +1029,8 @@ impl Interface for InterfaceImpl {
 
     /// Get a raw secp256k1 public key from an EVM signature and the signed hash.
     fn evm_get_pubkey_from_signature(&self, hash_: &[u8], signature_: &[u8]) -> Result<Vec<u8>> {
+        let execution_component_version = self.get_interface_version()?;
+
         // check the signature length
         if signature_.len() != 65 {
             return Err(anyhow!(
@@ -989,37 +1038,58 @@ impl Interface for InterfaceImpl {
             ));
         }
 
-        // parse the message
-        let message = libsecp256k1::Message::parse_slice(hash_)?;
+        match execution_component_version {
+            0 => {
+                // parse the message
+                let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
 
-        // parse the signature as being (r, s, v) use only r and s
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+                // parse the signature as being (r, s, v) use only r and s
+                let signature =
+                    libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
 
-        // Note:
-        // See evm_signature_verify explanation
-        if signature.s.is_high() {
-            return Err(anyhow!(
-                "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-            ));
+                // parse v as a recovery id
+                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+
+                // recover the public key
+                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+
+                // return its serialized value
+                Ok(recovered.serialize().to_vec())
+            }
+            _ => {
+                // parse the message
+                let message = libsecp256k1::Message::parse_slice(hash_)?;
+
+                // parse the signature as being (r, s, v) use only r and s
+                let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+                // Note:
+                // See evm_signature_verify explanation
+                if signature.s.is_high() {
+                    return Err(anyhow!(
+                        "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+                    ));
+                }
+
+                // parse v as a recovery id
+                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
+
+                let recovery_id_: u8 = recovery_id.into();
+                if recovery_id_ != 0 && recovery_id_ != 1 {
+                    // Note:
+                    // See evm_signature_verify explanation
+                    return Err(anyhow!(
+                        "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+                    ));
+                }
+
+                // recover the public key
+                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
+
+                // return its serialized value
+                Ok(recovered.serialize().to_vec())
+            }
         }
-
-        // parse v as a recovery id
-        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
-
-        let recovery_id_: u8 = recovery_id.into();
-        if recovery_id_ != 0 && recovery_id_ != 1 {
-            // Note:
-            // See evm_signature_verify explanation
-            return Err(anyhow!(
-                "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-            ));
-        }
-
-        // recover the public key
-        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
-
-        // return its serialized value
-        Ok(recovered.serialize().to_vec())
     }
 
     // Return true if the address is a User address, false if it is an SC address.
@@ -1146,7 +1216,13 @@ impl Interface for InterfaceImpl {
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn generate_event(&self, data: String) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let max_event_size = match execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
@@ -1162,14 +1238,15 @@ impl Interface for InterfaceImpl {
             is_final: None,
             is_error: None,
         };
-        let event_per_op = context
-            .events
-            .get_filtered_sc_output_events_iter(&event_filter)
-            .count();
-        if event_per_op >= self.config.max_event_per_operation {
-            bail!("Too many event for this operation");
+        if execution_component_version > 0 {
+            let event_per_op = context
+                .events
+                .get_filtered_sc_output_events_iter(&event_filter)
+                .count();
+            if event_per_op >= self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
         }
-
         context.event_emit(event);
         Ok(())
     }
@@ -1179,7 +1256,13 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let max_event_size = match execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
@@ -1196,14 +1279,15 @@ impl Interface for InterfaceImpl {
             is_final: None,
             is_error: None,
         };
-        let event_per_op = context
-            .events
-            .get_filtered_sc_output_events_iter(&event_filter)
-            .count();
-        if event_per_op >= self.config.max_event_per_operation {
-            bail!("Too many event for this operation");
+        if execution_component_version > 0 {
+            let event_per_op = context
+                .events
+                .get_filtered_sc_output_events_iter(&event_filter)
+                .count();
+            if event_per_op >= self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
         }
-
         context.event_emit(event);
 
         Ok(())
@@ -1287,10 +1371,6 @@ impl Interface for InterfaceImpl {
             bail!("validity end thread exceeds the configuration thread count")
         }
 
-        if max_gas < self.config.gas_costs.max_instance_cost {
-            bail!("max gas is lower than the minimum instance cost")
-        }
-
         let target_addr = Address::from_str(target_address)?;
 
         // check that the target address is an SC address
@@ -1309,12 +1389,19 @@ impl Interface for InterfaceImpl {
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
 
-        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
-        {
-            bail!("validity end is earlier than the validity start")
-        }
-        if Slot::new(validity_end.0, validity_end.1) < emission_slot {
-            bail!("validity end is earlier than the current slot")
+        let execution_component_version = execution_context.execution_component_version;
+        if execution_component_version > 0 {
+            if max_gas < self.config.gas_costs.max_instance_cost {
+                bail!("max gas is lower than the minimum instance cost")
+            }
+            if Slot::new(validity_end.0, validity_end.1)
+                < Slot::new(validity_start.0, validity_start.1)
+            {
+                bail!("validity end is earlier than the validity start")
+            }
+            if Slot::new(validity_end.0, validity_end.1) < emission_slot {
+                bail!("validity end is earlier than the current slot")
+            }
         }
 
         let emission_index = execution_context.created_message_index;
@@ -1462,9 +1549,7 @@ impl Interface for InterfaceImpl {
         params_size: u64,
     ) -> Result<(bool, u64)> {
         // write-lock context
-
         let context = context_guard!(self);
-
         let current_slot = context.slot;
 
         let target_slot = Slot::new(target_slot.0, target_slot.1);
@@ -1565,8 +1650,9 @@ impl Interface for InterfaceImpl {
     /// true if the call exists, false otherwise
     fn deferred_call_exists(&self, id: &str) -> Result<bool> {
         // write-lock context
-        let call_id = DeferredCallId::from_str(id)?;
         let context = context_guard!(self);
+
+        let call_id = DeferredCallId::from_str(id)?;
         Ok(context.deferred_call_exists(&call_id))
     }
 
@@ -1761,11 +1847,18 @@ impl Interface for InterfaceImpl {
 
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
-        match addr {
-            Address::User(_) => Ok(AddressCategory::UserAddress),
-            Address::SC(_) => Ok(AddressCategory::ScAddress),
+        let execution_component_version = context_guard!(self).execution_component_version;
+
+        // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
+        // We keep the previous (bugged) code if the execution component version is 0
+        // to avoid a breaking change
+        match (addr, execution_component_version) {
+            (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
+            (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
+            (Address::User(_), _) => Ok(AddressCategory::UserAddress),
+            (Address::SC(_), _) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
-            _ => Ok(AddressCategory::Unspecified),
+            (_, _) => Ok(AddressCategory::Unspecified),
         }
     }
 
@@ -1944,11 +2037,6 @@ impl Interface for InterfaceImpl {
                 warn!("Context is locked, cannot save gas remaining before subexecution");
             }
         }
-    }
-
-    /// Interface version to sync with the runtime for its versioning
-    fn get_interface_version(&self) -> Result<u32> {
-        Ok(1)
     }
 }
 
