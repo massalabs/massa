@@ -189,7 +189,7 @@ impl ExecutionState {
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
-        let unwrapped_execution_context = ExecutionContext::new(
+        let execution_context = ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
@@ -197,8 +197,8 @@ impl ExecutionState {
             mip_store.clone(),
             execution_trail_hash,
         );
-        let cur_execution_version = unwrapped_execution_context.execution_component_version;
-        let execution_context = Arc::new(Mutex::new(unwrapped_execution_context));
+        let cur_execution_version = execution_context.execution_component_version;
+        let execution_context = Arc::new(Mutex::new(execution_context));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
@@ -1494,6 +1494,7 @@ impl ExecutionState {
         let execution_version = execution_context.execution_component_version;
         if self.cur_execution_version != execution_version {
             // Reset the cache because a new execution version has become active
+            info!("A new execution version has become active! Resetting the module-cache.");
             self.module_cache.write().reset();
             self.cur_execution_version = execution_version;
         }
