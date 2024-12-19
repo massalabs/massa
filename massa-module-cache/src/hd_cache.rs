@@ -5,7 +5,7 @@ use massa_hash::Hash;
 use massa_sc_runtime::{CondomLimits, GasCosts, RuntimeModule};
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
-use rocksdb::{Direction, IteratorMode, WriteBatch, DB};
+use rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
 use std::path::PathBuf;
 use tracing::debug;
 
@@ -59,8 +59,10 @@ impl HDCache {
     /// * max_entry_count: maximum number of entries we want to keep in the db
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
+        // Reset the DB if it already exists
+        DB::destroy(&Options::default(), path.clone()).expect("Failed to destroy the database");
         let db = DB::open_default(path).expect(OPEN_ERROR);
-        let entry_count = db.iterator(IteratorMode::Start).count();
+        let entry_count = 0;
 
         Self {
             db,
