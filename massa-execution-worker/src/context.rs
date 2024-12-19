@@ -326,8 +326,12 @@ impl ExecutionContext {
             serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
             true,
         );
-        if event.data.len() > self.config.max_event_size {
-            event.data.truncate(self.config.max_event_size);
+        let max_event_size = match self.execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+        if event.data.len() > max_event_size {
+            event.data.truncate(max_event_size);
         }
         self.event_emit(event);
 
@@ -1460,8 +1464,12 @@ impl ExecutionContext {
 
         let mut event =
             self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
-        if event.data.len() > self.config.max_event_size {
-            event.data.truncate(self.config.max_event_size);
+        let max_event_size = match self.execution_component_version {
+            0 => self.config.max_event_size_v0,
+            _ => self.config.max_event_size_v1,
+        };
+        if event.data.len() > max_event_size {
+            event.data.truncate(max_event_size);
         }
         self.event_emit(event);
 

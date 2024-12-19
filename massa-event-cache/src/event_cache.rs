@@ -942,7 +942,7 @@ mod tests {
     use tempfile::TempDir;
     // internal
     use massa_models::config::{
-        MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
+        MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
         MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
     };
     use massa_models::operation::OperationId;
@@ -957,7 +957,7 @@ mod tests {
             300,
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
-            MAX_EVENT_DATA_SIZE as u64,
+            MAX_EVENT_DATA_SIZE_V0 as u64,
             MAX_EVENT_PER_OPERATION as u64,
             MAX_OPERATIONS_PER_BLOCK as u64,
             5000, // MAX_EVENTS_PER_QUERY,

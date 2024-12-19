@@ -477,8 +477,12 @@ impl ExecutionState {
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
             let mut error = format!("could not spend fees: {}", err);
-            if error.len() > self.config.max_event_size {
-                error.truncate(self.config.max_event_size);
+            let max_event_size = match execution_component_version {
+                0 => self.config.max_event_size_v0,
+                _ => self.config.max_event_size_v1,
+            };
+            if error.len() > max_event_size {
+                error.truncate(max_event_size);
             }
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
