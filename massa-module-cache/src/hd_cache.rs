@@ -75,17 +75,15 @@ impl HDCache {
     pub fn reset(&mut self) {
         let path = self.db.as_ref().unwrap().path().to_path_buf();
 
-        // Close the existing database
-        self.db.take();
+        // Close the existing database by dropping it
+        let _ = self.db.take();
 
         // Destroy the database files
-        let opts = Options::default();
-        DB::destroy(&opts, &path).expect("Failed to destroy the database");
+        DB::destroy(&Options::default(), &path).expect("Failed to destroy the database");
         // Reopen the database
         let db = DB::open_default(&path).expect(OPEN_ERROR);
-        let entry_count = db.iterator(IteratorMode::Start).count();
         self.db = Some(db);
-        self.entry_count = entry_count;
+        self.entry_count = 0;
     }
 
     /// Insert a new module in the cache
