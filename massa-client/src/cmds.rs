@@ -116,13 +116,6 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address discord_id"),
-        message = "generate the testnet rewards program node/staker ownership proof"
-    )]
-    node_testnet_rewards_program_ownership_proof,
-
-    #[strum(
-        ascii_case_insensitive,
         props(args = "(add, remove or allow-all) [IpAddr]", pwd_not_needed = "true"),
         message = "Manage bootstrap whitelist IP address(es). No args returns the bootstrap whitelist"
     )]
@@ -528,39 +521,6 @@ impl Command {
                 match client.private.get_staking_addresses().await {
                     Ok(staking_addresses) => Ok(Box::new(staking_addresses)),
                     Err(e) => rpc_error!(e),
-                }
-            }
-
-            Command::node_testnet_rewards_program_ownership_proof => {
-                let wallet = wallet_opt.as_mut().unwrap();
-
-                if parameters.len() != 2 {
-                    bail!("wrong number of parameters");
-                }
-                // parse
-                let addr = parameters[0].parse::<Address>()?;
-                let msg = parameters[1].as_bytes().to_vec();
-                // get address signature
-                if let Some(addr_sig) = wallet.sign_message(&addr, msg.clone()) {
-                    // get node signature
-                    match client.private.node_sign_message(msg).await {
-                        // print concatenation
-                        Ok(node_sig) => {
-                            if !json {
-                                println!("Enter the following in discord:");
-                            }
-                            Ok(Box::new(format!(
-                                "{}/{}/{}/{}",
-                                node_sig.public_key,
-                                node_sig.signature,
-                                addr_sig.public_key,
-                                addr_sig.signature
-                            )))
-                        }
-                        Err(e) => rpc_error!(e),
-                    }
-                } else {
-                    bail!("address not found")
                 }
             }
 

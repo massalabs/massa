@@ -31,7 +31,7 @@ use crate::state::{
 
 use super::ConsensusState;
 
-/// All informations necessary to add a block to the graph
+/// All information necessary to add a block to the graph
 pub(crate) struct BlockInfos {
     /// The block creator
     pub creator: PublicKey,

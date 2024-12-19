@@ -1,6 +1,6 @@
 [package]
 name = "massa_grpc"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 description = "GRPC API for Massa Blockchain"
 repository = "https://github.com/massalabs/massa/"
@@ -21,6 +21,7 @@ tonic-web = { workspace = true }
 tonic-reflection = { workspace = true }
 tonic-health = { workspace = true }
 tower-http = { workspace = true, "features" = ["cors"] }
+tower-service = { workspace = true }
 hyper = { workspace = true }
 futures-util = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }

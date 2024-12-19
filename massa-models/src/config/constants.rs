@@ -70,9 +70,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.2.4"
+            "SAND.2.5"
         } else {
-            "MAIN.2.4"
+            "MAIN.2.5"
         }
         .parse()
         .unwrap()
@@ -196,11 +196,60 @@ pub const MAX_DATASTORE_ENTRY_COUNT: u64 = u64::MAX;
 /// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 pub const MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = 128;
 /// Maximum length function name in call SC
-pub const MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
+pub const MAX_FUNCTION_NAME_LENGTH: u16 = 255;
 /// Maximum size of parameters in call SC
 pub const MAX_PARAMETERS_SIZE: u32 = 10_000_000;
 /// Maximum length of `rng_seed` in thread cycle
 pub const MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT as u64) as u32;
+
+/// CondomMiddleware limits
+/// see test_condom_middleware_calibrate in massa-sc-runtime for origin of
+/// values.
+/// Maximum number of function defined in a smart contract
+const MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS: usize = 512;
+/// Maximum number of function used by a smart contract
+pub const MAX_RUNTIME_MODULE_FUNCTIONS: usize =
+    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_FUNCTION_IMPORTS;
+/// Maximum number of arguments to a function
+const MAX_RUNTIME_MODULE_FUNCTION_ARGS: usize = 64;
+/// Maximum number of value a function can return
+const MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES: usize = 8;
+/// Maximum signature length (total number of arguments and return values) for a
+/// function of a smart contract module
+pub const MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize =
+    MAX_RUNTIME_MODULE_FUNCTION_ARGS + MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES;
+/// Maximum length for the name of a function defined in a smart contract
+pub const MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = 256;
+/// Maximum length for the name of a smart contract
+pub const MAX_RUNTIME_MODULE_NAME_LEN: usize = 256;
+/// Maximum number of custom section data
+pub const MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN: usize = 1;
+/// Maximum length for the custom section data
+pub const MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN: usize = 1_000_000;
+/// Maximum number of functions a module can import
+const MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = 256;
+/// Maximum number of memory a module can import
+const MAX_RUNTIME_MODULE_MEMORY_IMPORTS: usize = 1;
+/// Maximum number of elements a module can import
+pub const MAX_RUNTIME_MODULE_IMPORTS: usize =
+    MAX_RUNTIME_MODULE_FUNCTION_IMPORTS + MAX_RUNTIME_MODULE_MEMORY_IMPORTS;
+/// Maximum number of table initializer in a smart contract
+pub const MAX_RUNTIME_MODULE_TABLE_INITIALIZER: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+/// Maximum number of passive element in a smart contract
+pub const MAX_RUNTIME_MODULE_PASSIVE_ELEMENT: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
+/// Maximum number of passive data in a smart contract
+pub const MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = 512;
+/// Maximum number of global initializer in a smart contract
+pub const MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = 512;
+/// Maximum number of table in a smart contract
+pub const MAX_RUNTIME_MODULE_TABLE: usize = 16;
+/// Maximum number of memories in a smart contract
+/// - only 1 supported so far (cf specification)
+pub const MAX_RUNTIME_MODULE_MEMORIES: usize = 1;
+/// Maximum number of exports for a smart contract module (function and globals)
+pub const MAX_RUNTIME_MODULE_EXPORTS: usize =
+    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER;
+
 // ***********************
 // Bootstrap constants
 //
@@ -260,7 +309,11 @@ pub const ASYNC_MSG_CST_GAS_COST: u64 = 750_000;
 /// Gas used by a base operation (transaction, roll buy, roll sell)
 pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 /// Maximum event size in bytes
-pub const MAX_EVENT_DATA_SIZE: usize = 50_000;
+pub const MAX_EVENT_DATA_SIZE: usize = 512;
+/// Maximum event number that can be emitted for an operation
+pub const MAX_EVENT_PER_OPERATION: usize = 25;
+/// Maximum number of recursion for calls
+pub const MAX_RECURSIVE_CALLS_DEPTH: u16 = 25;
 
 //
 // Constants used in network
@@ -338,6 +391,26 @@ pub const MAX_DENUNCIATIONS_PER_BLOCK_HEADER: u32 = 128;
 pub const ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = 1;
 /// Maximum size of executed denunciations
 pub const MAX_DENUNCIATION_CHANGES_LENGTH: u64 = 1_000;
+/// Maximum size of deferred call pool changes
+// TODO define this value
+// TODO: set to a reasonable value max pool changes
+pub const DEFERRED_CALL_MAX_POOL_CHANGES: u64 = 100_000;
+/// Maximum size of deferred call future slots (1 week)
+pub const DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = 1209600;
+/// maximum gas for deferred call
+pub const DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
+/// max change denominator  
+pub const DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = 1250;
+/// deferred call min gas increment (1 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = 1;
+/// deferred call min gas cost (10 nanomassa)
+pub const DEFERRED_CALL_MIN_GAS_COST: u64 = 10;
+/// deferred call global overbooking penalty
+pub const DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000);
+/// deferred call slot overbooking penalty
+pub const DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(1_000_000_000 / 10_000);
+/// deferred call call gas cost
+pub const DEFERRED_CALL_CST_GAS_COST: u64 = 750_000;
 
 // Some checks at compile time that should not be ignored!
 #[allow(clippy::assertions_on_constants)]

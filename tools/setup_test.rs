@@ -80,7 +80,7 @@ fn download_src() -> Result<String, Error> {
 
     if Path::new(&extract_folder).exists() {
         println!(
-            "Please remove the folder: {} before runnning this script",
+            "Please remove the folder: {} before running this script",
             extract_folder
         );
         std::process::exit(1);

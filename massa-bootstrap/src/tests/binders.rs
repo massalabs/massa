@@ -248,7 +248,7 @@ fn test_binders_simple() {
 // This test uses exactly the same principle as the `test_binders_simple` one
 // Except instead of passing a pair of (ServerMessage, ClientMessage), it will pass a
 //    (bool, Vec<ServerMessage>, Vec<ClientMessage>)
-// - The boolean defines wether the server or the client will transmit data first, or receive first
+// - The boolean defines whether the server or the client will transmit data first, or receive first
 // - The first vector is a list of server messages generated that the server has to send
 // - The second vector is a list of client messages generated that the client has to send
 // Because the direction of the first message is randomly assigned, and the number of messages are random,

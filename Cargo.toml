@@ -43,6 +43,7 @@ members = [
   "massa-versioning",
   "massa-grpc",
   "massa-xtask",
+  "massa-event-cache",
 ]
 resolver = "2"
 
@@ -76,6 +77,7 @@ massa_consensus_exports = { path = "./massa-consensus-exports" }
 massa_consensus_worker = { path = "./massa-consensus-worker" }
 massa_db_exports = { path = "./massa-db-exports" }
 massa_db_worker = { path = "./massa-db-worker" }
+massa_deferred_calls = { path = "./massa-deferred-calls" }
 massa_executed_ops = { path = "./massa-executed-ops" }
 massa_execution_exports = { path = "./massa-execution-exports" }
 massa_execution_worker = { path = "./massa-execution-worker" }
@@ -104,11 +106,20 @@ massa_test_framework = { path = "./massa-test-framework" }
 massa_time = { path = "./massa-time" }
 massa_versioning = { path = "./massa-versioning" }
 massa_wallet = { path = "./massa-wallet" }
+massa_event_cache = { path = "./massa-event-cache" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "38950875a7aa406fedc4f0b8336864e5ff290f2c" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "6738815dba5f3be7b7a03b88d6feb31f151a8682" }
+# massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "deferred_calls" }
+# massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "deferred_calls" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "b5267178eaf266ec724691d7de163e4c34343416" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "f5a584b9f8050f332c9ed332bd0a40f8e0372807" }
+
+
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
+# Dev only - use local dependencies
+# massa-proto-rs = { path = "../massa-proto-rs" }
+# massa-sc-runtime = { path = "../massa-sc-runtime" }
+# peernet = { path = "../peernet" }
 
 # Common dependencies
 transition = { git = "https://github.com/massalabs/transition.git", "rev" = "93fa3bf82f9f5ff421c78536879b7fd1b948ca75" }
@@ -138,15 +149,15 @@ futures = "0.3"
 futures-util = "0.3"
 h2 = "0.3"
 hex-literal = "0.4"
-http = "0.2"
+http = "1.1.0"
 humantime = "2.1"
-hyper = "0.14"
+hyper = "1"
 ip_rfc = "0.1"
 is-terminal = "0.4"
 itertools = "0.12"
-jsonrpsee = "0.20"
-jsonrpsee-http-client = "0.20"
-jsonrpsee-ws-client = "0.20"
+jsonrpsee = "0.24"
+jsonrpsee-http-client = "0.24"
+jsonrpsee-ws-client = "0.24"
 lazy_static = "1.4"
 libsecp256k1 = "=0.7"
 mio = "0.8.11"
@@ -175,7 +186,7 @@ serde = "1.0"
 serde_json = "1.0"
 serde_qs = "0.12"
 serde_with = "3.3"
-serde_yaml = "0.9"
+serde_yaml = "0.9.34"                                                                                                    # 0.9.34+deprecated
 serial_test = "2.0"
 sha2 = "=0.10"
 sha3 = "=0.10"
@@ -191,15 +202,17 @@ time = "0.3"
 tokio = "1.23"
 tokio-stream = "0.1"
 toml_edit = "0.21"
-tonic = "0.10"
-tonic-health = "0.10"
-tonic-reflection = "0.10"
-tonic-web = "0.10"
-tower = "0.4.13"
-tower-http = "0.4.0"
+tonic = "0.12"
+tonic-health = "0.12"
+tonic-reflection = "0.12"
+tonic-web = "0.12"
+tower = "0.4"
+tower-http = "0.6"
+tower-service = "0.3"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 unsigned-varint = "0.8"
 variant_count = "1.1"
 walkdir = "2.3"
 zeroize = { version = "1.7", features = ["derive"] }
+prost = { version = "=0.13" }
