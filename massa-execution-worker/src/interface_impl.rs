@@ -1948,7 +1948,7 @@ impl Interface for InterfaceImpl {
 
     /// Interface version to sync with the runtime for its versioning
     fn get_interface_version(&self) -> Result<u32> {
-        Ok(0)
+        Ok(1)
     }
 }
 
