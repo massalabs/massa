@@ -567,7 +567,7 @@ mod test {
         // Expect updates to be empty (or default) here
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history.fetch_message(&message_id_3_2, current_updates);
+            let fetched = active_history.fetch_message(&message_id_3_2, current_updates, 1);
             if let HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
                 assert_eq!(updates, AsyncMessageUpdate::default());
             } else {
