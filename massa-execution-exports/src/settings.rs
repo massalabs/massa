@@ -114,4 +114,10 @@ pub struct ExecutionConfig {
     pub deferred_calls_config: DeferredCallsConfig,
     /// Maximum number of event that an operation can emit
     pub max_event_per_operation: usize,
+    /// Path to the hard drive event cache storage
+    pub event_cache_path: PathBuf,
+    /// Maximum number of entries we want to keep in the Event cache
+    pub event_cache_size: usize,
+    /// Amount of entries removed when `event_cache_size` is reached
+    pub event_snip_amount: usize,
 }
