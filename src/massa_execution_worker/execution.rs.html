@@ -2741,6 +2741,7 @@
 <a href="#2741" id="2741">2741</a>
 <a href="#2742" id="2742">2742</a>
 <a href="#2743" id="2743">2743</a>
+<a href="#2744" id="2744">2744</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2932,7 +2933,7 @@
         })));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
-        </span><span class="kw">let </span>unwrapped_execution_context = ExecutionContext::new(
+        </span><span class="kw">let </span>execution_context = ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
@@ -2940,8 +2941,8 @@
             mip_store.clone(),
             execution_trail_hash,
         );
-        <span class="kw">let </span>cur_execution_version = unwrapped_execution_context.execution_component_version;
-        <span class="kw">let </span>execution_context = Arc::new(Mutex::new(unwrapped_execution_context));
+        <span class="kw">let </span>cur_execution_version = execution_context.execution_component_version;
+        <span class="kw">let </span>execution_context = Arc::new(Mutex::new(execution_context));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
         </span><span class="kw">let </span>execution_interface = Box::new(InterfaceImpl::new(
@@ -4237,7 +4238,8 @@
         <span class="kw">let </span>execution_version = execution_context.execution_component_version;
         <span class="kw">if </span><span class="self">self</span>.cur_execution_version != execution_version {
             <span class="comment">// Reset the cache because a new execution version has become active
-            </span><span class="self">self</span>.module_cache.write().reset();
+            </span><span class="macro">info!</span>(<span class="string">"A new execution version has become active! Resetting the module-cache."</span>);
+            <span class="self">self</span>.module_cache.write().reset();
             <span class="self">self</span>.cur_execution_version = execution_version;
         }
 
