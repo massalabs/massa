@@ -562,6 +562,17 @@
 <a href="#562" id="562">562</a>
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
@@ -632,7 +643,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message_id: <span class="kw-2">&amp;</span>AsyncMessageId,
         <span class="kw-2">mut </span>current_updates: AsyncMessageUpdate,
-        execution_compound_version: u32,
     ) -&gt; HistorySearchResult&lt;SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt; {
         <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
             <span class="kw">match </span>history_element
@@ -646,22 +656,20 @@
                     msg.apply(current_updates);
                     <span class="kw">return </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg));
                 }
-                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; <span class="kw">match </span>execution_compound_version {
-                    <span class="number">0 </span>=&gt; {
-                        current_updates.apply(msg_update.clone());
-                    }
-                    <span class="kw">_ </span>=&gt; {
-                        <span class="kw">let </span><span class="kw-2">mut </span>combined_message_update = msg_update.clone();
-                        combined_message_update.apply(current_updates);
-                        current_updates = combined_message_update;
-                    }
-                },
+                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; {
+                    <span class="kw">let </span><span class="kw-2">mut </span>combined_message_update = msg_update.clone();
+                    combined_message_update.apply(current_updates);
+                    current_updates = combined_message_update;
+                }
                 <span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="kw">return </span>HistorySearchResult::Absent,
                 <span class="kw">_ </span>=&gt; (),
             }
         }
 
-        HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
+        <span class="comment">// Note:
+        // Return Present here as we can have a message in the final state and only an update
+        // in the active history. So in this case, we return the current updates
+        </span>HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
     }
 
     <span class="doccomment">/// Lazily query (from end to beginning) the active list of executed denunciations.
@@ -949,14 +957,14 @@
     </span><span class="kw">fn </span>test_fetch_message() {
         <span class="comment">// Unit testing ActiveHistory.fetch_msg
 
-        // Setup some objects
+        // Setup some addresses
 
         </span><span class="kw">let </span>addr_sender =
             Address::from_str(<span class="string">"AU12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx"</span>).unwrap();
         <span class="kw">let </span>addr_dest =
             Address::from_str(<span class="string">"AS12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx"</span>).unwrap();
 
-        <span class="comment">// Setup ActiveHistory
+        <span class="comment">// Create 3 async messages (+ 3 message id's)
 
         </span><span class="kw">let </span>rev: Reverse&lt;Ratio&lt;u64&gt;&gt; = Default::default();
         <span class="kw">let </span>message_id: AsyncMessageId = (rev, Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="number">1u64</span>);
@@ -982,11 +990,21 @@
         <span class="kw">let </span>emission_slot_3 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
         <span class="kw">let </span>emission_index_3 = <span class="number">3</span>;
         <span class="kw">let </span>message_id_3: AsyncMessageId = (rev, emission_slot_3, emission_index_3);
-        <span class="kw">let </span>msg_3_function_new_1 = <span class="string">"send_max_fee_to"</span>.to_string();
-        <span class="kw">let </span>msg_update_3_1 = AsyncMessageUpdate {
-            function: SetOrKeep::Set(msg_3_function_new_1.clone()),
-            ..Default::default()
-        };
+        <span class="kw">let </span>msg_3 = AsyncMessage::new(
+            emission_slot_3,
+            emission_index_3,
+            addr_sender,
+            addr_dest,
+            <span class="string">"send_max_fee_to"</span>.to_string(), <span class="comment">// SC function name
+            </span><span class="number">0</span>,
+            Default::default(),
+            Default::default(),
+            Slot::new(<span class="number">4</span>, <span class="number">0</span>),
+            Slot::new(<span class="number">5</span>, <span class="number">0</span>),
+            <span class="macro">vec!</span>[],
+            <span class="prelude-val">None</span>,
+            <span class="prelude-val">None</span>,
+        );
 
         <span class="kw">let </span>msg_3_function_new_2 = <span class="string">"send_max_fee_to_v2"</span>.to_string();
         <span class="kw">let </span>msg_3_coins_new = Amount::from_raw(<span class="number">1000</span>);
@@ -996,33 +1014,31 @@
             ..Default::default()
         };
 
-        <span class="kw">let </span>async_pool_changes_1 = AsyncPoolChanges(BTreeMap::from([
+        <span class="kw">let </span>emission_slot_3_2 = Slot::new(<span class="number">2</span>, <span class="number">2</span>);
+        <span class="kw">let </span>emission_index_3_2 = <span class="number">4</span>;
+        <span class="kw">let </span>message_id_3_2: AsyncMessageId = (rev, emission_slot_3_2, emission_index_3_2);
+
+        <span class="comment">// Put them in 2 async pool changes
+
+        </span><span class="kw">let </span>async_pool_changes_1 = AsyncPoolChanges(BTreeMap::from([
             (message_id, SetUpdateOrDelete::Delete),
             (message_id_2, SetUpdateOrDelete::Set(msg_2.clone())),
-            (message_id_3, SetUpdateOrDelete::Update(msg_update_3_1)),
+            (message_id_3, SetUpdateOrDelete::Set(msg_3.clone())),
         ]));
         <span class="kw">let </span>async_pool_changes_2 = AsyncPoolChanges(BTreeMap::from([(
             message_id_3,
             SetUpdateOrDelete::Update(msg_update_3_2.clone()),
         )]));
 
-        <span class="kw">let </span>state_changes_1 = StateChanges {
-            ledger_changes: Default::default(),
+        <span class="comment">// Then put into 2 state changes
+
+        </span><span class="kw">let </span>state_changes_1 = StateChanges {
             async_pool_changes: async_pool_changes_1,
-            deferred_call_changes: Default::default(),
-            pos_changes: Default::default(),
-            executed_ops_changes: Default::default(),
-            executed_denunciations_changes: Default::default(),
-            execution_trail_hash_change: Default::default(),
+            ..Default::default()
         };
         <span class="kw">let </span>state_changes_2 = StateChanges {
-            ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_2,
-            deferred_call_changes: Default::default(),
-            pos_changes: Default::default(),
-            executed_ops_changes: Default::default(),
-            executed_denunciations_changes: Default::default(),
-            execution_trail_hash_change: Default::default(),
+            ..Default::default()
         };
 
         <span class="kw">let </span>exec_output_1 = ExecutionOutput {
@@ -1057,14 +1073,14 @@
         <span class="comment">// Test fetch_message with message_id (expect HistorySearchResult::Absent)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id, current_updates, <span class="number">1</span>);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id, current_updates);
             <span class="macro">assert_matches!</span>(fetched, HistorySearchResult::Absent);
         }
 
         <span class="comment">// Test fetch_message with message_id_2 (expect HistorySearchResult::Set)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates, <span class="number">1</span>);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates);
 
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 <span class="macro">assert_eq!</span>(msg, msg_2);
@@ -1082,21 +1098,10 @@
 
             </span><span class="kw">let </span>validity_end_new = Slot::new(<span class="number">5</span>, <span class="number">0</span>);
             <span class="kw">let </span>current_updates = AsyncMessageUpdate {
-                emission_slot: Default::default(),
-                emission_index: Default::default(),
-                sender: Default::default(),
-                destination: Default::default(),
-                function: Default::default(),
-                max_gas: Default::default(),
-                fee: Default::default(),
-                coins: Default::default(),
-                validity_start: Default::default(),
                 validity_end: SetOrKeep::Set(validity_end_new),
-                function_params: Default::default(),
-                trigger: Default::default(),
-                can_be_executed: Default::default(),
+                ..Default::default()
             };
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates, <span class="number">1</span>);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates);
 
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 <span class="macro">assert_ne!</span>(msg, msg_2);
@@ -1112,16 +1117,33 @@
         <span class="comment">// Test fetch_message with message_id_3 (expect HistorySearchResult::Present)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3, current_updates, <span class="number">1</span>);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3, current_updates);
 
-            <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Update(msg_up)) = fetched {
-                <span class="comment">// Note that there should be to async message update &amp; we ensure that the latest
-                // updates are applied (and overwrite the earliest updates)
-                </span><span class="macro">assert_eq!</span>(msg_up.coins, SetOrKeep::Set(msg_3_coins_new));
+            <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
+                <span class="comment">// Check the updates were applied correctly
+                </span><span class="macro">assert_eq!</span>(msg.coins, msg_3_coins_new);
                 <span class="comment">// function should == "send_max_fee_to_v2" (latest value) and not "send_max_fee_to"
-                </span><span class="macro">assert_eq!</span>(msg_up.function, SetOrKeep::Set(msg_3_function_new_2));
+                </span><span class="macro">assert_eq!</span>(msg.function, msg_3_function_new_2);
             } <span class="kw">else </span>{
-                <span class="macro">panic!</span>(<span class="string">"Expected a HistorySearchRestul::Set(SetUpdateOrDelete::Update(...)) and not: {:?}"</span>, fetched)
+                <span class="macro">panic!</span>(
+                    <span class="string">"Expected a HistorySearchResult::Set(...) and not: {:?}"</span>,
+                    fetched
+                );
+            }
+        }
+
+        <span class="comment">// Test fetch_message with message_id_3_2 (expect HistorySearchResult::Update)
+        // Expect updates to be empty (or default) here
+        </span>{
+            <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3_2, current_updates);
+            <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
+                <span class="macro">assert_eq!</span>(updates, AsyncMessageUpdate::default());
+            } <span class="kw">else </span>{
+                <span class="macro">panic!</span>(
+                    <span class="string">"Expected a HistorySearchResult::Present(...) and not: {:?}"</span>,
+                    fetched
+                );
             }
         }
     }
