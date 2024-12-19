@@ -91,6 +91,9 @@ impl ActiveHistory {
             }
         }
 
+        // Note:
+        // Return Present here as we can have a message in the final state and only an update
+        // in the active history. So in this case, we return the current updates
         HistorySearchResult::Present(SetUpdateOrDelete::Update(current_updates))
     }
 
@@ -379,14 +382,14 @@ mod test {
     fn test_fetch_message() {
         // Unit testing ActiveHistory.fetch_msg
 
-        // Setup some objects
+        // Setup some addresses
 
         let addr_sender =
             Address::from_str("AU12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
         let addr_dest =
             Address::from_str("AS12fZLkHnLED3okr8Lduyty7dz9ZKkd24xMCc2JJWPcdmfn2eUEx").unwrap();
 
-        // Setup ActiveHistory
+        // Create 3 async messages (+ 3 message id's)
 
         let rev: Reverse<Ratio<u64>> = Default::default();
         let message_id: AsyncMessageId = (rev, Slot::new(1, 0), 1u64);
@@ -412,11 +415,21 @@ mod test {
         let emission_slot_3 = Slot::new(2, 0);
         let emission_index_3 = 3;
         let message_id_3: AsyncMessageId = (rev, emission_slot_3, emission_index_3);
-        let msg_3_function_new_1 = "send_max_fee_to".to_string();
-        let msg_update_3_1 = AsyncMessageUpdate {
-            function: SetOrKeep::Set(msg_3_function_new_1.clone()),
-            ..Default::default()
-        };
+        let msg_3 = AsyncMessage::new(
+            emission_slot_3,
+            emission_index_3,
+            addr_sender,
+            addr_dest,
+            "send_max_fee_to".to_string(), // SC function name
+            0,
+            Default::default(),
+            Default::default(),
+            Slot::new(4, 0),
+            Slot::new(5, 0),
+            vec![],
+            None,
+            None,
+        );
 
         let msg_3_function_new_2 = "send_max_fee_to_v2".to_string();
         let msg_3_coins_new = Amount::from_raw(1000);
@@ -426,35 +439,31 @@ mod test {
             ..Default::default()
         };
 
+        let emission_slot_3_2 = Slot::new(2, 2);
+        let emission_index_3_2 = 4;
+        let message_id_3_2: AsyncMessageId = (rev, emission_slot_3_2, emission_index_3_2);
+
+        // Put them in 2 async pool changes
+
         let async_pool_changes_1 = AsyncPoolChanges(BTreeMap::from([
             (message_id, SetUpdateOrDelete::Delete),
             (message_id_2, SetUpdateOrDelete::Set(msg_2.clone())),
-            (message_id_3, SetUpdateOrDelete::Update(msg_update_3_1)),
+            (message_id_3, SetUpdateOrDelete::Set(msg_3.clone())),
         ]));
         let async_pool_changes_2 = AsyncPoolChanges(BTreeMap::from([(
             message_id_3,
             SetUpdateOrDelete::Update(msg_update_3_2.clone()),
         )]));
 
+        // Then put into 2 state changes
+
         let state_changes_1 = StateChanges {
-            ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_1,
-            deferred_call_changes: Default::default(),
-            pos_changes: Default::default(),
-            executed_ops_changes: Default::default(),
-            executed_denunciations_changes: Default::default(),
-            execution_trail_hash_change: Default::default(),
-            deferred_call_changes: Default::default(),
+            ..Default::default()
         };
         let state_changes_2 = StateChanges {
-            ledger_changes: Default::default(),
             async_pool_changes: async_pool_changes_2,
-            deferred_call_changes: Default::default(),
-            pos_changes: Default::default(),
-            executed_ops_changes: Default::default(),
-            executed_denunciations_changes: Default::default(),
-            execution_trail_hash_change: Default::default(),
-            deferred_call_changes: Default::default(),
+            ..Default::default()
         };
 
         let exec_output_1 = ExecutionOutput {
@@ -514,19 +523,8 @@ mod test {
 
             let validity_end_new = Slot::new(5, 0);
             let current_updates = AsyncMessageUpdate {
-                emission_slot: Default::default(),
-                emission_index: Default::default(),
-                sender: Default::default(),
-                destination: Default::default(),
-                function: Default::default(),
-                max_gas: Default::default(),
-                fee: Default::default(),
-                coins: Default::default(),
-                validity_start: Default::default(),
                 validity_end: SetOrKeep::Set(validity_end_new),
-                function_params: Default::default(),
-                trigger: Default::default(),
-                can_be_executed: Default::default(),
+                ..Default::default()
             };
             let fetched = active_history.fetch_message(&message_id_2, current_updates);
 
@@ -546,14 +544,31 @@ mod test {
             let current_updates = AsyncMessageUpdate::default();
             let fetched = active_history.fetch_message(&message_id_3, current_updates);
 
-            if let HistorySearchResult::Present(SetUpdateOrDelete::Update(msg_up)) = fetched {
-                // Note that there should be to async message update & we ensure that the latest
-                // updates are applied (and overwrite the earliest updates)
-                assert_eq!(msg_up.coins, SetOrKeep::Set(msg_3_coins_new));
+            if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
+                // Check the updates were applied correctly
+                assert_eq!(msg.coins, msg_3_coins_new);
                 // function should == "send_max_fee_to_v2" (latest value) and not "send_max_fee_to"
-                assert_eq!(msg_up.function, SetOrKeep::Set(msg_3_function_new_2));
+                assert_eq!(msg.function, msg_3_function_new_2);
             } else {
-                panic!("Expected a HistorySearchRestul::Set(SetUpdateOrDelete::Update(...)) and not: {:?}", fetched)
+                panic!(
+                    "Expected a HistorySearchResult::Set(...) and not: {:?}",
+                    fetched
+                );
+            }
+        }
+
+        // Test fetch_message with message_id_3_2 (expect HistorySearchResult::Update)
+        // Expect updates to be empty (or default) here
+        {
+            let current_updates = AsyncMessageUpdate::default();
+            let fetched = active_history.fetch_message(&message_id_3_2, current_updates);
+            if let HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
+                assert_eq!(updates, AsyncMessageUpdate::default());
+            } else {
+                panic!(
+                    "Expected a HistorySearchResult::Present(...) and not: {:?}",
+                    fetched
+                );
             }
         }
     }
