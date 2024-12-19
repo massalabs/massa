@@ -2901,16 +2901,16 @@
         })));
 
         <span class="comment">// Create an empty placeholder execution context, with shared atomic access
-        </span><span class="kw">let </span>execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+        </span><span class="kw">let </span>unwrapped_execution_context = ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
             mip_store.clone(),
             execution_trail_hash,
-        )));
-
-        <span class="kw">let </span>cur_execution_version = execution_context.lock().execution_component_version;
+        );
+        <span class="kw">let </span>cur_execution_version = unwrapped_execution_context.execution_component_version;
+        <span class="kw">let </span>execution_context = Arc::new(Mutex::new(unwrapped_execution_context));
 
         <span class="comment">// Instantiate the interface providing ABI access to the VM, share the execution context with it
         </span><span class="kw">let </span>execution_interface = Box::new(InterfaceImpl::new(
