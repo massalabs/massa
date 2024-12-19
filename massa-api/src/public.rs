@@ -4,7 +4,7 @@
 use crate::{MassaRpcServer, Public, RpcServer, StopHandle, Value, API};
 use async_trait::async_trait;
 use itertools::{izip, Itertools};
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockInfoContent, BlockSummary},
@@ -13,7 +13,9 @@ use massa_api_exports::{
     endorsement::EndorsementInfo,
     error::ApiError,
     execution::{
-        ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, ReadOnlyResult, Transfer,
+        DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
+        DeferredCallsSlotResponse, ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution,
+        ReadOnlyCall, ReadOnlyResult, Transfer,
     },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
@@ -37,20 +39,17 @@ use massa_models::{
     composite::PubkeySig,
     config::CompactConfig,
     datastore::DatastoreDeserializer,
-    endorsement::EndorsementId,
-    endorsement::SecureShareEndorsement,
+    deferred_calls::DeferredCallId,
+    endorsement::{EndorsementId, SecureShareEndorsement},
     error::ModelsError,
     execution::EventFilter,
     node::NodeId,
-    operation::OperationDeserializer,
-    operation::OperationId,
-    operation::{OperationType, SecureShareOperation},
+    operation::{OperationDeserializer, OperationId, OperationType, SecureShareOperation},
     output_event::SCOutputEvent,
     prehash::{PreHashMap, PreHashSet},
     secure_share::SecureShareDeserializer,
     slot::{IndexedSlot, Slot},
-    timeslots,
-    timeslots::{get_latest_block_slot_at_timestamp, time_range_to_slot_range},
+    timeslots::{self, get_latest_block_slot_at_timestamp, time_range_to_slot_range},
     version::Version,
 };
 use massa_pool_exports::PoolController;
@@ -63,8 +62,8 @@ use massa_versioning::versioning_factory::FactoryStrategy;
 use massa_versioning::{
     keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
 };
-use std::collections::BTreeMap;
 use std::net::{IpAddr, SocketAddr};
+use std::{collections::BTreeMap, str::FromStr};
 
 impl API<Public> {
     /// generate a new public API
@@ -1155,6 +1154,132 @@ impl MassaRpcServer for API<Public> {
             .collect();
 
         Ok(res?)
+    }
+
+    async fn get_deferred_call_quote(
+        &self,
+        req: Vec<DeferredCallsQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
+        if req.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        let queries: Vec<ExecutionQueryRequestItem> = req
+            .into_iter()
+            .map(|call| ExecutionQueryRequestItem::DeferredCallQuote {
+                target_slot: call.target_slot,
+                max_gas_request: call.max_gas_request,
+                params_size: call.params_size,
+            })
+            .collect();
+
+        let result = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests: queries })
+            .responses
+            .into_iter()
+            .map(|response| match response {
+                Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                    target_slot,
+                    max_gas_request,
+                    available,
+                    price,
+                )) => Ok(DeferredCallsQuoteResponse {
+                    target_slot,
+                    max_gas_request,
+                    available,
+                    price,
+                }),
+                Ok(_) => Err(ApiError::InternalServerError(
+                    "unexpected response type".to_string(),
+                )),
+                Err(err) => Err(ApiError::InternalServerError(err.to_string())),
+            })
+            .collect::<Result<Vec<DeferredCallsQuoteResponse>, ApiError>>()?;
+
+        Ok(result)
+    }
+
+    async fn get_deferred_call_info(
+        &self,
+        arg: Vec<String>,
+    ) -> RpcResult<Vec<DeferredCallResponse>> {
+        if arg.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        let requests: Vec<ExecutionQueryRequestItem> = arg
+            .into_iter()
+            .map(|id_str| {
+                DeferredCallId::from_str(&id_str)
+                    .map_err(|e| ApiError::BadRequest(e.to_string()))
+                    .map(ExecutionQueryRequestItem::DeferredCallInfo)
+            })
+            .collect::<Result<_, _>>()?;
+
+        let result: Vec<DeferredCallResponse> = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests })
+            .responses
+            .into_iter()
+            .map(|exec| match exec {
+                Ok(ExecutionQueryResponseItem::DeferredCallInfo(id, call)) => {
+                    Ok(DeferredCallResponse {
+                        call_id: id.to_string(),
+                        call,
+                    })
+                }
+                Ok(_) => Err(ApiError::InternalServerError(
+                    "unexpected response type".to_string(),
+                )),
+                Err(err) => Err(ApiError::InternalServerError(err.to_string())),
+            })
+            .collect::<Result<_, _>>()?;
+
+        Ok(result)
+    }
+
+    async fn get_deferred_call_ids_by_slot(
+        &self,
+        slots: Vec<Slot>,
+    ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
+        if slots.len() as u64 > self.0.api_settings.max_arguments {
+            return Err(ApiError::BadRequest("too many arguments".into()).into());
+        }
+
+        let requests: Vec<ExecutionQueryRequestItem> = slots
+            .into_iter()
+            .map(ExecutionQueryRequestItem::DeferredCallsBySlot)
+            .collect();
+
+        let mut slot_calls = Vec::new();
+
+        for exec in self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests })
+            .responses
+            .into_iter()
+        {
+            match exec {
+                Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, result)) => {
+                    let call_ids = result.into_iter().map(|id| id.to_string()).collect();
+
+                    slot_calls.push(DeferredCallsSlotResponse { slot, call_ids });
+                }
+                Ok(_) => {
+                    return Err(ApiError::InternalServerError(
+                        "unexpected response type".to_string(),
+                    )
+                    .into())
+                }
+                Err(err) => return Err(ApiError::InternalServerError(err.to_string()).into()),
+            }
+        }
+
+        Ok(slot_calls)
     }
 
     /// send operations

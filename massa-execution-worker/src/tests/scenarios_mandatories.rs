@@ -2,6 +2,10 @@
 
 use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
+use massa_deferred_calls::config::DeferredCallsConfig;
+use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
+use massa_deferred_calls::slot_changes::DeferredRegistrySlotChanges;
+use massa_deferred_calls::{DeferredCall, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedDenunciationsConfig};
 use massa_execution_exports::{
     ExecutionConfig, ExecutionQueryRequest, ExecutionQueryRequestItem, ExecutionStackElement,
@@ -10,15 +14,15 @@ use massa_execution_exports::{
 use massa_final_state::test_exports::get_initials;
 use massa_final_state::MockFinalStateController;
 use massa_hash::Hash;
-use massa_ledger_exports::{
-    LedgerEntryUpdate, MockLedgerControllerWrapper, SetOrKeep, SetUpdateOrDelete,
-};
+use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    CHAINID, ENDORSEMENT_COUNT, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+    CHAINID, ENDORSEMENT_COUNT, GENESIS_KEY, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
 };
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::prehash::PreHashMap;
 use massa_models::test_exports::gen_endorsements_for_denunciation;
+use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
     denunciation::Denunciation,
@@ -58,7 +62,9 @@ use std::io::Cursor;
 const TEST_SK_1: &str = "S18r2i8oJJyhF7Kprx98zwxAc3W4szf7RKuVMX6JydZz8zSxHeC";
 const TEST_SK_2: &str = "S1FpYC4ugG9ivZZbLVrTwWtF9diSRiAwwrVX5Gx1ANSRLfouUjq";
 const TEST_SK_3: &str = "S1LgXhWLEgAgCX3nm6y8PVPzpybmsYpi6yg6ZySwu5Z4ERnD7Bu";
+const BLOCK_CREDIT_PART_COUNT: u64 = 3 * (1 + ENDORSEMENT_COUNT as u64);
 
+#[allow(clippy::too_many_arguments)]
 fn final_state_boilerplate(
     mock_final_state: &mut Arc<RwLock<MockFinalStateController>>,
     db: ShareableMassaDBController,
@@ -67,6 +73,7 @@ fn final_state_boilerplate(
     saved_bytecode: Option<Arc<RwLock<Option<Bytecode>>>>,
     custom_async_pool: Option<AsyncPool>,
     custom_pos_state: Option<PoSFinalState>,
+    custom_deferred_call_registry: Option<DeferredCallRegistry>,
 ) {
     mock_final_state
         .write()
@@ -140,6 +147,14 @@ fn final_state_boilerplate(
             },
             db.clone(),
         ));
+
+    let deferred_call_registry = custom_deferred_call_registry
+        .unwrap_or_else(|| DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default()));
+
+    mock_final_state
+        .write()
+        .expect_get_deferred_call_registry()
+        .return_const(deferred_call_registry);
 }
 
 fn expect_finalize_deploy_and_call_blocks(
@@ -207,6 +222,7 @@ fn test_execution_shutdown() {
         None,
         None,
         None,
+        None,
     );
     ExecutionTestUniverse::new(foreign_controllers, ExecutionConfig::default());
 }
@@ -220,6 +236,7 @@ fn test_sending_command() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -268,6 +285,7 @@ fn test_readonly_execution() {
         None,
         None,
         None,
+        None,
     );
     let universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -296,8 +314,8 @@ fn test_readonly_execution() {
     assert_eq!(
         res.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
         &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("60").unwrap()),
-            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            balance: massa_models::types::SetOrKeep::Set(Amount::from_str("60").unwrap()),
+            bytecode: massa_models::types::SetOrKeep::Keep,
             datastore: BTreeMap::new()
         })
     );
@@ -342,8 +360,8 @@ fn test_readonly_execution() {
     assert_eq!(
         res2.out.state_changes.ledger_changes.0.get(&addr).unwrap(),
         &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-            balance: massa_ledger_exports::SetOrKeep::Set(Amount::from_str("50").unwrap()),
-            bytecode: massa_ledger_exports::SetOrKeep::Keep,
+            balance: massa_models::types::SetOrKeep::Set(Amount::from_str("50").unwrap()),
+            bytecode: massa_models::types::SetOrKeep::Keep,
             datastore: BTreeMap::new()
         })
     );
@@ -394,6 +412,7 @@ fn test_nested_call_gas_usage() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -448,6 +467,191 @@ fn test_nested_call_gas_usage() {
     );
 }
 
+/// Test the recursion depth limit in nested calls using call SC operation
+///
+/// We call a smart contract that has a nested function call, while setting the max_recursive_calls_depth to 0.
+/// We expect the execution of the smart contract call to fail with a message that the recursion depth limit was reached.
+#[test]
+fn test_nested_call_recursion_limit_reached() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        max_recursive_calls_depth: 0, // This limit will be reached
+        ..Default::default()
+    };
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/nested_call.wasm"),
+        include_bytes!("./wasm/test.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
+
+    // Call the function test of the smart contract
+    let operation = ExecutionTestUniverse::create_call_sc_operation(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        10000000,
+        Amount::from_str("0").unwrap(),
+        Amount::from_str("0").unwrap(),
+        Address::from_str(&address).unwrap(),
+        String::from("test"),
+        address.as_bytes().to_vec(),
+    )
+    .unwrap();
+    universe.call_sc_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        operation,
+    );
+    finalized_waitpoint.wait();
+
+    // Get the events of the smart contract execution. We expect the call to have failed, so we check for the error message.
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    assert!(events.len() >= 2);
+    //println!("events: {:?}", events);
+    assert!(events[1].data.contains("recursion depth limit reached"));
+}
+
+/// Test the recursion depth limit in nested calls using call SC operation
+///
+/// We call a smart contract that has a nested function call, while setting the max_recursive_calls_depth to 2.
+/// We expect the execution of the smart contract call to succeed as the recursion depth limit was not reached.
+#[test]
+fn test_nested_call_recursion_limit_not_reached() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig {
+        max_recursive_calls_depth: 2, // This limit will not be reached
+        ..Default::default()
+    };
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 0),
+        Some(Slot::new(1, 1)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/nested_call.wasm"),
+        include_bytes!("./wasm/test.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let address = universe.get_address_sc_deployed(Slot::new(1, 0));
+
+    // Call the function test of the smart contract
+    let operation = ExecutionTestUniverse::create_call_sc_operation(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        10000000,
+        Amount::from_str("0").unwrap(),
+        Amount::from_str("0").unwrap(),
+        Address::from_str(&address).unwrap(),
+        String::from("test"),
+        address.as_bytes().to_vec(),
+    )
+    .unwrap();
+    universe.call_sc_block(
+        &KeyPair::from_str(TEST_SK_2).unwrap(),
+        Slot::new(1, 1),
+        operation,
+    );
+    finalized_waitpoint.wait();
+
+    // Get the events. We expect the call to have succeeded, so we check for the length of the events.
+    // The smart contract emits 4 events in total, (to check gas usage), so we expect at least 4 events,
+    // and none of them should contain the error message.
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    assert!(events.len() >= 4);
+    for event in events.iter() {
+        assert!(!event.data.contains("recursion depth limit reached"));
+    }
+}
+
 /// Test the ABI get call coins
 ///
 /// Deploy an SC with a method `test` that generate an event saying how many coins he received
@@ -490,6 +694,7 @@ fn test_get_call_coins() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -662,7 +867,7 @@ fn send_and_receive_async_message() {
             println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
-                &massa_ledger_exports::SetUpdateOrDelete::Set(message_cloned.clone())
+                &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
             );
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().0,
@@ -711,7 +916,7 @@ fn send_and_receive_async_message() {
             },
             0,
         ),
-        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+        massa_models::types::SetUpdateOrDelete::Set(message),
     );
     let mut db_batch = DBBatch::default();
     async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
@@ -726,6 +931,7 @@ fn send_and_receive_async_message() {
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         Some(async_pool),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -743,7 +949,7 @@ fn send_and_receive_async_message() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
 
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
@@ -756,6 +962,276 @@ fn send_and_receive_async_message() {
     // match the events
     assert!(events.len() == 1, "One event was expected");
     assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
+}
+
+#[test]
+fn send_and_receive_async_message_expired() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            //println!("changes S (1 0): {:?}", changes);
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message_expired.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("validity end is earlier than the validity start"));
+}
+
+#[test]
+fn send_and_receive_async_message_expired_2() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message_expired_2.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("validity end is earlier than the current slot"));
+}
+
+#[test]
+fn send_and_receive_async_message_without_init_gas() {
+    let mut exec_cfg = ExecutionConfig::default();
+    exec_cfg.gas_costs.max_instance_cost = 4000000;
+
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_1).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(
+                changes.async_pool_changes,
+                AsyncPoolChanges(BTreeMap::new())
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    println!("waiting for finalized");
+    finalized_waitpoint.wait();
+
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 0)),
+            end: Some(Slot::new(1, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert!(events[0]
+        .data
+        .contains("max gas is lower than the minimum instance cost"));
 }
 
 #[test]
@@ -775,6 +1251,7 @@ fn cancel_async_message() {
                     ))
                 });
         });
+
     let saved_bytecode = Arc::new(RwLock::new(None));
     let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
@@ -819,10 +1296,8 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(
-                        Amount::from_str("100.670399899").unwrap()
-                    ),
-                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    balance: SetOrKeep::Set(Amount::from_str("90.298635211").unwrap()),
+                    bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
             );
@@ -871,7 +1346,7 @@ fn cancel_async_message() {
             },
             0,
         ),
-        massa_ledger_exports::SetUpdateOrDelete::Set(message),
+        massa_models::types::SetUpdateOrDelete::Set(message),
     );
     let mut db_batch = DBBatch::default();
     async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
@@ -886,6 +1361,7 @@ fn cancel_async_message() {
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
         Some(async_pool),
+        None,
         None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -903,7 +1379,7 @@ fn cancel_async_message() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
 
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 
     // Sleep to wait (1,1) candidate slot to be executed. We don't have a mock to waitpoint on or empty block
@@ -917,6 +1393,872 @@ fn cancel_async_message() {
             ..Default::default()
         });
     assert!(events[0].data.contains(" is not a smart contract address"));
+}
+
+#[test]
+fn deferred_calls() {
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    let destination = match *CHAINID {
+        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77658366 => {
+            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+        }
+        77658377 => {
+            Address::from_str("AS127QtY6Hzm6BnJc9wqCBfPNvEH9fKer3LiMNNQmcX3MzLwCL6G6").unwrap()
+        }
+        _ => panic!("CHAINID not supported"),
+    };
+
+    let target_slot = Slot {
+        period: 1,
+        thread: 1,
+    };
+
+    let call = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot,
+        target_address: destination,
+        target_function: "receive".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 2_300_000,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call2 = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot: Slot {
+            period: 8,
+            thread: 1,
+        },
+        target_address: destination,
+        target_function: "tata".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 700_000,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call_id =
+        DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            {
+                let mut saved_bytecode = saved_bytecode_edit.write();
+                *saved_bytecode = Some(changes.ledger_changes.get_bytecode_updates()[0].clone());
+            }
+
+            println!("changes: {:?}", changes.deferred_call_changes.slots_change);
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes.ledger_changes.0.get(&destination).unwrap() {
+                // sc has received the coins (0.0000001)
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("100.0000001").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            let (_slot, slot_change) = changes
+                .deferred_call_changes
+                .slots_change
+                .first_key_value()
+                .unwrap();
+
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+            // call was executed and then deleted
+            assert_eq!(set_delete, &SetOrDelete::Delete);
+
+            // // total gas was set to 700_000 (call2.max_gas)
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(700_000)
+            );
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Set(call.max_gas),
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+    defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let call_id2 = DeferredCallId::new(
+        0,
+        Slot {
+            period: 8,
+            thread: 1,
+        },
+        0,
+        "trail_hash".to_string().as_bytes(),
+    )
+    .unwrap();
+
+    let mut defer_reg_slot_changes2 = defer_reg_slot_changes.clone();
+    defer_reg_slot_changes2.set_effective_slot_gas(call2.max_gas);
+    defer_reg_slot_changes2.set_call(call_id2, call2.clone());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(target_slot, defer_reg_slot_changes);
+
+    slot_changes.insert(
+        Slot {
+            period: 8,
+            thread: 1,
+        },
+        defer_reg_slot_changes2,
+    );
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredCallRegistryChanges {
+            slots_change: slot_changes,
+            effective_total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
+            total_calls_registered: SetOrKeep::Set(2),
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(registry),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+    finalized_waitpoint.wait();
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    assert_eq!(events[0].data, "message correctly received: 42,42,42,42");
+}
+
+#[test]
+fn deferred_call_register() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let keypair = KeyPair::from_str(TEST_SK_1).unwrap();
+    let keypair2 = KeyPair::from_str(TEST_SK_3).unwrap();
+    let saved_bytecode = Arc::new(RwLock::new(None));
+
+    let db_lock = foreign_controllers.db.clone();
+
+    let sender_addr =
+        Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
+
+    let sender_addr_clone = sender_addr;
+
+    dbg!(Address::from_public_key(&keypair2.get_public_key()).to_string());
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+        });
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            // assert sender was debited ( -10 coins) and -5.2866 for fees
+            match changes.ledger_changes.0.get(&sender_addr_clone).unwrap() {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("75.361635312").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            };
+
+            {
+                // manually write the deferred call to the db
+                // then in the next slot (1,1) we will find and execute it
+                let reg =
+                    DeferredCallRegistry::new(db_lock.clone(), DeferredCallsConfig::default());
+                let mut batch = DBBatch::default();
+                reg.apply_changes_to_batch(changes.deferred_call_changes.clone(), &mut batch);
+                db_lock
+                    .write()
+                    .write_batch(batch, DBBatch::default(), Some(Slot::new(1, 0)));
+            }
+
+            let slot_changes = changes
+                .deferred_call_changes
+                .slots_change
+                .get(&Slot::new(1, 1))
+                .unwrap();
+            let _call = slot_changes.calls.first_key_value().unwrap().1;
+
+            // assert total gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(1050000)
+            );
+
+            //gas was set to 1050000 = (750_000 + 300_000) = (allocated gas + call gas)
+            assert_eq!(slot_changes.get_effective_slot_gas().unwrap(), 1050000);
+
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes
+                .ledger_changes
+                .0
+                .get(
+                    &Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+                        .unwrap(),
+                )
+                .unwrap()
+            {
+                SetUpdateOrDelete::Update(change_sc_update) => {
+                    assert_eq!(
+                        change_sc_update.balance,
+                        SetOrKeep::Set(Amount::from_str("110.1111").unwrap())
+                    );
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 2);
+            let (_slot, slot_change) = changes
+                .deferred_call_changes
+                .slots_change
+                .first_key_value()
+                .unwrap();
+
+            let (_id, set_delete) = slot_change.calls.first_key_value().unwrap();
+
+            // call was executed and then deleted
+            assert_eq!(set_delete, &SetOrDelete::Delete);
+
+            // assert total gas was set to 0
+            assert_eq!(
+                changes.deferred_call_changes.effective_total_gas,
+                SetOrKeep::Set(0)
+            );
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Keep,
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_base_fee(Amount::from_str("0.000005").unwrap());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(
+        Slot {
+            period: 1,
+            thread: 1,
+        },
+        defer_reg_slot_changes,
+    );
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredCallRegistryChanges {
+            slots_change: slot_changes,
+            effective_total_gas: SetOrKeep::Keep,
+            total_calls_registered: SetOrKeep::Set(0),
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(DeferredCallRegistry::new(
+            foreign_controllers.db.clone(),
+            DeferredCallsConfig::default(),
+        )),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    // abi call to register a deferred call
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 0),
+        include_bytes!("./wasm/deferred_call_register.wasm"),
+        //unused
+        include_bytes!("./wasm/use_builtins.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+
+    assert_eq!(events[0].data, "Deferred call registered");
+
+    // call id in the register event
+    let callid_event: String = events[1].data.clone();
+
+    let _call_id = DeferredCallId::from_str(&callid_event).unwrap();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+    // match the events
+    finalized_waitpoint.wait();
+}
+
+#[test]
+fn deferred_call_register_fail() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    let target_slot = Slot {
+        period: 1,
+        thread: 10,
+    };
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(changes.deferred_call_changes.slots_change.len(), 1);
+            // deferred call was not register
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let call = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot,
+        target_address: Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV")
+            .unwrap(),
+        target_function: "toto".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 500,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call_id =
+        DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Set(500),
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(target_slot, defer_reg_slot_changes);
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredCallRegistryChanges {
+            slots_change: slot_changes,
+            effective_total_gas: SetOrKeep::Set(2000),
+            total_calls_registered: SetOrKeep::Set(1),
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(registry),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+
+    finalized_waitpoint.wait();
+
+    // abi call to register a deferred call
+    // the call want to book max_async_gas 1_000_000_000 so it fail because we already have a call at this slot with 500 gas
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 1),
+        include_bytes!("./wasm/deferred_call_register_fail.wasm"),
+        //unused
+        include_bytes!("./wasm/use_builtins.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+
+    let ev = events[1].clone();
+    assert!(ev.context.is_error);
+    assert!(ev.data.contains("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas"));
+
+    // // update base fee at slot 1,10
+    // defer_reg_slot_changes.set_base_fee(Amount::from_str("0.0005").unwrap());
+
+    // slot_changes.insert(target_slot, defer_reg_slot_changes);
+
+    // let mut db_batch = DBBatch::default();
+
+    // // reset total slot gas
+    // registry.apply_changes_to_batch(
+    //     DeferredRegistryChanges {
+    //         slots_change: slot_changes,
+    //         total_gas: SetOrKeep::Set(0),
+    //     },
+    //     &mut db_batch,
+    // );
+
+    // foreign_controllers
+    //     .db
+    //     .write()
+    //     .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 1)));
+
+    // universe.deploy_bytecode_block(
+    //     &keypair,
+    //     Slot::new(1, 2),
+    //     include_bytes!("./wasm/deferred_call_register_fail.wasm"),
+    //     //unused
+    //     include_bytes!("./wasm/use_builtins.wasm"),
+    // );
+
+    // let events = universe
+    //     .module_controller
+    //     .get_filtered_sc_output_event(EventFilter {
+    //         start: Some(Slot::new(1, 1)),
+    //         end: Some(Slot::new(20, 1)),
+    //         ..Default::default()
+    //     });
+
+    // dbg!(&events);
+
+    // let ev = events[1].clone();
+}
+
+#[test]
+fn deferred_call_exists() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    let target_slot = Slot {
+        period: 10,
+        thread: 1,
+    };
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(1)
+                .returning(move |_| true);
+        });
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 1),
+        Some(Slot::new(1, 2)),
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let call = DeferredCall {
+        sender_address: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi")
+            .unwrap(),
+        target_slot,
+        target_address: Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV")
+            .unwrap(),
+        target_function: "toto".to_string(),
+        parameters: vec![42, 42, 42, 42],
+        coins: Amount::from_raw(100),
+        max_gas: 1000000,
+        fee: Amount::from_raw(1),
+        cancelled: false,
+    };
+
+    let call_id =
+        DeferredCallId::new(0, target_slot, 0, "trail_hash".to_string().as_bytes()).unwrap();
+    let registry = DeferredCallRegistry::new(
+        foreign_controllers.db.clone(),
+        DeferredCallsConfig::default(),
+    );
+
+    let mut defer_reg_slot_changes = DeferredRegistrySlotChanges {
+        calls: BTreeMap::new(),
+        effective_slot_gas: massa_deferred_calls::DeferredRegistryGasChange::Set(500),
+        base_fee: massa_deferred_calls::DeferredRegistryBaseFeeChange::Keep,
+    };
+
+    defer_reg_slot_changes.set_call(call_id.clone(), call.clone());
+
+    let mut slot_changes = BTreeMap::default();
+    slot_changes.insert(target_slot, defer_reg_slot_changes);
+
+    let mut db_batch = DBBatch::default();
+
+    registry.apply_changes_to_batch(
+        DeferredCallRegistryChanges {
+            slots_change: slot_changes,
+            effective_total_gas: SetOrKeep::Set(2000),
+            total_calls_registered: SetOrKeep::Set(1),
+        },
+        &mut db_batch,
+    );
+
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        Some(registry),
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+
+    finalized_waitpoint.wait();
+
+    // block 1,1
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 1),
+        include_bytes!("./wasm/deferred_call_exists.wasm"),
+        include_bytes!("./wasm/deferred_call_exists.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let address_sc = universe.get_address_sc_deployed(Slot::new(1, 1));
+
+    // block 1,2
+    let operation = ExecutionTestUniverse::create_call_sc_operation(
+        &KeyPair::from_str(TEST_SK_3).unwrap(),
+        10000000,
+        Amount::from_str("0.01").unwrap(),
+        Amount::from_str("20").unwrap(),
+        Address::from_str(&address_sc).unwrap(),
+        String::from("exists"),
+        call_id.to_string().as_bytes().to_vec(),
+    )
+    .unwrap();
+
+    universe.call_sc_block(
+        &KeyPair::from_str(TEST_SK_3).unwrap(),
+        Slot {
+            period: 1,
+            thread: 2,
+        },
+        operation,
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            emitter_address: Some(Address::from_str(&address_sc).unwrap()),
+            ..Default::default()
+        });
+
+    assert_eq!(events[1].data, "true");
+}
+
+#[test]
+fn deferred_call_quote() {
+    // setup the period duration
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+
+    let saved_bytecode = expect_finalize_deploy_and_call_blocks(
+        Slot::new(1, 1),
+        None,
+        finalized_waitpoint.get_trigger_handle(),
+        &mut foreign_controllers.final_state,
+    );
+
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert!(changes.deferred_call_changes.effective_total_gas == SetOrKeep::Keep);
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        None,
+        None,
+        None,
+    );
+
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+
+    finalized_waitpoint.wait();
+
+    // block 1,1
+    universe.deploy_bytecode_block(
+        &keypair,
+        Slot::new(1, 1),
+        include_bytes!("./wasm/deferred_call_quote.wasm"),
+        include_bytes!("./wasm/deferred_call_quote.wasm"),
+    );
+    finalized_waitpoint.wait();
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter::default());
+
+    assert_eq!(events[0].data, "136600000");
 }
 
 /// Context
@@ -954,6 +2296,7 @@ fn local_execution() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1010,11 +2353,11 @@ fn local_execution() {
 /// Functional test for sc deployment utility functions, `functionExists` and `callerHasWriteAccess`
 ///
 /// 1. a block is created with one ExecuteSC operation containing
-///    a deployment sc as bytecode to execute and a deployed sc as an op datatsore entry
+///    a deployment sc as bytecode to execute and a deployed sc as an op datastore entry
 /// 2. store and set the block as final
 /// 3. wait for execution
 /// 4. retrieve events emitted by the initial an sub functions
-/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behaviour
+/// 5. match events to make sure that `functionExists` and `callerHasWriteAccess` had the expected behavior
 #[test]
 fn sc_deployment() {
     // setup the period duration
@@ -1034,6 +2377,7 @@ fn sc_deployment() {
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
         Some(saved_bytecode),
+        None,
         None,
         None,
     );
@@ -1120,6 +2464,7 @@ fn send_and_receive_async_message_with_trigger() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
     // load bytecode
@@ -1155,7 +2500,7 @@ fn send_and_receive_async_message_with_trigger() {
         vec![],
     );
     universe.storage.store_block(block.clone());
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
     // retrieve events emitted by smart contracts
     let events = universe
@@ -1221,16 +2566,50 @@ fn send_and_receive_transaction() {
     // setup the period duration
     let exec_cfg = ExecutionConfig::default();
     let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    // Set various addresses to test the execution's behavior
+    let existing_user_recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let non_existing_user_recipient_address =
+        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+    let existing_sc_recipient_address =
+        Address::from_str("AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu").unwrap();
+    let non_existing_sc_recipient_address =
+        Address::from_str("AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR").unwrap();
+    let non_existing_recipient_addresses = [
+        non_existing_user_recipient_address,
+        non_existing_sc_recipient_address,
+    ];
+    let recipient_addresses = vec![
+        existing_user_recipient_address,
+        existing_sc_recipient_address,
+        non_existing_user_recipient_address,
+        non_existing_sc_recipient_address,
+    ];
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |address| {
+                    if non_existing_recipient_addresses.contains(address) {
+                        None
+                    } else {
+                        Some(Amount::from_str("100").unwrap())
+                    }
+                });
+        });
     let finalized_waitpoint = WaitPoint::new();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
-    let recipient_address =
-        Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
+
     selector_boilerplate(&mut foreign_controllers.selector_controller);
     final_state_boilerplate(
         &mut foreign_controllers.final_state,
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1242,14 +2621,54 @@ fn send_and_receive_transaction() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            // 190 because 100 in the get_balance in the `final_state_boilerplate` and 90 from the transfer.
+            // 110 because 100 in the get_balance in the `final_state_boilerplate` and 10 from the transfer.
             assert_eq!(
                 changes
                     .ledger_changes
-                    .get_balance_or_else(&recipient_address, || None),
-                Some(Amount::from_str("190").unwrap())
+                    .get_balance_or_else(&existing_user_recipient_address, || None),
+                Some(Amount::from_str("110").unwrap())
             );
-            // 1.02 for the block rewards
+            // 9.999 because -0.001 for address creation and 10 from the transfer.
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&non_existing_user_recipient_address, || None),
+                Some(Amount::from_str("9.999").unwrap())
+            );
+            // 110 because 100 in the get_balance in the `final_state_boilerplate` and 10 from the transfer.
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&existing_sc_recipient_address, || None),
+                Some(Amount::from_str("110").unwrap())
+            );
+            // Cannot transfer coins to a non-existing smart contract
+            assert_eq!(
+                changes
+                    .ledger_changes
+                    .get_balance_or_else(&non_existing_sc_recipient_address, || None),
+                None
+            );
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("20").unwrap()); // add 20 MAS for fees
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
+            // 100 initial balance, + block rewards - transferred amount (3*10) - fees (4*5)
+            let sender_expected_balance = Amount::from_str("100")
+                .unwrap()
+                .saturating_add(rewards_for_block_creator)
+                .saturating_sub(Amount::from_str("30").unwrap())
+                .saturating_sub(Amount::from_str("20").unwrap());
+
             assert_eq!(
                 changes.ledger_changes.get_balance_or_else(
                     &Address::from_public_key(
@@ -1257,42 +2676,56 @@ fn send_and_receive_transaction() {
                     ),
                     || None
                 ),
-                Some(
-                    exec_cfg
-                        .block_reward
-                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
-                )
+                Some(sender_expected_balance)
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
-    // create the operation
-    let operation = Operation::new_verifiable(
-        Operation {
-            fee: Amount::from_str("10").unwrap(),
-            expire_period: 10,
-            op: OperationType::Transaction {
-                recipient_address,
-                amount: Amount::from_str("90").unwrap(),
+    // create the operations
+    let mut operation_vec = Vec::new();
+    for recipient_address in recipient_addresses {
+        let operation = Operation::new_verifiable(
+            Operation {
+                fee: Amount::from_str("5").unwrap(),
+                expire_period: 10,
+                op: OperationType::Transaction {
+                    recipient_address,
+                    amount: Amount::from_str("10").unwrap(),
+                },
             },
-        },
-        OperationSerializer::new(),
-        &KeyPair::from_str(TEST_SK_1).unwrap(),
-        *CHAINID,
-    )
-    .unwrap();
+            OperationSerializer::new(),
+            &KeyPair::from_str(TEST_SK_1).unwrap(),
+            *CHAINID,
+        )
+        .unwrap();
+        operation_vec.push(operation.clone());
+    }
+
     // create the block containing the transaction operation
-    universe.storage.store_operations(vec![operation.clone()]);
+    universe.storage.store_operations(operation_vec.clone());
     let block = ExecutionTestUniverse::create_block(
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
-        vec![operation],
+        operation_vec,
         vec![],
         vec![],
     );
     // store the block in storage
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
+
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            is_error: Some(true),
+            ..Default::default()
+        });
+    // match the events
+    println!("{:?}", events);
+    assert!(events.len() == 1, "1 event was expected");
+    assert!(events[0]
+        .data
+        .contains("cannot transfer coins to non-existing smart contract address"));
 }
 
 #[test]
@@ -1313,6 +2746,7 @@ fn roll_buy() {
         None,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -1326,12 +2760,22 @@ fn roll_buy() {
             assert_eq!(changes.pos_changes.roll_changes.get(&address), Some(&101));
 
             // address has 100 coins before buying roll
-            // -> (100 (balance) - 100 (roll price)) + 1.02 (block reward)
+            // -> (100 (balance) - 100 (roll price)) + 1.02 / 17 * 3 (block reward)
+            let total_rewards = exec_cfg.block_reward;
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 changes.ledger_changes.0.get(&address).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: massa_ledger_exports::SetOrKeep::Set(exec_cfg.block_reward),
-                    bytecode: massa_ledger_exports::SetOrKeep::Keep,
+                    balance: SetOrKeep::Set(rewards_for_block_creator),
+                    bytecode: SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
             );
@@ -1361,7 +2805,7 @@ fn roll_buy() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1413,6 +2857,7 @@ fn roll_sell() {
         None,
         None,
         Some(pos_final_state),
+        None,
     );
     foreign_controllers
         .final_state
@@ -1425,6 +2870,17 @@ fn roll_sell() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
+            // block rewards computation
+            let total_rewards = exec_cfg.block_reward;
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 amount,
                 // 100 from the boilerplate
@@ -1433,7 +2889,7 @@ fn roll_sell() {
                     // + deferred credits set above
                     .saturating_add(initial_deferred_credits)
                     // + block rewards
-                    .saturating_add(exec_cfg.block_reward)
+                    .saturating_add(rewards_for_block_creator)
             );
             let deferred_credits = changes
                 .pos_changes
@@ -1490,7 +2946,7 @@ fn roll_sell() {
         vec![],
     );
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1572,6 +3028,7 @@ fn auto_sell_on_missed_blocks() {
         None,
         None,
         Some(pos_final_state.clone()),
+        None,
     );
 
     foreign_controllers
@@ -1606,10 +3063,10 @@ fn auto_sell_on_missed_blocks() {
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 0), vec![], vec![], vec![]);
     // set our block as a final block so the purchase is processed
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     let block =
         ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -1671,13 +3128,25 @@ fn roll_slash() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
-            // 100 base + reward of the 3 slash (50%) + block reward
+
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("150").unwrap()); //reward of the 3 slash (50%)
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 balance,
                 Amount::from_mantissa_scale(100, 0)
                     .unwrap()
-                    .saturating_add(exec_cfg.block_reward)
-                    .saturating_add(Amount::from_mantissa_scale(150, 0).unwrap())
+                    .saturating_add(rewards_for_block_creator)
             );
             waitpoint_trigger_handle.trigger()
         });
@@ -1686,6 +3155,7 @@ fn roll_slash() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1727,7 +3197,7 @@ fn roll_slash() {
         vec![],
         vec![denunciation, denunciation_2],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     waitpoint.wait();
 }
 
@@ -1789,13 +3259,24 @@ fn roll_slash_2() {
                 .ledger_changes
                 .get_balance_or_else(&address, || None)
                 .unwrap();
-            // 100 base + reward of the 4 slash (50%) + block reward
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("200").unwrap()); //reward of the 4 slash (50%)
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 balance,
                 Amount::from_mantissa_scale(100, 0)
                     .unwrap()
-                    .saturating_add(exec_cfg.block_reward)
-                    .saturating_add(Amount::from_mantissa_scale(200, 0).unwrap())
+                    .saturating_add(rewards_for_block_creator)
             );
             waitpoint_trigger_handle.trigger()
         });
@@ -1804,6 +3285,7 @@ fn roll_slash_2() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -1845,7 +3327,7 @@ fn roll_slash_2() {
         vec![],
         vec![denunciation, denunciation_2],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     waitpoint.wait();
 }
 
@@ -1870,6 +3352,7 @@ fn sc_execution_error() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecode
@@ -1887,7 +3370,7 @@ fn sc_execution_error() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -1928,6 +3411,7 @@ fn sc_datastore() {
         Some(saved_bytecode),
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecode
@@ -1946,7 +3430,7 @@ fn sc_datastore() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -1982,6 +3466,7 @@ fn set_bytecode_error() {
         Some(saved_bytecode),
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
     // load bytecodes
@@ -2002,7 +3487,7 @@ fn set_bytecode_error() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // retrieve the event emitted by the execution error
     let events = universe
@@ -2061,6 +3546,7 @@ fn datastore_manipulations() {
         None,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -2080,15 +3566,26 @@ fn datastore_manipulations() {
                 .ledger_changes
                 .get_balance_or_else(&addr, || None)
                 .unwrap();
+            // block rewards computation
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("10").unwrap()); // 10 MAS for fees
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 amount,
                 // Base from the boilerplate
                 Amount::from_str("100")
                     .unwrap()
                     .saturating_sub(Amount::const_init(10, 0))
-                    .saturating_add(exec_cfg.block_reward)
-                    // Gas fee
-                    .saturating_add(Amount::from_str("10").unwrap())
+                    .saturating_add(rewards_for_block_creator)
                     // Storage cost base
                     .saturating_sub(
                         exec_cfg
@@ -2134,7 +3631,7 @@ fn datastore_manipulations() {
         vec![],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 
     let events = universe
@@ -2240,6 +3737,7 @@ fn events_from_switching_blockclique() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -2291,6 +3789,7 @@ fn not_enough_instance_gas() {
         None,
         None,
         None,
+        None,
     );
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
 
@@ -2324,7 +3823,7 @@ fn not_enough_instance_gas() {
     );
     // store the block in storage
     universe.storage.store_block(block.clone());
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
     // assert events
     let events = universe
@@ -2354,6 +3853,7 @@ fn sc_builtins() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2401,6 +3901,7 @@ fn validate_address() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2455,6 +3956,7 @@ fn test_rewards() {
         None,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -2463,19 +3965,29 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            let block_credit_part = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(2);
-            let first_block_reward = exec_cfg.block_reward.saturating_sub(block_credit_part);
+            let block_credits = exec_cfg.block_reward;
+            let block_credit_part = block_credits
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: block_credits checked_rem factor is 0");
+
+            let first_block_reward_for_block_creator = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder) // base reward
+                .saturating_add(block_credit_part.saturating_mul_u64(2)); // 2 endorsements included
+            let first_block_reward_for_endorsement_producer_address =
+                block_credit_part.saturating_mul_u64(2); // produced 2 endorsements that were included in the block
+
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    first_block_reward.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                    first_block_reward_for_block_creator
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
 
@@ -2485,7 +3997,8 @@ fn test_rewards() {
                     .get_balance_or_else(&endorsement_producer_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    block_credit_part.saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
+                    first_block_reward_for_endorsement_producer_address
+                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
             finalized_waitpoint_trigger_handle.trigger();
@@ -2498,27 +4011,28 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            let block_credit_part_parent_in_thread = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
-            let block_credit_part_endorsement_producer = exec_cfg
-                .block_reward
-                .checked_div_u64(3 * (1 + (ENDORSEMENT_COUNT as u64)))
-                .expect("critical: block_credits checked_div factor is 0")
-                .saturating_mul_u64(ENDORSEMENT_COUNT as u64);
-            let creator_block_reward = exec_cfg
-                .block_reward
-                .saturating_sub(block_credit_part_endorsement_producer)
-                .saturating_sub(block_credit_part_parent_in_thread);
+            let block_credits = exec_cfg.block_reward;
+            let block_credit_part = block_credits
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: block_credits checked_div factor is 0");
+            let remainder = block_credits
+                .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: block_credits checked_rem factor is 0");
+
+            let second_block_reward_for_block_creator = block_credit_part
+                .saturating_mul_u64(3)
+                .saturating_add(remainder) // base reward
+                .saturating_add(block_credit_part.saturating_mul_u64(ENDORSEMENT_COUNT as u64)); // ENDORSEMENT_COUNT endorsements included
+            let second_block_reward_for_endorsement_producer_address =
+                block_credit_part.saturating_mul_u64(ENDORSEMENT_COUNT as u64); // produced ENDORSEMENT_COUNT endorsements that were included in the block
+
             assert_eq!(
                 changes
                     .ledger_changes
                     .get_balance_or_else(&keypair2_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    creator_block_reward
+                    second_block_reward_for_block_creator
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
@@ -2529,21 +4043,11 @@ fn test_rewards() {
                     .get_balance_or_else(&endorsement_producer_address, || None),
                 // Reward + 100 base from boilerplate
                 Some(
-                    block_credit_part_endorsement_producer
+                    second_block_reward_for_endorsement_producer_address
                         .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
                 )
             );
 
-            assert_eq!(
-                changes
-                    .ledger_changes
-                    .get_balance_or_else(&keypair_address, || None),
-                // Reward + 100 base from boilerplate
-                Some(
-                    block_credit_part_parent_in_thread
-                        .saturating_add(Amount::from_mantissa_scale(100, 0).unwrap())
-                )
-            );
             finalized_waitpoint_trigger_handle_2.trigger();
         });
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
@@ -2556,11 +4060,6 @@ fn test_rewards() {
                 &endorsement_producer,
                 Slot::new(1, 0),
             ));
-        } else {
-            endorsements.push(ExecutionTestUniverse::create_endorsement(
-                &keypair,
-                Slot::new(1, 0),
-            ));
         }
     }
     let block = ExecutionTestUniverse::create_block(
@@ -2570,7 +4069,7 @@ fn test_rewards() {
         endorsements,
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, Some(GENESIS_KEY.clone()));
     finalized_waitpoint.wait();
 
     // Second block
@@ -2584,7 +4083,7 @@ fn test_rewards() {
         ],
         vec![],
     );
-    universe.send_and_finalize(&keypair, block);
+    universe.send_and_finalize(&keypair, block, None);
     finalized_waitpoint.wait();
 }
 
@@ -2607,6 +4106,7 @@ fn chain_id() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2654,6 +4154,7 @@ fn execution_trace() {
         None,
         None,
         None,
+        None,
     );
 
     let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg);
@@ -2696,7 +4197,7 @@ fn execution_trace() {
         .collect();
 
     assert_eq!(traces_1.len(), 1); // Only one op
-    assert_eq!(traces_1.first().unwrap().1.len(), 1); // Only one generate_event
+    assert_eq!(traces_1.first().unwrap().1.len(), 2);
     assert_eq!(
         traces_1.first().unwrap().1.first().unwrap().name,
         abi_name_1
@@ -2739,7 +4240,7 @@ fn execution_trace() {
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
                 value: SCRuntimeAbiTraceType::String(
-                    "AU12E6N5BFAdC2wyiBV6VJjqkWhpz1kLVp2XpbRdSnL1mKjCWT6oR".to_string()
+                    "AU12o4xrpyL6mobLpuoJevPRbHXnJJRUJC5FyDwjQdhuxcPoTwz3h".to_string()
                 ),
             },
             SCRuntimeAbiTraceValue {
@@ -2773,6 +4274,7 @@ fn execution_trace_nested() {
         foreign_controllers.db.clone(),
         &foreign_controllers.selector_controller,
         &mut foreign_controllers.ledger_controller,
+        None,
         None,
         None,
         None,
@@ -2846,15 +4348,22 @@ fn execution_trace_nested() {
         .cloned()
         .collect();
 
-    // println!("params: {:?}", sub_call.first().unwrap().parameters);
+    println!("params: {:?}", sub_call.first().unwrap().parameters);
+
+    let from_addr = match *CHAINID {
+        77 => "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string(),
+        77658377 => "AS1Bc3kZ6LhPLJvXV4vcVJLFRExRFbkPWD7rCg9aAdQ1NGzRwgnu".to_string(),
+        _ => {
+            panic!("Invalid chain id for this test");
+        }
+    };
+
     assert_eq!(
         sub_call.first().unwrap().parameters,
         vec![
             SCRuntimeAbiTraceValue {
                 name: "from_address".to_string(),
-                value: SCRuntimeAbiTraceType::String(
-                    "AS1aEhosr1ebJJZ7cEMpSVKbY6xp1p4DdXabGb8fdkKKJ6WphGnR".to_string()
-                )
+                value: SCRuntimeAbiTraceType::String(from_addr)
             },
             SCRuntimeAbiTraceValue {
                 name: "to_address".to_string(),
@@ -2891,6 +4400,7 @@ fn test_dump_block() {
         None,
         None,
         None,
+        None,
     );
     foreign_controllers
         .final_state
@@ -2907,6 +4417,18 @@ fn test_dump_block() {
                 Some(Amount::from_str("190").unwrap())
             );
             // 1.02 for the block rewards
+            let total_rewards = exec_cfg
+                .block_reward
+                .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
+            let rewards_for_block_creator = total_rewards
+                .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
+                .expect("critical: total_rewards checked_div factor is 0")
+                .saturating_mul_u64(3)
+                .saturating_add(
+                    total_rewards
+                        .checked_rem_u64(BLOCK_CREDIT_PART_COUNT)
+                        .expect("critical: total_rewards checked_rem factor is 0"),
+                );
             assert_eq!(
                 changes.ledger_changes.get_balance_or_else(
                     &Address::from_public_key(
@@ -2914,11 +4436,7 @@ fn test_dump_block() {
                     ),
                     || None
                 ),
-                Some(
-                    exec_cfg
-                        .block_reward
-                        .saturating_add(Amount::from_str("10").unwrap()) // add 10 fee
-                )
+                Some(rewards_for_block_creator)
             );
             finalized_waitpoint_trigger_handle.trigger();
         });
@@ -2949,13 +4467,13 @@ fn test_dump_block() {
         vec![],
     );
     // store the block in storage
-    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block);
+    universe.send_and_finalize(&KeyPair::from_str(TEST_SK_1).unwrap(), block, None);
     finalized_waitpoint.wait();
 
     std::thread::sleep(Duration::from_secs(1));
 
     // if the the storage backend for the dump-block feature is a rocksdb, this
-    // is mandatory (the db must be closed before we can reopen it to ckeck the
+    // is mandatory (the db must be closed before we can reopen it to check the
     // data)
     drop(universe);
 

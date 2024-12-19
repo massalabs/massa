@@ -1006,7 +1006,7 @@ pub(crate) fn query_state(
     }
 
     if queries.len() as u32 > grpc.grpc_config.max_query_items_per_request {
-        return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_operation_ids_per_request)));
+        return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_query_items_per_request)));
     }
 
     let response = grpc

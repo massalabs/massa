@@ -625,7 +625,7 @@ fn test_fts_multiple_max_cliques_2() {
             register_block(&consensus_controller, block_1_3.clone(), storage.clone());
 
             // Period 2.
-            // Thread incompatibilies with every blocks of period 1
+            // Thread incompatibilities with every block of period 1
             let block_2_0 = create_block(
                 Slot::new(2, 0),
                 vec![genesis[0], genesis[1], genesis[2], genesis[3]],

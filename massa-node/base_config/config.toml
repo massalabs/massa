@@ -221,6 +221,14 @@
     broadcast_slot_execution_traces_channel_capacity = 5000
     # Max slots execution traces to keep in cache
     execution_traces_limit = 320
+    # path to the event cache storage
+    event_cache_path = "storage/event_cache/rocks_db"
+    # maximum number of entries we want to keep in the Event cache (~ 10 Gb)
+    event_cache_size = 20071520
+    # amount of entries removed when `event_cache_size` is reached
+    event_snip_amount = 10
+    # maximum number of events return by a query
+    max_event_per_query = 7000
 
 [ledger]
     # path to the initial ledger
@@ -273,7 +281,7 @@
     message_timeout = 5000
     # timeout after which a peer tester will consider the peer unreachable
     tester_timeout = 10000
-    # timeout after whick we consider a node does not have the block we asked for
+    # timeout after which we consider a node does not have the block we asked for
     ask_block_timeout = 10000
     # Max known blocks we keep during their propagation
     max_blocks_kept_for_propagation = 300
@@ -391,7 +399,7 @@
     max_clock_delta = 5000
     # [server] data is cached for cache duration milliseconds
     cache_duration = 15000
-    # max number of simulataneous bootstraps for server
+    # max number of simultaneous bootstraps for server
     max_simultaneous_bootstraps = 2
     # max size of recently bootstrapped IP cache
     ip_list_max_size = 10000

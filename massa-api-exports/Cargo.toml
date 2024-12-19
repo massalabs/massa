@@ -1,6 +1,6 @@
 [package]
 name = "massa_api_exports"
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -22,6 +22,7 @@ massa_final_state = {workspace = true}
 massa_hash = {workspace = true}
 massa_wallet = {workspace = true}
 massa_versioning = {workspace = true}
+massa_deferred_calls = { workspace = true }
 
 [dev-dependencies]
 serial_test = {workspace = true}

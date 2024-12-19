@@ -3,19 +3,21 @@
 //! Module to interact with the disk ledger
 
 use massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
-    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -286,6 +288,9 @@ impl LedgerDB {
     fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
         let db = self.db.read();
 
+        // Ensures any potential previous entry is fully deleted.
+        delete_datastore_entries(addr, &db, batch);
+
         // Version
         //TODO: Get version number from parameters
         let mut bytes_version = Vec::new();
@@ -456,18 +461,29 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        // datastore
-        let key_prefix = datastore_prefix_from_address(addr, &[]);
+        delete_datastore_entries(addr, &db, batch);
+    }
+}
 
-        for (serialized_key, _) in db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
-        {
-            db.delete_key(batch, serialized_key.to_vec());
-        }
+// Helper function to delete all datastore entries for a given address
+// Needs to be called in put entry and delete entry
+// Note: This function takes a lock on the DB to avoid multiple reads.
+fn delete_datastore_entries(
+    addr: &Address,
+    db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
+    batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+) {
+    // datastore
+    let key_prefix = datastore_prefix_from_address(addr, &[]);
+
+    for (serialized_key, _) in db
+        .iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
+    {
+        db.delete_key(batch, serialized_key.to_vec());
     }
 }
 
@@ -560,7 +576,8 @@ mod tests {
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::HashXof;
-    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
+    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    use massa_models::types::SetOrKeep;
     use massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},

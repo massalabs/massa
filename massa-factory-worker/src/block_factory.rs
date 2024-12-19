@@ -183,7 +183,7 @@ impl BlockFactoryWorker {
             .channels
             .pool
             .get_block_endorsements(&same_thread_parent_id, &slot);
-        //TODO: Do we want ot populate only with endorsement id in the future ?
+        //TODO: Do we want to populate only with endorsement id in the future ?
         let endorsements: Vec<SecureShareEndorsement> = {
             let endo_read = endo_storage.read_endorsements();
             endorsements_ids

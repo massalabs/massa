@@ -1310,6 +1310,12 @@ impl MipStoreRaw {
         Ok(())
     }
 
+    // get network versions stats
+    // <network_version, count>
+    pub fn get_network_versions_stats(&self) -> HashMap<u32, u64> {
+        self.stats.network_version_counters.clone()
+    }
+
     // Final state
     pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
         self._is_key_value_valid(serialized_key, serialized_value)

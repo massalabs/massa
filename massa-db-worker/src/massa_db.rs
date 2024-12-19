@@ -446,6 +446,7 @@ where
 
         if reset_history {
             self.change_history.clear();
+            self.change_history_versioning.clear();
         }
 
         while self.change_history.len() > self.config.max_history_length {
@@ -719,9 +720,16 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Reset the database, and attach it to the given slot.
+    ///
+    /// This function is used in the FinalStateController::reset method which is used in the Bootstrap
+    /// process when the bootstrap fails (Bootstrap slot too old). A bootstrap to another node will likely occur
+    /// after this reset.
     fn reset(&mut self, slot: Slot) {
-        self.set_initial_change_id(slot);
+        // For dev: please take care of correctly reset the db to avoid any issue when the bootstrap
+        //          process is restarted
+        self.set_initial_change_id(slot); // Note: this also reset the field: current_batch
         self.change_history.clear();
+        self.change_history_versioning.clear();
     }
 
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
@@ -1087,7 +1095,7 @@ mod test {
         // assert!(dump_column(db_.clone(), "versioning").is_empty());
         assert!(dump_column(db.clone(), "versioning").is_empty());
 
-        // Add some datas then remove using prefix
+        // Add some data then remove using prefix
         batch.clear();
         db.read()
             .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);

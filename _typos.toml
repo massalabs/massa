@@ -1,0 +1,28 @@
+[files]
+extend-exclude = [
+    "lcov.info",
+    "massa-node/base_config/*.json",
+    "massa-node/src/tests/config.toml",
+    "*.patch"
+]
+
+[default]
+extend-ignore-re = [
+    # Note:
+    # Address (AU, AS): 32 - 62 characters
+    # Secret key (S): 18 - 62 characters
+    # Public key (P): 18 - 62 characters
+    # NodeId (N)
+    # OperationId (O)
+    "(AU|AS|N|S|P|O)\\d\\w{18,62}",
+]
+
+[default.extend-words]
+# short: serialize
+ser = "ser"
+# short: deserialize
+der = "der"
+# short: numerator
+numer = "numer"
+# WONTFIX: grpc_model::operation_type::Type::ExecutSc
+Execut = "Execut"

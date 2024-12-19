@@ -252,7 +252,8 @@ macro_rules! gen_varint {
 gen_varint! {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`";
+u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, "`u128`"
 }
 
 #[derive(Clone)]
@@ -486,7 +487,7 @@ mod tests {
     use num::rational::Ratio;
     use paste::paste;
 
-    // This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
+    // This macro creates a suite of tests for all types of numbers declared as parameters. This list of the
     // tests for each type :
     // - Test with a normal case that everything works
     // - Test with a normal case but a more bigger number that everything works

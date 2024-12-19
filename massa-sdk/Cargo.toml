@@ -1,12 +1,12 @@
 [package]
 name = "massa_sdk"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 
 [dependencies]
 jsonrpsee = {workspace = true, "features" = ["client"]}
-jsonrpsee-http-client = {workspace = true, "features" = ["webpki-tls"]}
-jsonrpsee-ws-client = {workspace = true, "features" = ["webpki-tls"]}
+jsonrpsee-http-client = {workspace = true}
+jsonrpsee-ws-client = {workspace = true}
 http = {workspace = true}
 tonic = {workspace = true, "features" = ["gzip"]}   # BOM UPGRADE     Revert to {"version": "0.9.1", "features": ["gzip"]} if problem
 thiserror = {workspace = true}

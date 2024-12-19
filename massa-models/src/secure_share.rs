@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 
 /// Packages type T such that it can be securely sent and received in a trust-free network
 ///
-/// If the internal content is mutated, then it must be re-wrapped, as the assosciated
+/// If the internal content is mutated, then it must be re-wrapped, as the associated
 /// signature, serialized data, etc. would no longer be in sync
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SecureShare<T, ID>
@@ -23,9 +23,9 @@ where
     T: Display + SecureShareContent,
     ID: Id,
 {
-    /// Reference contents. Not required for the the security protocols.
+    /// Reference contents. Not required for the security protocols.
     ///
-    /// Use the Lightweight equivilant structures when you need verifiable
+    /// Use the Lightweight equivalent structures when you need verifiable
     /// serialized data, but do not need to read the values directly (such as when sending)
     pub content: T,
     #[serde(skip)]

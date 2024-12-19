@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -29,6 +29,7 @@ test-exports = [
     "massa_metrics/test-exports",
     "massa_metrics/test-exports",
     "massa_db_worker",
+    "massa_event_cache/test-exports",
     "tempfile",
 ]
 benchmarking = [
@@ -69,6 +70,7 @@ criterion = { workspace = true, "optional" = true }
 massa_pos_worker = { workspace = true, "optional" = true }
 massa_async_pool = { workspace = true }
 massa_channel = { workspace = true }
+massa_deferred_calls = { workspace = true }
 massa_executed_ops = { workspace = true }
 massa_execution_exports = { workspace = true }
 massa_models = { workspace = true }
@@ -85,11 +87,12 @@ massa_final_state = { workspace = true }
 massa_versioning = { workspace = true }
 massa_db_exports = { workspace = true }
 massa_db_worker = { workspace = true, optional = true }
+massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
 schnellru = { workspace = true }
-prost = { version = "=0.12", optional = true }
+prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }
 
@@ -109,3 +112,5 @@ massa_test_framework = { workspace = true, "features" = ["test-exports"] }
 tokio = { workspace = true, features = ["sync"] }
 hex-literal = { workspace = true }
 mockall = { workspace = true }
+assert_matches = { workspace = true }
+massa_event_cache = { workspace = true, features = ["test-exports"] }
