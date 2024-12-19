@@ -1148,7 +1148,7 @@
         // Expect updates to be empty (or default) here
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3_2, current_updates);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3_2, current_updates, <span class="number">1</span>);
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
                 <span class="macro">assert_eq!</span>(updates, AsyncMessageUpdate::default());
             } <span class="kw">else </span>{

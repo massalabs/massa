@@ -2708,6 +2708,30 @@
 <a href="#2708" id="2708">2708</a>
 <a href="#2709" id="2709">2709</a>
 <a href="#2710" id="2710">2710</a>
+<a href="#2711" id="2711">2711</a>
+<a href="#2712" id="2712">2712</a>
+<a href="#2713" id="2713">2713</a>
+<a href="#2714" id="2714">2714</a>
+<a href="#2715" id="2715">2715</a>
+<a href="#2716" id="2716">2716</a>
+<a href="#2717" id="2717">2717</a>
+<a href="#2718" id="2718">2718</a>
+<a href="#2719" id="2719">2719</a>
+<a href="#2720" id="2720">2720</a>
+<a href="#2721" id="2721">2721</a>
+<a href="#2722" id="2722">2722</a>
+<a href="#2723" id="2723">2723</a>
+<a href="#2724" id="2724">2724</a>
+<a href="#2725" id="2725">2725</a>
+<a href="#2726" id="2726">2726</a>
+<a href="#2727" id="2727">2727</a>
+<a href="#2728" id="2728">2728</a>
+<a href="#2729" id="2729">2729</a>
+<a href="#2730" id="2730">2730</a>
+<a href="#2731" id="2731">2731</a>
+<a href="#2732" id="2732">2732</a>
+<a href="#2733" id="2733">2733</a>
+<a href="#2734" id="2734">2734</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3011,6 +3035,30 @@
 
         <span class="comment">// append generated events to the final event store
         </span>exec_out.events.finalize();
+
+        <span class="kw">let </span>ts = get_block_slot_timestamp(
+            <span class="self">self</span>.config.thread_count,
+            <span class="self">self</span>.config.t0,
+            <span class="self">self</span>.config.genesis_timestamp,
+            exec_out.slot,
+        )
+        .expect(<span class="string">"Time overflow"</span>);
+
+        <span class="kw">let </span>cur_version = <span class="self">self
+            </span>.final_state
+            .read()
+            .get_mip_store()
+            .get_network_version_active_at(ts);
+
+        <span class="kw">if </span>cur_version == <span class="number">0 </span>{
+            <span class="comment">// Truncate the events before saving them to the event store
+            // Note: this is only needed during the MIP transition period
+            // When it becomes active, we will refuse such events so no need to truncate them
+            </span><span class="kw">for </span>event <span class="kw">in </span>exec_out.events.<span class="number">0</span>.iter_mut() {
+                event.data.truncate(<span class="self">self</span>.config.max_event_size_v1);
+            }
+        }
+
         <span class="self">self</span>.final_events_cache.save_events(exec_out.events.<span class="number">0</span>);
 
         <span class="comment">// update the prometheus metrics
