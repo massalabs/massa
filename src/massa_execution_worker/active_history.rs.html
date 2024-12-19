@@ -573,6 +573,12 @@
 <a href="#573" id="573">573</a>
 <a href="#574" id="574">574</a>
 <a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 <span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
@@ -643,6 +649,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         message_id: <span class="kw-2">&amp;</span>AsyncMessageId,
         <span class="kw-2">mut </span>current_updates: AsyncMessageUpdate,
+        execution_compound_version: u32,
     ) -&gt; HistorySearchResult&lt;SetUpdateOrDelete&lt;AsyncMessage, AsyncMessageUpdate&gt;&gt; {
         <span class="kw">for </span>history_element <span class="kw">in </span><span class="self">self</span>.<span class="number">0</span>.iter().rev() {
             <span class="kw">match </span>history_element
@@ -656,11 +663,16 @@
                     msg.apply(current_updates);
                     <span class="kw">return </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg));
                 }
-                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>combined_message_update = msg_update.clone();
-                    combined_message_update.apply(current_updates);
-                    current_updates = combined_message_update;
-                }
+                <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; <span class="kw">match </span>execution_compound_version {
+                    <span class="number">0 </span>=&gt; {
+                        current_updates.apply(msg_update.clone());
+                    }
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="kw">let </span><span class="kw-2">mut </span>combined_message_update = msg_update.clone();
+                        combined_message_update.apply(current_updates);
+                        current_updates = combined_message_update;
+                    }
+                },
                 <span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; <span class="kw">return </span>HistorySearchResult::Absent,
                 <span class="kw">_ </span>=&gt; (),
             }
@@ -1073,14 +1085,14 @@
         <span class="comment">// Test fetch_message with message_id (expect HistorySearchResult::Absent)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id, current_updates);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id, current_updates, <span class="number">1</span>);
             <span class="macro">assert_matches!</span>(fetched, HistorySearchResult::Absent);
         }
 
         <span class="comment">// Test fetch_message with message_id_2 (expect HistorySearchResult::Set)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates, <span class="number">1</span>);
 
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 <span class="macro">assert_eq!</span>(msg, msg_2);
@@ -1101,7 +1113,7 @@
                 validity_end: SetOrKeep::Set(validity_end_new),
                 ..Default::default()
             };
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_2, current_updates, <span class="number">1</span>);
 
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 <span class="macro">assert_ne!</span>(msg, msg_2);
@@ -1117,7 +1129,7 @@
         <span class="comment">// Test fetch_message with message_id_3 (expect HistorySearchResult::Present)
         </span>{
             <span class="kw">let </span>current_updates = AsyncMessageUpdate::default();
-            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3, current_updates);
+            <span class="kw">let </span>fetched = active_history.fetch_message(<span class="kw-2">&amp;</span>message_id_3, current_updates, <span class="number">1</span>);
 
             <span class="kw">if let </span>HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 <span class="comment">// Check the updates were applied correctly
