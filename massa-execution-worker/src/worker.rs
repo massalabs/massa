@@ -13,6 +13,7 @@ use crate::{
     request_queue::RequestQueue,
     slot_sequencer::SlotSequencer,
 };
+use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, ReadOnlyExecutionOutput, ReadOnlyExecutionRequest,
@@ -258,6 +259,7 @@ pub fn start_execution_worker(
     channels: ExecutionChannels,
     wallet: Arc<RwLock<Wallet>>,
     massa_metrics: MassaMetrics,
+    event_cache: Box<dyn EventCacheController>,
     #[cfg(feature = "dump-block")] block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
 ) -> (Box<dyn ExecutionManager>, Box<dyn ExecutionController>) {
     if config.hd_cache_size < config.snip_amount {
@@ -273,6 +275,7 @@ pub fn start_execution_worker(
         channels,
         wallet,
         massa_metrics,
+        event_cache,
         #[cfg(feature = "dump-block")]
         block_storage_backend,
     )));
