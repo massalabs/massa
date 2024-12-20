@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-//! Provides various tools to manipulate ledger entries and changes happening on them.
+#![allow(missing_docs)]
 
 use massa_serialization::{Deserializer, SerializeError, Serializer};
 use nom::bytes::complete::take;

@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::start_execution_worker;
 #[cfg(all(feature = "file_storage_backend", not(feature = "db_storage_backend")))]
 use crate::storage_backend::FileStorageBackend;
 #[cfg(feature = "db_storage_backend")]
@@ -11,6 +12,9 @@ use crate::storage_backend::RocksDBStorageBackend;
 use cfg_if::cfg_if;
 use massa_db_exports::{MassaDBConfig, MassaDBController, ShareableMassaDBController};
 use massa_db_worker::MassaDB;
+use massa_event_cache::MockEventCacheControllerWrapper;
+#[cfg(feature = "execution-trace")]
+use massa_execution_exports::types_trace_info::SlotAbiCallStack;
 use massa_execution_exports::{
     ExecutionBlockMetadata, ExecutionChannels, ExecutionConfig, ExecutionController,
     ExecutionError, ExecutionManager, SlotExecutionOutput,
@@ -18,7 +22,8 @@ use massa_execution_exports::{
 use massa_final_state::{FinalStateController, MockFinalStateController};
 use massa_ledger_exports::MockLedgerControllerWrapper;
 use massa_metrics::MassaMetrics;
-use massa_models::config::CHAINID;
+use massa_models::config::{CHAINID, GENESIS_KEY};
+use massa_models::output_event::SCOutputEvent;
 use massa_models::{
     address::Address,
     amount::Amount,
@@ -43,16 +48,12 @@ use parking_lot::RwLock;
 use tempfile::TempDir;
 use tokio::sync::broadcast;
 
-use crate::start_execution_worker;
-
-#[cfg(feature = "execution-trace")]
-use massa_execution_exports::types_trace_info::SlotAbiCallStack;
-
 pub struct ExecutionForeignControllers {
     pub selector_controller: Box<MockSelectorControllerWrapper>,
     pub final_state: Arc<RwLock<MockFinalStateController>>,
     pub ledger_controller: MockLedgerControllerWrapper,
     pub db: ShareableMassaDBController,
+    pub event_cache_controller: Box<MockEventCacheControllerWrapper>,
 }
 
 impl ExecutionForeignControllers {
@@ -70,11 +71,85 @@ impl ExecutionForeignControllers {
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
         ));
+
+        let mut event_cache_controller = MockEventCacheControllerWrapper::new();
+        let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let events_clone_1 = events.clone();
+        let events_clone_2 = events.clone();
+
+        event_cache_controller.set_expectations(|controller| {
+            controller
+                .expect_save_events()
+                .withf(move |new_events| {
+                    // Save events in memory
+                    events_clone_1
+                        .lock()
+                        .unwrap()
+                        .extend(new_events.iter().cloned());
+                    true
+                })
+                .return_const(());
+            controller
+                .expect_get_filtered_sc_output_events()
+                .returning(move |filter| {
+                    let events_ = events_clone_2.lock().unwrap().clone();
+                    events_
+                        .into_iter()
+                        .filter(|evt| {
+                            if let Some(start) = filter.start {
+                                if evt.context.slot < start {
+                                    return false;
+                                }
+                            }
+                            if let Some(end) = filter.end {
+                                if evt.context.slot >= end {
+                                    return false;
+                                }
+                            }
+                            if let Some(is_final) = filter.is_final {
+                                if evt.context.is_final != is_final {
+                                    return false;
+                                }
+                            }
+                            if let Some(is_error) = filter.is_error {
+                                if evt.context.is_error != is_error {
+                                    return false;
+                                }
+                            }
+
+                            match (
+                                filter.original_caller_address,
+                                evt.context.call_stack.front(),
+                            ) {
+                                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                                (Some(_), None) => return false,
+                                _ => (),
+                            }
+                            match (filter.emitter_address, evt.context.call_stack.back()) {
+                                (Some(addr1), Some(addr2)) if addr1 != *addr2 => return false,
+                                (Some(_), None) => return false,
+                                _ => (),
+                            }
+                            match (
+                                filter.original_operation_id,
+                                evt.context.origin_operation_id,
+                            ) {
+                                (Some(addr1), Some(addr2)) if addr1 != addr2 => return false,
+                                (Some(_), None) => return false,
+                                _ => (),
+                            }
+
+                            true
+                        })
+                        .collect::<Vec<SCOutputEvent>>()
+                });
+        });
         Self {
             selector_controller: Box::new(MockSelectorControllerWrapper::new()),
             ledger_controller: MockLedgerControllerWrapper::new(),
             final_state: Arc::new(RwLock::new(MockFinalStateController::new())),
             db,
+            event_cache_controller: Box::new(event_cache_controller),
         }
     }
 }
@@ -141,6 +216,7 @@ impl TestUniverse for ExecutionTestUniverse {
                 std::time::Duration::from_secs(5),
             )
             .0,
+            controllers.event_cache_controller,
             #[cfg(feature = "dump-block")]
             block_storage_backend.clone(),
         );
@@ -249,10 +325,15 @@ impl ExecutionTestUniverse {
             ExecutionTestUniverse::create_block(keypair, slot, vec![operation], vec![], vec![]);
 
         // set our block as a final block so the message is sent
-        self.send_and_finalize(keypair, block);
+        self.send_and_finalize(keypair, block, None);
     }
 
-    pub fn send_and_finalize(&mut self, keypair: &KeyPair, block: SecureShareBlock) {
+    pub fn send_and_finalize(
+        &mut self,
+        keypair: &KeyPair,
+        block: SecureShareBlock,
+        same_thread_parent_creator_keypair: Option<KeyPair>,
+    ) {
         // store the block in storage
         self.storage.store_block(block.clone());
         let mut finalized_blocks: HashMap<Slot, BlockId> = Default::default();
@@ -262,7 +343,9 @@ impl ExecutionTestUniverse {
             block.id,
             ExecutionBlockMetadata {
                 same_thread_parent_creator: Some(Address::from_public_key(
-                    &keypair.get_public_key(),
+                    &same_thread_parent_creator_keypair
+                        .unwrap_or_else(|| keypair.clone())
+                        .get_public_key(),
                 )),
                 storage: Some(self.storage.clone()),
             },
@@ -325,7 +408,7 @@ fn init_execution_worker(
     storage: &Storage,
     execution_controller: Box<dyn ExecutionController>,
 ) {
-    let genesis_keypair = KeyPair::generate(0).unwrap();
+    let genesis_keypair: KeyPair = GENESIS_KEY.clone();
     let genesis_addr = Address::from_public_key(&genesis_keypair.get_public_key());
     let mut finalized_blocks: HashMap<Slot, BlockId> = HashMap::new();
     let mut block_metadata: PreHashMap<BlockId, ExecutionBlockMetadata> = PreHashMap::default();

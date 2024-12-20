@@ -30,6 +30,33 @@ lazy_static! {
         register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge =
         register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
+
+        static ref DEFERRED_CALL_REGISTERED: IntGauge = register_int_gauge!(
+        "deferred_calls_registered", "number of deferred calls registered" ).unwrap();
+
+        static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
+            "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
+
+}
+
+pub fn dec_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.dec();
+}
+
+pub fn inc_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_deferred_calls_registered(val: usize) {
+    DEFERRED_CALL_REGISTERED.set(val as i64);
+}
+
+pub fn set_deferred_calls_total_gas(val: u128) {
+    DEFERRED_CALLS_TOTAL_GAS.set(val as i64);
+}
+
+pub fn get_deferred_calls_registered() -> i64 {
+    DEFERRED_CALL_REGISTERED.get()
 }
 
 pub fn set_blocks_counter(val: usize) {
@@ -172,7 +199,14 @@ pub struct MassaMetrics {
     // peer bandwidth (bytes sent, bytes received)
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
 
+    // network versions votes <version, votes>
+    network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
+
     pub tick_delay: Duration,
+
+    // deferred calls metrics
+    deferred_calls_executed: IntCounter,
+    deferred_calls_failed: IntCounter,
 }
 
 impl MassaMetrics {
@@ -198,6 +232,8 @@ impl MassaMetrics {
 
             consensus_vec.push(gauge);
         }
+
+        set_deferred_calls_registered(0);
 
         // set available processors
         let process_available_processors =
@@ -406,6 +442,15 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let deferred_calls_executed = IntCounter::new(
+            "deferred_calls_executed",
+            "number of deferred calls executed",
+        )
+        .unwrap();
+
+        let deferred_calls_failed =
+            IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -458,6 +503,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_period.clone()));
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
+                let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -513,7 +560,10 @@ impl MassaMetrics {
                 final_cursor_thread,
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+                network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
                 tick_delay,
+                deferred_calls_executed,
+                deferred_calls_failed,
             },
             stopper,
         )
@@ -700,6 +750,49 @@ impl MassaMetrics {
 
     pub fn set_block_slot_delay(&self, delay: f64) {
         self.block_slot_delay.observe(delay);
+    }
+
+    pub fn inc_deferred_calls_executed(&self) {
+        self.deferred_calls_executed.inc();
+    }
+
+    pub fn inc_deferred_calls_failed(&self) {
+        self.deferred_calls_failed.inc();
+    }
+
+    // Update the network version vote metrics
+    pub fn update_network_version_vote(&self, data: HashMap<u32, u64>) {
+        if self.enabled {
+            let mut write = self.network_versions_votes.write().unwrap();
+
+            {
+                let missing_version = write
+                    .keys()
+                    .filter(|key| !data.contains_key(key))
+                    .cloned()
+                    .collect::<Vec<u32>>();
+
+                for key in missing_version {
+                    if let Some(counter) = write.remove(&key) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_{} : {}", key, e);
+                        }
+                    }
+                }
+            }
+
+            for (version, count) in data.into_iter() {
+                if let Some(actual_counter) = write.get_mut(&version) {
+                    actual_counter.set(count as i64);
+                } else {
+                    let label = format!("network_version_votes_{}", version);
+                    let counter = IntGauge::new(label, "vote counter for network version").unwrap();
+                    counter.set(count as i64);
+                    let _ = prometheus::register(Box::new(counter.clone()));
+                    write.insert(version, counter);
+                }
+            }
+        }
     }
 
     /// Update the bandwidth metrics for all peers

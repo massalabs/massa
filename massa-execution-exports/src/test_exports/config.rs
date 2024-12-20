@@ -3,8 +3,9 @@
 //! This file defines testing tools related to the configuration
 
 use crate::{ExecutionConfig, StorageCostsConstants};
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::config::*;
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
 use tempfile::TempDir;
 
@@ -24,8 +25,32 @@ impl Default for ExecutionConfig {
         // So we need to create it manually (not really safe but ok for unit testing)
         let hd_cache_path = TempDir::new().unwrap().path().to_path_buf();
         std::fs::create_dir_all(hd_cache_path.clone()).unwrap();
+        let event_cache_path = TempDir::new().unwrap().path().to_path_buf();
+        std::fs::create_dir_all(event_cache_path.clone()).unwrap();
         let block_dump_folder_path = TempDir::new().unwrap().path().to_path_buf();
         std::fs::create_dir_all(block_dump_folder_path.clone()).unwrap();
+
+        #[cfg(feature = "gas_calibration")]
+        let limits = CondomLimits::default();
+
+        #[cfg(not(feature = "gas_calibration"))]
+        let limits = CondomLimits {
+            max_exports: Some(100),
+            max_functions: Some(100),
+            max_signature_len: Some(100),
+            max_name_len: Some(100),
+            max_imports_len: Some(100),
+            max_table_initializers_len: Some(100),
+            max_passive_elements_len: Some(100),
+            max_passive_data_len: Some(100),
+            max_global_initializers_len: Some(100),
+            max_function_names_len: Some(100),
+            max_tables_count: Some(16),
+            max_memories_len: Some(1),
+            max_globals_len: Some(100),
+            max_custom_sections_len: Some(100),
+            max_custom_sections_data_len: Some(1_000_000),
+        };
 
         Self {
             readonly_queue_length: 100,
@@ -56,11 +81,6 @@ impl Default for ExecutionConfig {
                     "/../massa-node/base_config/gas_costs/abi_gas_costs.json"
                 )
                 .into(),
-                concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../massa-node/base_config/gas_costs/wasm_gas_costs.json"
-                )
-                .into(),
             )
             .unwrap(),
             base_operation_gas_cost: BASE_OPERATION_GAS_COST,
@@ -73,7 +93,8 @@ impl Default for ExecutionConfig {
             denunciation_expire_periods: DENUNCIATION_EXPIRE_PERIODS,
             broadcast_enabled: true,
             broadcast_slot_execution_output_channel_capacity: 5000,
-            max_event_size: 50_000,
+            max_event_size: 512,
+            max_event_per_operation: 25,
             max_function_length: 1000,
             max_parameter_length: 1000,
             chain_id: *CHAINID,
@@ -81,6 +102,13 @@ impl Default for ExecutionConfig {
             broadcast_slot_execution_traces_channel_capacity: 5000,
             max_execution_traces_slot_limit: 320,
             block_dump_folder_path,
+            max_recursive_calls_depth: 25,
+            condom_limits: limits,
+            deferred_calls_config: DeferredCallsConfig::default(),
+
+            event_cache_path,
+            event_cache_size: 100,
+            event_snip_amount: 10,
         }
     }
 }

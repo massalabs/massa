@@ -9,6 +9,7 @@ use crate::{
 };
 use grpc_api::execution_query_request_item as exec;
 use massa_models::address::Address;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::error::ModelsError;
 use massa_models::execution::EventFilter;
 use massa_models::mapping_grpc::to_denunciation_index;
@@ -117,13 +118,13 @@ pub fn to_querystate_filter(
             }
             //TODO to be checked
             exec::RequestItem::CycleInfos(value) => {
-                let addreses = value
+                let addresses = value
                     .restrict_to_addresses
                     .into_iter()
                     .map(|address| Address::from_str(&address))
                     .collect::<Result<Vec<_>, _>>()?;
-                let mut addresses_set = PreHashSet::with_capacity(addreses.len());
-                addresses_set.extend(addreses);
+                let mut addresses_set = PreHashSet::with_capacity(addresses.len());
+                addresses_set.extend(addresses);
                 Ok(ExecutionQueryRequestItem::CycleInfos {
                     cycle: value.cycle,
                     restrict_to_addresses: Some(addresses_set),
@@ -132,6 +133,30 @@ pub fn to_querystate_filter(
             exec::RequestItem::Events(value) => {
                 let event_filter = to_event_filter(value.filters)?;
                 Ok(ExecutionQueryRequestItem::Events(event_filter))
+            }
+            exec::RequestItem::DeferredCallQuote(value) => {
+                Ok(ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot: value
+                        .target_slot
+                        .ok_or(ModelsError::ErrorRaised(
+                            "target slot is required".to_string(),
+                        ))?
+                        .into(),
+                    max_gas_request: value.max_gas,
+                    params_size: value.params_size,
+                })
+            }
+            exec::RequestItem::DeferredCallInfo(info) => {
+                let id = DeferredCallId::from_str(&info.call_id)?;
+                Ok(ExecutionQueryRequestItem::DeferredCallInfo(id))
+            }
+            exec::RequestItem::DeferredCallsBySlot(value) => {
+                Ok(ExecutionQueryRequestItem::DeferredCallsBySlot(
+                    value
+                        .slot
+                        .ok_or(ModelsError::ErrorRaised("slot is required".to_string()))?
+                        .into(),
+                ))
             }
         }
     } else {
@@ -262,6 +287,36 @@ fn to_execution_query_result(
             grpc_api::execution_query_response_item::ResponseItem::Events(
                 grpc_api::ScOutputEventsWrapper {
                     events: result.into_iter().map(|event| event.into()).collect(),
+                },
+            )
+        }
+        ExecutionQueryResponseItem::DeferredCallQuote(
+            target_slot,
+            max_gas_request,
+            available,
+            price,
+        ) => grpc_api::execution_query_response_item::ResponseItem::DeferredCallQuote(
+            grpc_api::DeferredCallQuoteResponse {
+                target_slot: Some(target_slot.into()),
+                max_gas_request,
+                available,
+                price: Some(price.into()),
+            },
+        ),
+        ExecutionQueryResponseItem::DeferredCallInfo(call_id, call) => {
+            grpc_api::execution_query_response_item::ResponseItem::DeferredCallInfo(
+                grpc_api::DeferredCallInfoResponse {
+                    call_id: call_id.to_string(),
+                    call: Some(call.into()),
+                },
+            )
+        }
+        ExecutionQueryResponseItem::DeferredCallsBySlot(slot, ids) => {
+            let arr = ids.into_iter().map(|id| id.to_string()).collect();
+            grpc_api::execution_query_response_item::ResponseItem::DeferredCallsBySlot(
+                grpc_api::DeferredCallsBySlotResponse {
+                    slot: Some(slot.into()),
+                    call_ids: arr,
                 },
             )
         }
