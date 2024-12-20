@@ -240,6 +240,7 @@ impl StateChanges {
         self.pos_changes.extend(changes.pos_changes);
         self.executed_ops_changes
             .extend(changes.executed_ops_changes);
+        // Note: no need to version the changes, as this function is not used in the codebase
         self.executed_denunciations_changes
             .extend(changes.executed_denunciations_changes);
         self.execution_trail_hash_change
