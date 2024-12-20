@@ -311,7 +311,9 @@ impl EventCache {
         max_events_per_query: usize,
     ) -> Self {
         // Clear the db
-        DB::destroy(&Options::default(), path).expect(DESTROY_ERROR);
+        if path.exists() {
+            DB::destroy(&Options::default(), path).expect(DESTROY_ERROR);
+        }
         let options = {
             let mut opts = Options::default();
             opts.create_if_missing(true);
