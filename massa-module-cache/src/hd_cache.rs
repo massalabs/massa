@@ -85,7 +85,11 @@ impl HDCache {
         let _ = self.db.take();
 
         // Destroy the database files
-        DB::destroy(&Options::default(), &path).expect("Failed to destroy the database");
+        if path.exists() {
+            if let Err(e) = DB::destroy(&Options::default(), path.clone()) {
+                warn!("Failed to destroy the db: {:?}", e);
+            }
+        }
         // Reopen the database
         let db = DB::open_default(&path).expect(OPEN_ERROR);
         self.db = Some(db);
