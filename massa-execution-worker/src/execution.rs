@@ -140,6 +140,7 @@ pub(crate) struct ExecutionState {
     pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
     #[cfg(feature = "dump-block")]
     block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
+    cur_execution_version: u32,
 }
 
 impl ExecutionState {
@@ -188,14 +189,16 @@ impl ExecutionState {
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
-        let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+        let execution_context = ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
             mip_store.clone(),
             execution_trail_hash,
-        )));
+        );
+        let cur_execution_version = execution_context.execution_component_version;
+        let execution_context = Arc::new(Mutex::new(execution_context));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
@@ -238,6 +241,7 @@ impl ExecutionState {
             config,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
+            cur_execution_version,
         }
     }
 
@@ -1458,7 +1462,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(
-        &self,
+        &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
@@ -1488,6 +1492,12 @@ impl ExecutionState {
         );
 
         let execution_version = execution_context.execution_component_version;
+        if self.cur_execution_version != execution_version {
+            // Reset the cache because a new execution version has become active
+            info!("A new execution version has become active! Resetting the module-cache.");
+            self.module_cache.write().reset();
+            self.cur_execution_version = execution_version;
+        }
 
         let mut deferred_calls_slot_gas = 0;
 
