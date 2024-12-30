@@ -341,30 +341,6 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::types::{
     ModuleInfo, ModuleMetadata, ModuleMetadataDeserializer, ModuleMetadataSerializer,
 };
@@ -374,7 +350,7 @@
 <span class="kw">use </span>rand::RngCore;
 <span class="kw">use </span>rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
 <span class="kw">use </span>std::path::PathBuf;
-<span class="kw">use </span>tracing::debug;
+<span class="kw">use </span>tracing::{debug, warn};
 
 <span class="kw">const </span>OPEN_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb open operation failed"</span>;
 <span class="kw">const </span>CRUD_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: rocksdb crud operation failed"</span>;
@@ -403,7 +379,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>HDCache {
     <span class="doccomment">/// RocksDB database
-    </span>db: <span class="prelude-ty">Option</span>&lt;DB&gt;,
+    </span>db: DB,
     <span class="doccomment">/// How many entries are in the db. Count is initialized at creation time by iterating
     /// over all the entries in the db then it is maintained in memory
     </span>entry_count: usize,
@@ -427,32 +403,22 @@
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     </span><span class="kw">pub fn </span>new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -&gt; <span class="self">Self </span>{
         <span class="comment">// Reset the DB if it already exists
-        </span>DB::destroy(<span class="kw-2">&amp;</span>Options::default(), path.clone()).expect(<span class="string">"Failed to destroy the database"</span>);
+        </span><span class="kw">if </span>path.exists() {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = DB::destroy(<span class="kw-2">&amp;</span>Options::default(), path.clone()) {
+                <span class="macro">warn!</span>(<span class="string">"Failed to destroy the db: {:?}"</span>, e);
+            }
+        }
         <span class="kw">let </span>db = DB::open_default(path).expect(OPEN_ERROR);
         <span class="kw">let </span>entry_count = <span class="number">0</span>;
 
         <span class="self">Self </span>{
-            db: <span class="prelude-val">Some</span>(db),
+            db,
             entry_count,
             max_entry_count,
             snip_amount,
             meta_ser: ModuleMetadataSerializer::new(),
             meta_deser: ModuleMetadataDeserializer::new(),
         }
-    }
-
-    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span>path = <span class="self">self</span>.db.as_ref().unwrap().path().to_path_buf();
-
-        <span class="comment">// Close the existing database by dropping it
-        </span><span class="kw">let _ </span>= <span class="self">self</span>.db.take();
-
-        <span class="comment">// Destroy the database files
-        </span>DB::destroy(<span class="kw-2">&amp;</span>Options::default(), <span class="kw-2">&amp;</span>path).expect(<span class="string">"Failed to destroy the database"</span>);
-        <span class="comment">// Reopen the database
-        </span><span class="kw">let </span>db = DB::open_default(<span class="kw-2">&amp;</span>path).expect(OPEN_ERROR);
-        <span class="self">self</span>.db = <span class="prelude-val">Some</span>(db);
-        <span class="self">self</span>.entry_count = <span class="number">0</span>;
     }
 
     <span class="doccomment">/// Insert a new module in the cache
@@ -486,11 +452,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         batch.put(<span class="macro">module_key!</span>(hash), ser_module);
         batch.put(<span class="macro">metadata_key!</span>(hash), ser_metadata);
-        <span class="self">self</span>.db
-            .as_ref()
-            .expect(CRUD_ERROR)
-            .write(batch)
-            .expect(CRUD_ERROR);
+        <span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
 
         <span class="self">self</span>.entry_count = <span class="self">self</span>.entry_count.saturating_add(<span class="number">1</span>);
 
@@ -508,8 +470,6 @@
             .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Delta(init_cost), <span class="kw-2">&amp;mut </span>ser_metadata)
             .expect(DATA_SER_ERROR);
         <span class="self">self</span>.db
-            .as_ref()
-            .expect(CRUD_ERROR)
             .put(<span class="macro">metadata_key!</span>(hash), ser_metadata)
             .expect(CRUD_ERROR);
     }
@@ -521,8 +481,6 @@
             .serialize(<span class="kw-2">&amp;</span>ModuleMetadata::Invalid(err_msg), <span class="kw-2">&amp;mut </span>ser_metadata)
             .expect(DATA_SER_ERROR);
         <span class="self">self</span>.db
-            .as_ref()
-            .expect(CRUD_ERROR)
             .put(<span class="macro">metadata_key!</span>(hash), ser_metadata)
             .expect(CRUD_ERROR);
     }
@@ -536,8 +494,6 @@
     ) -&gt; <span class="prelude-ty">Option</span>&lt;ModuleInfo&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>iterator = <span class="self">self
             </span>.db
-            .as_ref()
-            .expect(CRUD_ERROR)
             .iterator(IteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">module_key!</span>(hash), Direction::Forward));
 
         <span class="kw">if let </span>(<span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((key_1, ser_module))), <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>((key_2, ser_metadata)))) =
@@ -574,7 +530,7 @@
 
     <span class="doccomment">/// Try to remove as much as `self.amount_to_snip` entries from the db
     </span><span class="kw">fn </span>snip(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.as_ref().expect(CRUD_ERROR).raw_iterator();
+        <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.raw_iterator();
         <span class="kw">let </span><span class="kw-2">mut </span>batch = WriteBatch::default();
         <span class="kw">let </span><span class="kw-2">mut </span>snipped_count: usize = <span class="number">0</span>;
 
@@ -611,11 +567,7 @@
         }
 
         <span class="comment">// delete the key and reduce entry_count
-        </span><span class="self">self</span>.db
-            .as_ref()
-            .expect(CRUD_ERROR)
-            .write(batch)
-            .expect(CRUD_ERROR);
+        </span><span class="self">self</span>.db.write(batch).expect(CRUD_ERROR);
         <span class="self">self</span>.entry_count -= snipped_count;
     }
 }
