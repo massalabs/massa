@@ -7,7 +7,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use rand::RngCore;
 use rocksdb::{Direction, IteratorMode, Options, WriteBatch, DB};
 use std::path::PathBuf;
-use tracing::debug;
+use tracing::{debug, warn};
 
 const OPEN_ERROR: &str = "critical: rocksdb open operation failed";
 const CRUD_ERROR: &str = "critical: rocksdb crud operation failed";
@@ -60,7 +60,11 @@ impl HDCache {
     /// * amount_to_remove: how many entries are removed when `entry_count` reaches `max_entry_count`
     pub fn new(path: PathBuf, max_entry_count: usize, snip_amount: usize) -> Self {
         // Reset the DB if it already exists
-        DB::destroy(&Options::default(), path.clone()).expect("Failed to destroy the database");
+        if path.exists() {
+            if let Err(e) = DB::destroy(&Options::default(), path.clone()) {
+                warn!("Failed to destroy the db: {:?}", e);
+            }
+        }
         let db = DB::open_default(path).expect(OPEN_ERROR);
         let entry_count = 0;
 
