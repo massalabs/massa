@@ -1505,8 +1505,41 @@ impl ExecutionState {
 
         match execution_version {
             0 => {
+                // Get asynchronous messages to execute
+                let messages = execution_context.take_async_batch_v0(
+                    self.config.max_async_gas,
+                    self.config.async_msg_cst_gas_cost,
+                );
+
                 // Apply the created execution context for slot execution
                 *context_guard!(self) = execution_context;
+
+                // Try executing asynchronous messages.
+                // Effects are cancelled on failure and the sender is reimbursed.
+                for (opt_bytecode, message) in messages {
+                    
+                    debug!("LEO - executing async message: {:?}", message);
+
+                    match self.execute_async_message(message, opt_bytecode, execution_version) {
+                        Ok(_message_return) => {
+                            cfg_if::cfg_if! {
+                                if #[cfg(feature = "execution-trace")] {
+                                    // Safe to unwrap
+                                    slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                                } else if #[cfg(feature = "execution-info")] {
+                                    slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                                    exec_info.async_messages.push(Ok(_message_return));
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            let msg = format!("failed executing async message: {}", err);
+                            #[cfg(feature = "execution-info")]
+                            exec_info.async_messages.push(Err(msg.clone()));
+                            debug!(msg);
+                        }
+                    }
+                }
             }
             _ => {
                 // Deferred calls
@@ -1907,76 +1940,41 @@ impl ExecutionState {
 
         // Async msg execution
 
-        match execution_version {
-            0 => {
-                // Get asynchronous messages to execute
-                let messages = context_guard!(self).take_async_batch_v0(
-                    self.config.max_async_gas,
-                    self.config.async_msg_cst_gas_cost,
-                );
+        if execution_version > 0 {
+            // Get asynchronous messages to execute
+            // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+            let async_msg_gas_available = self
+                .config
+                .max_async_gas
+                .saturating_sub(deferred_calls_slot_gas)
+                .saturating_add(remaining_block_gas);
 
-                // Try executing asynchronous messages.
-                // Effects are cancelled on failure and the sender is reimbursed.
-                for (opt_bytecode, message) in messages {
-                    match self.execute_async_message(message, opt_bytecode, execution_version) {
-                        Ok(_message_return) => {
-                            cfg_if::cfg_if! {
-                                if #[cfg(feature = "execution-trace")] {
-                                    // Safe to unwrap
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                                } else if #[cfg(feature = "execution-info")] {
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                                    exec_info.async_messages.push(Ok(_message_return));
-                                }
+            // Get asynchronous messages to execute
+            let messages = context_guard!(self)
+                .take_async_batch_v1(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+
+            // Try executing asynchronous messages.
+            // Effects are cancelled on failure and the sender is reimbursed.
+            for (_message_id, message) in messages {
+                let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
+
+                match self.execute_async_message(message, opt_bytecode, execution_version) {
+                    Ok(_message_return) => {
+                        cfg_if::cfg_if! {
+                            if #[cfg(feature = "execution-trace")] {
+                                // Safe to unwrap
+                                slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                            } else if #[cfg(feature = "execution-info")] {
+                                slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                                exec_info.async_messages.push(Ok(_message_return));
                             }
-                        }
-                        Err(err) => {
-                            let msg = format!("failed executing async message: {}", err);
-                            #[cfg(feature = "execution-info")]
-                            exec_info.async_messages.push(Err(msg.clone()));
-                            debug!(msg);
                         }
                     }
-                }
-            }
-            _ => {
-                // Get asynchronous messages to execute
-                // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
-                let async_msg_gas_available = self
-                    .config
-                    .max_async_gas
-                    .saturating_sub(deferred_calls_slot_gas)
-                    .saturating_add(remaining_block_gas);
-
-                // Get asynchronous messages to execute
-                let messages = context_guard!(self).take_async_batch_v1(
-                    async_msg_gas_available,
-                    self.config.async_msg_cst_gas_cost,
-                );
-
-                // Try executing asynchronous messages.
-                // Effects are cancelled on failure and the sender is reimbursed.
-                for (_message_id, message) in messages {
-                    let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
-
-                    match self.execute_async_message(message, opt_bytecode, execution_version) {
-                        Ok(_message_return) => {
-                            cfg_if::cfg_if! {
-                                if #[cfg(feature = "execution-trace")] {
-                                    // Safe to unwrap
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                                } else if #[cfg(feature = "execution-info")] {
-                                    slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                                    exec_info.async_messages.push(Ok(_message_return));
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            let msg = format!("failed executing async message: {}", err);
-                            #[cfg(feature = "execution-info")]
-                            exec_info.async_messages.push(Err(msg.clone()));
-                            debug!(msg);
-                        }
+                    Err(err) => {
+                        let msg = format!("failed executing async message: {}", err);
+                        #[cfg(feature = "execution-info")]
+                        exec_info.async_messages.push(Err(msg.clone()));
+                        debug!(msg);
                     }
                 }
             }
