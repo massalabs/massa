@@ -65,7 +65,7 @@ fn test_simple_get_operations() {
         ))
     });
 
-    // Provide the selector boilderplate
+    // Provide the selector boilerplate
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
@@ -198,7 +198,7 @@ fn test_get_operations_overflow() {
         ))
     });
 
-    // Provide the selector boilderplate
+    // Provide the selector boilerplate
     let selector_controller = {
         let mut res = Box::new(MockSelectorController::new());
         res.expect_clone_box().times(2).returning(|| {
@@ -362,7 +362,7 @@ fn test_get_operations_overflow() {
 //                 producer: address,
 //             })
 //         });
-//         // Provide the selector boilderplate
+//         // Provide the selector boilerplate
 //         let selector_controller = {
 //             let mut res = Box::new(MockSelectorController::new());
 //             res.expect_clone_box().times(2).returning(|| {
