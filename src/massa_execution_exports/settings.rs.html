@@ -119,8 +119,6 @@
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -215,9 +213,7 @@
     <span class="doccomment">/// slot execution outputs channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_output_channel_capacity: usize,
     <span class="doccomment">/// max size of event data, in bytes
-    </span><span class="kw">pub </span>max_event_size_v0: usize,
-    <span class="doccomment">/// max size of event data, in bytes
-    </span><span class="kw">pub </span>max_event_size_v1: usize,
+    </span><span class="kw">pub </span>max_event_size: usize,
     <span class="doccomment">/// chain id
     </span><span class="kw">pub </span>chain_id: u64,
     <span class="doccomment">/// whether slot execution traces broadcast is enabled
