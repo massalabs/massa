@@ -349,8 +349,8 @@ where
         change_id: Option<ChangeID>,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
-        if let Some(change_id) = change_id.clone() {
-            if change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
+        if let Some(change_id) = change_id.as_ref() {
+            if *change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
                 return Err(MassaDBError::InvalidChangeID(String::from(
                     "change_id should monotonically increase after every write",
                 )));
