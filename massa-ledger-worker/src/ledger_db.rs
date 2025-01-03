@@ -702,7 +702,7 @@ mod tests {
     fn test_ledger_delete() {
         let keypair = KeyPair::generate(0).unwrap();
         let addr = Address::from_public_key(&keypair.get_public_key());
-        let (ledger_db, data) = init_test_ledger(addr);
+        let (ledger_db, _data) = init_test_ledger(addr);
 
         let datastore = ledger_db.get_entire_datastore(&addr);
         // println!("datastore: {:?}", datastore);
