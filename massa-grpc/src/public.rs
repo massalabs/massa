@@ -960,6 +960,7 @@ pub(crate) fn get_status(
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: Some(grpc.grpc_config.minimal_fees.into()),
+        current_mip_version: grpc.keypair_factory.mip_store.get_network_version_current(),
     };
 
     Ok(grpc_api::GetStatusResponse {
