@@ -1999,7 +1999,6 @@
                     "candidate_value": {
                         "description": "The candidate datastore entry value bytes",
                         "$ref": "#/components/schemas/BytesOption"
-
                     },
                     "final_value": {
                         "description": "The final datastore entry value bytes",
@@ -2781,7 +2780,8 @@
                     "pool_stats",
                     "version",
                     "execution_stats",
-                    "chain_id"
+                    "chain_id",
+                    "current_mip_version"
                 ],
                 "type": "object",
                 "properties": {
@@ -2859,6 +2859,10 @@
                     "minimal_fees": {
                         "description": "Minimal fee",
                         "$ref": "#/components/schemas/Amount"
+                    },
+                    "current_mip_version": {
+                        "description": "Current MIP version",
+                        "type": "number"
                     }
                 },
                 "additionalProperties": false

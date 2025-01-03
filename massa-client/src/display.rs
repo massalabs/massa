@@ -275,6 +275,7 @@ impl Output for NodeStatus {
 
         println!();
         println!("Chain id: {}", self.chain_id);
+        println!("Current MIP version: {}", self.current_mip_version);
     }
 }
 

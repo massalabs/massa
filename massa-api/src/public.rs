@@ -458,6 +458,12 @@ impl MassaRpcServer for API<Public> {
         let config = CompactConfig::default();
         let now = MassaTime::now();
 
+        let current_mip_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
         let last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
             api_settings.t0,
@@ -555,6 +561,7 @@ impl MassaRpcServer for API<Public> {
             current_cycle,
             chain_id: self.0.api_settings.chain_id,
             minimal_fees: self.0.api_settings.minimal_fees,
+            current_mip_version,
         })
     }
 
