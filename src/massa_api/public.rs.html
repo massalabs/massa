@@ -1505,6 +1505,13 @@
 <a href="#1505" id="1505">1505</a>
 <a href="#1506" id="1506">1506</a>
 <a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1965,6 +1972,12 @@
         <span class="kw">let </span>config = CompactConfig::default();
         <span class="kw">let </span>now = MassaTime::now();
 
+        <span class="kw">let </span>current_mip_version = <span class="self">self
+            </span>.<span class="number">0
+            </span>.keypair_factory
+            .mip_store
+            .get_network_version_current();
+
         <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
             api_settings.t0,
@@ -2062,6 +2075,7 @@
             current_cycle,
             chain_id: <span class="self">self</span>.<span class="number">0</span>.api_settings.chain_id,
             minimal_fees: <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees,
+            current_mip_version,
         })
     }
 
