@@ -2170,8 +2170,8 @@
         change_id: <span class="prelude-ty">Option</span>&lt;ChangeID&gt;,
         reset_history: bool,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), MassaDBError&gt; {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(change_id) = change_id.as_ref() {
-            <span class="kw">if </span><span class="kw-2">*</span>change_id &lt; <span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(change_id) = change_id.clone() {
+            <span class="kw">if </span>change_id &lt; <span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(MassaDBError::InvalidChangeID(String::from(
                     <span class="string">"change_id should monotonically increase after every write"</span>,
                 )));
