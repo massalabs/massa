@@ -732,7 +732,7 @@ mod tests {
 
         let mut batch = DBBatch::new();
         let guard = ledger_db.db.read();
-        delete_datastore_entries(&addr, &guard, &mut batch);
+        delete_datastore_entries(&addr, &guard, &mut batch, 1);
         drop(guard);
 
         let mut guard = ledger_db.db.write();
