@@ -44,7 +44,13 @@ pub trait LedgerController: Send + Sync {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>>;
+    fn get_datastore_keys<'a>(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        offset: Option<&'a [u8]>,
+        limit: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>>;
 
     /// Reset the ledger
     ///

@@ -138,8 +138,15 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        self.sorted_ledger.get_datastore_keys(addr, prefix)
+    fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        offset: Option<&[u8]>,
+        limit: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        self.sorted_ledger
+            .get_datastore_keys(addr, prefix, offset, limit)
     }
 
     /// Reset the disk ledger.

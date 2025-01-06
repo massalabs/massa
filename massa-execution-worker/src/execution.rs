@@ -2196,13 +2196,15 @@ impl ExecutionState {
         addr: &Address,
         prefix: &[u8],
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
+        // TODO
+
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
         let final_keys = self
             .final_state
             .read()
             .get_ledger()
-            .get_datastore_keys(addr, prefix);
+            .get_datastore_keys(addr, prefix, None, None);
 
         let mut candidate_keys = final_keys.clone();
 

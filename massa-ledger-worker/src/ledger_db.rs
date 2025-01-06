@@ -173,7 +173,14 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+    pub fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        offset: Option<&[u8]>,
+        limit: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        // TODO
         let db = self.db.read();
 
         // check if address exists, return None if it does not

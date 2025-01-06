@@ -370,7 +370,7 @@ impl SpeculativeLedger {
             .final_state
             .read()
             .get_ledger()
-            .get_datastore_keys(addr, prefix);
+            .get_datastore_keys(addr, prefix, None, None);
 
         // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
         let active_history = self.active_history.read();
