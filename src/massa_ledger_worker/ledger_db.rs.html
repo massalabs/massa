@@ -720,6 +720,30 @@
 <a href="#720" id="720">720</a>
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1440,6 +1464,30 @@
     </span><span class="kw">fn </span>test_end_prefix() {
         <span class="macro">assert_eq!</span>(end_prefix(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]), <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">8</span>]));
         <span class="macro">assert_eq!</span>(end_prefix(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">255</span>]), <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">5</span>, <span class="number">7</span>]));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_ledger_delete() {
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
+        <span class="kw">let </span>(ledger_db, _data) = init_test_ledger(addr);
+
+        <span class="kw">let </span>datastore = ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr);
+        <span class="comment">// println!("datastore: {:?}", datastore);
+        </span><span class="macro">assert!</span>(!datastore.is_empty());
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+        <span class="kw">let </span>guard = ledger_db.db.read();
+        delete_datastore_entries(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>guard, <span class="kw-2">&amp;mut </span>batch);
+        drop(guard);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>guard = ledger_db.db.write();
+        guard.write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+        drop(guard);
+
+        <span class="kw">let </span>datastore = ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr);
+        <span class="comment">// println!("datastore: {:?}", datastore);
+        </span><span class="macro">assert!</span>(datastore.is_empty());
     }
 }
 </code></pre></div></section></main></body></html>

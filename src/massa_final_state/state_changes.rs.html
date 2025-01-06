@@ -382,24 +382,6 @@
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the final state
@@ -629,24 +611,6 @@
             },
         )
         .parse(buffer)
-    }
-}
-
-<span class="kw">impl </span>StateChanges {
-    <span class="doccomment">/// extends the current `StateChanges` with another one
-    </span><span class="kw">pub fn </span>apply(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: StateChanges) {
-        <span class="comment">// TODO deferred_call_changes ?
-        </span><span class="kw">use </span>massa_models::types::Applicable;
-        <span class="self">self</span>.ledger_changes.apply(changes.ledger_changes);
-        <span class="self">self</span>.async_pool_changes.apply(changes.async_pool_changes);
-        <span class="self">self</span>.pos_changes.extend(changes.pos_changes);
-        <span class="self">self</span>.executed_ops_changes
-            .extend(changes.executed_ops_changes);
-        <span class="comment">// Note: no need to version the changes, as this function is not used in the codebase
-        </span><span class="self">self</span>.executed_denunciations_changes
-            .extend(changes.executed_denunciations_changes);
-        <span class="self">self</span>.execution_trail_hash_change
-            .apply(changes.execution_trail_hash_change);
     }
 }
 
