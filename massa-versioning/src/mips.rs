@@ -9,22 +9,22 @@ use crate::versioning::{MipComponent, MipInfo, MipState};
 
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
-    let mip_list = [
-        (
-            MipInfo {
-                name: "MIP-0001-Execution-BugFix".to_string(),
-                version: 1,
-                components: BTreeMap::from([
-                    (MipComponent::Execution, 1),
-                    (MipComponent::FinalState, 1),
-                ]),
-                start: MassaTime::from_utc_ymd_hms(2024, 11, 28, 2, 0, 0).unwrap(), // TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
-                timeout: MassaTime::from_utc_ymd_hms(2025, 11, 28, 2, 0, 0).unwrap(), // TODO: set when known
-                activation_delay: MassaTime::from_millis(3 * 24 * 60 * 60 * 1000), // TODO: set when known, 3 days as an example
-            },
-            MipState::new(MassaTime::from_utc_ymd_hms(2024, 11, 28, 0, 0, 0).unwrap()),
-        ), // TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch)
-    ];
+    let mip_list = [(
+        MipInfo {
+            name: "MIP-0001-Execution-BugFix-And-DeferredCalls".to_string(),
+            version: 1,
+            components: BTreeMap::from([
+                (MipComponent::Execution, 1),
+                (MipComponent::FinalState, 1),
+            ]),
+            // Note: All bootstrap servers should have been updated to the latest version before the start time
+            start: MassaTime::from_utc_ymd_hms(2025, 01, 13, 14, 0, 0).unwrap(), // Monday, January 13, 2025 2:00:00 PM UTC
+            // Give 1 week for the MIP to be accepted
+            timeout: MassaTime::from_utc_ymd_hms(2025, 01, 20, 14, 0, 0).unwrap(), // Monday, January 20, 2025 2:00:00 PM UTC
+            activation_delay: MassaTime::from_millis(1 * 60 * 60 * 1000), // The MIP will be activated 1 hour after the LockedIn state
+        },
+        MipState::new(MassaTime::from_utc_ymd_hms(2025, 01, 10, 10, 0, 0).unwrap()), // Friday, January 10, 2025 10:00:00 AM UTC
+    )];
 
     // debug!("MIP list: {:?}", mip_list);
     #[allow(clippy::let_and_return)]
