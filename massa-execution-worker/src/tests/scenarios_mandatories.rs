@@ -4127,6 +4127,187 @@ fn chain_id() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].data, format!("Chain id: {}", *CHAINID));
 }
+#[test]
+fn send_and_receive_async_message_with_reset() {
+    // Deploy a receive_message SC, send a message to it but reset this deployed SC right after
+    // This is a TU for an edge case (not sure if this can happen in a real scenario)
+
+    let exec_cfg = ExecutionConfig::default();
+    let finalized_waitpoint = WaitPoint::new();
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+    selector_boilerplate(&mut foreign_controllers.selector_controller);
+    // TODO: add some context for this override
+    foreign_controllers
+        .selector_controller
+        .set_expectations(|selector_controller| {
+            selector_controller
+                .expect_get_producer()
+                .returning(move |_| {
+                    Ok(Address::from_public_key(
+                        &KeyPair::from_str(TEST_SK_2).unwrap().get_public_key(),
+                    ))
+                });
+        });
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_balance()
+                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+
+            ledger_controller
+                .expect_entry_exists()
+                .times(2)
+                .returning(move |_| false);
+
+            ledger_controller
+                .expect_entry_exists()
+                .returning(move |_| true);
+        });
+    let saved_bytecode = Arc::new(RwLock::new(None));
+    // let saved_bytecode_edit = saved_bytecode.clone();
+    let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
+
+    println!("CHAINID: {}", *CHAINID);
+    let destination = match *CHAINID {
+        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77658366 => {
+            Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
+        }
+        77658377 => {
+            Address::from_str("AS1SuZvmp2HdJ9FNvHKXPNZm78yx2LQnE9RaLnAx55mQtAcFEGMZ").unwrap()
+        }
+        _ => panic!("CHAINID not supported"),
+    };
+
+    // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    let message = AsyncMessage {
+        emission_slot: Slot {
+            period: 1,
+            thread: 0,
+        },
+        emission_index: 0,
+        sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
+        // Note: generated address (from send_message.ts createSC call)
+        //       this can changes when modification to the final state are done (see create_new_sc_address function)
+        destination,
+        function: String::from("receive"),
+        // value from SC: send_message.ts
+        max_gas: 3000000,
+        fee: Amount::from_raw(1),
+        coins: Amount::from_raw(100),
+        validity_start: Slot {
+            period: 1,
+            thread: 1,
+        },
+        validity_end: Slot {
+            period: 20,
+            thread: 20,
+        },
+        function_params: vec![42, 42, 42, 42],
+        trigger: None,
+        can_be_executed: true,
+    };
+    let message_cloned = message.clone();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 0)), predicate::always())
+        .returning(move |_, changes| {
+            assert_eq!(changes.async_pool_changes.0.len(), 1);
+            println!("changes: {:?}", changes.async_pool_changes.0);
+            assert_eq!(
+                changes.async_pool_changes.0.first_key_value().unwrap().1,
+                &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
+            );
+            assert_eq!(
+                changes.async_pool_changes.0.first_key_value().unwrap().0,
+                &message_cloned.compute_id()
+            );
+            finalized_waitpoint_trigger_handle.trigger();
+        });
+
+    let finalized_waitpoint_trigger_handle2 = finalized_waitpoint.get_trigger_handle();
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_finalize()
+        .times(1)
+        .with(predicate::eq(Slot::new(1, 1)), predicate::always())
+        .returning(move |_, changes| {
+            match changes.async_pool_changes.0.first_key_value().unwrap().1 {
+                SetUpdateOrDelete::Delete => {
+                    // msg was deleted
+                }
+                _ => panic!("wrong change type"),
+            }
+
+            finalized_waitpoint_trigger_handle2.trigger();
+        });
+
+    let mut async_pool = AsyncPool::new(AsyncPoolConfig::default(), foreign_controllers.db.clone());
+    let mut changes = BTreeMap::default();
+    changes.insert(
+        (
+            Reverse(Ratio::new(1, 100000)),
+            Slot {
+                period: 1,
+                thread: 0,
+            },
+            0,
+        ),
+        massa_models::types::SetUpdateOrDelete::Set(message),
+    );
+    let mut db_batch = DBBatch::default();
+    async_pool.apply_changes_to_batch(&AsyncPoolChanges(changes), &mut db_batch);
+    foreign_controllers
+        .db
+        .write()
+        .write_batch(db_batch, DBBatch::default(), Some(Slot::new(1, 0)));
+    final_state_boilerplate(
+        &mut foreign_controllers.final_state,
+        foreign_controllers.db.clone(),
+        &foreign_controllers.selector_controller,
+        &mut foreign_controllers.ledger_controller,
+        Some(saved_bytecode),
+        Some(async_pool),
+        None,
+        None,
+    );
+    let mut universe = ExecutionTestUniverse::new(foreign_controllers, exec_cfg.clone());
+
+    // load bytecodes
+    universe.deploy_bytecode_block(
+        &KeyPair::from_str(TEST_SK_1).unwrap(),
+        Slot::new(1, 0),
+        include_bytes!("./wasm/send_message_then_reset_bytecode.wasm"),
+        // include_bytes!("./wasm/send_message.wasm"),
+        include_bytes!("./wasm/receive_message.wasm"),
+    );
+    finalized_waitpoint.wait();
+
+    let keypair = KeyPair::from_str(TEST_SK_2).unwrap();
+    let block =
+        ExecutionTestUniverse::create_block(&keypair, Slot::new(1, 1), vec![], vec![], vec![]);
+
+    universe.send_and_finalize(&keypair, block, None);
+    finalized_waitpoint.wait();
+    // retrieve events emitted by smart contracts
+    let events = universe
+        .module_controller
+        .get_filtered_sc_output_event(EventFilter {
+            start: Some(Slot::new(1, 1)),
+            end: Some(Slot::new(20, 1)),
+            ..Default::default()
+        });
+    // match the events
+    assert!(events.len() == 1, "One event was expected");
+    // bytecode for SC receive message has been reset so we expect the following message:
+    assert!(events[0].data.contains("no target bytecode found"));
+}
 
 #[cfg(feature = "execution-trace")]
 #[test]
