@@ -4169,7 +4169,6 @@ fn send_and_receive_async_message_with_reset() {
     // let saved_bytecode_edit = saved_bytecode.clone();
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
 
-    println!("CHAINID: {}", *CHAINID);
     let destination = match *CHAINID {
         77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
         77658366 => {
@@ -4218,7 +4217,6 @@ fn send_and_receive_async_message_with_reset() {
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
             assert_eq!(changes.async_pool_changes.0.len(), 1);
-            println!("changes: {:?}", changes.async_pool_changes.0);
             assert_eq!(
                 changes.async_pool_changes.0.first_key_value().unwrap().1,
                 &massa_models::types::SetUpdateOrDelete::Set(message_cloned.clone())
@@ -4284,7 +4282,6 @@ fn send_and_receive_async_message_with_reset() {
         &KeyPair::from_str(TEST_SK_1).unwrap(),
         Slot::new(1, 0),
         include_bytes!("./wasm/send_message_then_reset_bytecode.wasm"),
-        // include_bytes!("./wasm/send_message.wasm"),
         include_bytes!("./wasm/receive_message.wasm"),
     );
     finalized_waitpoint.wait();
