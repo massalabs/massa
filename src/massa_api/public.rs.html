@@ -1510,38 +1510,6 @@
 <a href="#1510" id="1510">1510</a>
 <a href="#1511" id="1511">1511</a>
 <a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
-<a href="#1515" id="1515">1515</a>
-<a href="#1516" id="1516">1516</a>
-<a href="#1517" id="1517">1517</a>
-<a href="#1518" id="1518">1518</a>
-<a href="#1519" id="1519">1519</a>
-<a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
-<a href="#1523" id="1523">1523</a>
-<a href="#1524" id="1524">1524</a>
-<a href="#1525" id="1525">1525</a>
-<a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
-<a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
-<a href="#1532" id="1532">1532</a>
-<a href="#1533" id="1533">1533</a>
-<a href="#1534" id="1534">1534</a>
-<a href="#1535" id="1535">1535</a>
-<a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -2002,12 +1970,6 @@
         <span class="kw">let </span>config = CompactConfig::default();
         <span class="kw">let </span>now = MassaTime::now();
 
-        <span class="kw">let </span>current_mip_version = <span class="self">self
-            </span>.<span class="number">0
-            </span>.keypair_factory
-            .mip_store
-            .get_network_version_current();
-
         <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
             api_settings.t0,
@@ -2105,7 +2067,6 @@
             current_cycle,
             chain_id: <span class="self">self</span>.<span class="number">0</span>.api_settings.chain_id,
             minimal_fees: <span class="self">self</span>.<span class="number">0</span>.api_settings.minimal_fees,
-            current_mip_version,
         })
     }
 
@@ -2547,10 +2508,15 @@
             bound_ts,
         );
 
+        <span class="comment">// TODO retrieve the max keys queries and offset key from request
+        </span><span class="kw">let </span>max_keys_queries = <span class="self">self</span>.<span class="number">0</span>.api_settings.max_datastore_keys_queries;
+
         <span class="comment">// get execution info
         </span><span class="kw">let </span>execution_infos = <span class="self">self</span>.<span class="number">0</span>.execution_controller.get_addresses_infos(
             <span class="kw-2">&amp;</span>addresses,
             std::ops::Bound::Included(deferred_credit_max_slot),
+            <span class="prelude-val">None</span>,
+            max_keys_queries,
         );
 
         <span class="comment">// get future draws from selector
@@ -2711,16 +2677,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         req: Vec&lt;DeferredCallsQuoteRequest&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DeferredCallsQuoteResponse&gt;&gt; {
-        <span class="kw">let </span>current_network_version = <span class="self">self
-            </span>.<span class="number">0
-            </span>.keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        <span class="kw">if </span>current_network_version &lt; <span class="number">1 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NotFound.into());
-        }
-
         <span class="kw">if </span>req.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
@@ -2766,16 +2722,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: Vec&lt;String&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DeferredCallResponse&gt;&gt; {
-        <span class="kw">let </span>current_network_version = <span class="self">self
-            </span>.<span class="number">0
-            </span>.keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        <span class="kw">if </span>current_network_version &lt; <span class="number">1 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NotFound.into());
-        }
-
         <span class="kw">if </span>arg.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
@@ -2816,16 +2762,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         slots: Vec&lt;Slot&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DeferredCallsSlotResponse&gt;&gt; {
-        <span class="kw">let </span>current_network_version = <span class="self">self
-            </span>.<span class="number">0
-            </span>.keypair_factory
-            .mip_store
-            .get_network_version_current();
-
-        <span class="kw">if </span>current_network_version &lt; <span class="number">1 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::NotFound.into());
-        }
-
         <span class="kw">if </span>slots.len() <span class="kw">as </span>u64 &gt; <span class="self">self</span>.<span class="number">0</span>.api_settings.max_arguments {
             <span class="kw">return </span><span class="prelude-val">Err</span>(ApiError::BadRequest(<span class="string">"too many arguments"</span>.into()).into());
         }
