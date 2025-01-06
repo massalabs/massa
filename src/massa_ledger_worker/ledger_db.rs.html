@@ -1478,7 +1478,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
         <span class="kw">let </span>guard = ledger_db.db.read();
-        delete_datastore_entries(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>guard, <span class="kw-2">&amp;mut </span>batch);
+        delete_datastore_entries(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>guard, <span class="kw-2">&amp;mut </span>batch, <span class="number">1</span>);
         drop(guard);
 
         <span class="kw">let </span><span class="kw-2">mut </span>guard = ledger_db.db.write();
