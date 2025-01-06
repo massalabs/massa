@@ -230,24 +230,6 @@ impl Deserializer<StateChanges> for StateChangesDeserializer {
     }
 }
 
-impl StateChanges {
-    /// extends the current `StateChanges` with another one
-    pub fn apply(&mut self, changes: StateChanges) {
-        // TODO deferred_call_changes ?
-        use massa_models::types::Applicable;
-        self.ledger_changes.apply(changes.ledger_changes);
-        self.async_pool_changes.apply(changes.async_pool_changes);
-        self.pos_changes.extend(changes.pos_changes);
-        self.executed_ops_changes
-            .extend(changes.executed_ops_changes);
-        // Note: no need to version the changes, as this function is not used in the codebase
-        self.executed_denunciations_changes
-            .extend(changes.executed_denunciations_changes);
-        self.execution_trail_hash_change
-            .apply(changes.execution_trail_hash_change);
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::collections::BTreeMap;

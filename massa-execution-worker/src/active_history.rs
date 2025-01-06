@@ -260,11 +260,11 @@ impl ActiveHistory {
             return SlotIndexPosition::Past; // too old
         }
         let index: usize = match slot.slots_since(first_slot, thread_count) {
-            Err(_) => return SlotIndexPosition::Past, // overflow
+            Err(_) => return SlotIndexPosition::Past, // first_slot > slot - see slots_since docstring
             Ok(d) => {
                 match d.try_into() {
                     Ok(d) => d,
-                    Err(_) => return SlotIndexPosition::Future, // usize overflow
+                    Err(_) => return SlotIndexPosition::Future, // conversion from u64 to usize fail
                 }
             }
         };

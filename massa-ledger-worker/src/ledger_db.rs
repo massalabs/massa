@@ -719,4 +719,28 @@ mod tests {
         assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
         assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
     }
+
+    #[test]
+    fn test_ledger_delete() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        let (ledger_db, _data) = init_test_ledger(addr);
+
+        let datastore = ledger_db.get_entire_datastore(&addr);
+        // println!("datastore: {:?}", datastore);
+        assert!(!datastore.is_empty());
+
+        let mut batch = DBBatch::new();
+        let guard = ledger_db.db.read();
+        delete_datastore_entries(&addr, &guard, &mut batch);
+        drop(guard);
+
+        let mut guard = ledger_db.db.write();
+        guard.write_batch(batch, Default::default(), None);
+        drop(guard);
+
+        let datastore = ledger_db.get_entire_datastore(&addr);
+        // println!("datastore: {:?}", datastore);
+        assert!(datastore.is_empty());
+    }
 }
