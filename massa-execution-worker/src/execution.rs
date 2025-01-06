@@ -49,6 +49,7 @@ use massa_sc_runtime::{Interface, Response, VMError};
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
@@ -2196,29 +2197,33 @@ impl ExecutionState {
         addr: &Address,
         prefix: &[u8],
         offset: Option<&[u8]>,
-        count: Option<u32>,
+        count: u32,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
-        // TODO
-
-        // let limit = count.unwrap_or(self.config.max_datastore_keys);
-        let limit = count.unwrap_or(10000);
-
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self
-            .final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix, offset, count);
+        let final_keys = self.final_state.read().get_ledger().get_datastore_keys(
+            addr,
+            prefix,
+            offset,
+            Some(count),
+        );
 
         let mut candidate_keys = final_keys.clone();
+
+        // TODO use offset
 
         // compute prefix range
         let prefix_range = get_prefix_bounds(prefix);
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
+        // limit the number of keys to return to `count`
+        let collected_keys = Cell::new(candidate_keys.as_ref().map_or(0, |keys| keys.len()));
+
         // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
+            if collected_keys.get() >= count as usize {
+                break;
+            }
             match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
                 None => (),
@@ -2229,8 +2234,18 @@ impl ExecutionState {
                         new_ledger_entry
                             .datastore
                             .range::<Vec<u8>, _>(range_ref)
-                            .map(|(k, _v)| k.clone())
+                            .take_while(|_k| collected_keys.get() < count as usize)
+                            .map(|(k, _v)| {
+                                collected_keys.set(collected_keys.get().saturating_add(1));
+                                k.clone()
+                            })
                             .collect(),
+                    );
+
+                    collected_keys.set(
+                        collected_keys
+                            .get()
+                            .saturating_add(candidate_keys.as_ref().map_or(0, |keys| keys.len())),
                     );
                 }
 
@@ -2240,9 +2255,18 @@ impl ExecutionState {
                     for (ds_key, ds_update) in
                         entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
+                        if collected_keys.get() >= count as usize {
+                            break;
+                        }
                         match ds_update {
-                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete => c_k.remove(ds_key),
+                            SetOrDelete::Set(_) => {
+                                collected_keys.set(collected_keys.get().saturating_add(1));
+                                c_k.insert(ds_key.clone())
+                            }
+                            SetOrDelete::Delete => {
+                                collected_keys.set(collected_keys.get().saturating_sub(1));
+                                c_k.remove(ds_key)
+                            }
                         };
                     }
                 }

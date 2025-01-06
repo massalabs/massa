@@ -181,7 +181,6 @@ impl LedgerDB {
         offset: Option<&[u8]>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
-        // TODO
         let db = self.db.read();
 
         // check if address exists, return None if it does not
@@ -194,8 +193,13 @@ impl LedgerDB {
             db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
+        // TODO
         // collect keys starting with prefix
-        let start_prefix = datastore_prefix_from_address(addr, prefix);
+        let start_prefix = if let Some(offset_start) = offset {
+            offset_start.to_vec()
+        } else {
+            datastore_prefix_from_address(addr, prefix)
+        };
 
         let end_prefix = end_prefix(&start_prefix);
 

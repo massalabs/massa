@@ -196,16 +196,18 @@ impl ExecutionController for ExecutionControllerImpl {
                     }
                 }
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
-                    let (_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                    // TODO retrieve offset and count
+                    let (_final_v, speculative_v) = execution_lock
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, 500);
                     match speculative_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
-                    let (final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(&addr, &prefix);
+                    // TODO retrieve offset and count
+                    let (final_v, _speculative_v) = execution_lock
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, 500);
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
@@ -471,12 +473,19 @@ impl ExecutionController for ExecutionControllerImpl {
         &self,
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
+        datastore_key_offset: Option<&[u8]>,
+        datastore_key_count: u32,
     ) -> Vec<ExecutionAddressInfo> {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();
         for addr in addresses {
-            let (final_datastore_keys, candidate_datastore_keys) =
-                exec_state.get_final_and_candidate_datastore_keys(addr, &[]);
+            let (final_datastore_keys, candidate_datastore_keys) = exec_state
+                .get_final_and_candidate_datastore_keys(
+                    addr,
+                    &[],
+                    datastore_key_offset,
+                    datastore_key_count,
+                );
             let (final_balance, candidate_balance) =
                 exec_state.get_final_and_candidate_balance(addr);
             let (final_roll_count, candidate_roll_count) =

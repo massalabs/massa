@@ -87,4 +87,6 @@ pub struct APIConfig {
     pub minimal_fees: Amount,
     /// deferred calls config
     pub deferred_calls_config: DeferredCallsConfig,
+    /// max datastore keys queries
+    pub max_datastore_keys_queries: u32,
 }
