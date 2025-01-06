@@ -2241,12 +2241,6 @@ impl ExecutionState {
                             })
                             .collect(),
                     );
-
-                    collected_keys.set(
-                        collected_keys
-                            .get()
-                            .saturating_add(candidate_keys.as_ref().map_or(0, |keys| keys.len())),
-                    );
                 }
 
                 // address ledger entry being updated
