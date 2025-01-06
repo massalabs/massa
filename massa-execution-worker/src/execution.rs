@@ -2195,8 +2195,13 @@ impl ExecutionState {
         &self,
         addr: &Address,
         prefix: &[u8],
+        offset: Option<&[u8]>,
+        count: Option<u32>,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // TODO
+
+        // let limit = count.unwrap_or(self.config.max_datastore_keys);
+        let limit = count.unwrap_or(10000);
 
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
@@ -2204,7 +2209,7 @@ impl ExecutionState {
             .final_state
             .read()
             .get_ledger()
-            .get_datastore_keys(addr, prefix, None, None);
+            .get_datastore_keys(addr, prefix, offset, count);
 
         let mut candidate_keys = final_keys.clone();
 

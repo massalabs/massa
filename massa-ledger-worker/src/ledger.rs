@@ -143,10 +143,10 @@ impl LedgerController for FinalLedger {
         addr: &Address,
         prefix: &[u8],
         offset: Option<&[u8]>,
-        limit: Option<u32>,
+        count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         self.sorted_ledger
-            .get_datastore_keys(addr, prefix, offset, limit)
+            .get_datastore_keys(addr, prefix, offset, count)
     }
 
     /// Reset the disk ledger.

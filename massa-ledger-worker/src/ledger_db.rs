@@ -18,6 +18,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
+use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -178,7 +179,7 @@ impl LedgerDB {
         addr: &Address,
         prefix: &[u8],
         offset: Option<&[u8]>,
-        limit: Option<u32>,
+        count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         // TODO
         let db = self.db.read();
@@ -195,15 +196,29 @@ impl LedgerDB {
 
         // collect keys starting with prefix
         let start_prefix = datastore_prefix_from_address(addr, prefix);
+
         let end_prefix = end_prefix(&start_prefix);
+
+        // we cannot borrow as mutable because it is also borrowed as immutable in the iterator
+        // we need to use a Cell to keep track of the number of collected keys
+        let collected_count = Cell::new(0);
+
         Some(
             db.iterator_cf(
                 STATE_CF,
                 MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, _)| match &end_prefix {
-                Some(end) => key < end,
-                None => true,
+            .take_while(|(key, _)| {
+                if let Some(max_count) = count {
+                    if collected_count.get() >= max_count {
+                        return false;
+                    }
+                }
+
+                match &end_prefix {
+                    Some(end) => key < end,
+                    None => true,
+                }
             })
             .filter_map(|(key, _)| {
                 let (_rest, key) = self
@@ -211,7 +226,10 @@ impl LedgerDB {
                     .deserialize::<DeserializeError>(&key)
                     .expect("could not deserialize datastore key from state db");
                 match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => Some(datastore_vec),
+                    KeyType::DATASTORE(datastore_vec) => {
+                        collected_count.set(collected_count.get() + 1);
+                        Some(datastore_vec)
+                    }
                     _ => None,
                 }
             })

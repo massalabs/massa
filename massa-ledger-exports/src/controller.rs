@@ -49,7 +49,7 @@ pub trait LedgerController: Send + Sync {
         addr: &Address,
         prefix: &[u8],
         offset: Option<&'a [u8]>,
-        limit: Option<u32>,
+        count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>>;
 
     /// Reset the ledger
