@@ -9,22 +9,21 @@ use crate::versioning::{MipComponent, MipInfo, MipState};
 
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
-    // When the MIP becomes defined, e.g. when merged to main branch
-    let defined = MassaTime::from_utc_ymd_hms(2025, 5, 12, 10, 0, 0).unwrap(); // Monday 12th May 2025 10:00:00 UTC
-
     let mip_list = [(
         MipInfo {
-            name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
+            name: "MIP-0001-Execution-BugFix-And-DeferredCalls".to_string(),
             version: 1,
             components: BTreeMap::from([
                 (MipComponent::Execution, 1),
                 (MipComponent::FinalState, 1),
             ]),
-            start: MassaTime::from_utc_ymd_hms(2025, 5, 19, 10, 0, 0).unwrap(), // Monday 19th May 2025 10:00:00 UTC
-            timeout: MassaTime::from_utc_ymd_hms(2025, 6, 19, 10, 0, 0).unwrap(), // Thursday 19th June 2025 10:00:00 UTC
-            activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),    // 7 days
+            // Note: All bootstrap servers should have been updated to the latest version before the start time
+            start: MassaTime::from_utc_ymd_hms(2025, 01, 13, 14, 0, 0).unwrap(), // Monday, January 13, 2025 2:00:00 PM UTC
+            // Give 1 week for the MIP to be accepted
+            timeout: MassaTime::from_utc_ymd_hms(2025, 01, 20, 14, 0, 0).unwrap(), // Monday, January 20, 2025 2:00:00 PM UTC
+            activation_delay: MassaTime::from_millis(1 * 60 * 60 * 1000), // The MIP will be activated 1 hour after the LockedIn state
         },
-        MipState::new(defined),
+        MipState::new(MassaTime::from_utc_ymd_hms(2025, 01, 10, 10, 0, 0).unwrap()), // Friday, January 10, 2025 10:00:00 AM UTC
     )];
 
     // debug!("MIP list: {:?}", mip_list);
