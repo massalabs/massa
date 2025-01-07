@@ -4154,7 +4154,7 @@ fn send_and_receive_async_message_with_reset() {
         .set_expectations(|ledger_controller| {
             ledger_controller
                 .expect_get_balance()
-                .returning(move |_| Some(Amount::from_str("100").unwrap()));
+                .returning(|_| Some(Amount::from_str("200").unwrap()));
 
             ledger_controller
                 .expect_entry_exists()
@@ -4170,24 +4170,26 @@ fn send_and_receive_async_message_with_reset() {
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
 
     let destination = match *CHAINID {
-        77 => Address::from_str("AS12jc7fTsSKwQ9hSk97C3iMNgNT1XrrD6MjSJRJZ4NE53YgQ4kFV").unwrap(),
+        77 => Address::from_str("AS1L5TLQPR1zoPxJfo1Y3N1FUczam5UW4agGfhBa6WUWmsHoYbbV").unwrap(),
         77658366 => {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
         77658377 => {
-            Address::from_str("AS1SuZvmp2HdJ9FNvHKXPNZm78yx2LQnE9RaLnAx55mQtAcFEGMZ").unwrap()
+            Address::from_str("AS12KJXFU1tBJRVm7ADek2RzXgKPCR9vmpy7vK7Ywe1UaqNMtTZeA").unwrap()
         }
         _ => panic!("CHAINID not supported"),
     };
 
     // Expected message from SC: send_message.ts (see massa unit tests src repo)
+    let addr_sender =
+        Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap();
     let message = AsyncMessage {
         emission_slot: Slot {
             period: 1,
             thread: 0,
         },
         emission_index: 0,
-        sender: Address::from_str("AU1TyzwHarZMQSVJgxku8co7xjrRLnH74nFbNpoqNd98YhJkWgi").unwrap(),
+        sender: addr_sender,
         // Note: generated address (from send_message.ts createSC call)
         //       this can changes when modification to the final state are done (see create_new_sc_address function)
         destination,
@@ -4225,6 +4227,7 @@ fn send_and_receive_async_message_with_reset() {
                 changes.async_pool_changes.0.first_key_value().unwrap().0,
                 &message_cloned.compute_id()
             );
+
             finalized_waitpoint_trigger_handle.trigger();
         });
 
