@@ -1031,7 +1031,7 @@
             </span>.final_state
             .read()
             .get_ledger()
-            .get_datastore_keys(addr, prefix, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+            .get_datastore_keys(addr, prefix);
 
         <span class="comment">// here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
         </span><span class="kw">let </span>active_history = <span class="self">self</span>.active_history.read();

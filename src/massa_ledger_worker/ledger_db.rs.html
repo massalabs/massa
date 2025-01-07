@@ -722,34 +722,6 @@
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
-<a href="#736" id="736">736</a>
-<a href="#737" id="737">737</a>
-<a href="#738" id="738">738</a>
-<a href="#739" id="739">739</a>
-<a href="#740" id="740">740</a>
-<a href="#741" id="741">741</a>
-<a href="#742" id="742">742</a>
-<a href="#743" id="743">743</a>
-<a href="#744" id="744">744</a>
-<a href="#745" id="745">745</a>
-<a href="#746" id="746">746</a>
-<a href="#747" id="747">747</a>
-<a href="#748" id="748">748</a>
-<a href="#749" id="749">749</a>
-<a href="#750" id="750">750</a>
-<a href="#751" id="751">751</a>
-<a href="#752" id="752">752</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -770,7 +742,6 @@
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 <span class="kw">use </span>parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
-<span class="kw">use </span>std::cell::Cell;
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
 <span class="kw">use </span>std::fmt::Debug;
 
@@ -926,13 +897,7 @@
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    </span><span class="kw">pub fn </span>get_datastore_keys(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-        prefix: <span class="kw-2">&amp;</span>[u8],
-        offset: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;,
-        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+    </span><span class="kw">pub fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// check if address exists, return None if it does not
@@ -946,34 +911,16 @@
         }
 
         <span class="comment">// collect keys starting with prefix
-        </span><span class="kw">let </span>start_prefix = <span class="kw">if let </span><span class="prelude-val">Some</span>(offset_start) = offset {
-            offset_start.to_vec()
-        } <span class="kw">else </span>{
-            datastore_prefix_from_address(addr, prefix)
-        };
-
+        </span><span class="kw">let </span>start_prefix = datastore_prefix_from_address(addr, prefix);
         <span class="kw">let </span>end_prefix = end_prefix(<span class="kw-2">&amp;</span>start_prefix);
-
-        <span class="comment">// we cannot borrow as mutable because it is also borrowed as immutable in the iterator
-        // we need to use a Cell to keep track of the number of collected keys
-        </span><span class="kw">let </span>collected_count = Cell::new(<span class="number">0</span>);
-
         <span class="prelude-val">Some</span>(
             db.iterator_cf(
                 STATE_CF,
                 MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_prefix, MassaDirection::Forward),
             )
-            .take_while(|(key, <span class="kw">_</span>)| {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(max_count) = count {
-                    <span class="kw">if </span>collected_count.get() &gt;= max_count {
-                        <span class="kw">return </span><span class="bool-val">false</span>;
-                    }
-                }
-
-                <span class="kw">match </span><span class="kw-2">&amp;</span>end_prefix {
-                    <span class="prelude-val">Some</span>(end) =&gt; key &lt; end,
-                    <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>,
-                }
+            .take_while(|(key, <span class="kw">_</span>)| <span class="kw">match </span><span class="kw-2">&amp;</span>end_prefix {
+                <span class="prelude-val">Some</span>(end) =&gt; key &lt; end,
+                <span class="prelude-val">None </span>=&gt; <span class="bool-val">true</span>,
             })
             .filter_map(|(key, <span class="kw">_</span>)| {
                 <span class="kw">let </span>(_rest, key) = <span class="self">self
@@ -981,10 +928,7 @@
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
                     .expect(<span class="string">"could not deserialize datastore key from state db"</span>);
                 <span class="kw">match </span>key.key_type {
-                    KeyType::DATASTORE(datastore_vec) =&gt; {
-                        collected_count.set(collected_count.get() + <span class="number">1</span>);
-                        <span class="prelude-val">Some</span>(datastore_vec)
-                    }
+                    KeyType::DATASTORE(datastore_vec) =&gt; <span class="prelude-val">Some</span>(datastore_vec),
                     <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
                 }
             })
