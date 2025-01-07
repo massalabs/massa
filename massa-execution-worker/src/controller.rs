@@ -198,7 +198,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
                     // TODO retrieve offset and count
                     let (_final_v, speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, 500);
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, Some(500));
                     match speculative_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
@@ -207,7 +207,7 @@ impl ExecutionController for ExecutionControllerImpl {
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
                     // TODO retrieve offset and count
                     let (final_v, _speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, 500);
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, Some(500));
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
@@ -474,7 +474,7 @@ impl ExecutionController for ExecutionControllerImpl {
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
         datastore_key_offset: Option<&[u8]>,
-        datastore_key_count: u32,
+        datastore_key_count: Option<u32>,
     ) -> Vec<ExecutionAddressInfo> {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();

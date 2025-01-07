@@ -111,7 +111,7 @@ pub trait ExecutionController: Send + Sync {
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
         datastore_key_offset: Option<&'a [u8]>,
-        datastore_key_count: u32,
+        datastore_key_count: Option<u32>,
     ) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics

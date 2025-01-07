@@ -133,6 +133,7 @@ pub struct APISettings {
     // whether to broadcast for blocks, endorsement and operations
     pub enable_broadcast: bool,
     pub deferred_credits_delta: MassaTime,
+    pub max_datastore_keys_query: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

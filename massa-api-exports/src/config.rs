@@ -88,5 +88,5 @@ pub struct APIConfig {
     /// deferred calls config
     pub deferred_calls_config: DeferredCallsConfig,
     /// max datastore keys queries
-    pub max_datastore_keys_queries: u32,
+    pub max_datastore_keys_queries: Option<u32>,
 }

@@ -39,6 +39,8 @@
     enable_broadcast = false
     # deferred credits delta (in milliseconds)
     deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
+    # max datastore keys query 
+    #max_datastore_keys_query = 500
 
 [grpc]
     [grpc.public]

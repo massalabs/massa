@@ -193,7 +193,6 @@ impl LedgerDB {
             db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
-        // TODO
         // collect keys starting with prefix
         let start_prefix = if let Some(offset_start) = offset {
             offset_start.to_vec()
