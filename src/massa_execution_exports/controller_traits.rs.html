@@ -267,7 +267,7 @@
         addresses: <span class="kw-2">&amp;</span>[Address],
         deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
         datastore_key_offset: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;,
-        datastore_key_count: u32,
+        datastore_key_count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     ) -&gt; Vec&lt;ExecutionAddressInfo&gt;;
 
     <span class="doccomment">/// Get execution statistics

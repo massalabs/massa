@@ -789,7 +789,7 @@
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } =&gt; {
                     <span class="comment">// TODO retrieve offset and count
                     </span><span class="kw">let </span>(_final_v, speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix, <span class="prelude-val">None</span>, <span class="number">500</span>);
+                        .get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">500</span>));
                     <span class="kw">match </span>speculative_v {
                         <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::KeyList(keys)),
                         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
@@ -798,7 +798,7 @@
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } =&gt; {
                     <span class="comment">// TODO retrieve offset and count
                     </span><span class="kw">let </span>(final_v, _speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix, <span class="prelude-val">None</span>, <span class="number">500</span>);
+                        .get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="number">500</span>));
                     <span class="kw">match </span>final_v {
                         <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::KeyList(keys)),
                         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
@@ -1065,7 +1065,7 @@
         addresses: <span class="kw-2">&amp;</span>[Address],
         deferred_credits_max_slot: std::ops::Bound&lt;Slot&gt;,
         datastore_key_offset: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;,
-        datastore_key_count: u32,
+        datastore_key_count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     ) -&gt; Vec&lt;ExecutionAddressInfo&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
         <span class="kw">let </span>exec_state = <span class="self">self</span>.execution_state.read();
