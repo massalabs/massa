@@ -2221,9 +2221,12 @@ impl ExecutionState {
 
         // compute prefix range
         let prefix_range = if let Some(offset_key) = offset {
-            // TODO implement offset key
-            todo!("offset key is not implemented yet");
-            unimplemented!()
+            let mut range = get_prefix_bounds(match &offset_key {
+                Bound::Included(ref key) | Bound::Excluded(ref key) => key.as_slice(),
+                Bound::Unbounded => &[],
+            });
+            range.0 = offset_key;
+            range
         } else {
             get_prefix_bounds(prefix)
         };
