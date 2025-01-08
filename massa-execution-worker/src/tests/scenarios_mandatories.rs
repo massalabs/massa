@@ -4170,7 +4170,7 @@ fn send_and_receive_async_message_with_reset() {
     let finalized_waitpoint_trigger_handle = finalized_waitpoint.get_trigger_handle();
 
     let destination = match *CHAINID {
-        77 => Address::from_str("AS1L5TLQPR1zoPxJfo1Y3N1FUczam5UW4agGfhBa6WUWmsHoYbbV").unwrap(),
+        77 => Address::from_str("AS122j8hJaBQtoJXqaZSRbhRBD2GXEWAqdTgsBFJ47rxWNQPwa1fe").unwrap(),
         77658366 => {
             Address::from_str("AS12DSPbsNvvdP1ScCivmKpbQfcJJ3tCQFkNb8ewkRuNjsgoL2AeQ").unwrap()
         }
