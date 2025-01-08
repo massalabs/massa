@@ -23,6 +23,7 @@ use massa_pos_exports::ProductionStats;
 use massa_storage::Storage;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Bound;
 
 #[cfg(feature = "execution-trace")]
 use crate::types_trace_info::{SlotAbiCallStack, Transfer};
@@ -74,6 +75,10 @@ pub enum ExecutionQueryRequestItem {
         addr: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
+        /// Offset to start from
+        start_key: Option<Bound<Vec<u8>>>,
+        /// Maximum number of keys to return
+        count: Option<u32>,
     },
     /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
     AddressDatastoreKeysFinal {
@@ -81,6 +86,10 @@ pub enum ExecutionQueryRequestItem {
         addr: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
+        /// Offset to start from
+        start_key: Option<Bound<Vec<u8>>>,
+        /// Maximum number of keys to return
+        count: Option<u32>,
     },
     /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
     AddressDatastoreValueCandidate {

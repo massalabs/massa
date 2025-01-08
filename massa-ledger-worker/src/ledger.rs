@@ -13,8 +13,11 @@ use massa_models::{
     bytecode::{Bytecode, BytecodeDeserializer},
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
+use std::{
+    collections::{BTreeSet, HashMap},
+    ops::Bound,
+};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -142,11 +145,11 @@ impl LedgerController for FinalLedger {
         &self,
         addr: &Address,
         prefix: &[u8],
-        offset: Option<&[u8]>,
+        start_key: Option<Bound<Vec<u8>>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         self.sorted_ledger
-            .get_datastore_keys(addr, prefix, offset, count)
+            .get_datastore_keys(addr, prefix, start_key, count)
     }
 
     /// Reset the disk ledger.

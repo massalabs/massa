@@ -1,5 +1,5 @@
 use massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ops::Bound};
 
 use crate::{LedgerChanges, LedgerError};
 use massa_db_exports::DBBatch;
@@ -44,11 +44,11 @@ pub trait LedgerController: Send + Sync {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys<'a>(
+    fn get_datastore_keys(
         &self,
         addr: &Address,
         prefix: &[u8],
-        offset: Option<&'a [u8]>,
+        start_key: Option<Bound<Vec<u8>>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>>;
 

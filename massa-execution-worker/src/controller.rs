@@ -195,19 +195,29 @@ impl ExecutionController for ExecutionControllerImpl {
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } => {
+                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    addr,
+                    prefix,
+                    start_key,
+                    count,
+                } => {
                     // TODO retrieve offset and count
                     let (_final_v, speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, Some(500));
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, start_key, count);
                     match speculative_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } => {
+                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                    addr,
+                    prefix,
+                    start_key,
+                    count,
+                } => {
                     // TODO retrieve offset and count
                     let (final_v, _speculative_v) = execution_lock
-                        .get_final_and_candidate_datastore_keys(&addr, &prefix, None, Some(500));
+                        .get_final_and_candidate_datastore_keys(&addr, &prefix, start_key, count);
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!("Account {}", addr))),

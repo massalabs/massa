@@ -997,7 +997,7 @@ pub(crate) fn query_state(
         .into_inner()
         .queries
         .into_iter()
-        .map(to_querystate_filter)
+        .map(|q| to_querystate_filter(q, grpc.grpc_config.max_datastore_keys_queries))
         .collect::<Result<Vec<_>, _>>()?;
 
     if queries.is_empty() {

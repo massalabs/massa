@@ -178,7 +178,7 @@ impl LedgerDB {
         &self,
         addr: &Address,
         prefix: &[u8],
-        offset: Option<&[u8]>,
+        start_key: Option<Bound<Vec<u8>>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
@@ -194,8 +194,10 @@ impl LedgerDB {
         }
 
         // collect keys starting with prefix
-        let start_prefix = if let Some(offset_start) = offset {
-            offset_start.to_vec()
+        let start_prefix = if let Some(offset_start) = start_key {
+            // TODO
+            todo!("use bound to start from a specific key");
+            // offset_start.to_vec()
         } else {
             datastore_prefix_from_address(addr, prefix)
         };

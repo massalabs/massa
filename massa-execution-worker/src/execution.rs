@@ -51,6 +51,7 @@ use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -2196,7 +2197,7 @@ impl ExecutionState {
         &self,
         addr: &Address,
         prefix: &[u8],
-        offset: Option<&[u8]>,
+        offset: Option<Bound<Vec<u8>>>,
         count: Option<u32>,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
@@ -2211,7 +2212,9 @@ impl ExecutionState {
 
         // compute prefix range
         let prefix_range = if let Some(offset_key) = offset {
-            get_prefix_bounds(offset_key)
+            // TODO implement offset key
+            todo!("offset key is not implemented yet");
+            unimplemented!()
         } else {
             get_prefix_bounds(prefix)
         };

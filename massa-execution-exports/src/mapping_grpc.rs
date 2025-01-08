@@ -1,5 +1,6 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
+use std::ops::Bound;
 use std::str::FromStr;
 
 use crate::{
@@ -21,6 +22,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 /// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
+    max_datastore_query_config: Option<u32>,
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
     if let Some(item) = query.request_item {
         match item {
@@ -49,15 +51,53 @@ pub fn to_querystate_filter(
                 ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
             ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
+                // take the minimum of the limit and the max_datastore_query_config if it is set
+                let count = value
+                    .limit
+                    .map(|c| {
+                        max_datastore_query_config
+                            .map(|conf| c.min(conf))
+                            .unwrap_or(c)
+                    })
+                    .or(max_datastore_query_config);
+                let start_key = value.start_key.map(|start_key| {
+                    if value.inclusive_start_key.unwrap_or(true) {
+                        Bound::Included(start_key)
+                    } else {
+                        Bound::Excluded(start_key)
+                    }
+                });
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
                     addr: Address::from_str(&value.address)?,
                     prefix: value.prefix,
+                    start_key,
+                    count,
                 })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
+                // take the minimum of the limit and the max_datastore_query_config if it is set
+                let count = value
+                    .limit
+                    .map(|c| {
+                        max_datastore_query_config
+                            .map(|conf| c.min(conf))
+                            .unwrap_or(c)
+                    })
+                    .or(max_datastore_query_config);
+
+                let start_key = value.start_key.map(|start_key| {
+                    if value.inclusive_start_key.unwrap_or(true) {
+                        Bound::Included(start_key)
+                    } else {
+                        Bound::Excluded(start_key)
+                    }
+                });
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
                     addr: Address::from_str(&value.address)?,
                     prefix: value.prefix,
+                    start_key,
+                    count,
                 })
             }
             exec::RequestItem::AddressDatastoreValueCandidate(value) => {

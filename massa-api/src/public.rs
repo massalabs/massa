@@ -1003,15 +1003,12 @@ impl MassaRpcServer for API<Public> {
             bound_ts,
         );
 
-        // TODO retrieve the max keys queries and offset key from request
-        let max_keys_queries = self.0.api_settings.max_datastore_keys_queries;
-
         // get execution info
         let execution_infos = self.0.execution_controller.get_addresses_infos(
             &addresses,
             std::ops::Bound::Included(deferred_credit_max_slot),
             None,
-            max_keys_queries,
+            None,
         );
 
         // get future draws from selector
