@@ -430,8 +430,8 @@ pub trait MassaRpc {
     #[method(name = "get_address_datastore_keys")]
     async fn get_address_datastore_keys(
         &self,
-        arg: GetAddressDatastoreKeys,
-    ) -> RpcResult<Vec<Vec<u8>>>;
+        arg: Vec<GetAddressDatastoreKeys>,
+    ) -> RpcResult<Vec<Vec<Vec<u8>>>>;
 }
 
 fn wrong_api<T>() -> RpcResult<T> {

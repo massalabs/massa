@@ -69,7 +69,7 @@ pub fn to_querystate_filter(
                 });
 
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr: Address::from_str(&value.address)?,
+                    address: Address::from_str(&value.address)?,
                     prefix: value.prefix,
                     start_key,
                     count,
@@ -94,7 +94,7 @@ pub fn to_querystate_filter(
                     }
                 });
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr: Address::from_str(&value.address)?,
+                    address: Address::from_str(&value.address)?,
                     prefix: value.prefix,
                     start_key,
                     count,

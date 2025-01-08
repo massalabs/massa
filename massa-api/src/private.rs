@@ -381,9 +381,9 @@ impl MassaRpcServer for API<Private> {
 
     async fn get_address_datastore_keys(
         &self,
-        _arg: GetAddressDatastoreKeys,
-    ) -> RpcResult<Vec<Vec<u8>>> {
-        crate::wrong_api::<Vec<Vec<u8>>>()
+        _arg: Vec<GetAddressDatastoreKeys>,
+    ) -> RpcResult<Vec<Vec<Vec<u8>>>> {
+        crate::wrong_api::<Vec<_>>()
     }
 }
 

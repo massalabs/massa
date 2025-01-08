@@ -2191,6 +2191,19 @@ impl ExecutionState {
         )
     }
 
+    pub fn get_final_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        offset: Option<Bound<Vec<u8>>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        self.final_state
+            .read()
+            .get_ledger()
+            .get_datastore_keys(addr, prefix, offset, count)
+    }
+
     /// Get every final and active datastore key of the given address
     #[allow(clippy::type_complexity)]
     pub fn get_final_and_candidate_datastore_keys(
@@ -2202,11 +2215,7 @@ impl ExecutionState {
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self
-            .final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix, offset, count);
+        let final_keys = self.get_final_datastore_keys(addr, prefix, offset.clone(), count);
 
         let mut candidate_keys = final_keys.clone();
 

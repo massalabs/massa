@@ -72,7 +72,7 @@ pub enum ExecutionQueryRequestItem {
     /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
     AddressDatastoreKeysCandidate {
         /// Address for which to query the datastore
-        addr: Address,
+        address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
         /// Offset to start from
@@ -83,7 +83,7 @@ pub enum ExecutionQueryRequestItem {
     /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
     AddressDatastoreKeysFinal {
         /// Address for which to query the datastore
-        addr: Address,
+        address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
         /// Offset to start from

@@ -62,8 +62,11 @@ use massa_versioning::versioning_factory::FactoryStrategy;
 use massa_versioning::{
     keypair_factory::KeyPairFactory, versioning::MipStore, versioning_factory::VersioningFactory,
 };
-use std::net::{IpAddr, SocketAddr};
 use std::{collections::BTreeMap, str::FromStr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    ops::Bound,
+};
 
 impl API<Public> {
     /// generate a new public API
@@ -954,14 +957,42 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_address_datastore_keys(
         &self,
-        arg: GetAddressDatastoreKeys,
-    ) -> RpcResult<Vec<Vec<u8>>> {
-        let query = ExecutionQueryRequest {
-            requests: vec![arg.into()],
-        };
-        // self.0.execution_controller.query_state(ExecutionQueryRequest)
+        arg: Vec<GetAddressDatastoreKeys>,
+    ) -> RpcResult<Vec<Vec<Vec<u8>>>> {
+        let requests: Vec<ExecutionQueryRequestItem> = arg
+            .into_iter()
+            .map(|request| {
+                from_get_address_datastore_keys(
+                    request,
+                    self.0.api_settings.max_datastore_keys_queries,
+                )
+            })
+            .collect();
+        let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(requests.len());
+        let response = self
+            .0
+            .execution_controller
+            .query_state(ExecutionQueryRequest { requests });
 
-        unimplemented!()
+        for response_item in response.responses {
+            match response_item {
+                Ok(item) => match item {
+                    ExecutionQueryResponseItem::KeyList(keys) => {
+                        result.push(keys.into_iter().collect());
+                    }
+                    _ => {
+                        return Err(
+                            ApiError::ExecutionError("unexpected response".to_string()).into()
+                        );
+                    }
+                },
+                Err(e) => {
+                    return Err(ApiError::ExecutionError(e.to_string()).into());
+                }
+            }
+        }
+
+        Ok(result)
     }
 
     /// get addresses
@@ -1522,5 +1553,45 @@ fn check_input_operation(
             "There is data left after operation deserialization".to_owned(),
         ))
         .into())
+    }
+}
+
+/// Convert GetAddressDatastoreKeys to ExecutionQueryRequestItem
+fn from_get_address_datastore_keys(
+    value: GetAddressDatastoreKeys,
+    max_datastore_query_config: Option<u32>,
+) -> ExecutionQueryRequestItem {
+    // take the minimum of the limit and the max_datastore_query_config if it is set
+    let count = value
+        .count
+        .map(|c| {
+            max_datastore_query_config
+                .map(|conf| c.min(conf))
+                .unwrap_or(c)
+        })
+        .or(max_datastore_query_config);
+
+    let start_key = value.start_key.map(|start_key| {
+        if value.inclusive_start_key.unwrap_or(true) {
+            Bound::Included(start_key)
+        } else {
+            Bound::Excluded(start_key)
+        }
+    });
+
+    if value.is_final {
+        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+            address: value.address,
+            prefix: value.prefix,
+            start_key,
+            count,
+        }
+    } else {
+        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+            address: value.address,
+            prefix: value.prefix,
+            start_key,
+            count,
+        }
     }
 }
