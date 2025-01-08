@@ -106,12 +106,10 @@ pub trait ExecutionController: Send + Sync {
     ) -> (bool, bool);
 
     /// Gets information about a batch of addresses
-    fn get_addresses_infos<'a>(
+    fn get_addresses_infos(
         &self,
         addresses: &[Address],
         deferred_credits_max_slot: std::ops::Bound<Slot>,
-        datastore_key_offset: Option<&'a [u8]>,
-        datastore_key_count: Option<u32>,
     ) -> Vec<ExecutionAddressInfo>;
 
     /// Get execution statistics

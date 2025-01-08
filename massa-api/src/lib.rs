@@ -16,7 +16,7 @@ use massa_api_exports::execution::{
     DeferredCallsSlotResponse, Transfer,
 };
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo},
+    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeys},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -425,6 +425,13 @@ pub trait MassaRpc {
         &self,
         arg: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>>;
+
+    /// Get keys gor given address
+    #[method(name = "get_address_datastore_keys")]
+    async fn get_address_datastore_keys(
+        &self,
+        arg: GetAddressDatastoreKeys,
+    ) -> RpcResult<Vec<Vec<u8>>>;
 }
 
 fn wrong_api<T>() -> RpcResult<T> {

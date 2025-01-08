@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use itertools::{izip, Itertools};
 use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo},
+    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeys},
     block::{BlockInfo, BlockInfoContent, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -952,6 +952,18 @@ impl MassaRpcServer for API<Public> {
             .collect())
     }
 
+    async fn get_address_datastore_keys(
+        &self,
+        arg: GetAddressDatastoreKeys,
+    ) -> RpcResult<Vec<Vec<u8>>> {
+        let query = ExecutionQueryRequest {
+            requests: vec![arg.into()],
+        };
+        // self.0.execution_controller.query_state(ExecutionQueryRequest)
+
+        unimplemented!()
+    }
+
     /// get addresses
     async fn get_addresses(&self, addresses: Vec<Address>) -> RpcResult<Vec<AddressInfo>> {
         // get info from storage about which blocks the addresses have created
@@ -1007,8 +1019,6 @@ impl MassaRpcServer for API<Public> {
         let execution_infos = self.0.execution_controller.get_addresses_infos(
             &addresses,
             std::ops::Bound::Included(deferred_credit_max_slot),
-            None,
-            None,
         );
 
         // get future draws from selector
