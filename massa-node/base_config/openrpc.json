@@ -133,6 +133,39 @@
             ],
             "params": [
                 {
+                    "name": "address keys request",
+                    "description": "TODO",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GetAddressDatastoreKeysRequest"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "address keys response",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/GetAddressDatastoreKeysResponse"
+                    }
+                }
+            },
+            "name": "get_addresses_datastore_keys",
+            "summary": "TODO",
+            "description": "TODO"
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
                     "name": "addressFilter",
                     "description": "Need to provide at least one valid address filter",
                     "schema": {
@@ -2618,6 +2651,80 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "GetAddressDatastoreKeysRequest": {
+                "title": "GetAddressDatastoreKeysRequest",
+                "required": [
+                    "address",
+                    "prefix",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "prefix": {
+                        "$ref": "#/components/schemas/Bytes"
+                    },
+                    "is_final": {
+                        "type": "boolean"
+                    },
+                    "start_key": {
+                        "description": "start key to filter",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_start_key": {
+                        "description": "include or exclude start_key",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    },
+                    "count": {
+                        "description": "limit the number of keys",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    }
+                }
+            },
+            "GetAddressDatastoreKeysResponse": {
+                "title": "GetAddressDatastoreKeysResponse",
+                "required": [
+                    "address",
+                    "keys",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "is_final": {
+                        "type": "boolean"
+                    },
+                    "keys": {
+                        "title": "keys list",
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "title": "key",
+                            "items": {
+                                "$ref": "#/components/schemas/Bytes"
+                            }
+                        }
+                    }
+                }
             },
             "GraphInterval": {
                 "title": "GraphInterval",
