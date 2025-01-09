@@ -2240,12 +2240,6 @@ impl ExecutionState {
 
         // traverse the history from oldest to newest, applying additions and deletions
         for output in &self.active_history.read().0 {
-            if let Some(count) = count {
-                if collected_keys.get() >= count as usize {
-                    break;
-                }
-            }
-
             match output.state_changes.ledger_changes.get(addr) {
                 // address absent from the changes
                 None => (),
@@ -2275,15 +2269,14 @@ impl ExecutionState {
                     for (ds_key, ds_update) in
                         entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
                     {
-                        if let Some(count) = count {
-                            if collected_keys.get() >= count as usize {
-                                break;
-                            }
-                        }
                         match ds_update {
                             SetOrDelete::Set(_) => {
-                                if count.is_some() {
-                                    collected_keys.set(collected_keys.get().saturating_add(1));
+                                if let Some(count) = count {
+                                    let new_val = collected_keys.get().saturating_add(1);
+                                    collected_keys.set(new_val);
+                                    if new_val >= count as usize {
+                                        break;
+                                    }
                                 }
                                 c_k.insert(ds_key.clone())
                             }
