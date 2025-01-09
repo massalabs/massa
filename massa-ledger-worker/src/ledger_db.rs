@@ -526,6 +526,7 @@ impl LedgerDB {
     /// Get the entire datastore for a given address (no deserialization + no end prefix)
     ///
     /// IMPORTANT: This should only be used for debug purposes.
+    #[allow(dead_code)]
     #[cfg(any(test, feature = "test-exports"))]
     pub fn get_entire_datastore_raw(
         &self,
@@ -725,7 +726,7 @@ mod tests {
     fn test_ledger_delete() {
         let keypair = KeyPair::generate(0).unwrap();
         let addr = Address::from_public_key(&keypair.get_public_key());
-        let (ledger_db, mut batch, _data) = setup_test_ledger(addr.clone());
+        let (ledger_db, mut batch, _data) = setup_test_ledger(addr);
 
         // Add a key, value into db with a prefix right after datastore (datastore indent = 3, here we use indent = 4)
         // This is to test if delete_datastore_entries only delete datastore entries
