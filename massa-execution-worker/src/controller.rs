@@ -221,8 +221,6 @@ impl ExecutionController for ExecutionControllerImpl {
                 } => {
                     let final_v = execution_lock
                         .get_final_datastore_keys(&address, &prefix, start_key, count);
-                    // let (final_v, _speculative_v) = execution_lock
-                    // .get_final_and_candidate_datastore_keys(&addr, &prefix, start_key, count);
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
                         None => Err(ExecutionQueryError::NotFound(format!(

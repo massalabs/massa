@@ -2210,17 +2210,17 @@ impl ExecutionState {
         &self,
         addr: &Address,
         prefix: &[u8],
-        offset: Option<Bound<Vec<u8>>>,
+        start_key: Option<Bound<Vec<u8>>>,
         count: Option<u32>,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
         // here, get the final keys from the final ledger, and make a copy of it for the candidate list
         // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self.get_final_datastore_keys(addr, prefix, offset.clone(), count);
+        let final_keys = self.get_final_datastore_keys(addr, prefix, start_key.clone(), count);
 
         let mut candidate_keys = final_keys.clone();
 
         // compute prefix range
-        let prefix_range = if let Some(offset_key) = offset {
+        let prefix_range = if let Some(offset_key) = start_key {
             let mut range = get_prefix_bounds(match &offset_key {
                 Bound::Included(ref key) | Bound::Excluded(ref key) => key.as_slice(),
                 Bound::Unbounded => &[],
@@ -2234,6 +2234,8 @@ impl ExecutionState {
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
 
         // limit the number of keys to return to `count`
+        // we cannot borrow as mutable because it is also borrowed as immutable in the iterator
+        // we need to use a Cell to keep track of the number of collected keys
         let collected_keys = Cell::new(candidate_keys.as_ref().map_or(0, |keys| keys.len()));
 
         // traverse the history from oldest to newest, applying additions and deletions
