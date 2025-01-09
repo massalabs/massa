@@ -475,7 +475,6 @@ fn delete_datastore_entries(
 ) {
     // datastore
     let key_prefix = datastore_prefix_from_address(addr, &[]);
-
     for (serialized_key, _) in db
         .iterator_cf(
             STATE_CF,
@@ -522,6 +521,25 @@ impl LedgerDB {
             }
         }
         addresses
+    }
+
+    /// Get the entire datastore for a given address (no deserialization + no end prefix)
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    #[cfg(any(test, feature = "test-exports"))]
+    pub fn get_entire_datastore_raw(
+        &self,
+        addr: &Address,
+    ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        let db = self.db.read();
+
+        let key_prefix = datastore_prefix_from_address(addr, &[]);
+
+        db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .collect()
     }
 
     /// Get the entire datastore for a given address.
@@ -591,13 +609,13 @@ mod tests {
     use std::sync::Arc;
     use tempfile::TempDir;
 
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
+    fn setup_test_ledger(addr: Address) -> (LedgerDB, DBBatch, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
 
         let mut data = BTreeMap::new();
-        data.insert(b"1".to_vec(), b"a".to_vec());
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
+
         let entry = LedgerEntry {
             balance: Amount::from_str("42").unwrap(),
             datastore: data.clone(),
@@ -630,20 +648,25 @@ mod tests {
 
         ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
-        ledger_db
-            .db
-            .write()
-            .write_batch(batch, Default::default(), None);
+        // ledger_db
+        //     .db
+        //     .write()
+        //     .write_batch(batch, Default::default(), None);
 
         // return db and initial data
-        (ledger_db, data)
+        // (ledger_db, data)
+        (ledger_db, batch, data)
     }
 
     /// Functional test of `LedgerDB`
     #[test]
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let (ledger_db, data) = init_test_ledger(addr);
+        let (ledger_db, batch, data) = setup_test_ledger(addr);
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
@@ -702,7 +725,31 @@ mod tests {
     fn test_ledger_delete() {
         let keypair = KeyPair::generate(0).unwrap();
         let addr = Address::from_public_key(&keypair.get_public_key());
-        let (ledger_db, _data) = init_test_ledger(addr);
+        let (ledger_db, mut batch, _data) = setup_test_ledger(addr.clone());
+
+        // Add a key, value into db with a prefix right after datastore (datastore indent = 3, here we use indent = 4)
+        // This is to test if delete_datastore_entries only delete datastore entries
+        let mut datastore_key = vec![];
+        ledger_db
+            .key_serializer_db
+            .serialize(
+                &Key::new(&addr, KeyType::DATASTORE(b"a".to_vec())),
+                &mut datastore_key,
+            )
+            .expect(KEY_SER_ERROR);
+        let datastore_key_len = datastore_key.len();
+        // We modify the datastore key indent (from 3 to 4) so this is not a 'datastore' key anymore
+        datastore_key[datastore_key_len - 2] = DATASTORE_IDENT + 1;
+        // Value is not important here
+        let datastore_value = b"a".to_vec();
+        batch.insert(datastore_key.clone(), Some(datastore_value.clone()));
+        //
+
+        // Write batch into db
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         let datastore = ledger_db.get_entire_datastore(&addr);
         // println!("datastore: {:?}", datastore);
@@ -717,8 +764,9 @@ mod tests {
         guard.write_batch(batch, Default::default(), None);
         drop(guard);
 
-        let datastore = ledger_db.get_entire_datastore(&addr);
+        let datastore = ledger_db.get_entire_datastore_raw(&addr);
         // println!("datastore: {:?}", datastore);
-        assert!(datastore.is_empty());
+        assert_eq!(datastore.len(), 1);
+        assert!(datastore.contains_key(&datastore_key));
     }
 }
