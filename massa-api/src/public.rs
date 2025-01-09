@@ -6,7 +6,9 @@ use async_trait::async_trait;
 use itertools::{izip, Itertools};
 use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeys},
+    address::{
+        AddressFilter, AddressInfo, GetAddressDatastoreKeysRequest, GetAddressDatastoreKeysResponse,
+    },
     block::{BlockInfo, BlockInfoContent, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -957,8 +959,8 @@ impl MassaRpcServer for API<Public> {
 
     async fn get_address_datastore_keys(
         &self,
-        arg: Vec<GetAddressDatastoreKeys>,
-    ) -> RpcResult<Vec<Vec<Vec<u8>>>> {
+        arg: Vec<GetAddressDatastoreKeysRequest>,
+    ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
         let requests: Vec<ExecutionQueryRequestItem> = arg
             .into_iter()
             .map(|request| {
@@ -968,7 +970,9 @@ impl MassaRpcServer for API<Public> {
                 )
             })
             .collect();
-        let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(requests.len());
+        // let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(requests.len());
+        let mut result2: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
+
         let response = self
             .0
             .execution_controller
@@ -977,8 +981,13 @@ impl MassaRpcServer for API<Public> {
         for response_item in response.responses {
             match response_item {
                 Ok(item) => match item {
-                    ExecutionQueryResponseItem::KeyList(keys) => {
-                        result.push(keys.into_iter().collect());
+                    ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, is_final) => {
+                        result2.push(GetAddressDatastoreKeysResponse {
+                            address,
+                            is_final,
+                            keys: keys.into_iter().collect(),
+                        });
+                        // result.push(keys.into_iter().collect());
                     }
                     _ => {
                         return Err(
@@ -992,7 +1001,7 @@ impl MassaRpcServer for API<Public> {
             }
         }
 
-        Ok(result)
+        Ok(result2)
     }
 
     /// get addresses
@@ -1558,7 +1567,7 @@ fn check_input_operation(
 
 /// Convert GetAddressDatastoreKeys to ExecutionQueryRequestItem
 fn from_get_address_datastore_keys(
-    value: GetAddressDatastoreKeys,
+    value: GetAddressDatastoreKeysRequest,
     max_datastore_query_config: Option<u32>,
 ) -> ExecutionQueryRequestItem {
     // take the minimum of the limit and the max_datastore_query_config if it is set

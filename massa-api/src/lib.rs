@@ -11,12 +11,13 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::server::middleware::http::HostFilterLayer;
 use jsonrpsee::server::{BatchRequestConfig, PingConfig, ServerBuilder, ServerHandle};
 use jsonrpsee::RpcModule;
+use massa_api_exports::address::GetAddressDatastoreKeysResponse;
 use massa_api_exports::execution::{
     DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
     DeferredCallsSlotResponse, Transfer,
 };
 use massa_api_exports::{
-    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeys},
+    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeysRequest},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -430,8 +431,8 @@ pub trait MassaRpc {
     #[method(name = "get_address_datastore_keys")]
     async fn get_address_datastore_keys(
         &self,
-        arg: Vec<GetAddressDatastoreKeys>,
-    ) -> RpcResult<Vec<Vec<Vec<u8>>>>;
+        arg: Vec<GetAddressDatastoreKeysRequest>,
+    ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>>;
 }
 
 fn wrong_api<T>() -> RpcResult<T> {

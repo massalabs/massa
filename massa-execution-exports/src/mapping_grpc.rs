@@ -283,7 +283,7 @@ fn to_execution_query_result(
         ExecutionQueryResponseItem::DatastoreValue(result) => {
             grpc_api::execution_query_response_item::ResponseItem::Bytes(result)
         }
-        ExecutionQueryResponseItem::KeyList(result) => {
+        ExecutionQueryResponseItem::AddressDatastoreKeys(result, _address, _is_final) => {
             grpc_api::execution_query_response_item::ResponseItem::VecBytes(
                 grpc_model::ArrayOfBytesWrapper {
                     items: result.into_iter().collect(),

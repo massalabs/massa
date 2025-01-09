@@ -69,7 +69,7 @@ pub enum ExecutionQueryRequestItem {
     AddressBytecodeCandidate(Address),
     /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
     AddressBytecodeFinal(Address),
-    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     AddressDatastoreKeysCandidate {
         /// Address for which to query the datastore
         address: Address,
@@ -80,7 +80,7 @@ pub enum ExecutionQueryRequestItem {
         /// Maximum number of keys to return
         count: Option<u32>,
     },
-    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     AddressDatastoreKeysFinal {
         /// Address for which to query the datastore
         address: Address,
@@ -163,8 +163,8 @@ pub enum ExecutionQueryResponseItem {
     Bytecode(Bytecode),
     /// datastore value
     DatastoreValue(Vec<u8>),
-    /// list of keys
-    KeyList(BTreeSet<Vec<u8>>),
+    /// list of keys (keys, address, is_final)
+    AddressDatastoreKeys(BTreeSet<Vec<u8>>, Address, bool),
     /// deferred call quote (target_slot, gas_request, available, price)
     DeferredCallQuote(Slot, u64, bool, Amount),
     /// deferred call info value

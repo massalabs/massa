@@ -206,7 +206,9 @@ impl ExecutionController for ExecutionControllerImpl {
                             &address, &prefix, start_key, count,
                         );
                     match speculative_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
+                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, false,
+                        )),
                         None => Err(ExecutionQueryError::NotFound(format!(
                             "Account {}",
                             address
@@ -222,7 +224,9 @@ impl ExecutionController for ExecutionControllerImpl {
                     let final_v = execution_lock
                         .get_final_datastore_keys(&address, &prefix, start_key, count);
                     match final_v {
-                        Some(keys) => Ok(ExecutionQueryResponseItem::KeyList(keys)),
+                        Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, true,
+                        )),
                         None => Err(ExecutionQueryError::NotFound(format!(
                             "Account {}",
                             address
