@@ -72,22 +72,22 @@
 
 <span class="attr">#[cfg(not(feature = <span class="string">"test-exports"</span>))]
 </span><span class="kw">pub fn </span>get_mip_list() -&gt; [(MipInfo, MipState); <span class="number">1</span>] {
-    <span class="kw">let </span>mip_list = [
-        (
-            MipInfo {
-                name: <span class="string">"MIP-0001-Execution-BugFix"</span>.to_string(),
-                version: <span class="number">1</span>,
-                components: BTreeMap::from([
-                    (MipComponent::Execution, <span class="number">1</span>),
-                    (MipComponent::FinalState, <span class="number">1</span>),
-                ]),
-                start: MassaTime::from_utc_ymd_hms(<span class="number">2024</span>, <span class="number">11</span>, <span class="number">28</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
-                </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">11</span>, <span class="number">28</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// TODO: set when known
-                </span>activation_delay: MassaTime::from_millis(<span class="number">3 </span>* <span class="number">24 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// TODO: set when known, 3 days as an example
-            </span>},
-            MipState::new(MassaTime::from_utc_ymd_hms(<span class="number">2024</span>, <span class="number">11</span>, <span class="number">28</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap()),
-        ), <span class="comment">// TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch)
-    </span>];
+    <span class="kw">let </span>mip_list = [(
+        MipInfo {
+            name: <span class="string">"MIP-0001-Execution-BugFix-And-DeferredCalls"</span>.to_string(),
+            version: <span class="number">1</span>,
+            components: BTreeMap::from([
+                (MipComponent::Execution, <span class="number">1</span>),
+                (MipComponent::FinalState, <span class="number">1</span>),
+            ]),
+            <span class="comment">// Note: All bootstrap servers should have been updated to the latest version before the start time
+            </span>start: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday, January 13, 2025 2:00:00 PM UTC
+            // Give 1 week for the MIP to be accepted
+            </span>timeout: MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">20</span>, <span class="number">14</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap(), <span class="comment">// Monday, January 20, 2025 2:00:00 PM UTC
+            </span>activation_delay: MassaTime::from_millis(<span class="number">1 </span>* <span class="number">60 </span>* <span class="number">60 </span>* <span class="number">1000</span>), <span class="comment">// The MIP will be activated 1 hour after the LockedIn state
+        </span>},
+        MipState::new(MassaTime::from_utc_ymd_hms(<span class="number">2025</span>, <span class="number">01</span>, <span class="number">10</span>, <span class="number">10</span>, <span class="number">0</span>, <span class="number">0</span>).unwrap()), <span class="comment">// Friday, January 10, 2025 10:00:00 AM UTC
+    </span>)];
 
     <span class="comment">// debug!("MIP list: {:?}", mip_list);
     </span><span class="attr">#[allow(clippy::let_and_return)]
