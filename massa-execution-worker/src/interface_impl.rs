@@ -1213,8 +1213,6 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn generate_event(&self, data: String) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
         let max_event_size = match execution_component_version {
