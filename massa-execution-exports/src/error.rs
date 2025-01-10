@@ -15,7 +15,7 @@ pub enum ExecutionError {
     /// Channel error
     ChannelError(String),
 
-    /// Runtime error: {0}
+    /// Rt:{0}
     RuntimeError(String),
 
     /// `MassaHashError`: {0}
@@ -54,7 +54,7 @@ pub enum ExecutionError {
     /// Include denunciation error: {0}
     IncludeDenunciationError(String),
 
-    /// VM Error in {context} context: {error}
+    /// VME in {context} ctx:{error}
     VMError {
         /// execution context in which the error happened
         context: String,

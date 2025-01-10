@@ -657,7 +657,7 @@ impl ExecutionState {
                 Err(err) => {
                     // an error occurred: emit error event and reset context to snapshot
                     let err = ExecutionError::RuntimeError(format!(
-                        "runtime error when executing operation {}: {}",
+                        "executing operation {}: {}",
                         operation_id, &err
                     ));
                     debug!("{}", &err);
