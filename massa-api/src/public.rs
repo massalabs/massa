@@ -961,17 +961,15 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<GetAddressDatastoreKeysRequest>,
     ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
-        let requests: Vec<ExecutionQueryRequestItem> = arg
-            .into_iter()
-            .map(|request| {
-                from_get_address_datastore_keys(
-                    request,
-                    self.0.api_settings.max_datastore_keys_queries,
-                )
-            })
-            .collect();
-        // let mut result: Vec<Vec<Vec<u8>>> = Vec::with_capacity(requests.len());
-        let mut result2: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
+        let mut requests = Vec::with_capacity(arg.len());
+        for request in arg.into_iter() {
+            requests.push(from_get_address_datastore_keys(
+                request,
+                self.0.api_settings.max_datastore_keys_queries,
+            )?);
+        }
+
+        let mut result: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
 
         let response = self
             .0
@@ -982,12 +980,11 @@ impl MassaRpcServer for API<Public> {
             match response_item {
                 Ok(item) => match item {
                     ExecutionQueryResponseItem::AddressDatastoreKeys(keys, address, is_final) => {
-                        result2.push(GetAddressDatastoreKeysResponse {
+                        result.push(GetAddressDatastoreKeysResponse {
                             address,
                             is_final,
                             keys: keys.into_iter().collect(),
                         });
-                        // result.push(keys.into_iter().collect());
                     }
                     _ => {
                         return Err(
@@ -1001,7 +998,7 @@ impl MassaRpcServer for API<Public> {
             }
         }
 
-        Ok(result2)
+        Ok(result)
     }
 
     /// get addresses
@@ -1569,16 +1566,23 @@ fn check_input_operation(
 fn from_get_address_datastore_keys(
     value: GetAddressDatastoreKeysRequest,
     max_datastore_query_config: Option<u32>,
-) -> ExecutionQueryRequestItem {
+) -> Result<ExecutionQueryRequestItem, ApiError> {
     // take the minimum of the limit and the max_datastore_query_config if it is set
-    let count = value
-        .count
-        .map(|c| {
-            max_datastore_query_config
-                .map(|conf| c.min(conf))
-                .unwrap_or(c)
-        })
-        .or(max_datastore_query_config);
+    // return an error if the user count is greater than the max_datastore_query_config
+    let count = match value.count {
+        Some(user_count) => {
+            if let Some(max_config) = max_datastore_query_config {
+                if user_count > max_config {
+                    return Err(ApiError::InconsistencyError(format!(
+                        "User count {} is greater than the max_datastore_query_config {}",
+                        user_count, max_config
+                    )));
+                }
+            }
+            Some(user_count)
+        }
+        None => max_datastore_query_config,
+    };
 
     let start_key = value.start_key.map(|start_key| {
         if value.inclusive_start_key.unwrap_or(true) {
@@ -1589,18 +1593,18 @@ fn from_get_address_datastore_keys(
     });
 
     if value.is_final {
-        ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+        Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
             address: value.address,
             prefix: value.prefix,
             start_key,
             count,
-        }
+        })
     } else {
-        ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+        Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
             address: value.address,
             prefix: value.prefix,
             start_key,
             count,
-        }
+        })
     }
 }
