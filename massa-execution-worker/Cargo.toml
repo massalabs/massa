@@ -53,7 +53,6 @@ execution-info = ["execution-trace"]
 slot-replayer = []
 
 [dependencies]
-anyhow = { workspace = true }
 blake3 = { workspace = true }
 bs58 = { workspace = true }
 rand = { workspace = true }
@@ -116,3 +115,4 @@ hex-literal = { workspace = true }
 mockall = { workspace = true }
 assert_matches = { workspace = true }
 massa_event_cache = { workspace = true, features = ["test-exports"] }
+regex = "1.11.1"
