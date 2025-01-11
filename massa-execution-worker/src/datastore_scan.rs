@@ -258,7 +258,7 @@ pub fn scan_datastore(
         }
 
         if final_keys_queue.is_empty() {
-            if let Some(last_k) = last_final_batch_key {
+            if let Some(last_k) = last_final_batch_key.take() {
                 // the last final item was consumed: replenish the queue by querying more
                 final_keys_queue = final_state
                     .read()
