@@ -23,7 +23,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
     max_datastore_query_config: Option<u32>,
-    max_datastore_key_length: u8
+    max_datastore_key_length: u8,
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
     if let Some(item) = query.request_item {
         match item {
@@ -55,16 +55,17 @@ pub fn to_querystate_filter(
                 let address = Address::from_str(&value.address)?;
 
                 // check item count
-                let count = value
-                    .limit
-                    .or(max_datastore_query_config);
-                if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
+                let count = value.limit.or(max_datastore_query_config);
+                if let (Some(cnt), Some(max_cnt)) =
+                    (count.as_ref(), max_datastore_query_config.as_ref())
+                {
                     if cnt > max_cnt {
                         return Err(
-                            ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, addr))
-                        );                    }
+                            ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, address))
+                        );
+                    }
                 }
-            
+
                 let start_key = match (value.start_key, value.inclusive_start_key) {
                     (None, _) => std::ops::Bound::Unbounded,
                     (Some(k), inclusive) => {
@@ -81,7 +82,7 @@ pub fn to_querystate_filter(
                         }
                     }
                 };
-            
+
                 let end_key = match (value.end_key, value.inclusive_end_key) {
                     (None, _) => std::ops::Bound::Unbounded,
                     (Some(k), inclusive) => {
@@ -98,7 +99,7 @@ pub fn to_querystate_filter(
                         }
                     }
                 };
-            
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
                     address,
                     prefix: value.prefix,
@@ -111,15 +112,15 @@ pub fn to_querystate_filter(
                 let address = Address::from_str(&value.address)?;
 
                 // check item count
-                let count = value
-                    .limit
-                    .or(max_datastore_query_config);
-                if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
+                let count = value.limit.or(max_datastore_query_config);
+                if let (Some(cnt), Some(max_cnt)) =
+                    (count.as_ref(), max_datastore_query_config.as_ref())
+                {
                     return Err(
-                        ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, addr))
+                        ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, address))
                     );
                 }
-            
+
                 let start_key = match (value.start_key, value.inclusive_start_key) {
                     (None, _) => std::ops::Bound::Unbounded,
                     (Some(k), inclusive) => {
@@ -136,7 +137,7 @@ pub fn to_querystate_filter(
                         }
                     }
                 };
-            
+
                 let end_key = match (value.end_key, value.inclusive_end_key) {
                     (None, _) => std::ops::Bound::Unbounded,
                     (Some(k), inclusive) => {
@@ -153,7 +154,7 @@ pub fn to_querystate_filter(
                         }
                     }
                 };
-            
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
                     address,
                     prefix: value.prefix,

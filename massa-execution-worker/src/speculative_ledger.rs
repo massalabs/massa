@@ -6,6 +6,7 @@
 //! but keeps track of the changes that were applied to it since its creation.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
+use crate::datastore_scan::scan_datastore;
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
@@ -356,68 +357,32 @@ impl SpeculativeLedger {
     ///
     /// # Arguments
     /// * `addr`: address to query
-    /// * `prefix`: prefix to filter the keys
+    /// * `prefix`: prefix to filter keys
+    /// * `start_key`: start key of the range
+    /// * `end_key`: end key of the range
+    /// * `count`: maximum number of keys to return
     ///
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
-    pub fn get_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        // TODO update this function as well with the advanced algorithm
-
-        // compute prefix range
-        let prefix_range = get_prefix_bounds(prefix);
-        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
-
-        // init keys with final state
-        let mut candidate_keys: Option<BTreeSet<Vec<u8>>> = self
-            .final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix, None, None);
-
-        // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
-        let active_history = self.active_history.read();
-        let changes_iterator = active_history
-            .0
-            .iter()
-            .map(|item| &item.state_changes.ledger_changes)
-            .chain(std::iter::once(&self.added_changes));
-        for ledger_changes in changes_iterator {
-            match ledger_changes.get(addr) {
-                // address absent from the changes
-                None => (),
-
-                // address ledger entry being reset to an absolute new list of keys
-                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = Some(
-                        new_ledger_entry
-                            .datastore
-                            .range::<Vec<u8>, _>(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                // address ledger entry being updated
-                Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_with(Default::default);
-                    for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
-                    {
-                        match ds_update {
-                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete => c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                // address ledger entry being deleted
-                Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys = None;
-                }
-            }
-        }
-
-        candidate_keys
+    pub fn get_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: std::ops::Bound<Vec<u8>>,
+        end_key: std::ops::Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            &self.final_state,
+            &self.active_history,
+            Some(&self.added_changes),
+        )
+        .1
     }
 
     /// Gets a copy of a datastore value for a given address and datastore key

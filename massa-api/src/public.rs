@@ -967,11 +967,11 @@ impl MassaRpcServer for API<Public> {
                 get_address_datastore_keys_to_state_query_item(
                     request,
                     self.0.api_settings.max_datastore_keys_queries,
-                    self.0.api_settings.max_datastore_key_length
+                    self.0.api_settings.max_datastore_key_length,
                 )?
             })
             .collect()?;
-        
+
         let mut result: Vec<GetAddressDatastoreKeysResponse> = Vec::with_capacity(requests.len());
 
         let response = self
@@ -1569,14 +1569,12 @@ fn check_input_operation(
 fn get_address_datastore_keys_to_state_query_item(
     value: GetAddressDatastoreKeysRequest,
     max_datastore_query_config: Option<u32>,
-    max_datastore_key_length: u8
+    max_datastore_key_length: u8,
 ) -> RpcResult<ExecutionQueryRequestItem> {
     let address = Address::from_str(&value.address)?;
 
     // check item count
-    let count = value
-        .limit
-        .or(max_datastore_query_config);
+    let count = value.limit.or(max_datastore_query_config);
     if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
         if cnt > max_cnt {
             return Err(ApiError::BadRequest(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, address)));
