@@ -169,6 +169,72 @@ pub fn get_prefix_bounds(prefix: &[u8]) -> (std::ops::Bound<Vec<u8>>, std::ops::
     )
 }
 
+/// Return the intersection of two ranges
+pub fn range_intersection<T: Ord>(
+    r1: (std::ops::Bound<T>, std::ops::Bound<T>),
+    r2: (std::ops::Bound<T>, std::ops::Bound<T>),
+) -> Option<(std::ops::Bound<T>, std::ops::Bound<T>)> {
+    use std::cmp::{max, min};
+    use std::ops::Bound;
+
+    let (r1s, r1e) = r1;
+    let (r2s, r2e) = r2;
+
+    // Determine the start of the intersection
+    let start = match (r1s, r2s) {
+        (Bound::Included(a), Bound::Included(b)) => Bound::Included(max(a, b)),
+        (Bound::Included(a), Bound::Excluded(b)) => {
+            if a > b {
+                Bound::Included(a)
+            } else {
+                Bound::Excluded(b)
+            }
+        }
+        (Bound::Excluded(a), Bound::Included(b)) => {
+            if b > a {
+                Bound::Included(b)
+            } else {
+                Bound::Excluded(a)
+            }
+        }
+        (Bound::Excluded(a), Bound::Excluded(b)) => Bound::Excluded(max(a, b)),
+        (Bound::Unbounded, other) => other,
+        (other, Bound::Unbounded) => other,
+    };
+
+    // Determine the end of the intersection
+    let end = match (r1e, r2e) {
+        (Bound::Included(a), Bound::Included(b)) => Bound::Included(min(a, b)),
+        (Bound::Included(a), Bound::Excluded(b)) => {
+            if a < b {
+                Bound::Included(a)
+            } else {
+                Bound::Excluded(b)
+            }
+        }
+        (Bound::Excluded(a), Bound::Included(b)) => {
+            if b < a {
+                Bound::Included(b)
+            } else {
+                Bound::Excluded(a)
+            }
+        }
+        (Bound::Excluded(a), Bound::Excluded(b)) => Bound::Excluded(min(a, b)),
+        (Bound::Unbounded, other) => other,
+        (other, Bound::Unbounded) => other,
+    };
+
+    // Ensure the resulting range is valid
+    match (&start, &end) {
+        (Bound::Included(a), Bound::Included(b)) if a > b => None,
+        (Bound::Included(a), Bound::Excluded(b)) if a >= b => None,
+        (Bound::Excluded(a), Bound::Included(b)) if a >= b => None,
+        (Bound::Excluded(a), Bound::Excluded(b)) if a >= b => None,
+        _ => Some((start, end)),
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
 
@@ -254,5 +320,85 @@ mod tests {
         let actual_wrapper: SerdeWrapper = serde_json::from_str(&serialized).unwrap();
 
         assert_eq!(actual_wrapper.0, expected_datastore);
+    }
+
+    #[test]
+    fn test_range_intersection() {
+        // Overlapping ranges
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            let expected = (std::ops::Bound::Included(3), std::ops::Bound::Included(5));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Fully overlapping ranges
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Included(10));
+            let r2 = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            let expected = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Adjacent ranges (no overlap)
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Excluded(5));
+            let r2 = (std::ops::Bound::Included(5), std::ops::Bound::Included(10));
+            assert_eq!(range_intersection(r1, r2), None);
+        }
+
+        // Exact match
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            let expected = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Unbounded start
+        {
+            let r1 = (std::ops::Bound::Unbounded, std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            let expected = (std::ops::Bound::Included(3), std::ops::Bound::Included(5));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Unbounded end
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Unbounded);
+            let r2 = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            let expected = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Both ranges unbounded
+        {
+            let r1 = (std::ops::Bound::Unbounded, std::ops::Bound::Unbounded);
+            let r2 = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            let expected = (std::ops::Bound::Included(3), std::ops::Bound::Included(7));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
+
+        // Non-overlapping ranges
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Included(6), std::ops::Bound::Included(10));
+            assert_eq!(range_intersection(r1, r2), None);
+        }
+
+        // Empty range
+        {
+            let r1 = (std::ops::Bound::Included(1), std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Included(5), std::ops::Bound::Excluded(5));
+            assert_eq!(range_intersection(r1, r2), None);
+        }
+
+        // Edge case: Excluded bounds
+        {
+            let r1 = (std::ops::Bound::Excluded(1), std::ops::Bound::Included(5));
+            let r2 = (std::ops::Bound::Excluded(1), std::ops::Bound::Excluded(5));
+            let expected = (std::ops::Bound::Excluded(1), std::ops::Bound::Excluded(5));
+            assert_eq!(range_intersection(r1, r2), Some(expected));
+        }
     }
 }

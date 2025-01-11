@@ -27,7 +27,7 @@ use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::datastore::get_prefix_bounds;
+use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -50,7 +50,7 @@ use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
 use std::cell::Cell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
@@ -2210,94 +2210,147 @@ impl ExecutionState {
         &self,
         addr: &Address,
         prefix: &[u8],
-        start_key: Option<Bound<Vec<u8>>>,
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,  // currently not implemented in API , just put Unbounded here when calling the func
         count: Option<u32>,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
-        // here, get the final keys from the final ledger, and make a copy of it for the candidate list
-        // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self.get_final_datastore_keys(addr, prefix, start_key.clone(), count);
+        if count == Some(0) {
+            // TODO check if address exists to choose whether to return None or Some(empty_set)
+            return (None, None);
+        }
 
-        let mut candidate_keys = final_keys.clone();
-
-        // compute prefix range
-        let prefix_range = if let Some(offset_key) = start_key {
-            let mut range = get_prefix_bounds(match &offset_key {
-                Bound::Included(ref key) | Bound::Excluded(ref key) => key.as_slice(),
-                Bound::Unbounded => &[],
-            });
-            range.0 = offset_key;
-            range
-        } else {
-            get_prefix_bounds(prefix)
+        // the iteration range is the intersection of the prefix range and the selection range
+        let Some(key_range) = range_intersection(get_prefix_bounds(prefix), (start_key, end_key)) else {
+            // TODO check if address exists to choose whether to return None or Some(empty_set)
+            return (None, None);
         };
 
-        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
+        enum SpeculativeResetType {
+            None,
+            Set,
+            Delete
+        }
 
-        // limit the number of keys to return to `count`
-        // we cannot borrow as mutable because it is also borrowed as immutable in the iterator
-        // we need to use a Cell to keep track of the number of collected keys
-        let collected_keys = Cell::new(candidate_keys.as_ref().map_or(0, |keys| keys.len()));
-
-        // traverse the history from oldest to newest, applying additions and deletions
-        for output in &self.active_history.read().0 {
-            match output.state_changes.ledger_changes.get(addr) {
-                // address absent from the changes
-                None => (),
-
-                // address ledger entry being reset to an absolute new list of keys
-                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = Some(
-                        new_ledger_entry
-                            .datastore
-                            .range::<Vec<u8>, _>(range_ref)
-                            .take_while(|_k| {
-                                count.map_or(true, |count| collected_keys.get() < count as usize)
-                            })
-                            .map(|(k, _v)| {
-                                if count.is_some() {
-                                    collected_keys.set(collected_keys.get().saturating_add(1));
-                                }
-                                k.clone()
-                            })
-                            .collect(),
-                    );
-                }
-
-                // address ledger entry being updated
-                Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_with(Default::default);
-                    for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
-                    {
-                        match ds_update {
-                            SetOrDelete::Set(_) => {
-                                if let Some(count) = count {
-                                    let new_val = collected_keys.get().saturating_add(1);
-                                    collected_keys.set(new_val);
-                                    if new_val >= count as usize {
-                                        break;
-                                    }
-                                }
-                                c_k.insert(ds_key.clone())
-                            }
-                            SetOrDelete::Delete => {
-                                if count.is_some() {
-                                    collected_keys.set(collected_keys.get().saturating_sub(1));
-                                }
-                                c_k.remove(ds_key)
-                            }
-                        };
+        let mut speculative_reset = SpeculativeResetType::None;
+        let mut key_updates = BTreeMap::new();
+        // process speculative history
+        {
+            let mut update_indices = VecDeque::new();
+            let history_lock = self.active_history.read();
+            for (index, output) in history_lock.0.iter().enumerate().rev() {
+                match output.state_changes.ledger_changes.get(addr) {
+                    // address absent from the changes
+                    None => (),
+    
+                    // address ledger entry being reset to an absolute new list of keys
+                    Some(SetUpdateOrDelete::Set(v)) => {
+                        key_updates = v.datastore.range(key_range.clone()).map(|(k, _v)| (k.clone(), true)).collect();
+                        speculative_reset = SpeculativeResetType::Set;
+                        break;
+                    }
+    
+                    // address ledger entry being updated within the key range of interest
+                    Some(SetUpdateOrDelete::Update(updates)) => {
+                        if updates.datastore.range(key_range.clone()).next().is_some() {
+                            update_indices.push_front(index);
+                        }
+                    }
+    
+                    // address ledger entry being deleted
+                    Some(SetUpdateOrDelete::Delete) => {
+                        speculative_reset = SpeculativeResetType::Delete;
+                        break;
                     }
                 }
+            }
+            if matches!(speculative_reset, SpeculativeResetType::Delete) && !update_indices.is_empty() {
+                speculative_reset = SpeculativeResetType::Set;
+            }
 
-                // address ledger entry being deleted
-                Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys = None;
+            // aggregate key updates
+            for idx in update_indices {
+                if let SetUpdateOrDelete::Update(updates) = history_lock.0[idx].state_changes.ledger_changes.get(addr).expect("address unexpectedly absent from the changes") {
+                    for (k, update) in updates.datastore.range(key_range.clone()) {
+                        match update {
+                            SetOrDelete::Set(_) => {
+                                key_updates.insert(k.clone(), true);
+                            },
+                            SetOrDelete::Delete => {
+                                key_updates.insert(k.clone(), false);
+                            },
+                        }
+                    }
+                } else {
+                    panic!("unexpected state");
                 }
             }
         }
 
-        (final_keys, candidate_keys)
+        // get final keys
+        let mut final_keys = self.final_state.read().get_ledger().get_datastore_keys(addr, prefix, start_key, end_key, count.clone();
+
+        // process reset
+        match speculative_reset {
+            SpeculativeResetType::Delete => {
+                // the address was deleted in the speculative history
+                return (final_keys, None);
+            },
+            SpeculativeResetType::Set => {
+                // the address was reset in the speculative history
+                let filter_it = key_updates.into_iter().filter_map(|(k, is_set)| if is_set { Some(k) } else { None });
+                if let Some(cnt) = count {
+                    return (final_keys, filter_it.take(cnt as usize).collect());
+                } else {
+                    return (final_keys, filter_it.collect());
+                }
+            },
+            SpeculativeResetType::None => {
+                // there was no reset
+                if key_updates.is_empty() {
+                    // handle the case where there were no updates
+                    return (final_keys, final_keys.clone());
+                } else if final_keys.is_none() {
+                    // handle the case where there were updates but the final address was absent
+                    let filter_it = key_updates.into_iter().filter_map(|(k, is_set)| if is_set { Some(k) } else { None });
+                    if let Some(cnt) = count {
+                        return (None, filter_it.take(cnt as usize).collect());
+                    } else {
+                        return (None, filter_it.collect());
+                    }
+                }
+            }
+        }
+
+        // If we reach this point, it means that all of the following is true:
+        //   * the final key list is present
+        //   * there was no reset/delete in the speculative history
+        //   * there were updates in the speculative history
+        // This means that we need to merge the final and speculative key lists,
+        // querying more final keys if necessary to reach the desired count.
+
+        let mut speculative_keys = final_keys.clone().expect("final keys unexpectedly absent");
+        let mut last_queried = speculative_keys.last().copied().unwrap_or_else(|| Vec::new());
+
+        // TODO:
+        // * iter on the lowest value between final keys and key_updates
+        // * if the final values history is empty, try to quey more keys from the final state
+
+        loop {
+            // apply all updates to the speculative key list
+            for (k, is_set) in key_updates {
+                if is_set {
+                    speculative_keys.insert(k);
+                } else {
+                    speculative_keys.remove(&k);
+                }
+            }
+        }
+        // truncate
+        if let Some(cnt) = count {
+            speculative_keys.truncate(cnt as usize);
+        }
+        
+        (final_keys, Some(speculative_keys))
     }
 
     pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {
