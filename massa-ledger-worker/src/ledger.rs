@@ -145,11 +145,12 @@ impl LedgerController for FinalLedger {
         &self,
         addr: &Address,
         prefix: &[u8],
-        start_key: Option<Bound<Vec<u8>>>,
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         self.sorted_ledger
-            .get_datastore_keys(addr, prefix, start_key, count)
+            .get_datastore_keys(addr, prefix, start_key, end_key, count)
     }
 
     /// Reset the disk ledger.

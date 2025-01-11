@@ -51,6 +51,8 @@ pub struct APIConfig {
     pub enable_ws: bool,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max datastore key length
+    pub max_datastore_key_length: u8,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
     /// max datastore key length

@@ -9,7 +9,7 @@ use massa_db_exports::{
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
-use massa_models::datastore::get_prefix_bounds;
+use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
@@ -18,7 +18,6 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
-use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -178,7 +177,8 @@ impl LedgerDB {
         &self,
         addr: &Address,
         prefix: &[u8],
-        start_key: Option<Bound<Vec<u8>>>,
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
@@ -193,53 +193,70 @@ impl LedgerDB {
             db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
-        // collect keys starting with prefix
-        let start_prefix = if let Some(offset_start) = start_key {
-            // TODO
-            todo!("use bound to start from a specific key");
-            // offset_start.to_vec()
-        } else {
-            datastore_prefix_from_address(addr, prefix)
+        // deduce datastore key iteration range
+        let Some((start_bound, end_bound)) =
+            range_intersection(get_prefix_bounds(prefix), (start_key, end_key))
+        else {
+            // empty range: no keys
+            return Some(Default::default());
+        };
+        // translate the range bounds in terms of database keys
+        let start_key = match start_bound {
+            std::ops::Bound::Unbounded => vec![],
+            std::ops::Bound::Included(k) => datastore_prefix_from_address(addr, &k),
+            std::ops::Bound::Excluded(k) => {
+                let mut v = datastore_prefix_from_address(addr, &k);
+                v.push(0); // get the next key, lexicographically speaking
+                v
+            }
+        };
+        let end_bound = match end_bound {
+            std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+            std::ops::Bound::Excluded(k) => {
+                std::ops::Bound::Excluded(datastore_prefix_from_address(addr, &k))
+            }
+            std::ops::Bound::Included(k) => {
+                std::ops::Bound::Included(datastore_prefix_from_address(addr, &k))
+            }
         };
 
-        let end_prefix = end_prefix(&start_prefix);
-
-        // we cannot borrow as mutable because it is also borrowed as immutable in the iterator
-        // we need to use a Cell to keep track of the number of collected keys
-        let collected_count = Cell::new(0);
-
-        Some(
-            db.iterator_cf(
+        let mut taken_count: usize = 0;
+        let res = db
+            .iterator_cf(
                 STATE_CF,
-                MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
+                MassaIteratorMode::From(&start_key, MassaDirection::Forward),
             )
             .take_while(|(key, _)| {
-                if let Some(max_count) = count {
-                    if collected_count.get() >= max_count {
+                // check count
+                if let Some(cnt) = count.as_ref() {
+                    if taken_count >= *cnt as usize {
                         return false;
                     }
                 }
-
-                match &end_prefix {
-                    Some(end) => key < end,
-                    None => true,
+                // check upper bound
+                let take_item = match &end_bound {
+                    std::ops::Bound::Unbounded => true,
+                    std::ops::Bound::Included(ub) => key <= ub,
+                    std::ops::Bound::Excluded(ub) => key < ub,
+                };
+                if take_item {
+                    taken_count += 1;
                 }
+                take_item
             })
-            .filter_map(|(key, _)| {
+            .map(|(key, _)| {
                 let (_rest, key) = self
                     .key_deserializer_db
                     .deserialize::<DeserializeError>(&key)
                     .expect("could not deserialize datastore key from state db");
-                match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => {
-                        collected_count.set(collected_count.get() + 1);
-                        Some(datastore_vec)
-                    }
-                    _ => None,
-                }
+                let KeyType::DATASTORE(ds_key) = key.key_type else {
+                    panic!("unexpected key type when iterating over address datastore");
+                };
+                ds_key
             })
-            .collect(),
-        )
+            .collect();
+
+        Some(res)
     }
 
     pub fn reset(&self) {

@@ -361,6 +361,8 @@ impl SpeculativeLedger {
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
     pub fn get_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+        // TODO update this function as well with the advanced algorithm
+
         // compute prefix range
         let prefix_range = get_prefix_bounds(prefix);
         let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());

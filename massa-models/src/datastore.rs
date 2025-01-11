@@ -234,7 +234,6 @@ pub fn range_intersection<T: Ord>(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 

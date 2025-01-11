@@ -23,6 +23,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
     max_datastore_query_config: Option<u32>,
+    max_datastore_key_length: u8
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
     if let Some(item) = query.request_item {
         match item {
@@ -51,52 +52,113 @@ pub fn to_querystate_filter(
                 ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
             ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
-                // take the minimum of the limit and the max_datastore_query_config if it is set
+                let address = Address::from_str(&value.address)?;
+
+                // check item count
                 let count = value
                     .limit
-                    .map(|c| {
-                        max_datastore_query_config
-                            .map(|conf| c.min(conf))
-                            .unwrap_or(c)
-                    })
                     .or(max_datastore_query_config);
-                let start_key = value.start_key.map(|start_key| {
-                    if value.inclusive_start_key.unwrap_or(true) {
-                        Bound::Included(start_key)
-                    } else {
-                        Bound::Excluded(start_key)
+                if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
+                    if cnt > max_cnt {
+                        return Err(
+                            ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, addr))
+                        );                    }
+                }
+            
+                let start_key = match (value.start_key, value.inclusive_start_key) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), inclusive) => {
+                        if k.len() > max_datastore_key_length as usize {
+                            // the key is longer than the max possible length
+                            // it will be by definition excluded
+                            // and since its truncation is before, it will also be excluded
+                            k.truncate(max_datastore_key_length as usize);
+                            Bound::Excluded(k)
+                        } else if inclusive.unwrap_or(true) {
+                            Bound::Included(k)
+                        } else {
+                            Bound::Excluded(k)
+                        }
                     }
-                });
-
+                };
+            
+                let end_key = match (value.end_key, value.inclusive_end_key) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), inclusive) => {
+                        if k.len() > max_datastore_key_length as usize {
+                            // the key is longer than the max possible length
+                            // it will be by definition excluded
+                            // but its truncation is included
+                            k.truncate(max_datastore_key_length as usize);
+                            Bound::Included(k)
+                        } else if inclusive.unwrap_or(true) {
+                            Bound::Included(k)
+                        } else {
+                            Bound::Excluded(k)
+                        }
+                    }
+                };
+            
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    address: Address::from_str(&value.address)?,
+                    address,
                     prefix: value.prefix,
                     start_key,
+                    end_key,
                     count,
                 })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
-                // take the minimum of the limit and the max_datastore_query_config if it is set
+                let address = Address::from_str(&value.address)?;
+
+                // check item count
                 let count = value
                     .limit
-                    .map(|c| {
-                        max_datastore_query_config
-                            .map(|conf| c.min(conf))
-                            .unwrap_or(c)
-                    })
                     .or(max_datastore_query_config);
-
-                let start_key = value.start_key.map(|start_key| {
-                    if value.inclusive_start_key.unwrap_or(true) {
-                        Bound::Included(start_key)
-                    } else {
-                        Bound::Excluded(start_key)
+                if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
+                    return Err(
+                        ModelsError::ErrorRaised(format!("max item count in datastore key query is {} but user queried {} items for address {}", max_cnt, cnt, addr))
+                    );
+                }
+            
+                let start_key = match (value.start_key, value.inclusive_start_key) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), inclusive) => {
+                        if k.len() > max_datastore_key_length as usize {
+                            // the key is longer than the max possible length
+                            // it will be by definition excluded
+                            // and since its truncation is before, it will also be excluded
+                            k.truncate(max_datastore_key_length as usize);
+                            Bound::Excluded(k)
+                        } else if inclusive.unwrap_or(true) {
+                            Bound::Included(k)
+                        } else {
+                            Bound::Excluded(k)
+                        }
                     }
-                });
+                };
+            
+                let end_key = match (value.end_key, value.inclusive_end_key) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), inclusive) => {
+                        if k.len() > max_datastore_key_length as usize {
+                            // the key is longer than the max possible length
+                            // it will be by definition excluded
+                            // but its truncation is included
+                            k.truncate(max_datastore_key_length as usize);
+                            Bound::Included(k)
+                        } else if inclusive.unwrap_or(true) {
+                            Bound::Included(k)
+                        } else {
+                            Bound::Excluded(k)
+                        }
+                    }
+                };
+            
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    address: Address::from_str(&value.address)?,
+                    address,
                     prefix: value.prefix,
                     start_key,
+                    end_key,
                     count,
                 })
             }

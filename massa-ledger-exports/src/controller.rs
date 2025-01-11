@@ -48,7 +48,8 @@ pub trait LedgerController: Send + Sync {
         &self,
         addr: &Address,
         prefix: &[u8],
-        start_key: Option<Bound<Vec<u8>>>,
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
         count: Option<u32>,
     ) -> Option<BTreeSet<Vec<u8>>>;
 

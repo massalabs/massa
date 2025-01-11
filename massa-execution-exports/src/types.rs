@@ -75,8 +75,10 @@ pub enum ExecutionQueryRequestItem {
         address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
-        /// Offset to start from
-        start_key: Option<Bound<Vec<u8>>>,
+        /// Bound to start from
+        start_key: Bound<Vec<u8>>,
+        /// End bound
+        end_key: Bound<Vec<u8>>,
         /// Maximum number of keys to return
         count: Option<u32>,
     },
@@ -86,8 +88,10 @@ pub enum ExecutionQueryRequestItem {
         address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
-        /// Offset to start from
-        start_key: Option<Bound<Vec<u8>>>,
+        /// Bound to start from
+        start_key: Bound<Vec<u8>>,
+        /// End bound
+        end_key: Bound<Vec<u8>>,
         /// Maximum number of keys to return
         count: Option<u32>,
     },

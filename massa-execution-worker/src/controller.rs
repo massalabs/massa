@@ -203,7 +203,11 @@ impl ExecutionController for ExecutionControllerImpl {
                 } => {
                     let (_final_v, speculative_v) = execution_lock
                         .get_final_and_candidate_datastore_keys(
-                            &address, &prefix, start_key.unwrap_or(std::ops::Bound::Unbounded), std::ops::Bound::Unbounded, count,
+                            &address,
+                            &prefix,
+                            start_key.unwrap_or(std::ops::Bound::Unbounded),
+                            std::ops::Bound::Unbounded,
+                            count,
                         );
                     match speculative_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
@@ -219,10 +223,11 @@ impl ExecutionController for ExecutionControllerImpl {
                     address,
                     prefix,
                     start_key,
+                    end_key,
                     count,
                 } => {
                     let final_v = execution_lock
-                        .get_final_datastore_keys(&address, &prefix, start_key, count);
+                        .get_final_datastore_keys(&address, &prefix, start_key, end_key, count);
                     match final_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(
                             keys, address, true,
@@ -497,8 +502,14 @@ impl ExecutionController for ExecutionControllerImpl {
         let mut res = Vec::with_capacity(addresses.len());
         let exec_state = self.execution_state.read();
         for addr in addresses {
-            let (final_datastore_keys, candidate_datastore_keys) =
-                exec_state.get_final_and_candidate_datastore_keys(addr, &[], std::ops::Bound::Unbounded, std::ops::Bound::Unbounded, None);
+            let (final_datastore_keys, candidate_datastore_keys) = exec_state
+                .get_final_and_candidate_datastore_keys(
+                    addr,
+                    &[],
+                    std::ops::Bound::Unbounded,
+                    std::ops::Bound::Unbounded,
+                    None,
+                );
             let (final_balance, candidate_balance) =
                 exec_state.get_final_and_candidate_balance(addr);
             let (final_roll_count, candidate_roll_count) =
