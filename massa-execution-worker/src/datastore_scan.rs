@@ -1,13 +1,22 @@
 //! A file describing an optimized datastore keys traversal algorithm.
 //! It is shared between execution.rs and speculative_ledger.rs.
 
-use std::{collections::BTreeSet, ops::Bound};
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    ops::Bound,
+    sync::Arc,
+};
 
+use massa_final_state::{FinalState, FinalStateController};
+use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     address::Address,
     datastore::{get_prefix_bounds, range_intersection},
-    ledger::LedgerChange,
+    types::{SetOrDelete, SetUpdateOrDelete},
 };
+use parking_lot::RwLock;
+
+use crate::active_history::ActiveHistory;
 
 /// Gets a copy of a datastore keys for a given address
 ///
@@ -28,9 +37,9 @@ pub fn scan_datastore(
     start_key: Bound<Vec<u8>>,
     end_key: Bound<Vec<u8>>,
     count: Option<u32>,
-    final_state: &Arc<RwLock<FinalState>>,
-    active_history: &Arc<RwLock<ActiveHistory>>,
-    added_changes: Option<&LedgerChange>,
+    final_state: Arc<RwLock<dyn FinalStateController>>,
+    active_history: Arc<RwLock<ActiveHistory>>,
+    added_changes: Option<&LedgerChanges>,
 ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
     // get final keys
     let mut final_keys = final_state.read().get_ledger().get_datastore_keys(
@@ -55,17 +64,18 @@ pub fn scan_datastore(
     let mut key_updates = BTreeMap::new();
     {
         let mut update_indices = VecDeque::new();
-        let history_lock = history_lock.active_history.read();
+        let history_lock = active_history.read();
 
         let mut it = history_lock
             .0
             .iter()
             .map(|v| v.state_changes.ledger_changes);
         if let Some(ac) = added_changes.as_ref() {
+            // if there are added changes, chain them as the last index
             it = it.chain(std::iter::once(*ac));
         }
         for (index, output) in it.enumerate().rev() {
-            match output.state_changes.ledger_changes.get(addr) {
+            match output.get(addr) {
                 // address absent from the changes
                 None => (),
 
@@ -107,8 +117,10 @@ pub fn scan_datastore(
         for idx in update_indices {
             let changes = if idx < history_lock.0.len() {
                 &history_lock.0[idx].state_changes.ledger_changes
+            } else if let Some(added_changes) = added_changes.as_ref() {
+                *added_changes
             } else {
-                added_changes.expect("unexpected index out of bounds")
+                panic!("unexpected index out of bounds")
             };
 
             if let SetUpdateOrDelete::Update(updates) = changes
@@ -245,8 +257,8 @@ pub fn scan_datastore(
             }
         }
 
-        if let Some(last_k) = last_final_batch_key.as_ref() {
-            if final_keys_queue.is_empty() {
+        if final_keys_queue.is_empty() {
+            if let Some(last_k) = last_final_batch_key {
                 // the last final item was consumed: replenish the queue by querying more
                 final_keys_queue = final_state
                     .read()

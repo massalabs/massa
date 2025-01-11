@@ -2222,8 +2222,8 @@ impl ExecutionState {
             start_key,
             end_key,
             count,
-            &self.final_state,
-            &self.active_history,
+            self.final_state.clone(),
+            self.active_history.clone(),
             None,
         )
     }

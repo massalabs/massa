@@ -68,7 +68,7 @@ pub fn to_querystate_filter(
 
                 let start_key = match (value.start_key, value.inclusive_start_key) {
                     (None, _) => std::ops::Bound::Unbounded,
-                    (Some(k), inclusive) => {
+                    (Some(mut k), inclusive) => {
                         if k.len() > max_datastore_key_length as usize {
                             // the key is longer than the max possible length
                             // it will be by definition excluded
@@ -85,7 +85,7 @@ pub fn to_querystate_filter(
 
                 let end_key = match (value.end_key, value.inclusive_end_key) {
                     (None, _) => std::ops::Bound::Unbounded,
-                    (Some(k), inclusive) => {
+                    (Some(mut k), inclusive) => {
                         if k.len() > max_datastore_key_length as usize {
                             // the key is longer than the max possible length
                             // it will be by definition excluded
@@ -123,7 +123,7 @@ pub fn to_querystate_filter(
 
                 let start_key = match (value.start_key, value.inclusive_start_key) {
                     (None, _) => std::ops::Bound::Unbounded,
-                    (Some(k), inclusive) => {
+                    (Some(mut k), inclusive) => {
                         if k.len() > max_datastore_key_length as usize {
                             // the key is longer than the max possible length
                             // it will be by definition excluded
@@ -140,7 +140,7 @@ pub fn to_querystate_filter(
 
                 let end_key = match (value.end_key, value.inclusive_end_key) {
                     (None, _) => std::ops::Bound::Unbounded,
-                    (Some(k), inclusive) => {
+                    (Some(mut k), inclusive) => {
                         if k.len() > max_datastore_key_length as usize {
                             // the key is longer than the max possible length
                             // it will be by definition excluded
