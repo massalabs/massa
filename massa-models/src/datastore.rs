@@ -480,7 +480,7 @@ mod tests {
     #[test]
     fn test_cleanup_datastore_key_range_query() {
         // Case 1: Valid inputs
-        let prefix = b"valid_prefix".to_vec();
+        let prefix = b"prfx".to_vec();
         let start_bound = Bound::Included(b"start_key".to_vec());
         let end_bound = Bound::Excluded(b"end_key".to_vec());
         let count = Some(10);
