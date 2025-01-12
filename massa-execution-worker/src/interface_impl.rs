@@ -422,7 +422,21 @@ impl Interface for InterfaceImpl {
     fn get_keys(&self, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let context = context_guard!(self);
         let addr = context.get_current_address()?;
-        match context.get_keys(&addr, prefix_opt.unwrap_or_default()) {
+
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context.get_keys(
+            &addr,
+            prefix_opt.unwrap_or_default(),
+            start_key,
+            end_key,
+            count,
+        )? {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -437,7 +451,20 @@ impl Interface for InterfaceImpl {
     fn get_keys_for(&self, address: &str, prefix_opt: Option<&[u8]>) -> Result<BTreeSet<Vec<u8>>> {
         let addr = &Address::from_str(address)?;
         let context = context_guard!(self);
-        match context.get_keys(addr, prefix_opt.unwrap_or_default()) {
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context.get_keys(
+            &addr,
+            prefix_opt.unwrap_or_default(),
+            start_key,
+            end_key,
+            count,
+        )? {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }
@@ -455,7 +482,14 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let address = get_address_from_opt_or_context(&context, address)?;
 
-        match context.get_keys(&address, prefix) {
+        // TODO update when implementing the ABI key limits
+        let start_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let end_key = std::ops::Bound::Unbounded;
+        // TODO update when implementing the ABI key limits
+        let count = None;
+
+        match context.get_keys(&address, &prefix, start_key, end_key, count)? {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }

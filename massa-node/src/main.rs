@@ -955,6 +955,7 @@ async fn launch(
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     };
 
     // spawn Massa API
@@ -1254,6 +1255,7 @@ fn configure_grpc(
         chain_id: *CHAINID,
         minimal_fees,
         max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     }
 }
 

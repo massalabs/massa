@@ -109,8 +109,8 @@ massa_wallet = { path = "./massa-wallet" }
 massa_event_cache = { path = "./massa-event-cache" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "1ab9a65e7b9f0077361cafe905c2a26ba04ae9d1" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "8013e743d7b3efe46cfc760b05337512d7f10073" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "branch" = "damir_keys_algo" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "damir_algo" }
 
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
@@ -200,10 +200,10 @@ time = "0.3"
 tokio = "1.23"
 tokio-stream = "0.1"
 toml_edit = "0.21"
-tonic = "0.12"
-tonic-health = "0.12"
-tonic-reflection = "0.12"
-tonic-web = "0.12"
+tonic = "=0.12"
+tonic-health = "=0.12"
+tonic-reflection = "=0.12"
+tonic-web = "=0.12"
 tower = "0.4"
 tower-http = "0.6"
 tower-service = "0.3"
@@ -213,4 +213,4 @@ unsigned-varint = "0.8"
 variant_count = "1.1"
 walkdir = "2.3"
 zeroize = { version = "1.7", features = ["derive"] }
-prost = { version = "=0.13" }
+prost = "=0.13"

@@ -191,6 +191,10 @@ pub struct GetAddressDatastoreKeysRequest {
     pub start_key: Option<Vec<u8>>,
     /// inclusive start key
     pub inclusive_start_key: Option<bool>,
+    /// The end key to filter the keys
+    pub end_key: Option<Vec<u8>>,
+    /// inclusive end key
+    pub inclusive_end_key: Option<bool>,
     /// The count of keys to return
     pub count: Option<u32>,
 }

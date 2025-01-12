@@ -199,15 +199,12 @@ impl ExecutionController for ExecutionControllerImpl {
                     address,
                     prefix,
                     start_key,
+                    end_key,
                     count,
                 } => {
                     let (_final_v, speculative_v) = execution_lock
                         .get_final_and_candidate_datastore_keys(
-                            &address,
-                            &prefix,
-                            start_key.unwrap_or(std::ops::Bound::Unbounded),
-                            std::ops::Bound::Unbounded,
-                            count,
+                            &address, &prefix, start_key, end_key, count,
                         );
                     match speculative_v {
                         Some(keys) => Ok(ExecutionQueryResponseItem::AddressDatastoreKeys(

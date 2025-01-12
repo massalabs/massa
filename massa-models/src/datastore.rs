@@ -1,5 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
+use crate::error::ModelsError;
 use crate::serialization::{VecU8Deserializer, VecU8Serializer};
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
@@ -9,7 +10,7 @@ use nom::multi::length_count;
 use nom::sequence::tuple;
 use nom::{IResult, Parser};
 use std::collections::BTreeMap;
-use std::ops::Bound::Included;
+use std::ops::Bound::{self, Included};
 
 /// Datastore entry for Ledger & `ExecuteSC` Operation
 /// A Datastore is a Key Value store where
@@ -234,6 +235,80 @@ pub fn range_intersection<T: Ord>(
     }
 }
 
+/// Checks and cleans up a datastore key range query
+/// Returns: (prefix, start_bound, end_bound) or error
+pub fn cleanup_datastore_key_range_query(
+    prefix: &[u8],
+    start_bound: Bound<Vec<u8>>,
+    end_bound: Bound<Vec<u8>>,
+    count: Option<u32>,
+    max_datastore_key_length: u8,
+    max_datastore_query_config: Option<u32>,
+) -> Result<(Vec<u8>, Bound<Vec<u8>>, Bound<Vec<u8>>), ModelsError> {
+    // check item count
+    let count = count.or(max_datastore_query_config);
+    if let (Some(cnt), Some(max_cnt)) = (count.as_ref(), max_datastore_query_config.as_ref()) {
+        if cnt > max_cnt {
+            return Err(ModelsError::ErrorRaised(format!(
+                "max item count in datastore key query is {} but {} items were queried",
+                max_cnt, cnt
+            )));
+        }
+    }
+
+    // check prefix length
+    let prefix = if prefix.len() > max_datastore_key_length as usize {
+        // prefix is too long: it won't match anything. Adjust bounds to reflect this.
+        return Ok((
+            Vec::new(),
+            std::ops::Bound::Excluded(Vec::new()),
+            std::ops::Bound::Excluded(Vec::new()),
+        ));
+    } else {
+        prefix.to_vec()
+    };
+
+    // If the key is longer than the max possible length
+    // it will be by definition excluded
+    // and since its truncation is before, it will also be excluded
+    let start_bound = match start_bound {
+        std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+        std::ops::Bound::Excluded(mut k) => {
+            k.truncate(max_datastore_key_length as usize);
+            Bound::Excluded(k)
+        }
+        std::ops::Bound::Included(mut k) => {
+            if k.len() > max_datastore_key_length as usize {
+                k.truncate(max_datastore_key_length as usize);
+                Bound::Excluded(k)
+            } else {
+                Bound::Included(k)
+            }
+        }
+    };
+
+    // If the key is longer than the max possible length
+    // it will be by definition excluded
+    // but its truncation is included
+    let end_bound = match end_bound {
+        std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+        std::ops::Bound::Included(mut k) => {
+            k.truncate(max_datastore_key_length as usize);
+            Bound::Included(k)
+        }
+        std::ops::Bound::Excluded(mut k) => {
+            if k.len() > max_datastore_key_length as usize {
+                k.truncate(max_datastore_key_length as usize);
+                Bound::Included(k)
+            } else {
+                Bound::Excluded(k)
+            }
+        }
+    };
+
+    Ok((prefix, start_bound, end_bound))
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -399,5 +474,103 @@ mod tests {
             let expected = (std::ops::Bound::Excluded(1), std::ops::Bound::Excluded(5));
             assert_eq!(range_intersection(r1, r2), Some(expected));
         }
+    }
+
+    #[test]
+    fn test_cleanup_datastore_key_range_query() {
+        // Case 1: Valid inputs
+        let prefix = b"valid_prefix".to_vec();
+        let start_bound = Bound::Included(b"start_key".to_vec());
+        let end_bound = Bound::Excluded(b"end_key".to_vec());
+        let count = Some(10);
+        let max_length = 20;
+        let max_query_config = Some(50);
+
+        let result = cleanup_datastore_key_range_query(
+            &prefix,
+            start_bound.clone(),
+            end_bound.clone(),
+            count,
+            max_length,
+            max_query_config,
+        );
+        assert!(result.is_ok());
+        let (res_prefix, res_start, res_end) = result.unwrap();
+        assert_eq!(res_prefix, prefix);
+        assert_eq!(res_start, start_bound);
+        assert_eq!(res_end, end_bound);
+
+        // Case 2: Prefix length exceeds max length
+        let long_prefix = vec![b'a'; 30];
+        let result = cleanup_datastore_key_range_query(
+            &long_prefix,
+            start_bound.clone(),
+            end_bound.clone(),
+            None,
+            10,
+            None,
+        );
+        assert!(result.is_ok());
+        let (res_prefix, res_start, res_end) = result.unwrap();
+        assert!(res_prefix.is_empty());
+        assert_eq!(res_start, Bound::Excluded(Vec::new()));
+        assert_eq!(res_end, Bound::Excluded(Vec::new()));
+
+        // Case 3: Keys exceeding max length in bounds
+        let long_key = vec![b'b'; 25];
+        let start_bound = Bound::Included(long_key.clone());
+        let end_bound = Bound::Excluded(long_key.clone());
+        let result = cleanup_datastore_key_range_query(
+            &prefix,
+            start_bound.clone(),
+            end_bound.clone(),
+            None,
+            10,
+            None,
+        );
+        assert!(result.is_ok());
+        let (res_prefix, res_start, res_end) = result.unwrap();
+        assert_eq!(res_prefix, prefix);
+        assert_eq!(
+            res_start,
+            Bound::Excluded(long_key[0..10].to_vec()) // Start key truncated
+        );
+        assert_eq!(
+            res_end,
+            Bound::Included(long_key[0..10].to_vec()) // End key truncated
+        );
+
+        // Case 4: Count exceeds max query config
+        let result = cleanup_datastore_key_range_query(
+            &prefix,
+            Bound::Unbounded,
+            Bound::Unbounded,
+            Some(100),
+            10,
+            Some(50),
+        );
+        assert!(result.is_err());
+        if let Err(ModelsError::ErrorRaised(msg)) = result {
+            assert!(msg.contains(
+                "max item count in datastore key query is 50 but 100 items were queried"
+            ));
+        } else {
+            panic!("Expected ModelsError::ErrorRaised");
+        }
+
+        // Case 5: No count or max query config provided
+        let result = cleanup_datastore_key_range_query(
+            &prefix,
+            Bound::Unbounded,
+            Bound::Unbounded,
+            None,
+            10,
+            None,
+        );
+        assert!(result.is_ok());
+        let (res_prefix, res_start, res_end) = result.unwrap();
+        assert_eq!(res_prefix, prefix);
+        assert_eq!(res_start, Bound::Unbounded);
+        assert_eq!(res_end, Bound::Unbounded);
     }
 }

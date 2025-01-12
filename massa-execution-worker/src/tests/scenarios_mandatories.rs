@@ -3533,7 +3533,7 @@ fn datastore_manipulations() {
                 .returning(move |_, _| None);
             ledger_controller
                 .expect_get_datastore_keys()
-                .returning(move |_, _| None);
+                .returning(move |_, _, _, _, _| None);
             ledger_controller
                 .expect_get_bytecode()
                 .returning(move |_| None);
@@ -3674,12 +3674,18 @@ fn datastore_manipulations() {
                 ExecutionQueryRequestItem::AddressBytecodeCandidate(addr),
                 ExecutionQueryRequestItem::AddressBytecodeFinal(addr),
                 ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr,
+                    address: addr,
                     prefix: vec![],
+                    start_key: std::ops::Bound::Unbounded,
+                    end_key: std::ops::Bound::Unbounded,
+                    count: None,
                 },
                 ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr,
+                    address: addr,
                     prefix: vec![],
+                    start_key: std::ops::Bound::Unbounded,
+                    end_key: std::ops::Bound::Unbounded,
+                    count: None,
                 },
                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate {
                     addr,

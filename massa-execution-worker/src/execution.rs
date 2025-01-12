@@ -28,7 +28,6 @@ use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -36,7 +35,6 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -50,8 +48,7 @@ use massa_sc_runtime::{Interface, Response, VMError};
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
-use std::cell::Cell;
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};

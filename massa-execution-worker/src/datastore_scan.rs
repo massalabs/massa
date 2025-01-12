@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use massa_final_state::{FinalState, FinalStateController};
+use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::{
     address::Address,
@@ -42,16 +42,19 @@ pub fn scan_datastore(
     added_changes: Option<&LedgerChanges>,
 ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
     // get final keys
-    let mut final_keys = final_state.read().get_ledger().get_datastore_keys(
+    let final_keys = final_state.read().get_ledger().get_datastore_keys(
         addr,
         prefix,
-        start_key,
-        end_key,
+        start_key.clone(),
+        end_key.clone(),
         count.clone(),
     );
 
     // the iteration range is the intersection of the prefix range and the selection range
-    let key_range = range_intersection(get_prefix_bounds(prefix), (start_key, end_key));
+    let key_range = range_intersection(
+        get_prefix_bounds(prefix),
+        (start_key.clone(), end_key.clone()),
+    );
 
     enum SpeculativeResetType {
         None,
@@ -66,15 +69,14 @@ pub fn scan_datastore(
         let mut update_indices = VecDeque::new();
         let history_lock = active_history.read();
 
-        let mut it = history_lock
+        let it = history_lock
             .0
             .iter()
-            .map(|v| v.state_changes.ledger_changes);
-        if let Some(ac) = added_changes.as_ref() {
-            // if there are added changes, chain them as the last index
-            it = it.chain(std::iter::once(*ac));
-        }
-        for (index, output) in it.enumerate().rev() {
+            .map(|v| &v.state_changes.ledger_changes)
+            .chain(added_changes.iter().map(|v| *v));
+        let mut index = history_lock.0.len() + if added_changes.is_some() { 1 } else { 0 };
+        for output in it.rev() {
+            index -= 1;
             match output.get(addr) {
                 // address absent from the changes
                 None => (),
@@ -166,7 +168,7 @@ pub fn scan_datastore(
             // there was no reset
             if key_updates.is_empty() {
                 // there were no updates: return the same as final
-                return (final_keys, final_keys.clone());
+                return (final_keys.clone(), final_keys);
             } else if final_keys.is_none() {
                 // handle the case where there were updates but the final address was absent
                 let filter_it =
@@ -190,6 +192,7 @@ pub fn scan_datastore(
     // querying more final keys if necessary to reach the desired count.
 
     let mut final_keys_queue: VecDeque<_> = final_keys
+        .as_ref()
         .expect("expected final keys to be non-None")
         .iter()
         .cloned()
@@ -204,14 +207,14 @@ pub fn scan_datastore(
             }
         }
         match (final_keys_queue.front(), key_updates_queue.front()) {
-            (Some(f), None) => {
+            (Some(_f), None) => {
                 // final only
                 let k = final_keys_queue
                     .pop_front()
                     .expect("expected final list to be non-empty");
                 speculative_keys.insert(k);
             }
-            (Some(f), Some((u, is_set))) => {
+            (Some(f), Some((u, _is_set))) => {
                 // key present both in the final state and as a speculative update
                 match f.cmp(u) {
                     std::cmp::Ordering::Less => {
@@ -242,7 +245,7 @@ pub fn scan_datastore(
                     }
                 }
             }
-            (None, Some((u, is_set))) => {
+            (None, Some((_u, _is_set))) => {
                 // no final but there is a change
                 let (k, is_set) = key_updates_queue
                     .pop_front()
@@ -267,7 +270,7 @@ pub fn scan_datastore(
                         addr,
                         prefix,
                         std::ops::Bound::Excluded(last_k),
-                        end_key,
+                        end_key.clone(),
                         count.clone(),
                     )
                     .expect("address expected to exist in final state")

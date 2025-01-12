@@ -138,6 +138,8 @@ pub struct GrpcConfig {
     pub minimal_fees: Amount,
     /// max datastore keys queries
     pub max_datastore_keys_queries: Option<u32>,
+    /// max datastore key length
+    pub max_datastore_key_length: u8,
 }
 
 /// gRPC API configuration.

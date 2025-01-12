@@ -29,6 +29,7 @@ use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
+use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::timeslots::get_block_slot_timestamp;
@@ -576,8 +577,31 @@ impl ExecutionContext {
     }
 
     /// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    pub fn get_keys(&self, address: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        self.speculative_ledger.get_keys(address, prefix)
+    pub fn get_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: std::ops::Bound<Vec<u8>>,
+        end_key: std::ops::Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Result<Option<BTreeSet<Vec<u8>>>, ExecutionError> {
+        // TODO when updating the ABI, make sure to set this value to a maximum defined as a CONSTANT for determinism
+        // The API will use a different, user-configurable max value
+        let max_datastore_query = None;
+
+        // cleanup bounds
+        let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+            prefix,
+            start_key,
+            end_key,
+            count,
+            self.config.max_datastore_key_length,
+            max_datastore_query,
+        )?;
+
+        Ok(self
+            .speculative_ledger
+            .get_keys(addr, &prefix, start_key, end_key, count))
     }
 
     /// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None
