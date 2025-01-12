@@ -459,7 +459,7 @@ impl Interface for InterfaceImpl {
         let count = None;
 
         match context.get_keys(
-            &addr,
+            addr,
             prefix_opt.unwrap_or_default(),
             start_key,
             end_key,
@@ -489,7 +489,7 @@ impl Interface for InterfaceImpl {
         // TODO update when implementing the ABI key limits
         let count = None;
 
-        match context.get_keys(&address, &prefix, start_key, end_key, count)? {
+        match context.get_keys(&address, prefix, start_key, end_key, count)? {
             Some(value) => Ok(value),
             _ => bail!("data entry not found"),
         }

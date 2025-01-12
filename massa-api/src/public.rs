@@ -1590,8 +1590,7 @@ fn get_address_datastore_keys_to_state_query_item(
     .map_err(|e| {
         ApiError::BadRequest(format!(
             "error querying datastore keys for address {}: {}",
-            value.address,
-            e.to_string()
+            value.address, e
         ))
     })?;
 

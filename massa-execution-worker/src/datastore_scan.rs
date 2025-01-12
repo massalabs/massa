@@ -47,7 +47,7 @@ pub fn scan_datastore(
         prefix,
         start_key.clone(),
         end_key.clone(),
-        count.clone(),
+        count,
     );
 
     // the iteration range is the intersection of the prefix range and the selection range
@@ -73,7 +73,7 @@ pub fn scan_datastore(
             .0
             .iter()
             .map(|v| &v.state_changes.ledger_changes)
-            .chain(added_changes.iter().map(|v| *v));
+            .chain(added_changes.iter().copied());
         let mut index = history_lock.0.len() + if added_changes.is_some() { 1 } else { 0 };
         for output in it.rev() {
             index -= 1;
@@ -271,7 +271,7 @@ pub fn scan_datastore(
                         prefix,
                         std::ops::Bound::Excluded(last_k),
                         end_key.clone(),
-                        count.clone(),
+                        count,
                     )
                     .expect("address expected to exist in final state")
                     .iter()
