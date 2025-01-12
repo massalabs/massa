@@ -200,7 +200,7 @@ pub fn scan_datastore(
     loop {
         if let Some(cnt) = count {
             if speculative_keys.len() >= cnt as usize {
-                return (None, Some(speculative_keys));
+                return (final_keys, Some(speculative_keys));
             }
         }
         match (final_keys_queue.front(), key_updates_queue.front()) {
@@ -253,7 +253,7 @@ pub fn scan_datastore(
             }
             (None, None) => {
                 // nothing is left
-                break;
+                return (final_keys, Some(speculative_keys));
             }
         }
 
@@ -278,6 +278,4 @@ pub fn scan_datastore(
             }
         }
     }
-
-    (final_keys, Some(speculative_keys))
 }
