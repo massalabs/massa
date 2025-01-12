@@ -1612,7 +1612,6 @@
 <a href="#1612" id="1612">1612</a>
 <a href="#1613" id="1613">1613</a>
 <a href="#1614" id="1614">1614</a>
-<a href="#1615" id="1615">1615</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -3205,8 +3204,7 @@
     .map_err(|e| {
         ApiError::BadRequest(<span class="macro">format!</span>(
             <span class="string">"error querying datastore keys for address {}: {}"</span>,
-            value.address,
-            e.to_string()
+            value.address, e
         ))
     })<span class="question-mark">?</span>;
 

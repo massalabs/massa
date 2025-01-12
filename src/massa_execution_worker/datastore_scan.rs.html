@@ -331,7 +331,7 @@
         prefix,
         start_key.clone(),
         end_key.clone(),
-        count.clone(),
+        count,
     );
 
     <span class="comment">// the iteration range is the intersection of the prefix range and the selection range
@@ -357,7 +357,7 @@
             .<span class="number">0
             </span>.iter()
             .map(|v| <span class="kw-2">&amp;</span>v.state_changes.ledger_changes)
-            .chain(added_changes.iter().map(|v| <span class="kw-2">*</span>v));
+            .chain(added_changes.iter().copied());
         <span class="kw">let </span><span class="kw-2">mut </span>index = history_lock.<span class="number">0</span>.len() + <span class="kw">if </span>added_changes.is_some() { <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>};
         <span class="kw">for </span>output <span class="kw">in </span>it.rev() {
             index -= <span class="number">1</span>;
@@ -555,7 +555,7 @@
                         prefix,
                         std::ops::Bound::Excluded(last_k),
                         end_key.clone(),
-                        count.clone(),
+                        count,
                     )
                     .expect(<span class="string">"address expected to exist in final state"</span>)
                     .iter()
