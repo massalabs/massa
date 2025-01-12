@@ -2367,60 +2367,6 @@
 <a href="#2367" id="2367">2367</a>
 <a href="#2368" id="2368">2368</a>
 <a href="#2369" id="2369">2369</a>
-<a href="#2370" id="2370">2370</a>
-<a href="#2371" id="2371">2371</a>
-<a href="#2372" id="2372">2372</a>
-<a href="#2373" id="2373">2373</a>
-<a href="#2374" id="2374">2374</a>
-<a href="#2375" id="2375">2375</a>
-<a href="#2376" id="2376">2376</a>
-<a href="#2377" id="2377">2377</a>
-<a href="#2378" id="2378">2378</a>
-<a href="#2379" id="2379">2379</a>
-<a href="#2380" id="2380">2380</a>
-<a href="#2381" id="2381">2381</a>
-<a href="#2382" id="2382">2382</a>
-<a href="#2383" id="2383">2383</a>
-<a href="#2384" id="2384">2384</a>
-<a href="#2385" id="2385">2385</a>
-<a href="#2386" id="2386">2386</a>
-<a href="#2387" id="2387">2387</a>
-<a href="#2388" id="2388">2388</a>
-<a href="#2389" id="2389">2389</a>
-<a href="#2390" id="2390">2390</a>
-<a href="#2391" id="2391">2391</a>
-<a href="#2392" id="2392">2392</a>
-<a href="#2393" id="2393">2393</a>
-<a href="#2394" id="2394">2394</a>
-<a href="#2395" id="2395">2395</a>
-<a href="#2396" id="2396">2396</a>
-<a href="#2397" id="2397">2397</a>
-<a href="#2398" id="2398">2398</a>
-<a href="#2399" id="2399">2399</a>
-<a href="#2400" id="2400">2400</a>
-<a href="#2401" id="2401">2401</a>
-<a href="#2402" id="2402">2402</a>
-<a href="#2403" id="2403">2403</a>
-<a href="#2404" id="2404">2404</a>
-<a href="#2405" id="2405">2405</a>
-<a href="#2406" id="2406">2406</a>
-<a href="#2407" id="2407">2407</a>
-<a href="#2408" id="2408">2408</a>
-<a href="#2409" id="2409">2409</a>
-<a href="#2410" id="2410">2410</a>
-<a href="#2411" id="2411">2411</a>
-<a href="#2412" id="2412">2412</a>
-<a href="#2413" id="2413">2413</a>
-<a href="#2414" id="2414">2414</a>
-<a href="#2415" id="2415">2415</a>
-<a href="#2416" id="2416">2416</a>
-<a href="#2417" id="2417">2417</a>
-<a href="#2418" id="2418">2418</a>
-<a href="#2419" id="2419">2419</a>
-<a href="#2420" id="2420">2420</a>
-<a href="#2421" id="2421">2421</a>
-<a href="#2422" id="2422">2422</a>
-<a href="#2423" id="2423">2423</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2524,10 +2470,7 @@
         <span class="kw">use </span>massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         <span class="kw">use </span>massa_pos_exports::SelectorConfig;
         <span class="kw">use </span>massa_pos_worker::start_selector_worker;
-        <span class="kw">use </span>massa_versioning::{
-            mips::get_mip_list,
-            versioning::{MipStatsConfig, MipStore},
-        };
+        <span class="kw">use </span>massa_versioning::versioning::{MipStatsConfig, MipStore};
         <span class="kw">use </span>parking_lot::RwLock;
         <span class="kw">use </span>tempfile::TempDir;
 
@@ -2569,8 +2512,8 @@
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(<span class="number">30</span>, <span class="number">100</span>),
         };
-        <span class="kw">let </span>mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
-            .expect(<span class="string">"Cannot create an empty MIP store"</span>);
+        <span class="kw">let </span>mip_store =
+            MipStore::try_from(([], mip_stats_config)).expect(<span class="string">"Cannot create an empty MIP store"</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = ExecutionContext::new(
             config.clone(),
@@ -2658,21 +2601,12 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>get_interface_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u32&gt; {
-        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="prelude-val">Ok</span>(context.execution_component_version)
-    }
-
     <span class="kw">fn </span>increment_recursion_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         context.recursion_counter += <span class="number">1</span>;
 
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0
-            </span>&amp;&amp; context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth
-        {
+        <span class="kw">if </span>context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth {
             <span class="macro">bail!</span>(<span class="string">"recursion depth limit reached"</span>);
         }
 
@@ -2767,15 +2701,10 @@
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>condom_limits = context.get_condom_limits();
-
-        <span class="kw">let </span>ret = context
+        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>))
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(ret)
+            .load_module(bytecode, gas_limit)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Compile and return a temporary module
@@ -2783,16 +2712,10 @@
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module &amp; the remaining gas after loading the module
     </span><span class="kw">fn </span>get_tmp_module(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], gas_limit: u64) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule&gt; {
-        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>condom_limits = context.get_condom_limits();
-
-        <span class="kw">let </span>ret =
-            context
-                .module_cache
-                .write()
-                .load_tmp_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(ret)
+        <span class="prelude-val">Ok</span>((<span class="macro">context_guard!</span>(<span class="self">self</span>))
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, gas_limit)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Gets the balance of the current address address (top of the stack).
@@ -2868,7 +2791,21 @@
     </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr, prefix_opt.unwrap_or_default()) {
+
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
+
+        <span class="kw">match </span>context.get_keys(
+            <span class="kw-2">&amp;</span>addr,
+            prefix_opt.unwrap_or_default(),
+            start_key,
+            end_key,
+            count,
+        )<span class="question-mark">? </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2883,7 +2820,20 @@
     </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">match </span>context.get_keys(addr, prefix_opt.unwrap_or_default()) {
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
+
+        <span class="kw">match </span>context.get_keys(
+            <span class="kw-2">&amp;</span>addr,
+            prefix_opt.unwrap_or_default(),
+            start_key,
+            end_key,
+            count,
+        )<span class="question-mark">? </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2901,7 +2851,14 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
-        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, prefix) {
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
+        <span class="comment">// TODO update when implementing the ABI key limits
+        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
+
+        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count)<span class="question-mark">? </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -3351,21 +3308,13 @@
         signature_: <span class="kw-2">&amp;</span>[u8],
         public_key_: <span class="kw-2">&amp;</span>[u8],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"invalid signature length in evm_signature_verify"</span>));
         }
 
         <span class="comment">// parse the public key
-        </span><span class="kw">let </span>public_key = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; libsecp256k1::PublicKey::parse_slice(
-                public_key_,
-                <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
-            )<span class="question-mark">?</span>,
-            <span class="kw">_ </span>=&gt; libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
-        };
+        </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// build the message
         </span><span class="kw">let </span>prefix = <span class="macro">format!</span>(<span class="string">"\x19Ethereum Signed Message:\n{}"</span>, message_.len());
@@ -3379,36 +3328,34 @@
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // see test_evm_verify for an example of its usage
-        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
-
-        <span class="kw">if </span>execution_component_version != <span class="number">0 </span>{
-            <span class="kw">let </span>recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>.into();
-            <span class="comment">// Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
-            //       restrict to only 27 &amp; 28 (=&gt; 0 &amp; 1)
-            </span><span class="kw">if </span>recovery_id != <span class="number">0 </span>&amp;&amp; recovery_id != <span class="number">1 </span>{
-                <span class="comment">// Note:
-                // The v value in an EVM signature serves as a recovery ID,
-                // aiding in the recovery of the public key from the signature.
-                // Typically, v should be either 27 or 28
-                // (or sometimes 0 or 1, depending on the implementation).
-                // Ensuring that v is within the expected range is crucial
-                // for correctly recovering the public key.
-                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">"invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
-                </span>));
-            }
-
+        </span><span class="kw">let </span>recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>.into();
+        <span class="comment">// Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+        //       restrict to only 27 &amp; 28 (=&gt; 0 &amp; 1)
+        </span><span class="kw">if </span>recovery_id != <span class="number">0 </span>&amp;&amp; recovery_id != <span class="number">1 </span>{
             <span class="comment">// Note:
-            // The s value in an EVM signature should be in the lower half of the elliptic curve
-            // in order to prevent malleability attacks.
-            // If s is in the high-order range, it can be converted to its low-order equivalent,
-            // which should be enforced during signature verification.
-            </span><span class="kw">if </span>signature.s.is_high() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                </span>));
-            }
+            // The v value in an EVM signature serves as a recovery ID,
+            // aiding in the recovery of the public key from the signature.
+            // Typically, v should be either 27 or 28
+            // (or sometimes 0 or 1, depending on the implementation).
+            // Ensuring that v is within the expected range is crucial
+            // for correctly recovering the public key.
+            // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+            </span>));
+        }
+
+        <span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+
+        <span class="comment">// Note:
+        // The s value in an EVM signature should be in the lower half of the elliptic curve
+        // in order to prevent malleability attacks.
+        // If s is in the high-order range, it can be converted to its low-order equivalent,
+        // which should be enforced during signature verification.
+        </span><span class="kw">if </span>signature.s.is_high() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            </span>));
         }
 
         <span class="comment">// verify the signature
@@ -3423,25 +3370,11 @@
     <span class="doccomment">/// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     </span><span class="kw">fn </span>evm_get_address_from_pubkey(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key_: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
+        <span class="comment">// parse the public key
+        </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>hash = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; {
-                <span class="comment">// parse the public key
-                </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(
-                    public_key_,
-                    <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
-                )<span class="question-mark">?</span>;
-                <span class="comment">// compute the hash of the public key
-                </span>sha3::Keccak256::digest(public_key.serialize())
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="comment">// parse the public key
-                </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
-                <span class="comment">// compute the hash of the public key
-                </span>sha3::Keccak256::digest(<span class="kw-2">&amp;</span>public_key.serialize()[<span class="number">1</span>..])
-            }
-        };
+        <span class="comment">// compute the hash of the public key
+        </span><span class="kw">let </span>hash = sha3::Keccak256::digest(<span class="kw-2">&amp;</span>public_key.serialize()[<span class="number">1</span>..]);
 
         <span class="comment">// ignore the first 12 bytes of the hash
         </span><span class="kw">let </span>address = hash[<span class="number">12</span>..].to_vec();
@@ -3452,8 +3385,6 @@
 
     <span class="doccomment">/// Get a raw secp256k1 public key from an EVM signature and the signed hash.
     </span><span class="kw">fn </span>evm_get_pubkey_from_signature(<span class="kw-2">&amp;</span><span class="self">self</span>, hash_: <span class="kw-2">&amp;</span>[u8], signature_: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
@@ -3461,58 +3392,37 @@
             </span>));
         }
 
-        <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; {
-                <span class="comment">// parse the message
-                </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        <span class="comment">// parse the message
+        </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_)<span class="question-mark">?</span>;
 
-                <span class="comment">// parse the signature as being (r, s, v) use only r and s
-                </span><span class="kw">let </span>signature =
-                    libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>]).unwrap();
+        <span class="comment">// parse the signature as being (r, s, v) use only r and s
+        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
 
-                <span class="comment">// parse v as a recovery id
-                </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>]).unwrap();
-
-                <span class="comment">// recover the public key
-                </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id).unwrap();
-
-                <span class="comment">// return its serialized value
-                </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="comment">// parse the message
-                </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_)<span class="question-mark">?</span>;
-
-                <span class="comment">// parse the signature as being (r, s, v) use only r and s
-                </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
-
-                <span class="comment">// Note:
-                // See evm_signature_verify explanation
-                </span><span class="kw">if </span>signature.s.is_high() {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                    </span>));
-                }
-
-                <span class="comment">// parse v as a recovery id
-                </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>;
-
-                <span class="kw">let </span>recovery_id_: u8 = recovery_id.into();
-                <span class="kw">if </span>recovery_id_ != <span class="number">0 </span>&amp;&amp; recovery_id_ != <span class="number">1 </span>{
-                    <span class="comment">// Note:
-                    // See evm_signature_verify explanation
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">"invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-                    </span>));
-                }
-
-                <span class="comment">// recover the public key
-                </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id)<span class="question-mark">?</span>;
-
-                <span class="comment">// return its serialized value
-                </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
-            }
+        <span class="comment">// Note:
+        // See evm_signature_verify explanation
+        </span><span class="kw">if </span>signature.s.is_high() {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+            </span>));
         }
+
+        <span class="comment">// parse v as a recovery id
+        </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>recovery_id_: u8 = recovery_id.into();
+        <span class="kw">if </span>recovery_id_ != <span class="number">0 </span>&amp;&amp; recovery_id_ != <span class="number">1 </span>{
+            <span class="comment">// Note:
+            // See evm_signature_verify explanation
+            </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                <span class="string">"invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+            </span>));
+        }
+
+        <span class="comment">// recover the public key
+        </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id)<span class="question-mark">?</span>;
+
+        <span class="comment">// return its serialized value
+        </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
     }
 
     <span class="comment">// Return true if the address is a User address, false if it is an SC address.
@@ -3637,13 +3547,7 @@
     /// # Arguments:
     /// data: the string data that is the payload of the event
     </span><span class="kw">fn </span>generate_event(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-        <span class="kw">let </span>max_event_size = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; <span class="self">self</span>.config.max_event_size_v0,
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
-        };
-
-        <span class="kw">if </span>data.len() &gt; max_event_size {
+        <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
             <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
@@ -3659,15 +3563,14 @@
             is_final: <span class="prelude-val">None</span>,
             is_error: <span class="prelude-val">None</span>,
         };
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
-            <span class="kw">let </span>event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(<span class="kw-2">&amp;</span>event_filter)
-                .count();
-            <span class="kw">if </span>event_per_op &gt;= <span class="self">self</span>.config.max_event_per_operation {
-                <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
-            }
+        <span class="kw">let </span>event_per_op = context
+            .events
+            .get_filtered_sc_output_events_iter(<span class="kw-2">&amp;</span>event_filter)
+            .count();
+        <span class="kw">if </span>event_per_op &gt;= <span class="self">self</span>.config.max_event_per_operation {
+            <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
         }
+
         context.event_emit(event);
         <span class="prelude-val">Ok</span>(())
     }
@@ -3677,13 +3580,7 @@
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     </span><span class="kw">fn </span>generate_event_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
-        <span class="kw">let </span>max_event_size = <span class="kw">match </span>execution_component_version {
-            <span class="number">0 </span>=&gt; <span class="self">self</span>.config.max_event_size_v0,
-            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
-        };
-
-        <span class="kw">if </span>data.len() &gt; max_event_size {
+        <span class="kw">if </span>data.len() &gt; <span class="self">self</span>.config.max_event_size {
             <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
@@ -3700,15 +3597,14 @@
             is_final: <span class="prelude-val">None</span>,
             is_error: <span class="prelude-val">None</span>,
         };
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
-            <span class="kw">let </span>event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(<span class="kw-2">&amp;</span>event_filter)
-                .count();
-            <span class="kw">if </span>event_per_op &gt;= <span class="self">self</span>.config.max_event_per_operation {
-                <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
-            }
+        <span class="kw">let </span>event_per_op = context
+            .events
+            .get_filtered_sc_output_events_iter(<span class="kw-2">&amp;</span>event_filter)
+            .count();
+        <span class="kw">if </span>event_per_op &gt;= <span class="self">self</span>.config.max_event_per_operation {
+            <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
         }
+
         context.event_emit(event);
 
         <span class="prelude-val">Ok</span>(())
@@ -3792,6 +3688,10 @@
             <span class="macro">bail!</span>(<span class="string">"validity end thread exceeds the configuration thread count"</span>)
         }
 
+        <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
+            <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
+        }
+
         <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
@@ -3810,19 +3710,12 @@
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>emission_slot = execution_context.slot;
 
-        <span class="kw">let </span>execution_component_version = execution_context.execution_component_version;
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
-            <span class="kw">if </span>max_gas &lt; <span class="self">self</span>.config.gas_costs.max_instance_cost {
-                <span class="macro">bail!</span>(<span class="string">"max gas is lower than the minimum instance cost"</span>)
-            }
-            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>)
-                &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
-            {
-                <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the validity start"</span>)
-            }
-            <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
-                <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the current slot"</span>)
-            }
+        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; Slot::new(validity_start.<span class="number">0</span>, validity_start.<span class="number">1</span>)
+        {
+            <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the validity start"</span>)
+        }
+        <span class="kw">if </span>Slot::new(validity_end.<span class="number">0</span>, validity_end.<span class="number">1</span>) &lt; emission_slot {
+            <span class="macro">bail!</span>(<span class="string">"validity end is earlier than the current slot"</span>)
         }
 
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
@@ -3970,7 +3863,9 @@
         params_size: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(bool, u64)&gt; {
         <span class="comment">// write-lock context
+
         </span><span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
+
         <span class="kw">let </span>current_slot = context.slot;
 
         <span class="kw">let </span>target_slot = Slot::new(target_slot.<span class="number">0</span>, target_slot.<span class="number">1</span>);
@@ -4071,9 +3966,8 @@
     /// true if the call exists, false otherwise
     </span><span class="kw">fn </span>deferred_call_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, id: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="comment">// write-lock context
-        </span><span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-
-        <span class="kw">let </span>call_id = DeferredCallId::from_str(id)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>call_id = DeferredCallId::from_str(id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="prelude-val">Ok</span>(context.deferred_call_exists(<span class="kw-2">&amp;</span>call_id))
     }
 
@@ -4268,18 +4162,11 @@
 
     <span class="kw">fn </span>get_address_category_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, to_check: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;AddressCategory&gt; {
         <span class="kw">let </span>addr = Address::from_str(to_check)<span class="question-mark">?</span>;
-        <span class="kw">let </span>execution_component_version = <span class="macro">context_guard!</span>(<span class="self">self</span>).execution_component_version;
-
-        <span class="comment">// Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
-        // We keep the previous (bugged) code if the execution component version is 0
-        // to avoid a breaking change
-        </span><span class="kw">match </span>(addr, execution_component_version) {
-            (Address::User(<span class="kw">_</span>), <span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
-            (Address::SC(<span class="kw">_</span>), <span class="number">0</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
-            (Address::User(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
-            (Address::SC(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
+        <span class="kw">match </span>addr {
+            Address::User(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::UserAddress),
+            Address::SC(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::ScAddress),
             <span class="attr">#[allow(unreachable_patterns)]
-            </span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(AddressCategory::Unspecified),
+            </span><span class="kw">_ </span>=&gt; <span class="prelude-val">Ok</span>(AddressCategory::Unspecified),
         }
     }
 
@@ -4458,6 +4345,11 @@
                 <span class="macro">warn!</span>(<span class="string">"Context is locked, cannot save gas remaining before subexecution"</span>);
             }
         }
+    }
+
+    <span class="doccomment">/// Interface version to sync with the runtime for its versioning
+    </span><span class="kw">fn </span>get_interface_version(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u32&gt; {
+        <span class="prelude-val">Ok</span>(<span class="number">1</span>)
     }
 }
 

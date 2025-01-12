@@ -1587,6 +1587,10 @@
 <a href="#1587" id="1587">1587</a>
 <a href="#1588" id="1588">1588</a>
 <a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1681,10 +1685,10 @@
     DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
     DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
     KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
-    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_DATA_SIZE_V1,
-    MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH,
-    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
-    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION,
+    MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
+    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
     MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
@@ -2070,7 +2074,7 @@
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         max_event_cache_length: SETTINGS.execution.event_cache_size,
         snip_amount: SETTINGS.execution.event_snip_amount,
-        max_event_data_length: MAX_EVENT_DATA_SIZE_V0 <span class="kw">as </span>u64,
+        max_event_data_length: MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
         thread_count: THREAD_COUNT,
         <span class="comment">// Note: SCOutputEvent call stack comes from the execution module, and we assume
         //       this should return a limited call stack length
@@ -2160,8 +2164,7 @@
         broadcast_slot_execution_output_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_output_channel_capacity,
-        max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
-        max_event_size_v1: MAX_EVENT_DATA_SIZE_V1,
+        max_event_size: MAX_EVENT_DATA_SIZE,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: <span class="kw-2">*</span>CHAINID,
@@ -2541,8 +2544,11 @@
         periods_per_cycle: PERIODS_PER_CYCLE,
         last_start_period: final_state.read().get_last_start_period(),
         chain_id: <span class="kw-2">*</span>CHAINID,
+        deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
+        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     };
 
     <span class="comment">// spawn Massa API
@@ -2841,6 +2847,8 @@
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: <span class="kw-2">*</span>CHAINID,
         minimal_fees,
+        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     }
 }
 
