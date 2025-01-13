@@ -18,6 +18,7 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
+use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -220,41 +221,38 @@ impl LedgerDB {
             }
         };
 
-        let mut taken_count: usize = 0;
-        let res = db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&start_key, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| {
-                // check count
-                if let Some(cnt) = count.as_ref() {
-                    if taken_count >= *cnt as usize {
-                        return false;
-                    }
+        // collect the keys
+        let mut res = BTreeSet::new();
+        for (key, _) in db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&start_key, MassaDirection::Forward),
+        ) {
+            // check count
+            if let Some(cnt) = count.as_ref() {
+                if res.len() >= *cnt as usize {
+                    break;
                 }
-                // check upper bound
-                let take_item = match &end_bound {
-                    std::ops::Bound::Unbounded => true,
-                    std::ops::Bound::Included(ub) => key <= ub,
-                    std::ops::Bound::Excluded(ub) => key < ub,
-                };
-                if take_item {
-                    taken_count += 1;
-                }
-                take_item
-            })
-            .filter_map(|(key, _)| {
-                let (_rest, key) = self
-                    .key_deserializer_db
-                    .deserialize::<DeserializeError>(&key)
-                    .expect("could not deserialize datastore key from state db");
-                let KeyType::DATASTORE(ds_key) = key.key_type else {
-                    return None;
-                };
-                Some(ds_key)
-            })
-            .collect();
+            }
+
+            // check range
+            let do_continue = match &end_bound {
+                std::ops::Bound::Unbounded => true,
+                std::ops::Bound::Included(ub) => &key <= ub,
+                std::ops::Bound::Excluded(ub) => &key < ub,
+            };
+            if !do_continue {
+                break;
+            }
+
+            // deserialize key and check type
+            let (_rest, key) = self
+                .key_deserializer_db
+                .deserialize::<DeserializeError>(&key)
+                .expect("could not deserialize datastore key from state db");
+            if let KeyType::DATASTORE(key) = key.key_type {
+                res.insert(key);
+            }
+        }
 
         Some(res)
     }
