@@ -198,16 +198,16 @@ pub fn scan_datastore(
         .iter()
         .cloned()
         .collect();
-    let mut key_updates_queue: VecDeque<_> = key_updates.into_iter().collect();
     let mut speculative_keys: BTreeSet<_> = Default::default();
     let mut last_final_batch_key = final_keys_queue.back().cloned();
+    let mut key_updates_it = key_updates.into_iter().peekable();
     loop {
         if let Some(cnt) = count {
             if speculative_keys.len() >= cnt as usize {
                 return (final_keys, Some(speculative_keys));
             }
         }
-        match (final_keys_queue.front(), key_updates_queue.front()) {
+        match (final_keys_queue.front(), key_updates_it.peek()) {
             (Some(_f), None) => {
                 // final only
                 let k = final_keys_queue
@@ -227,8 +227,8 @@ pub fn scan_datastore(
                     }
                     std::cmp::Ordering::Equal => {
                         // take into account the change but pop both
-                        let (k, is_set) = key_updates_queue
-                            .pop_front()
+                        let (k, is_set) = key_updates_it
+                            .next()
                             .expect("expected key update queue to be non-empty");
                         final_keys_queue.pop_front();
                         if is_set {
@@ -237,8 +237,8 @@ pub fn scan_datastore(
                     }
                     std::cmp::Ordering::Greater => {
                         // take into account the update only
-                        let (k, is_set) = key_updates_queue
-                            .pop_front()
+                        let (k, is_set) = key_updates_it
+                            .next()
                             .expect("expected key update queue to be non-empty");
                         if is_set {
                             speculative_keys.insert(k);
@@ -248,8 +248,8 @@ pub fn scan_datastore(
             }
             (None, Some((_u, _is_set))) => {
                 // no final but there is a change
-                let (k, is_set) = key_updates_queue
-                    .pop_front()
+                let (k, is_set) = key_updates_it
+                    .next()
                     .expect("expected key update queue to be non-empty");
                 if is_set {
                     speculative_keys.insert(k);
