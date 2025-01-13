@@ -640,14 +640,17 @@ mod tests {
 
         let mut data = BTreeMap::new();
         data.insert(b"1".to_vec(), b"a".to_vec());
-        data.insert(b"2".to_vec(), b"b".to_vec());
-        data.insert(b"3".to_vec(), b"c".to_vec());
-
         data.insert(b"11".to_vec(), b"a".to_vec());
+        data.insert(b"111".to_vec(), b"a".to_vec());
         data.insert(b"12".to_vec(), b"a".to_vec());
         data.insert(b"13".to_vec(), b"a".to_vec());
+
+        data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"21".to_vec(), b"a".to_vec());
-        data.insert(b"111".to_vec(), b"a".to_vec());
+
+        data.insert(b"3".to_vec(), b"c".to_vec());
+        data.insert(b"34".to_vec(), b"c".to_vec());
+
         let entry = LedgerEntry {
             balance: Amount::from_str("42").unwrap(),
             datastore: data.clone(),
@@ -781,7 +784,58 @@ mod tests {
         let keys = ledger_db
             .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, None)
             .unwrap();
-        dbg!(keys.len());
-        dbg!(&keys);
+
+        assert_eq!(keys.len(), 9);
+
+        let keys = ledger_db
+            .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, Some(4))
+            .unwrap();
+
+        assert_eq!(keys.len(), 4);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Unbounded,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"3".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"34".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Excluded(b"3".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Excluded(b"1".to_vec()),
+                Bound::Included(b"12".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"11".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"111".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"12".to_vec());
+        assert_eq!(keys.pop_first(), None);
     }
 }
