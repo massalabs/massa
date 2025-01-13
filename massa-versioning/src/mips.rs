@@ -26,7 +26,7 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
         MipState::new(MassaTime::from_utc_ymd_hms(2025, 01, 10, 10, 0, 0).unwrap()), // Friday, January 10, 2025 10:00:00 AM UTC
     )];
 
-    // debug!("MIP list: {:?}", mip_list);
+    println!("MIP list: {:?}", mip_list);
     #[allow(clippy::let_and_return)]
     mip_list
 }
