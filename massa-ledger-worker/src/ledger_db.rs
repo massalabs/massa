@@ -18,7 +18,6 @@ use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
 use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
-use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
