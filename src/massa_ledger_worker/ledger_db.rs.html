@@ -785,6 +785,60 @@
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1427,14 +1481,17 @@
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
         data.insert(<span class="string">b"1"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
-        data.insert(<span class="string">b"2"</span>.to_vec(), <span class="string">b"b"</span>.to_vec());
-        data.insert(<span class="string">b"3"</span>.to_vec(), <span class="string">b"c"</span>.to_vec());
-
         data.insert(<span class="string">b"11"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+        data.insert(<span class="string">b"111"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
         data.insert(<span class="string">b"12"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
         data.insert(<span class="string">b"13"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+
+        data.insert(<span class="string">b"2"</span>.to_vec(), <span class="string">b"b"</span>.to_vec());
         data.insert(<span class="string">b"21"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
-        data.insert(<span class="string">b"111"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+
+        data.insert(<span class="string">b"3"</span>.to_vec(), <span class="string">b"c"</span>.to_vec());
+        data.insert(<span class="string">b"34"</span>.to_vec(), <span class="string">b"c"</span>.to_vec());
+
         <span class="kw">let </span>entry = LedgerEntry {
             balance: Amount::from_str(<span class="string">"42"</span>).unwrap(),
             datastore: data.clone(),
@@ -1568,8 +1625,59 @@
         <span class="kw">let </span>keys = ledger_db
             .get_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>[], Bound::Unbounded, Bound::Unbounded, <span class="prelude-val">None</span>)
             .unwrap();
-        <span class="macro">dbg!</span>(keys.len());
-        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>keys);
+
+        <span class="macro">assert_eq!</span>(keys.len(), <span class="number">9</span>);
+
+        <span class="kw">let </span>keys = ledger_db
+            .get_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>[], Bound::Unbounded, Bound::Unbounded, <span class="prelude-val">Some</span>(<span class="number">4</span>))
+            .unwrap();
+
+        <span class="macro">assert_eq!</span>(keys.len(), <span class="number">4</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>keys = ledger_db
+            .get_datastore_keys(
+                <span class="kw-2">&amp;</span>addr,
+                <span class="kw-2">&amp;</span>[],
+                Bound::Included(<span class="string">b"2"</span>.to_vec()),
+                Bound::Unbounded,
+                <span class="prelude-val">None</span>,
+            )
+            .unwrap();
+
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"2"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"21"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"3"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"34"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first(), <span class="prelude-val">None</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>keys = ledger_db
+            .get_datastore_keys(
+                <span class="kw-2">&amp;</span>addr,
+                <span class="kw-2">&amp;</span>[],
+                Bound::Included(<span class="string">b"2"</span>.to_vec()),
+                Bound::Excluded(<span class="string">b"3"</span>.to_vec()),
+                <span class="prelude-val">None</span>,
+            )
+            .unwrap();
+
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"2"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"21"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first(), <span class="prelude-val">None</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>keys = ledger_db
+            .get_datastore_keys(
+                <span class="kw-2">&amp;</span>addr,
+                <span class="kw-2">&amp;</span>[],
+                Bound::Excluded(<span class="string">b"1"</span>.to_vec()),
+                Bound::Included(<span class="string">b"12"</span>.to_vec()),
+                <span class="prelude-val">None</span>,
+            )
+            .unwrap();
+
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"11"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"111"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first().unwrap(), <span class="string">b"12"</span>.to_vec());
+        <span class="macro">assert_eq!</span>(keys.pop_first(), <span class="prelude-val">None</span>);
     }
 }
 </code></pre></div></section></main></body></html>
