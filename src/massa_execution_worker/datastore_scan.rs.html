@@ -483,16 +483,16 @@
         .iter()
         .cloned()
         .collect();
-    <span class="kw">let </span><span class="kw-2">mut </span>key_updates_queue: VecDeque&lt;<span class="kw">_</span>&gt; = key_updates.into_iter().collect();
     <span class="kw">let </span><span class="kw-2">mut </span>speculative_keys: BTreeSet&lt;<span class="kw">_</span>&gt; = Default::default();
     <span class="kw">let </span><span class="kw-2">mut </span>last_final_batch_key = final_keys_queue.back().cloned();
+    <span class="kw">let </span><span class="kw-2">mut </span>key_updates_it = key_updates.into_iter().peekable();
     <span class="kw">loop </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(cnt) = count {
             <span class="kw">if </span>speculative_keys.len() &gt;= cnt <span class="kw">as </span>usize {
                 <span class="kw">return </span>(final_keys, <span class="prelude-val">Some</span>(speculative_keys));
             }
         }
-        <span class="kw">match </span>(final_keys_queue.front(), key_updates_queue.front()) {
+        <span class="kw">match </span>(final_keys_queue.front(), key_updates_it.peek()) {
             (<span class="prelude-val">Some</span>(_f), <span class="prelude-val">None</span>) =&gt; {
                 <span class="comment">// final only
                 </span><span class="kw">let </span>k = final_keys_queue
@@ -512,8 +512,8 @@
                     }
                     std::cmp::Ordering::Equal =&gt; {
                         <span class="comment">// take into account the change but pop both
-                        </span><span class="kw">let </span>(k, is_set) = key_updates_queue
-                            .pop_front()
+                        </span><span class="kw">let </span>(k, is_set) = key_updates_it
+                            .next()
                             .expect(<span class="string">"expected key update queue to be non-empty"</span>);
                         final_keys_queue.pop_front();
                         <span class="kw">if </span>is_set {
@@ -522,8 +522,8 @@
                     }
                     std::cmp::Ordering::Greater =&gt; {
                         <span class="comment">// take into account the update only
-                        </span><span class="kw">let </span>(k, is_set) = key_updates_queue
-                            .pop_front()
+                        </span><span class="kw">let </span>(k, is_set) = key_updates_it
+                            .next()
                             .expect(<span class="string">"expected key update queue to be non-empty"</span>);
                         <span class="kw">if </span>is_set {
                             speculative_keys.insert(k);
@@ -533,8 +533,8 @@
             }
             (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>((_u, _is_set))) =&gt; {
                 <span class="comment">// no final but there is a change
-                </span><span class="kw">let </span>(k, is_set) = key_updates_queue
-                    .pop_front()
+                </span><span class="kw">let </span>(k, is_set) = key_updates_it
+                    .next()
                     .expect(<span class="string">"expected key update queue to be non-empty"</span>);
                 <span class="kw">if </span>is_set {
                     speculative_keys.insert(k);
