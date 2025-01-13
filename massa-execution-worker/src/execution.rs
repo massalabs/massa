@@ -2295,6 +2295,8 @@ impl ExecutionState {
                     _ => (),
                 }
 
+                println!("execute readonly req - response: {:?}", response);
+
                 response.map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::FunctionCall".to_string(),
                     error,
@@ -2317,7 +2319,7 @@ impl ExecutionState {
 
         // keep the max of the two so the last SC call has at least max_instance_cost of gas
         let estimated_cost = u64::max(exact_exec_cost, corrected_cost);
-        debug!(
+        println!(
             "execute_readonly_request:
             exec_response.remaining_gas: {}
             exact_exec_cost: {}
