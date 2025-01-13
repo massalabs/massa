@@ -785,9 +785,6 @@
 <a href="#785" id="785">785</a>
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -992,7 +989,7 @@
         };
         <span class="comment">// translate the range bounds in terms of database keys
         </span><span class="kw">let </span>start_key = <span class="kw">match </span>start_bound {
-            std::ops::Bound::Unbounded =&gt; <span class="macro">vec!</span>[],
+            std::ops::Bound::Unbounded =&gt; datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]),
             std::ops::Bound::Included(k) =&gt; datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>k),
             std::ops::Bound::Excluded(k) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>v = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>k);
@@ -1010,41 +1007,38 @@
             }
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>taken_count: usize = <span class="number">0</span>;
-        <span class="kw">let </span>res = db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_key, MassaDirection::Forward),
-            )
-            .take_while(|(key, <span class="kw">_</span>)| {
-                <span class="comment">// check count
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cnt) = count.as_ref() {
-                    <span class="kw">if </span>taken_count &gt;= <span class="kw-2">*</span>cnt <span class="kw">as </span>usize {
-                        <span class="kw">return </span><span class="bool-val">false</span>;
-                    }
+        <span class="comment">// collect the keys
+        </span><span class="kw">let </span><span class="kw-2">mut </span>res = BTreeSet::new();
+        <span class="kw">for </span>(key, <span class="kw">_</span>) <span class="kw">in </span>db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(<span class="kw-2">&amp;</span>start_key, MassaDirection::Forward),
+        ) {
+            <span class="comment">// check count
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cnt) = count.as_ref() {
+                <span class="kw">if </span>res.len() &gt;= <span class="kw-2">*</span>cnt <span class="kw">as </span>usize {
+                    <span class="kw">break</span>;
                 }
-                <span class="comment">// check upper bound
-                </span><span class="kw">let </span>take_item = <span class="kw">match </span><span class="kw-2">&amp;</span>end_bound {
-                    std::ops::Bound::Unbounded =&gt; <span class="bool-val">true</span>,
-                    std::ops::Bound::Included(ub) =&gt; key &lt;= ub,
-                    std::ops::Bound::Excluded(ub) =&gt; key &lt; ub,
-                };
-                <span class="kw">if </span>take_item {
-                    taken_count += <span class="number">1</span>;
-                }
-                take_item
-            })
-            .filter_map(|(key, <span class="kw">_</span>)| {
-                <span class="kw">let </span>(_rest, key) = <span class="self">self
-                    </span>.key_deserializer_db
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
-                    .expect(<span class="string">"could not deserialize datastore key from state db"</span>);
-                <span class="kw">let </span>KeyType::DATASTORE(ds_key) = key.key_type <span class="kw">else </span>{
-                    <span class="kw">return </span><span class="prelude-val">None</span>;
-                };
-                <span class="prelude-val">Some</span>(ds_key)
-            })
-            .collect();
+            }
+
+            <span class="comment">// check range
+            </span><span class="kw">let </span>do_continue = <span class="kw">match </span><span class="kw-2">&amp;</span>end_bound {
+                std::ops::Bound::Unbounded =&gt; <span class="bool-val">true</span>,
+                std::ops::Bound::Included(ub) =&gt; <span class="kw-2">&amp;</span>key &lt;= ub,
+                std::ops::Bound::Excluded(ub) =&gt; <span class="kw-2">&amp;</span>key &lt; ub,
+            };
+            <span class="kw">if </span>!do_continue {
+                <span class="kw">break</span>;
+            }
+
+            <span class="comment">// deserialize key and check type
+            </span><span class="kw">let </span>(_rest, key) = <span class="self">self
+                </span>.key_deserializer_db
+                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
+                .expect(<span class="string">"could not deserialize datastore key from state db"</span>);
+            <span class="kw">if let </span>KeyType::DATASTORE(key) = key.key_type {
+                res.insert(key);
+            }
+        }
 
         <span class="prelude-val">Some</span>(res)
     }
