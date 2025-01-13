@@ -202,7 +202,7 @@ impl LedgerDB {
         };
         // translate the range bounds in terms of database keys
         let start_key = match start_bound {
-            std::ops::Bound::Unbounded => vec![],
+            std::ops::Bound::Unbounded => datastore_prefix_from_address(addr, &[]),
             std::ops::Bound::Included(k) => datastore_prefix_from_address(addr, &k),
             std::ops::Bound::Excluded(k) => {
                 let mut v = datastore_prefix_from_address(addr, &k);
