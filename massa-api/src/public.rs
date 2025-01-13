@@ -958,6 +958,12 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<GetAddressDatastoreKeysRequest>,
     ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
+        if let Some(conf_max) = self.0.api_settings.max_addresses_datastore_keys_query {
+            if arg.len() > conf_max as usize {
+                return Err(ApiError::BadRequest(format!("too many arguments received. Only a maximum of {} arguments are accepted per request", conf_max)).into());
+            }
+        }
+
         let requests: Vec<ExecutionQueryRequestItem> = arg
             .into_iter()
             .map(|request| {

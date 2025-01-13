@@ -91,4 +91,6 @@ pub struct APIConfig {
     pub deferred_calls_config: DeferredCallsConfig,
     /// max datastore keys queries
     pub max_datastore_keys_queries: Option<u32>,
+    /// Limit the number of addresses in a single datastore keys request
+    pub max_addresses_datastore_keys_query: Option<u32>,
 }
