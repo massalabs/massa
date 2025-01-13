@@ -238,6 +238,7 @@ pub fn range_intersection<T: Ord>(
 /// Checks and cleans up a datastore key range query
 /// Returns: (prefix, start_bound, end_bound) or error
 /// Note: only useful to cleanup user-supplied requests (API/ABI)
+#[allow(clippy::type_complexity)]
 pub fn cleanup_datastore_key_range_query(
     prefix: &[u8],
     start_bound: Bound<Vec<u8>>,

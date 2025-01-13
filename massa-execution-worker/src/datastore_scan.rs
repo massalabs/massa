@@ -31,6 +31,7 @@ use crate::active_history::ActiveHistory;
 /// A tuple of two `Option<BTreeSet<Vec<u8>>>`:
 /// `None` means that the address does not exist.
 /// The first element is the final state keys, the second element is the speculative keys.
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn scan_datastore(
     addr: &Address,
     prefix: &[u8],
