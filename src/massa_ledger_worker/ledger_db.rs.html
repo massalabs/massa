@@ -769,6 +769,25 @@
 <a href="#769" id="769">769</a>
 <a href="#770" id="770">770</a>
 <a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
@@ -1015,15 +1034,15 @@
                 }
                 take_item
             })
-            .map(|(key, <span class="kw">_</span>)| {
+            .filter_map(|(key, <span class="kw">_</span>)| {
                 <span class="kw">let </span>(_rest, key) = <span class="self">self
                     </span>.key_deserializer_db
                     .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>key)
                     .expect(<span class="string">"could not deserialize datastore key from state db"</span>);
                 <span class="kw">let </span>KeyType::DATASTORE(ds_key) = key.key_type <span class="kw">else </span>{
-                    <span class="macro">panic!</span>(<span class="string">"unexpected key type when iterating over address datastore"</span>);
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
                 };
-                ds_key
+                <span class="prelude-val">Some</span>(ds_key)
             })
             .collect();
 
@@ -1416,6 +1435,12 @@
         data.insert(<span class="string">b"1"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
         data.insert(<span class="string">b"2"</span>.to_vec(), <span class="string">b"b"</span>.to_vec());
         data.insert(<span class="string">b"3"</span>.to_vec(), <span class="string">b"c"</span>.to_vec());
+
+        data.insert(<span class="string">b"11"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+        data.insert(<span class="string">b"12"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+        data.insert(<span class="string">b"13"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+        data.insert(<span class="string">b"21"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
+        data.insert(<span class="string">b"111"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
         <span class="kw">let </span>entry = LedgerEntry {
             balance: Amount::from_str(<span class="string">"42"</span>).unwrap(),
             datastore: data.clone(),
@@ -1538,6 +1563,19 @@
         <span class="kw">let </span>datastore = ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr);
         <span class="comment">// println!("datastore: {:?}", datastore);
         </span><span class="macro">assert!</span>(datastore.is_empty());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>get_datastore_keys() {
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
+        <span class="kw">let </span>(ledger_db, _data) = init_test_ledger(addr);
+
+        <span class="kw">let </span>keys = ledger_db
+            .get_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>[], Bound::Unbounded, Bound::Unbounded, <span class="prelude-val">None</span>)
+            .unwrap();
+        <span class="macro">dbg!</span>(keys.len());
+        <span class="macro">dbg!</span>(<span class="kw-2">&amp;</span>keys);
     }
 }
 </code></pre></div></section></main></body></html>
