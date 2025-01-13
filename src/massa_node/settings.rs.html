@@ -405,6 +405,8 @@
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
 <a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -781,6 +783,8 @@
     </span><span class="kw">pub </span>client_certificate_path: PathBuf,
     <span class="doccomment">/// client private key path
     </span><span class="kw">pub </span>client_private_key_path: PathBuf,
+    <span class="doccomment">/// Max keys returned by a datastore key query
+    </span><span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
 <span class="doccomment">/// gRPC API settings.
