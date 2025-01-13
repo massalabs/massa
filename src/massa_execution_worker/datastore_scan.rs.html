@@ -282,6 +282,7 @@
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! A file describing an optimized datastore keys traversal algorithm.
 //! It is shared between execution.rs and speculative_ledger.rs.
 
@@ -315,6 +316,7 @@
 /// A tuple of two `Option&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;`:
 /// `None` means that the address does not exist.
 /// The first element is the final state keys, the second element is the speculative keys.
+</span><span class="attr">#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>scan_datastore(
     addr: <span class="kw-2">&amp;</span>Address,
     prefix: <span class="kw-2">&amp;</span>[u8],
