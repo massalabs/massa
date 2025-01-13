@@ -374,6 +374,8 @@ pub struct GrpcSettings {
     pub client_certificate_path: PathBuf,
     /// client private key path
     pub client_private_key_path: PathBuf,
+    /// Max keys returned by a datastore key query
+    pub max_datastore_keys_query: Option<u32>,
 }
 
 /// gRPC API settings.

@@ -39,8 +39,8 @@
     enable_broadcast = false
     # deferred credits delta (in milliseconds)
     deferred_credits_delta = 7776000000 # ~ 3 months (90×24×60×60×1000) in milliseconds
-    # max datastore keys query (also used by GRPC API)
-    #max_datastore_keys_query = 500
+    # max datastore keys query
+    max_datastore_keys_query = 500
 
 [grpc]
     [grpc.public]
@@ -116,6 +116,8 @@
         client_certificate_path = "../massa-client/config/tls_public_client.pem"
         # client private key path
         client_private_key_path = "../massa-client/config/tls_public_client.key"
+        # max datastore keys query
+        max_datastore_keys_query = 500
     [grpc.private]
         # whether to enable gRPC
         enabled = true
