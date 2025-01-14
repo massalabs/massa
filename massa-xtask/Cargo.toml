@@ -3,10 +3,15 @@ name = "massa_xtask"
 version = "2.5.0"
 edition = "2021"
 
+[features]
+gas_calibration = [
+    "massa-sc-runtime/gas_calibration"
+]
+
 [dependencies]
 # update_package_versions dependencies
 massa_models = {workspace = true}
 toml_edit = {workspace = true}   # BOM UPGRADE     Revert to "0.19.8" if problem
 walkdir = {workspace = true}
 # check_gas_costs dependencies
-massa-sc-runtime = {workspace = true, features = ["gas_calibration"]}
+massa-sc-runtime = {workspace = true}

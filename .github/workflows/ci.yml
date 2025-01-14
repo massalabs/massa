@@ -132,7 +132,7 @@ jobs:
         with:
           shared-key: "clippy"
           save-if: ${{ github.ref_name == 'main' }}
-      - run: cargo xtask check_gas_cost_definitions
+      - run: cargo run --bin massa_xtask --features gas_calibration check_gas_cost_definitions
 
   # Full cross-platform tests required to merge on main branch
   full:
