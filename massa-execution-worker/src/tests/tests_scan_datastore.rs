@@ -68,7 +68,7 @@ fn test_scan_datastore() {
     let mut changes = PreHashMap::default();
 
     changes.insert(
-        addr.clone(),
+        addr,
         massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
             datastore: data.clone(),
             ..Default::default()
@@ -131,7 +131,7 @@ fn test_scan_datastore() {
     datastore_update.insert(b"2".to_vec(), massa_models::types::SetOrDelete::Delete);
 
     changes.insert(
-        addr.clone(),
+        addr,
         massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
             datastore: datastore_update,
             ..Default::default()
