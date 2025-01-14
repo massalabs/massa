@@ -1587,11 +1587,6 @@
 <a href="#1587" id="1587">1587</a>
 <a href="#1588" id="1588">1588</a>
 <a href="#1589" id="1589">1589</a>
-<a href="#1590" id="1590">1590</a>
-<a href="#1591" id="1591">1591</a>
-<a href="#1592" id="1592">1592</a>
-<a href="#1593" id="1593">1593</a>
-<a href="#1594" id="1594">1594</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2548,9 +2543,6 @@
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
-        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
-        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
     };
 
     <span class="comment">// spawn Massa API
@@ -2849,8 +2841,6 @@
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: <span class="kw-2">*</span>CHAINID,
         minimal_fees,
-        max_datastore_keys_queries: settings.max_datastore_keys_query,
-        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     }
 }
 
