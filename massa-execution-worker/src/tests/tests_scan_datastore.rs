@@ -144,9 +144,9 @@ fn test_scan_datastore() {
         Bound::Included(b"12".to_vec()),
         Bound::Unbounded,
         Some(4),
-        foreign_controllers.final_state,
+        foreign_controllers.final_state.clone(),
         active_history.clone(),
-        Some(&LedgerChanges(changes)),
+        Some(&LedgerChanges(changes.clone())),
     );
 
     assert!(final_keys.is_none());
@@ -158,5 +158,51 @@ fn test_scan_datastore() {
     assert_eq!(candidate_k.pop_first().unwrap(), b"13".to_vec());
     assert_eq!(candidate_k.pop_first().unwrap(), b"21".to_vec());
     assert_eq!(candidate_k.pop_first().unwrap(), b"3".to_vec());
+    assert_eq!(candidate_k.pop_first(), None);
+
+    // add key "4" in new changes
+    let mut exec2 = exec_output.clone();
+    let mut new_changes = PreHashMap::default();
+    let mut datastore_update = BTreeMap::new();
+    datastore_update.insert(
+        b"4".to_vec(),
+        massa_models::types::SetOrDelete::Set(b"valueKey4".to_vec()),
+    );
+
+    new_changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            datastore: datastore_update,
+            ..Default::default()
+        }),
+    );
+
+    exec2.state_changes.ledger_changes = LedgerChanges(new_changes);
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(VecDeque::from([
+        exec_output.clone(),
+        exec2,
+    ]))));
+
+    let (_final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        Bound::Included(b"12".to_vec()),
+        Bound::Unbounded,
+        None,
+        foreign_controllers.final_state,
+        active_history.clone(),
+        Some(&LedgerChanges(changes.clone())),
+    );
+    let mut candidate_k = candidate_keys.unwrap();
+
+    // should start at key "12" and not contains key "2"
+    // should contains new key "4"
+    assert_eq!(candidate_k.pop_first().unwrap(), b"12".to_vec());
+    assert_eq!(candidate_k.pop_first().unwrap(), b"13".to_vec());
+    assert_eq!(candidate_k.pop_first().unwrap(), b"21".to_vec());
+    assert_eq!(candidate_k.pop_first().unwrap(), b"3".to_vec());
+    assert_eq!(candidate_k.pop_first().unwrap(), b"34".to_vec());
+    assert_eq!(candidate_k.pop_first().unwrap(), b"4".to_vec());
     assert_eq!(candidate_k.pop_first(), None);
 }
