@@ -2765,61 +2765,6 @@
 <a href="#2765" id="2765">2765</a>
 <a href="#2766" id="2766">2766</a>
 <a href="#2767" id="2767">2767</a>
-<a href="#2768" id="2768">2768</a>
-<a href="#2769" id="2769">2769</a>
-<a href="#2770" id="2770">2770</a>
-<a href="#2771" id="2771">2771</a>
-<a href="#2772" id="2772">2772</a>
-<a href="#2773" id="2773">2773</a>
-<a href="#2774" id="2774">2774</a>
-<a href="#2775" id="2775">2775</a>
-<a href="#2776" id="2776">2776</a>
-<a href="#2777" id="2777">2777</a>
-<a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
-<a href="#2795" id="2795">2795</a>
-<a href="#2796" id="2796">2796</a>
-<a href="#2797" id="2797">2797</a>
-<a href="#2798" id="2798">2798</a>
-<a href="#2799" id="2799">2799</a>
-<a href="#2800" id="2800">2800</a>
-<a href="#2801" id="2801">2801</a>
-<a href="#2802" id="2802">2802</a>
-<a href="#2803" id="2803">2803</a>
-<a href="#2804" id="2804">2804</a>
-<a href="#2805" id="2805">2805</a>
-<a href="#2806" id="2806">2806</a>
-<a href="#2807" id="2807">2807</a>
-<a href="#2808" id="2808">2808</a>
-<a href="#2809" id="2809">2809</a>
-<a href="#2810" id="2810">2810</a>
-<a href="#2811" id="2811">2811</a>
-<a href="#2812" id="2812">2812</a>
-<a href="#2813" id="2813">2813</a>
-<a href="#2814" id="2814">2814</a>
-<a href="#2815" id="2815">2815</a>
-<a href="#2816" id="2816">2816</a>
-<a href="#2817" id="2817">2817</a>
-<a href="#2818" id="2818">2818</a>
-<a href="#2819" id="2819">2819</a>
-<a href="#2820" id="2820">2820</a>
-<a href="#2821" id="2821">2821</a>
-<a href="#2822" id="2822">2822</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -2867,8 +2812,6 @@
     Block,
     VM,
     FinalStateHashKind,
-    Execution,
-    FinalState,
     <span class="attr">#[doc(hidden)]
     #[num_enum(default)]
     </span>__Nonexhaustive,
@@ -4021,7 +3964,8 @@
                     </span><span class="kw">if </span>shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.start)
                         || shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.timeout)
                     {
-                        has_error = <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(
+                        <span class="comment">// is_consistent = false;
+                        </span>has_error = <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(
                             mip_info.clone(),
                             mip_state.state,
                             shutdown_start_ts,
@@ -5210,6 +5154,7 @@
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
             <span class="macro">assert_eq!</span>(ms_1, ComponentState::defined());
             <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
+
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -5325,16 +5270,11 @@
                 ComponentState::locked_in(get_slot_ts(Slot::new(<span class="number">1</span>, <span class="number">9</span>))),
                 <span class="kw-2">&amp;</span>mi_1,
             );
-            <span class="comment">// assert_eq!(
-            //     ms_1,
-            //     ComponentState::locked_in(get_slot_ts(Slot::new(1, 9)))
-            // );
 
-            // MIP 2 in state 'Defined'
+            <span class="comment">// MIP 2 in state 'Defined'
             </span>mi_2.start = get_slot_ts(Slot::new(<span class="number">7</span>, <span class="number">7</span>));
             mi_2.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-            <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -5375,57 +5315,7 @@
         }
     }
 
-    <span class="comment">/*
-    #[test]
-    fn test_mip_store_network_restart_2() {
-        let genesis_timestamp = MassaTime::from_millis(0);
-
-        // Helpers
-        let is_consistent = |store: &amp;MipStoreRaw, shutdown_start, shutdown_end| {
-            store.is_consistent_with_shutdown_period(
-                shutdown_start,
-                shutdown_end,
-                THREAD_COUNT,
-                T0,
-                genesis_timestamp,
-            )
-        };
-
-        let shutdown_start = Slot::new(2, 0);
-        let shutdown_end = Slot::new(5, 0);
-
-        let mip_stats_cfg = MipStatsConfig {
-            block_count_considered: 10,
-            warn_announced_version_ratio: Ratio::new_raw(30, 100),
-        };
-        let mut mi_1 = MipInfo {
-            name: "MIP-0002".to_string(),
-            version: 2,
-            components: BTreeMap::from([(MipComponent::Address, 1)]),
-            start: MassaTime::from_millis(6),
-            timeout: MassaTime::from_millis(15),
-            activation_delay: MassaTime::from_millis(100),
-        };
-
-        // let ms_1 = advance_state_until(ComponentState::defined(), &amp;mi_1);
-        let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &amp;mi_1);
-        assert_eq!(ms_1, ComponentState::started(Ratio::zero()));
-
-        let store = MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_cfg.clone())).unwrap();
-
-        let res = is_consistent(&amp;store, shutdown_start, shutdown_end);
-        println!("res: {:?}", res);
-
-        match res {
-            Err(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) =&gt; {
-                assert_eq!(mi, mi_1);
-            }
-            _ =&gt; panic!("is_consistent expects a non consistent error"),
-        }
-    }
-    */
-
-    </span><span class="attr">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_mip_store_db() {
         <span class="comment">// Test interaction of MIP store with MassaDB
         // 1- init from db (empty disk)
