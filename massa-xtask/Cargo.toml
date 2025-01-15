@@ -3,6 +3,11 @@ name = "massa_xtask"
 version = "2.5.0"
 edition = "2021"
 
+[features]
+gas_calibration = [
+    "massa-sc-runtime/gas_calibration"
+]
+
 [dependencies]
 # update_package_versions dependencies
 massa_models = {workspace = true}
