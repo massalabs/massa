@@ -10,6 +10,7 @@ use massa_db_exports::{
     DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS,
     DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
 };
+use massa_models::address::Address;
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use registry_changes::{
     DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
@@ -443,7 +444,7 @@ impl DeferredCallRegistry {
     pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
         if serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes()) {
             // check for  [DEFERRED_CALLS_PREFIX][slot]
-            if let Ok((rest, slot)) =
+            if let Ok((_rest, slot)) =
                 self.registry_changes_deserializer
                     .slot_deserializer
                     .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CALLS_PREFIX.len()..])
@@ -485,11 +486,11 @@ impl DeferredCallRegistry {
 
                         match rest[0] {
                             CALL_FIELD_SENDER_ADDRESS => {
-                                if let Ok(_result) =
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> = 
                                     self.call_deserializer
                                         .address_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
+                                        .deserialize::<DeserializeError>(&serialized_value);
+                                if let Ok(_result) = res {
                                     return true;
                                 }
                             }
@@ -503,11 +504,11 @@ impl DeferredCallRegistry {
                                 }
                             }
                             CALL_FIELD_TARGET_ADDRESS => {
-                                if let Ok(_result) =
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> = 
                                     self.call_deserializer
                                         .address_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
+                                        .deserialize::<DeserializeError>(&serialized_value);
+                                if let Ok(_result) = res {
                                     return true;
                                 }
                             }
