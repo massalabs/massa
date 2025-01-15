@@ -10,6 +10,7 @@ use massa_ledger_exports::{LedgerChanges, LedgerEntry, LedgerEntryUpdate};
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
 use massa_signature::KeyPair;
 use parking_lot::RwLock;
+use rand::{distributions::Alphanumeric, seq::SliceRandom, thread_rng, Rng};
 
 use crate::{active_history::ActiveHistory, datastore_scan::scan_datastore};
 
@@ -205,4 +206,193 @@ fn test_scan_datastore() {
     assert_eq!(candidate_k.pop_first().unwrap(), b"34".to_vec());
     assert_eq!(candidate_k.pop_first().unwrap(), b"4".to_vec());
     assert_eq!(candidate_k.pop_first(), None);
+}
+
+#[test]
+fn test_scan_datastore_with_random_data() {
+    let mut rng = thread_rng();
+    for _ in 0..10 {
+        let keys_count = rng.gen_range(5..50);
+        scan_datastore_with_random_data(keys_count);
+    }
+}
+
+fn scan_datastore_with_random_data(nb_keys: usize) {
+    let keypair = KeyPair::generate(0).unwrap();
+    let addr = Address::from_public_key(&keypair.get_public_key());
+
+    let mut foreign_controllers = ExecutionForeignControllers::new_with_mocks();
+
+    foreign_controllers
+        .ledger_controller
+        .set_expectations(|ledger_controller| {
+            ledger_controller
+                .expect_get_datastore_keys()
+                .returning(move |_, _, _, _, _| None);
+        });
+
+    foreign_controllers
+        .final_state
+        .write()
+        .expect_get_ledger()
+        .return_const(Box::new(foreign_controllers.ledger_controller.clone()));
+
+    let mut rng = thread_rng();
+
+    // Generate random datastore entries
+    let mut data = BTreeMap::new();
+    for _ in 0..nb_keys {
+        let key: Vec<u8> = (0..rng.gen_range(2..10))
+            .map(|_| rng.sample(Alphanumeric) as u8)
+            .collect();
+        let value: Vec<u8> = (0..rng.gen_range(1..10))
+            .map(|_| rng.sample(Alphanumeric) as u8)
+            .collect();
+        data.insert(key, value);
+    }
+
+    let original_data = data.clone(); // Keep original data for later comparison
+
+    let mut changes = PreHashMap::default();
+
+    changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Set(LedgerEntry {
+            datastore: data.clone(),
+            ..Default::default()
+        }),
+    );
+
+    let exec_output = ExecutionOutput {
+        slot: Slot::new(1, 0),
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes: LedgerChanges(changes.clone()),
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+    };
+
+    let mut active_history_entries = VecDeque::from([exec_output.clone()]);
+
+    // Generate random updates and deletions using existing keys
+    let mut update_changes = PreHashMap::default();
+    let mut datastore_updates = BTreeMap::new();
+
+    let existing_keys: Vec<_> = data.keys().cloned().collect();
+
+    // Generate random updates and deletions
+    for _ in 0..rng.gen_range(1..5) {
+        if let Some(key) = existing_keys.choose(&mut rng) {
+            let value: Vec<u8> = (0..rng.gen_range(1..10))
+                .map(|_| rng.sample(Alphanumeric) as u8)
+                .collect();
+            datastore_updates.insert(key.clone(), massa_models::types::SetOrDelete::Set(value));
+        }
+    }
+
+    for _ in 0..rng.gen_range(1..3) {
+        if let Some(key) = existing_keys.choose(&mut rng) {
+            datastore_updates.insert(key.clone(), massa_models::types::SetOrDelete::Delete);
+        }
+    }
+
+    update_changes.insert(
+        addr,
+        massa_models::types::SetUpdateOrDelete::Update(LedgerEntryUpdate {
+            datastore: datastore_updates.clone(),
+            ..Default::default()
+        }),
+    );
+
+    let exec_output_update = ExecutionOutput {
+        slot: Slot::new(2, 0),
+        block_info: None,
+        state_changes: StateChanges {
+            ledger_changes: LedgerChanges(update_changes.clone()),
+            async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
+            pos_changes: Default::default(),
+            executed_ops_changes: Default::default(),
+            executed_denunciations_changes: Default::default(),
+            execution_trail_hash_change: Default::default(),
+        },
+        events: Default::default(),
+        #[cfg(feature = "execution-trace")]
+        slot_trace: Default::default(),
+        #[cfg(feature = "dump-block")]
+        storage: None,
+        deferred_credits_execution: Default::default(),
+        cancel_async_message_execution: Default::default(),
+        auto_sell_execution: Default::default(),
+    };
+
+    active_history_entries.push_back(exec_output_update);
+
+    let active_history = Arc::new(RwLock::new(ActiveHistory(active_history_entries)));
+
+    // Scan datastore with random bounds
+    let lower_bound = Bound::Included(b"a".to_vec());
+    let upper_bound = Bound::Unbounded;
+
+    let (final_keys, candidate_keys) = scan_datastore(
+        &addr,
+        &[],
+        lower_bound.clone(),
+        upper_bound.clone(),
+        None,
+        foreign_controllers.final_state.clone(),
+        active_history.clone(),
+        None,
+    );
+
+    assert!(final_keys.is_none());
+
+    let mut candidate_k = candidate_keys.unwrap();
+
+    // Extract keys from the generated datastore and verify
+    let mut expected_keys: Vec<_> = original_data
+        .iter()
+        .filter_map(|(key, _)| match datastore_updates.get(key) {
+            Some(massa_models::types::SetOrDelete::Delete) => None,
+            _ => Some(key.clone()),
+        })
+        .filter(|key| key.as_slice() >= b"a".as_slice())
+        .collect();
+    expected_keys.sort();
+
+    // println!("Expected keys:");
+    // display_human_readable(expected_keys.clone());
+
+    // println!("Candidate keys:");
+    // display_human_readable(candidate_k.clone().into_iter().collect());
+
+    for expected_key in expected_keys {
+        assert_eq!(candidate_k.pop_first().unwrap(), expected_key);
+    }
+
+    // assert_eq!(candidate_k.pop_first(), None);
+}
+
+#[allow(dead_code)]
+fn display_human_readable(keys: Vec<Vec<u8>>) {
+    println!("Keys:");
+    for key in keys {
+        match std::str::from_utf8(&key) {
+            Ok(key_str) => println!("  {}", key_str), // Affichage en UTF-8 lisible
+            Err(e) => panic!("{}", e.to_string()),    // Affichage en bytes si non-UTF-8
+        }
+    }
 }
