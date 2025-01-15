@@ -1,9 +1,14 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
 use config::DeferredCallsConfig;
-use macros::{DEFERRED_CALL_TOTAL_GAS, DEFERRED_CALL_TOTAL_REGISTERED};
+use macros::{
+    CALL_FIELD_CANCELED, CALL_FIELD_COINS, CALL_FIELD_FEE, CALL_FIELD_MAX_GAS,
+    CALL_FIELD_PARAMETERS, CALL_FIELD_SENDER_ADDRESS, CALL_FIELD_TARGET_ADDRESS,
+    CALL_FIELD_TARGET_FUNCTION, CALL_FIELD_TARGET_SLOT,
+};
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
-    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, KEY_DESER_ERROR, STATE_CF,
+    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS,
+    DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
 };
 use massa_serialization::{DeserializeError, Deserializer, Serializer};
 use registry_changes::{
@@ -433,6 +438,156 @@ impl DeferredCallRegistry {
             }
             DeferredRegistryGasChange::Keep => {}
         }
+    }
+
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes()) {
+            // check for  [DEFERRED_CALLS_PREFIX][slot]
+            if let Ok((rest, slot)) =
+                self.registry_changes_deserializer
+                    .slot_deserializer
+                    .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CALLS_PREFIX.len()..])
+            {
+                // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS]
+                if serialized_key
+                    .starts_with(&deferred_call_slot_total_gas_key!(&slot.to_bytes_key()))
+                {
+                    if let Ok(_result) = self
+                        .call_deserializer
+                        .u64_var_int_deserializer
+                        .deserialize::<DeserializeError>(&serialized_value)
+                    {
+                        return true;
+                    }
+                } else if serialized_key
+                    .starts_with(&deferred_call_slot_base_fee_key!(&slot.to_bytes_key()))
+                {
+                    // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE]
+                    if let Ok(_result) = self
+                        .call_deserializer
+                        .amount_deserializer
+                        .deserialize::<DeserializeError>(&serialized_value)
+                    {
+                        return true;
+                    }
+                } else {
+                    // check for  [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG]
+
+                    // [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG]
+                    let k = deferred_slot_call_prefix_key!(&slot.to_bytes_key());
+                    let rest_key = &serialized_key[k.len()..];
+
+                    if let Ok((rest, _id)) = self
+                        .call_id_deserializer
+                        .deserialize::<DeserializeError>(rest_key)
+                    {
+                        // TODO: check if the call is valid
+
+                        match rest[0] {
+                            CALL_FIELD_SENDER_ADDRESS => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .address_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_TARGET_SLOT => {
+                                if let Ok(_result) = self
+                                    .registry_changes_deserializer
+                                    .slot_deserializer
+                                    .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_TARGET_ADDRESS => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .address_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_TARGET_FUNCTION => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .string_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_PARAMETERS => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .vec_u8_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_MAX_GAS => {
+                                if let Ok(_result) = self
+                                    .call_deserializer
+                                    .u64_var_int_deserializer
+                                    .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_FEE => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .amount_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_CANCELED => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .bool_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            CALL_FIELD_COINS => {
+                                if let Ok(_result) =
+                                    self.call_deserializer
+                                        .amount_deserializer
+                                        .deserialize::<DeserializeError>(&serialized_value)
+                                {
+                                    return true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes()) {
+            if let Ok(_result) = self
+                .registry_changes_deserializer
+                .effective_total_gas_deserializer
+                .deserialize::<DeserializeError>(&serialized_value)
+            {
+                return true;
+            }
+        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
+            if let Ok(_res) = self
+                .registry_changes_deserializer
+                .total_calls_registered_deserializer
+                .deserialize::<DeserializeError>(&serialized_value)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
