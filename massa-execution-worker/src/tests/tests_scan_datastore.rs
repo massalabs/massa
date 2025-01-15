@@ -344,14 +344,23 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
     let active_history = Arc::new(RwLock::new(ActiveHistory(active_history_entries)));
 
     // Scan datastore with random bounds
-    let lower_bound = Bound::Included(b"a".to_vec());
-    let upper_bound = Bound::Unbounded;
+    let start_key = if rng.gen_bool(0.5) {
+        Bound::Included(existing_keys.choose(&mut rng).unwrap_or(&vec![]).clone())
+    } else {
+        Bound::Unbounded
+    };
+
+    let end_key = if rng.gen_bool(0.5) {
+        Bound::Excluded(existing_keys.choose(&mut rng).unwrap_or(&vec![]).clone())
+    } else {
+        Bound::Unbounded
+    };
 
     let (final_keys, candidate_keys) = scan_datastore(
         &addr,
         &[],
-        lower_bound.clone(),
-        upper_bound.clone(),
+        start_key.clone(),
+        end_key.clone(),
         None,
         foreign_controllers.final_state.clone(),
         active_history.clone(),
@@ -369,7 +378,16 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
             Some(massa_models::types::SetOrDelete::Delete) => None,
             _ => Some(key.clone()),
         })
-        .filter(|key| key.as_slice() >= b"a".as_slice())
+        .filter(|key| match &start_key {
+            Bound::Included(lb) => key >= lb,
+            Bound::Excluded(lb) => key > lb,
+            Bound::Unbounded => true,
+        })
+        .filter(|key| match &end_key {
+            Bound::Included(ub) => key <= ub,
+            Bound::Excluded(ub) => key < ub,
+            Bound::Unbounded => true,
+        })
         .collect();
     expected_keys.sort();
 
