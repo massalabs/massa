@@ -430,14 +430,6 @@
 <a href="#430" id="430">430</a>
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 //! Json RPC API for a massa-node
 
@@ -451,13 +443,12 @@
 <span class="kw">use </span>jsonrpsee::server::middleware::http::HostFilterLayer;
 <span class="kw">use </span>jsonrpsee::server::{BatchRequestConfig, PingConfig, ServerBuilder, ServerHandle};
 <span class="kw">use </span>jsonrpsee::RpcModule;
-<span class="kw">use </span>massa_api_exports::address::GetAddressDatastoreKeysResponse;
 <span class="kw">use </span>massa_api_exports::execution::{
     DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
     DeferredCallsSlotResponse, Transfer,
 };
 <span class="kw">use </span>massa_api_exports::{
-    address::{AddressFilter, AddressInfo, GetAddressDatastoreKeysRequest},
+    address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
     config::APIConfig,
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
@@ -866,13 +857,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         arg: Vec&lt;Slot&gt;,
     ) -&gt; RpcResult&lt;Vec&lt;DeferredCallsSlotResponse&gt;&gt;;
-
-    <span class="doccomment">/// Get keys gor given address
-    </span><span class="attr">#[method(name = <span class="string">"get_address_datastore_keys"</span>)]
-    </span><span class="kw">async fn </span>get_address_datastore_keys(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        arg: Vec&lt;GetAddressDatastoreKeysRequest&gt;,
-    ) -&gt; RpcResult&lt;Vec&lt;GetAddressDatastoreKeysResponse&gt;&gt;;
 }
 
 <span class="kw">fn </span>wrong_api&lt;T&gt;() -&gt; RpcResult&lt;T&gt; {
