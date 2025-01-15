@@ -1192,12 +1192,13 @@ impl MipStoreRaw {
 
         for (mip_info, mip_state) in &self.store {
             match mip_state.state {
-                ComponentState::Defined(..) => {
+                ComponentState::Defined(..)
+                | ComponentState::Started(..)
+                | ComponentState::LockedIn(..) => {
                     // all good if it does not start / timeout during shutdown period
                     if shutdown_range.contains(&mip_info.start)
                         || shutdown_range.contains(&mip_info.timeout)
                     {
-                        // is_consistent = false;
                         has_error = Err(IsConsistentWithShutdownPeriodError::NonConsistent(
                             mip_info.clone(),
                             mip_state.state,
@@ -1206,16 +1207,6 @@ impl MipStoreRaw {
                         ));
                         break;
                     }
-                }
-                ComponentState::Started(..) | ComponentState::LockedIn(..) => {
-                    // assume this should have been reset
-                    has_error = Err(IsConsistentWithShutdownPeriodError::NonConsistent(
-                        mip_info.clone(),
-                        mip_state.state,
-                        shutdown_start_ts,
-                        shutdown_end_ts,
-                    ));
-                    break;
                 }
                 _ => {
                     // active / failed, error, nothing to do
@@ -2395,6 +2386,8 @@ mod test {
 
             let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            assert_eq!(ms_1, ComponentState::defined());
+            assert_eq!(ms_2, ComponentState::defined());
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -2422,6 +2415,8 @@ mod test {
 
             let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            assert_eq!(ms_1, ComponentState::defined());
+            assert_eq!(ms_2, ComponentState::defined());
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -2449,6 +2444,8 @@ mod test {
 
             let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            assert_eq!(ms_1, ComponentState::started(Ratio::zero()));
+            assert_eq!(ms_2, ComponentState::defined());
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -2459,6 +2456,29 @@ mod test {
                 is_consistent(&store, shutdown_start, shutdown_end),
                 Err(IsConsistentWithShutdownPeriodError::NonConsistent(..))
             );
+            update_store(&mut store, shutdown_start, shutdown_end);
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
+            // _dump_store(&store);
+        }
+
+        // MipInfo 1 @ state 'Started' after shutdown
+        {
+            mi_1.start = get_slot_ts(Slot::new(9, 2));
+            mi_1.timeout = get_slot_ts(Slot::new(10, 7));
+            mi_2.start = get_slot_ts(Slot::new(11, 4));
+            mi_2.timeout = get_slot_ts(Slot::new(12, 0));
+
+            let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
+            let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            assert_eq!(ms_1, ComponentState::started(Ratio::zero()));
+            assert_eq!(ms_2, ComponentState::defined());
+            let mut store = MipStoreRaw::try_from((
+                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
+                mip_stats_cfg.clone(),
+            ))
+            .unwrap();
+
+            assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             update_store(&mut store, shutdown_start, shutdown_end);
             assert!(is_consistent(&store, shutdown_start, shutdown_end).is_ok());
             // _dump_store(&store);
@@ -2483,11 +2503,16 @@ mod test {
                 ComponentState::locked_in(get_slot_ts(Slot::new(1, 9))),
                 &mi_1,
             );
+            // assert_eq!(
+            //     ms_1,
+            //     ComponentState::locked_in(get_slot_ts(Slot::new(1, 9)))
+            // );
 
             // MIP 2 in state 'Defined'
             mi_2.start = get_slot_ts(Slot::new(7, 7));
             mi_2.timeout = get_slot_ts(Slot::new(10, 7));
             let ms_2 = advance_state_until(ComponentState::defined(), &mi_2);
+            assert_eq!(ms_2, ComponentState::defined());
             let mut store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -2527,6 +2552,56 @@ mod test {
             );
         }
     }
+
+    /*
+    #[test]
+    fn test_mip_store_network_restart_2() {
+        let genesis_timestamp = MassaTime::from_millis(0);
+
+        // Helpers
+        let is_consistent = |store: &MipStoreRaw, shutdown_start, shutdown_end| {
+            store.is_consistent_with_shutdown_period(
+                shutdown_start,
+                shutdown_end,
+                THREAD_COUNT,
+                T0,
+                genesis_timestamp,
+            )
+        };
+
+        let shutdown_start = Slot::new(2, 0);
+        let shutdown_end = Slot::new(5, 0);
+
+        let mip_stats_cfg = MipStatsConfig {
+            block_count_considered: 10,
+            warn_announced_version_ratio: Ratio::new_raw(30, 100),
+        };
+        let mut mi_1 = MipInfo {
+            name: "MIP-0002".to_string(),
+            version: 2,
+            components: BTreeMap::from([(MipComponent::Address, 1)]),
+            start: MassaTime::from_millis(6),
+            timeout: MassaTime::from_millis(15),
+            activation_delay: MassaTime::from_millis(100),
+        };
+
+        // let ms_1 = advance_state_until(ComponentState::defined(), &mi_1);
+        let ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), &mi_1);
+        assert_eq!(ms_1, ComponentState::started(Ratio::zero()));
+
+        let store = MipStoreRaw::try_from(([(mi_1.clone(), ms_1)], mip_stats_cfg.clone())).unwrap();
+
+        let res = is_consistent(&store, shutdown_start, shutdown_end);
+        println!("res: {:?}", res);
+
+        match res {
+            Err(IsConsistentWithShutdownPeriodError::NonConsistent(mi, ..)) => {
+                assert_eq!(mi, mi_1);
+            }
+            _ => panic!("is_consistent expects a non consistent error"),
+        }
+    }
+    */
 
     #[test]
     fn test_mip_store_db() {
