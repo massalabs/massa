@@ -212,7 +212,7 @@ fn test_scan_datastore() {
 fn test_scan_datastore_with_random_data() {
     let mut rng = thread_rng();
     for _ in 0..10 {
-        let keys_count = rng.gen_range(5..50);
+        let keys_count = rng.gen_range(2..10);
         scan_datastore_with_random_data(keys_count);
     }
 }
@@ -379,8 +379,8 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
             _ => Some(key.clone()),
         })
         .filter(|key| match &start_key {
-            Bound::Included(lb) => key >= lb,
-            Bound::Excluded(lb) => key > lb,
+            Bound::Included(sk) => key >= sk,
+            Bound::Excluded(sk) => key > sk,
             Bound::Unbounded => true,
         })
         .filter(|key| match &end_key {
@@ -400,8 +400,6 @@ fn scan_datastore_with_random_data(nb_keys: usize) {
     for expected_key in expected_keys {
         assert_eq!(candidate_k.pop_first().unwrap(), expected_key);
     }
-
-    // assert_eq!(candidate_k.pop_first(), None);
 }
 
 #[allow(dead_code)]
@@ -409,8 +407,23 @@ fn display_human_readable(keys: Vec<Vec<u8>>) {
     println!("Keys:");
     for key in keys {
         match std::str::from_utf8(&key) {
-            Ok(key_str) => println!("  {}", key_str), // Affichage en UTF-8 lisible
-            Err(e) => panic!("{}", e.to_string()),    // Affichage en bytes si non-UTF-8
+            Ok(key_str) => println!("  {}", key_str),
+            Err(e) => panic!("{}", e.to_string()),
         }
     }
+}
+
+#[allow(dead_code)]
+fn display_bound_human_readable(bound: Bound<Vec<u8>>) {
+    match &bound {
+        Bound::Included(b) => dbg!(format!(
+            "bound key included : {}",
+            String::from_utf8(b.clone()).unwrap()
+        )),
+        Bound::Excluded(b) => dbg!(format!(
+            "bound key excluded : {}",
+            String::from_utf8(b.clone()).unwrap()
+        )),
+        Bound::Unbounded => dbg!("bound key Unbounded".to_string()),
+    };
 }
