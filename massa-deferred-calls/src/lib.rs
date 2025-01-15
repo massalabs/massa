@@ -453,24 +453,20 @@ impl DeferredCallRegistry {
                 if serialized_key
                     .starts_with(&deferred_call_slot_total_gas_key!(&slot.to_bytes_key()))
                 {
-                    if let Ok(_result) = self
+                    return self
                         .call_deserializer
                         .u64_var_int_deserializer
-                        .deserialize::<DeserializeError>(&serialized_value)
-                    {
-                        return true;
-                    }
+                        .deserialize::<DeserializeError>(serialized_value)
+                        .is_ok();
                 } else if serialized_key
                     .starts_with(&deferred_call_slot_base_fee_key!(&slot.to_bytes_key()))
                 {
                     // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE]
-                    if let Ok(_result) = self
+                    return self
                         .call_deserializer
                         .amount_deserializer
-                        .deserialize::<DeserializeError>(&serialized_value)
-                    {
-                        return true;
-                    }
+                        .deserialize::<DeserializeError>(serialized_value)
+                        .is_ok();
                 } else {
                     // check for  [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG]
 
@@ -482,89 +478,70 @@ impl DeferredCallRegistry {
                         .call_id_deserializer
                         .deserialize::<DeserializeError>(rest_key)
                     {
-                        // TODO: check if the call is valid
-
                         match rest[0] {
                             CALL_FIELD_SENDER_ADDRESS => {
-                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> = 
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> =
                                     self.call_deserializer
                                         .address_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value);
-                                if let Ok(_result) = res {
-                                    return true;
-                                }
+                                        .deserialize::<DeserializeError>(serialized_value);
+
+                                return res.is_ok();
                             }
                             CALL_FIELD_TARGET_SLOT => {
-                                if let Ok(_result) = self
+                                return self
                                     .registry_changes_deserializer
                                     .slot_deserializer
-                                    .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
                             }
                             CALL_FIELD_TARGET_ADDRESS => {
-                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> = 
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> =
                                     self.call_deserializer
                                         .address_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value);
-                                if let Ok(_result) = res {
-                                    return true;
-                                }
+                                        .deserialize::<DeserializeError>(serialized_value);
+                                return res.is_ok();
                             }
                             CALL_FIELD_TARGET_FUNCTION => {
-                                if let Ok(_result) =
-                                    self.call_deserializer
-                                        .string_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                return self
+                                    .call_deserializer
+                                    .string_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
                             }
                             CALL_FIELD_PARAMETERS => {
-                                if let Ok(_result) =
-                                    self.call_deserializer
-                                        .vec_u8_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                return self
+                                    .call_deserializer
+                                    .vec_u8_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
                             }
                             CALL_FIELD_MAX_GAS => {
-                                if let Ok(_result) = self
+                                return self
                                     .call_deserializer
                                     .u64_var_int_deserializer
-                                    .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
                             }
                             CALL_FIELD_FEE => {
-                                if let Ok(_result) =
-                                    self.call_deserializer
-                                        .amount_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                return self
+                                    .call_deserializer
+                                    .amount_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
                             }
                             CALL_FIELD_CANCELED => {
-                                if let Ok(_result) =
-                                    self.call_deserializer
-                                        .bool_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                return self
+                                    .call_deserializer
+                                    .bool_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok();
                             }
                             CALL_FIELD_COINS => {
-                                if let Ok(_result) =
-                                    self.call_deserializer
-                                        .amount_deserializer
-                                        .deserialize::<DeserializeError>(&serialized_value)
-                                {
-                                    return true;
-                                }
+                                return self
+                                    .call_deserializer
+                                    .amount_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok();
                             }
                             _ => {}
                         }
@@ -572,23 +549,19 @@ impl DeferredCallRegistry {
                 }
             }
         } else if serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes()) {
-            if let Ok(_result) = self
+            return self
                 .registry_changes_deserializer
                 .effective_total_gas_deserializer
-                .deserialize::<DeserializeError>(&serialized_value)
-            {
-                return true;
-            }
+                .deserialize::<DeserializeError>(serialized_value)
+                .is_ok();
         } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
-            if let Ok(_res) = self
+            return self
                 .registry_changes_deserializer
                 .total_calls_registered_deserializer
-                .deserialize::<DeserializeError>(&serialized_value)
-            {
-                return true;
-            }
+                .deserialize::<DeserializeError>(serialized_value)
+                .is_ok();
         }
-        return false;
+        false
     }
 }
 
