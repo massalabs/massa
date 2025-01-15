@@ -677,7 +677,10 @@ impl EventCache {
     ) -> Result<u64, ModelsError> {
         match filter_item {
             FilterItem::SlotStart(start) => {
-                let diff = self.last_slot.slots_since(start, self.thread_count)?;
+                let diff = self
+                    .last_slot
+                    .slots_since(start, self.thread_count)
+                    .unwrap_or(0);
                 // Note: Pessimistic estimation - should we keep an average count of events per slot
                 //       and use that instead?
                 Ok(diff
@@ -685,13 +688,15 @@ impl EventCache {
                     .saturating_mul(self.max_operations_per_block))
             }
             FilterItem::SlotStartEnd(start, end) => {
-                let diff = end.slots_since(start, self.thread_count)?;
+                let diff = end.slots_since(start, self.thread_count).unwrap_or(0);
                 Ok(diff
                     .saturating_mul(self.max_events_per_operation)
                     .saturating_mul(self.max_operations_per_block))
             }
             FilterItem::SlotEnd(end) => {
-                let diff = end.slots_since(&self.first_slot, self.thread_count)?;
+                let diff = end
+                    .slots_since(&self.first_slot, self.thread_count)
+                    .unwrap_or(0);
                 Ok(diff
                     .saturating_mul(self.max_events_per_operation)
                     .saturating_mul(self.max_operations_per_block))
