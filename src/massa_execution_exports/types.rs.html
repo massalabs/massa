@@ -363,6 +363,19 @@
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
 <a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file exports useful types used to interact with the execution worker
@@ -388,6 +401,7 @@
 <span class="kw">use </span>massa_storage::Storage;
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::ops::Bound;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::types_trace_info::{SlotAbiCallStack, Transfer};
@@ -433,19 +447,31 @@
     </span>AddressBytecodeCandidate(Address),
     <span class="doccomment">/// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
     </span>AddressBytecodeFinal(Address),
-    <span class="doccomment">/// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    <span class="doccomment">/// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     </span>AddressDatastoreKeysCandidate {
         <span class="doccomment">/// Address for which to query the datastore
-        </span>addr: Address,
+        </span>address: Address,
         <span class="doccomment">/// Filter only entries whose key starts with a prefix
         </span>prefix: Vec&lt;u8&gt;,
+        <span class="doccomment">/// Bound to start from
+        </span>start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        <span class="doccomment">/// End bound
+        </span>end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        <span class="doccomment">/// Maximum number of keys to return
+        </span>count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     },
-    <span class="doccomment">/// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    <span class="doccomment">/// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     </span>AddressDatastoreKeysFinal {
         <span class="doccomment">/// Address for which to query the datastore
-        </span>addr: Address,
+        </span>address: Address,
         <span class="doccomment">/// Filter only entries whose key starts with a prefix
         </span>prefix: Vec&lt;u8&gt;,
+        <span class="doccomment">/// Bound to start from
+        </span>start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        <span class="doccomment">/// End bound
+        </span>end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        <span class="doccomment">/// Maximum number of keys to return
+        </span>count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     },
     <span class="doccomment">/// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
     </span>AddressDatastoreValueCandidate {
@@ -519,8 +545,8 @@
     </span>Bytecode(Bytecode),
     <span class="doccomment">/// datastore value
     </span>DatastoreValue(Vec&lt;u8&gt;),
-    <span class="doccomment">/// list of keys
-    </span>KeyList(BTreeSet&lt;Vec&lt;u8&gt;&gt;),
+    <span class="doccomment">/// list of keys (keys, address, is_final)
+    </span>AddressDatastoreKeys(BTreeSet&lt;Vec&lt;u8&gt;&gt;, Address, bool),
     <span class="doccomment">/// deferred call quote (target_slot, gas_request, available, price)
     </span>DeferredCallQuote(Slot, u64, bool, Amount),
     <span class="doccomment">/// deferred call info value

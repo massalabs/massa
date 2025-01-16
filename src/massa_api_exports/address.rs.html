@@ -177,6 +177,38 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
@@ -355,5 +387,37 @@
             <span class="macro">write!</span>(f, <span class="string">" (Candidate)"</span>)
         }
     }
+}
+
+<span class="doccomment">/// Datastore keys entry query input structure
+</span><span class="attr">#[derive(Clone, Debug, Deserialize)]
+</span><span class="kw">pub struct </span>GetAddressDatastoreKeysRequest {
+    <span class="doccomment">/// The address for which to get the datastore keys
+    </span><span class="kw">pub </span>address: Address,
+    <span class="doccomment">/// The prefix to filter the keys
+    </span><span class="kw">pub </span>prefix: Vec&lt;u8&gt;,
+    <span class="doccomment">/// final true means final
+    </span><span class="kw">pub </span>is_final: bool,
+    <span class="doccomment">/// The start key to filter the keys
+    </span><span class="kw">pub </span>start_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    <span class="doccomment">/// inclusive start key
+    </span><span class="kw">pub </span>inclusive_start_key: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="doccomment">/// The end key to filter the keys
+    </span><span class="kw">pub </span>end_key: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+    <span class="doccomment">/// inclusive end key
+    </span><span class="kw">pub </span>inclusive_end_key: <span class="prelude-ty">Option</span>&lt;bool&gt;,
+    <span class="doccomment">/// The count of keys to return
+    </span><span class="kw">pub </span>count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+}
+
+<span class="doccomment">/// Response object for datastore keys query
+</span><span class="attr">#[derive(Clone, Debug, Serialize)]
+</span><span class="kw">pub struct </span>GetAddressDatastoreKeysResponse {
+    <span class="doccomment">/// The address for which to get the datastore keys
+    </span><span class="kw">pub </span>address: Address,
+    <span class="doccomment">/// final true means final
+    </span><span class="kw">pub </span>is_final: bool,
+    <span class="doccomment">/// keys list
+    </span><span class="kw">pub </span>keys: Vec&lt;Vec&lt;u8&gt;&gt;,
 }
 </code></pre></div></section></main></body></html>
