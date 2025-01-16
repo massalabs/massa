@@ -11,7 +11,7 @@ use massa_db_exports::{
     DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
 };
 use massa_models::address::Address;
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_serialization::{buf_to_array_ctr, DeserializeError, Deserializer, Serializer};
 use registry_changes::{
     DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
     DeferredRegistryChangesSerializer,
@@ -444,11 +444,10 @@ impl DeferredCallRegistry {
     pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
         if serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes()) {
             // check for  [DEFERRED_CALLS_PREFIX][slot]
-            if let Ok((_rest, slot)) =
-                self.registry_changes_deserializer
-                    .slot_deserializer
-                    .deserialize::<DeserializeError>(&serialized_key[DEFERRED_CALLS_PREFIX.len()..])
-            {
+            if let Some((_rest, slot)) = buf_to_array_ctr(
+                &serialized_key[DEFERRED_CALLS_PREFIX.len()..],
+                Slot::from_bytes_key,
+            ) {
                 // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS]
                 if serialized_key
                     .starts_with(&deferred_call_slot_total_gas_key!(&slot.to_bytes_key()))
