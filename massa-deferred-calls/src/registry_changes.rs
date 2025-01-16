@@ -176,7 +176,7 @@ impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializ
 pub struct DeferredRegistryChangesDeserializer {
     pub(crate) u64_deserializer: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
-    slot_deserializer: SlotDeserializer,
+    pub(crate) slot_deserializer: SlotDeserializer,
     pub(crate) effective_total_gas_deserializer:
         SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
     pub(crate) total_calls_registered_deserializer:

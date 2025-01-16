@@ -1,11 +1,17 @@
 use call::{DeferredCallDeserializer, DeferredCallSerializer};
 use config::DeferredCallsConfig;
-use macros::{DEFERRED_CALL_TOTAL_GAS, DEFERRED_CALL_TOTAL_REGISTERED};
+use macros::{
+    CALL_FIELD_CANCELED, CALL_FIELD_COINS, CALL_FIELD_FEE, CALL_FIELD_MAX_GAS,
+    CALL_FIELD_PARAMETERS, CALL_FIELD_SENDER_ADDRESS, CALL_FIELD_TARGET_ADDRESS,
+    CALL_FIELD_TARGET_FUNCTION, CALL_FIELD_TARGET_SLOT,
+};
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
-    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, KEY_DESER_ERROR, STATE_CF,
+    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS,
+    DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
 };
-use massa_serialization::{DeserializeError, Deserializer, Serializer};
+use massa_models::address::Address;
+use massa_serialization::{buf_to_array_ctr, DeserializeError, Deserializer, Serializer};
 use registry_changes::{
     DeferredCallRegistryChanges, DeferredRegistryChangesDeserializer,
     DeferredRegistryChangesSerializer,
@@ -433,6 +439,128 @@ impl DeferredCallRegistry {
             }
             DeferredRegistryGasChange::Keep => {}
         }
+    }
+
+    pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
+        if serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes()) {
+            // check for  [DEFERRED_CALLS_PREFIX][slot]
+            if let Some((_rest, slot)) = buf_to_array_ctr(
+                &serialized_key[DEFERRED_CALLS_PREFIX.len()..],
+                Slot::from_bytes_key,
+            ) {
+                // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS]
+                if serialized_key
+                    .starts_with(&deferred_call_slot_total_gas_key!(&slot.to_bytes_key()))
+                {
+                    return self
+                        .call_deserializer
+                        .u64_var_int_deserializer
+                        .deserialize::<DeserializeError>(serialized_value)
+                        .is_ok();
+                } else if serialized_key
+                    .starts_with(&deferred_call_slot_base_fee_key!(&slot.to_bytes_key()))
+                {
+                    // check for  [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE]
+                    return self
+                        .call_deserializer
+                        .amount_deserializer
+                        .deserialize::<DeserializeError>(serialized_value)
+                        .is_ok();
+                } else {
+                    // check for  [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG]
+
+                    // [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG]
+                    let k = deferred_slot_call_prefix_key!(&slot.to_bytes_key());
+                    let rest_key = &serialized_key[k.len()..];
+
+                    if let Ok((rest, _id)) = self
+                        .call_id_deserializer
+                        .deserialize::<DeserializeError>(rest_key)
+                    {
+                        match rest[0] {
+                            CALL_FIELD_SENDER_ADDRESS => {
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> =
+                                    self.call_deserializer
+                                        .address_deserializer
+                                        .deserialize::<DeserializeError>(serialized_value);
+
+                                return res.is_ok();
+                            }
+                            CALL_FIELD_TARGET_SLOT => {
+                                return self
+                                    .registry_changes_deserializer
+                                    .slot_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
+                            }
+                            CALL_FIELD_TARGET_ADDRESS => {
+                                let res: Result<(&[u8], Address), nom::Err<DeserializeError<'_>>> =
+                                    self.call_deserializer
+                                        .address_deserializer
+                                        .deserialize::<DeserializeError>(serialized_value);
+                                return res.is_ok();
+                            }
+                            CALL_FIELD_TARGET_FUNCTION => {
+                                return self
+                                    .call_deserializer
+                                    .string_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
+                            }
+                            CALL_FIELD_PARAMETERS => {
+                                return self
+                                    .call_deserializer
+                                    .vec_u8_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
+                            }
+                            CALL_FIELD_MAX_GAS => {
+                                return self
+                                    .call_deserializer
+                                    .u64_var_int_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
+                            }
+                            CALL_FIELD_FEE => {
+                                return self
+                                    .call_deserializer
+                                    .amount_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok()
+                            }
+                            CALL_FIELD_CANCELED => {
+                                return self
+                                    .call_deserializer
+                                    .bool_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok();
+                            }
+                            CALL_FIELD_COINS => {
+                                return self
+                                    .call_deserializer
+                                    .amount_deserializer
+                                    .deserialize::<DeserializeError>(serialized_value)
+                                    .is_ok();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes()) {
+            return self
+                .registry_changes_deserializer
+                .effective_total_gas_deserializer
+                .deserialize::<DeserializeError>(serialized_value)
+                .is_ok();
+        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
+            return self
+                .registry_changes_deserializer
+                .total_calls_registered_deserializer
+                .deserialize::<DeserializeError>(serialized_value)
+                .is_ok();
+        }
+        false
     }
 }
 
