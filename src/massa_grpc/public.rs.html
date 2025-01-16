@@ -1524,11 +1524,6 @@
 <a href="#1524" id="1524">1524</a>
 <a href="#1525" id="1525">1525</a>
 <a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
-<a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -2491,7 +2486,6 @@
         config: <span class="prelude-val">Some</span>(config.into()),
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: <span class="prelude-val">Some</span>(grpc.grpc_config.minimal_fees.into()),
-        current_mip_version: grpc.keypair_factory.mip_store.get_network_version_current(),
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {
@@ -2524,26 +2518,22 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::QueryStateRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::QueryStateResponse, GrpcError&gt; {
-    <span class="kw">let </span>queries = request.into_inner().queries;
+    <span class="kw">let </span>queries = request
+        .into_inner()
+        .queries
+        .into_iter()
+        .map(to_querystate_filter)
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+
     <span class="kw">if </span>queries.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">"no query items specified"</span>.to_string(),
         ));
     }
+
     <span class="kw">if </span>queries.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_query_items_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_query_items_per_request)));
     }
-
-    <span class="kw">let </span>queries = queries
-        .into_iter()
-        .map(|q| {
-            to_querystate_filter(
-                q,
-                grpc.grpc_config.max_datastore_keys_queries,
-                grpc.grpc_config.max_datastore_key_length,
-            )
-        })
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>response = grpc
         .execution_controller
