@@ -134,7 +134,7 @@
             "params": [
                 {
                     "name": "address keys request",
-                    "description": "TODO",
+                    "description": "Vector of addresses for which to retrieve datastore keys",
                     "schema": {
                         "type": "array",
                         "items": {
@@ -154,8 +154,8 @@
                 }
             },
             "name": "get_addresses_datastore_keys",
-            "summary": "TODO",
-            "description": "TODO"
+            "summary": "Retrieve datastore keys for given addresses",
+            "description": "Returns a list of datastore keys associated with the given addresses. This endpoint allows fetching storage keys for multiple addresses in a single request."
         },
         {
             "tags": [
@@ -2685,6 +2685,21 @@
                             }
                         ]
                     },
+                    "end_key": {
+                        "description": "The end key to filter the keys",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_end_key": {
+                        "description": "include or exclude end_key",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    },
                     "count": {
                         "description": "limit the number of keys",
                         "oneOf": [
@@ -2717,11 +2732,7 @@
                         "title": "keys list",
                         "type": "array",
                         "items": {
-                            "type": "array",
-                            "title": "key",
-                            "items": {
-                                "$ref": "#/components/schemas/Bytes"
-                            }
+                            "$ref": "#/components/schemas/Bytes"
                         }
                     }
                 }
