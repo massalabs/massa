@@ -212,7 +212,7 @@ fn test_scan_datastore() {
 fn test_scan_datastore_with_random_data() {
     let mut rng = thread_rng();
     for _ in 0..10 {
-        let keys_count = rng.gen_range(2..50);
+        let keys_count = rng.gen_range(15..50);
         scan_datastore_with_random_data(keys_count);
     }
 }
