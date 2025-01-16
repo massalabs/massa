@@ -428,8 +428,8 @@ pub trait MassaRpc {
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>>;
 
     /// Get keys gor given address
-    #[method(name = "get_address_datastore_keys")]
-    async fn get_address_datastore_keys(
+    #[method(name = "get_addresses_datastore_keys")]
+    async fn get_addresses_datastore_keys(
         &self,
         arg: Vec<GetAddressDatastoreKeysRequest>,
     ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>>;

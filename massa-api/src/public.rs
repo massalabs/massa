@@ -954,7 +954,7 @@ impl MassaRpcServer for API<Public> {
             .collect())
     }
 
-    async fn get_address_datastore_keys(
+    async fn get_addresses_datastore_keys(
         &self,
         arg: Vec<GetAddressDatastoreKeysRequest>,
     ) -> RpcResult<Vec<GetAddressDatastoreKeysResponse>> {
