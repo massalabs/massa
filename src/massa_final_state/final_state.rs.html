@@ -1341,6 +1341,21 @@
 <a href="#1341" id="1341">1341</a>
 <a href="#1342" id="1342">1342</a>
 <a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1355,7 +1370,8 @@
 <span class="kw">use </span>massa_async_pool::AsyncPool;
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
-    CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
+    CYCLE_HISTORY_PREFIX, DEFERRED_CALLS_PREFIX, DEFERRED_CALL_TOTAL_GAS,
+    DEFERRED_CALL_TOTAL_REGISTERED, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
@@ -2000,7 +2016,21 @@
                 }
             } <span class="kw">else if </span>serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
                 <span class="comment">// no checks here as they are performed above by direct reading
-            </span>} <span class="kw">else </span>{
+            </span>} <span class="kw">else if </span>serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes())
+                || serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes())
+                || serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes())
+            {
+                <span class="kw">if </span>!<span class="self">self
+                    </span>.deferred_call_registry
+                    .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
+                {
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for DEFERRED_CALLS_PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>, serialized_key, serialized_value);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                        <span class="string">"Wrong key/value for DEFERRED_CALLS_PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
+                        serialized_key, serialized_value
+                    ));
+                }
+            } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(
                     <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
