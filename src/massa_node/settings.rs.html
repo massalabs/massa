@@ -403,6 +403,7 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -537,6 +538,7 @@
     <span class="kw">pub </span>enable_ws: bool,
     <span class="comment">// whether to broadcast for blocks, endorsement and operations
     </span><span class="kw">pub </span>enable_broadcast: bool,
+    <span class="kw">pub </span>deferred_credits_delta: MassaTime,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]

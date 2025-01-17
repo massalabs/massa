@@ -508,7 +508,7 @@
 <span class="kw">pub struct </span>DeferredRegistryChangesDeserializer {
     <span class="kw">pub</span>(<span class="kw">crate</span>) u64_deserializer: U64VarIntDeserializer,
     slot_changes_deserializer: DeferredRegistrySlotChangesDeserializer,
-    slot_deserializer: SlotDeserializer,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) slot_deserializer: SlotDeserializer,
     <span class="kw">pub</span>(<span class="kw">crate</span>) effective_total_gas_deserializer:
         SetOrKeepDeserializer&lt;u128, U128VarIntDeserializer&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) total_calls_registered_deserializer:
