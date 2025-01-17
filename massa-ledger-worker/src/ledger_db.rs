@@ -523,7 +523,7 @@ impl LedgerDB {
         addresses
     }
 
-    /// Get the entire datastore for a given address (no deserialization + no end prefix)
+    /// Get the entire datastore for a given address (no deserialization)
     ///
     /// IMPORTANT: This should only be used for debug purposes.
     #[allow(dead_code)]
@@ -535,11 +535,15 @@ impl LedgerDB {
         let db = self.db.read();
 
         let key_prefix = datastore_prefix_from_address(addr, &[]);
+        // Need an end_prefix otherwise the iterator can return entries not belonging to the given
+        // address
+        let end_prefix = key_prefix[0..key_prefix.len() - 1].to_vec();
 
         db.iterator_cf(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
+        .take_while(|(k, _)| k.starts_with(&end_prefix))
         .collect()
     }
 
