@@ -2915,7 +2915,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=damir_keys_algo#725335743b2da779203abfc366b0c56248fa9369"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=3ab8ad823abe0b3a67b2d3f6a5cc6f3ecdb28839#3ab8ad823abe0b3a67b2d3f6a5cc6f3ecdb28839"
 dependencies = [
  "glob",
  "prost",
@@ -2923,12 +2923,13 @@ dependencies = [
  "prost-types",
  "tonic",
  "tonic-build",
+ "tower-service",
 ]
 
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=damir_algo#b3a031de5e46c5f03726c41b30c65730a0e62b7a"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=4b746c1d942998c2730b8ae115b40598786b9602#4b746c1d942998c2730b8ae115b40598786b9602"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",

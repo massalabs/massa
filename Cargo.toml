@@ -109,8 +109,8 @@ massa_wallet = { path = "./massa-wallet" }
 massa_event_cache = { path = "./massa-event-cache" }
 
 # Massa projects dependencies
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "branch" = "damir_keys_algo" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "damir_algo" }
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "3ab8ad823abe0b3a67b2d3f6a5cc6f3ecdb28839" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "4b746c1d942998c2730b8ae115b40598786b9602" }
 
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
