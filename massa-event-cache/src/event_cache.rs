@@ -1807,7 +1807,7 @@ mod tests {
         assert_eq!(emit_addr_2_count, (threshold + 1 + 2) as u64);
 
         // Check if we correctly count the number of events in the DB with slot related filters
-        // First with filters that should give a count of 0 (too early, too late, or inconsistant start/end)
+        // First with filters that should give a count of 0 (too early, too late, or inconsistent start/end)
         let slot_start_1 = Slot::new(3, 0); // start is after the last slot
         let slot_end_1 = Slot::new(0, 0); // end is before the first slot
         let slot_start_end_1 = Slot::new(2, 0)..Slot::new(1, 0); // start is after end
