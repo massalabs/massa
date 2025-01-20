@@ -451,12 +451,12 @@
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>DeferredCallDeserializer {
     slot_deserializer: SlotDeserializer,
-    address_deserializer: AddressDeserializer,
-    string_deserializer: StringDeserializer&lt;U16VarIntDeserializer, u16&gt;,
-    vec_u8_deserializer: VecU8Deserializer,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) address_deserializer: AddressDeserializer,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) string_deserializer: StringDeserializer&lt;U16VarIntDeserializer, u16&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) vec_u8_deserializer: VecU8Deserializer,
     <span class="kw">pub</span>(<span class="kw">crate</span>) amount_deserializer: AmountDeserializer,
     <span class="kw">pub</span>(<span class="kw">crate</span>) u64_var_int_deserializer: U64VarIntDeserializer,
-    bool_deserializer: BoolDeserializer,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) bool_deserializer: BoolDeserializer,
 }
 
 <span class="kw">impl </span>DeferredCallDeserializer {

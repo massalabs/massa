@@ -17,10 +17,15 @@
 <a href="#17" id="17">17</a>
 <a href="#18" id="18">18</a>
 <a href="#19" id="19">19</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>check_gas_cost_definitions;
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+</pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"gas_calibration"</span>)]
+</span><span class="kw">mod </span>check_gas_cost_definitions;
 <span class="kw">mod </span>update_package_versions;
 
-<span class="kw">use </span><span class="kw">crate</span>::check_gas_cost_definitions::check_gas_cost_definitions;
+<span class="attr">#[cfg(feature = <span class="string">"gas_calibration"</span>)]
+</span><span class="kw">use </span><span class="kw">crate</span>::check_gas_cost_definitions::check_gas_cost_definitions;
 <span class="kw">use </span><span class="kw">crate</span>::update_package_versions::update_package_versions;
 <span class="kw">use </span>std::env;
 
@@ -32,7 +37,8 @@
     <span class="kw">match </span>task.as_deref() {
         <span class="comment">// We can add more tasks here
         </span><span class="prelude-val">Some</span>(<span class="string">"update_package_versions"</span>) =&gt; update_package_versions(),
-        <span class="prelude-val">Some</span>(<span class="string">"check_gas_cost_definitions"</span>) =&gt; check_gas_cost_definitions().unwrap(),
+        <span class="attr">#[cfg(feature = <span class="string">"gas_calibration"</span>)]
+        </span><span class="prelude-val">Some</span>(<span class="string">"check_gas_cost_definitions"</span>) =&gt; check_gas_cost_definitions().unwrap(),
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Unknown task"</span>),
     }
 }

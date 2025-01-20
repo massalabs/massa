@@ -1354,6 +1354,8 @@
 <a href="#1354" id="1354">1354</a>
 <a href="#1355" id="1355">1355</a>
 <a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1368,7 +1370,8 @@
 <span class="kw">use </span>massa_async_pool::AsyncPool;
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
-    CYCLE_HISTORY_PREFIX, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
+    CYCLE_HISTORY_PREFIX, DEFERRED_CALLS_PREFIX, DEFERRED_CALL_TOTAL_GAS,
+    DEFERRED_CALL_TOTAL_REGISTERED, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
     EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
@@ -1382,7 +1385,7 @@
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
 <span class="kw">use </span>massa_models::types::SetOrKeep;
 <span class="kw">use </span>massa_pos_exports::{PoSFinalState, SelectorController};
-<span class="kw">use </span>massa_versioning::versioning::{MipComponent, MipStore};
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::{debug, info, warn};
 
 <span class="doccomment">/// Represents a final state `(ledger, async pool, executed_ops, executed_de and the state of the PoS)`
@@ -1791,19 +1794,9 @@
         <span class="comment">// check slot consistency
         </span><span class="kw">let </span>next_slot = cur_slot.get_next_slot(<span class="self">self</span>.config.thread_count)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>ts = get_block_slot_timestamp(
-            <span class="self">self</span>.config.thread_count,
-            <span class="self">self</span>.config.t0,
-            <span class="self">self</span>.config.genesis_timestamp,
-            slot,
-        )
-        .expect(<span class="string">"Time overflow when getting block slot timestamp for MIP"</span>);
+        <span class="comment">// .expect("overflow in execution state slot");
 
-        <span class="kw">let </span>final_state_component_version = <span class="self">self
-            </span>.get_mip_store()
-            .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::FinalState, ts);
-
-        <span class="kw">if </span>slot != next_slot {
+        </span><span class="kw">if </span>slot != next_slot {
             <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
                 <span class="string">"attempting to apply execution state changes at slot {} while the current slot is {}"</span>,
                 slot, cur_slot
@@ -1822,11 +1815,8 @@
 
         <span class="comment">// do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
-        </span><span class="self">self</span>.ledger.apply_changes_to_batch(
-            changes.ledger_changes,
-            <span class="kw-2">&amp;mut </span>db_batch,
-            final_state_component_version,
-        );
+        </span><span class="self">self</span>.ledger
+            .apply_changes_to_batch(changes.ledger_changes, <span class="kw-2">&amp;mut </span>db_batch);
         <span class="self">self</span>.executed_ops
             .apply_changes_to_batch(changes.executed_ops_changes, slot, <span class="kw-2">&amp;mut </span>db_batch);
 
@@ -2026,7 +2016,21 @@
                 }
             } <span class="kw">else if </span>serialized_key.starts_with(EXECUTION_TRAIL_HASH_PREFIX.as_bytes()) {
                 <span class="comment">// no checks here as they are performed above by direct reading
-            </span>} <span class="kw">else </span>{
+            </span>} <span class="kw">else if </span>serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes())
+                || serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes())
+                || serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes())
+            {
+                <span class="kw">if </span>!<span class="self">self
+                    </span>.deferred_call_registry
+                    .is_key_value_valid(<span class="kw-2">&amp;</span>serialized_key, <span class="kw-2">&amp;</span>serialized_value)
+                {
+                    <span class="macro">warn!</span>(<span class="string">"Wrong key/value for DEFERRED_CALLS_PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>, serialized_key, serialized_value);
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                        <span class="string">"Wrong key/value for DEFERRED_CALLS_PREFIX serialized_key: {:?}, serialized_value: {:?}"</span>,
+                        serialized_key, serialized_value
+                    ));
+                }
+            } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(
                     <span class="string">"Key/value does not correspond to any prefix: serialized_key: {:?}, serialized_value: {:?}"</span>,
                     serialized_key, serialized_value
