@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["update_package_versions"]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["check_gas_cost_definitions","update_package_versions"]};
