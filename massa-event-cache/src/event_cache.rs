@@ -1819,28 +1819,28 @@ mod tests {
         let slot_start_end_2 = Slot::new(1, 0)..Slot::new(2, 0);
 
         let slot_start_count_1 = cache
-            .filter_item_estimate_count(&KeyIndent::Event, &&FilterItem::SlotStart(slot_start_1))
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotStart(slot_start_1))
             .unwrap();
         let slot_end_count_1 = cache
-            .filter_item_estimate_count(&KeyIndent::Event, &&FilterItem::SlotEnd(slot_end_1))
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotEnd(slot_end_1))
             .unwrap();
         let slot_start_end_count_1 = cache
             .filter_item_estimate_count(
                 &KeyIndent::Event,
-                &&FilterItem::SlotStartEnd(slot_start_end_1.start, slot_start_end_1.end),
+                &FilterItem::SlotStartEnd(slot_start_end_1.start, slot_start_end_1.end),
             )
             .unwrap();
 
         let slot_start_count_2 = cache
-            .filter_item_estimate_count(&KeyIndent::Event, &&FilterItem::SlotStart(slot_start_2))
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotStart(slot_start_2))
             .unwrap();
         let slot_end_count_2 = cache
-            .filter_item_estimate_count(&KeyIndent::Event, &&FilterItem::SlotEnd(slot_end_2))
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotEnd(slot_end_2))
             .unwrap();
         let slot_start_end_count_2 = cache
             .filter_item_estimate_count(
                 &KeyIndent::Event,
-                &&FilterItem::SlotStartEnd(slot_start_end_2.start, slot_start_end_2.end),
+                &FilterItem::SlotStartEnd(slot_start_end_2.start, slot_start_end_2.end),
             )
             .unwrap();
 
