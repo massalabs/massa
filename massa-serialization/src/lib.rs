@@ -481,6 +481,15 @@ where
     }
 }
 
+// Helper function to convert a slice to an array of a given size, if possible,
+// and then returning it with the rest of the slice.
+pub fn buf_to_array_ctr<F: Fn(&[u8; N]) -> V, V, const N: usize>(
+    buf: &[u8],
+    ctr: F,
+) -> Option<(&[u8], V)> {
+    Some((&buf[N..], ctr(&buf.get(..N)?.try_into().ok()?)))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{DeserializeError, Deserializer, Serializer};
