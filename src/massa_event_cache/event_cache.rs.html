@@ -1818,61 +1818,6 @@
 <a href="#1818" id="1818">1818</a>
 <a href="#1819" id="1819">1819</a>
 <a href="#1820" id="1820">1820</a>
-<a href="#1821" id="1821">1821</a>
-<a href="#1822" id="1822">1822</a>
-<a href="#1823" id="1823">1823</a>
-<a href="#1824" id="1824">1824</a>
-<a href="#1825" id="1825">1825</a>
-<a href="#1826" id="1826">1826</a>
-<a href="#1827" id="1827">1827</a>
-<a href="#1828" id="1828">1828</a>
-<a href="#1829" id="1829">1829</a>
-<a href="#1830" id="1830">1830</a>
-<a href="#1831" id="1831">1831</a>
-<a href="#1832" id="1832">1832</a>
-<a href="#1833" id="1833">1833</a>
-<a href="#1834" id="1834">1834</a>
-<a href="#1835" id="1835">1835</a>
-<a href="#1836" id="1836">1836</a>
-<a href="#1837" id="1837">1837</a>
-<a href="#1838" id="1838">1838</a>
-<a href="#1839" id="1839">1839</a>
-<a href="#1840" id="1840">1840</a>
-<a href="#1841" id="1841">1841</a>
-<a href="#1842" id="1842">1842</a>
-<a href="#1843" id="1843">1843</a>
-<a href="#1844" id="1844">1844</a>
-<a href="#1845" id="1845">1845</a>
-<a href="#1846" id="1846">1846</a>
-<a href="#1847" id="1847">1847</a>
-<a href="#1848" id="1848">1848</a>
-<a href="#1849" id="1849">1849</a>
-<a href="#1850" id="1850">1850</a>
-<a href="#1851" id="1851">1851</a>
-<a href="#1852" id="1852">1852</a>
-<a href="#1853" id="1853">1853</a>
-<a href="#1854" id="1854">1854</a>
-<a href="#1855" id="1855">1855</a>
-<a href="#1856" id="1856">1856</a>
-<a href="#1857" id="1857">1857</a>
-<a href="#1858" id="1858">1858</a>
-<a href="#1859" id="1859">1859</a>
-<a href="#1860" id="1860">1860</a>
-<a href="#1861" id="1861">1861</a>
-<a href="#1862" id="1862">1862</a>
-<a href="#1863" id="1863">1863</a>
-<a href="#1864" id="1864">1864</a>
-<a href="#1865" id="1865">1865</a>
-<a href="#1866" id="1866">1866</a>
-<a href="#1867" id="1867">1867</a>
-<a href="#1868" id="1868">1868</a>
-<a href="#1869" id="1869">1869</a>
-<a href="#1870" id="1870">1870</a>
-<a href="#1871" id="1871">1871</a>
-<a href="#1872" id="1872">1872</a>
-<a href="#1873" id="1873">1873</a>
-<a href="#1874" id="1874">1874</a>
-<a href="#1875" id="1875">1875</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::cmp::max;
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -2552,28 +2497,21 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;u64, ModelsError&gt; {
         <span class="kw">match </span>filter_item {
             FilterItem::SlotStart(start) =&gt; {
-                <span class="kw">let </span>diff = <span class="self">self
-                    </span>.last_slot
-                    .slots_since(start, <span class="self">self</span>.thread_count)
-                    .unwrap_or(<span class="number">0</span>); <span class="comment">// If start is after self.last_slot, we have no events in the filter
-                                   // Note: Pessimistic estimation - should we keep an average count of events per slot
-                                   //       and use that instead?
+                <span class="kw">let </span>diff = <span class="self">self</span>.last_slot.slots_since(start, <span class="self">self</span>.thread_count)<span class="question-mark">?</span>;
+                <span class="comment">// Note: Pessimistic estimation - should we keep an average count of events per slot
+                //       and use that instead?
                 </span><span class="prelude-val">Ok</span>(diff
                     .saturating_mul(<span class="self">self</span>.max_events_per_operation)
                     .saturating_mul(<span class="self">self</span>.max_operations_per_block))
             }
             FilterItem::SlotStartEnd(start, end) =&gt; {
-                <span class="comment">// If start is after end, we have no events in the filter as it is inconsistent
-                </span><span class="kw">let </span>diff = end.slots_since(start, <span class="self">self</span>.thread_count).unwrap_or(<span class="number">0</span>);
+                <span class="kw">let </span>diff = end.slots_since(start, <span class="self">self</span>.thread_count)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(diff
                     .saturating_mul(<span class="self">self</span>.max_events_per_operation)
                     .saturating_mul(<span class="self">self</span>.max_operations_per_block))
             }
             FilterItem::SlotEnd(end) =&gt; {
-                <span class="comment">// If end is after self.first_slot, we have no events in the filter
-                </span><span class="kw">let </span>diff = end
-                    .slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>.first_slot, <span class="self">self</span>.thread_count)
-                    .unwrap_or(<span class="number">0</span>);
+                <span class="kw">let </span>diff = end.slots_since(<span class="kw-2">&amp;</span><span class="self">self</span>.first_slot, <span class="self">self</span>.thread_count)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(diff
                     .saturating_mul(<span class="self">self</span>.max_events_per_operation)
                     .saturating_mul(<span class="self">self</span>.max_operations_per_block))
@@ -2826,7 +2764,7 @@
     <span class="kw">use </span>tempfile::TempDir;
     <span class="comment">// internal
     </span><span class="kw">use </span>massa_models::config::{
-        MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
+        MAX_EVENT_DATA_SIZE_V1, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
         MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
     };
     <span class="kw">use </span>massa_models::operation::OperationId;
@@ -2841,7 +2779,7 @@
             <span class="number">300</span>,
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
-            MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
+            MAX_EVENT_DATA_SIZE_V1 <span class="kw">as </span>u64,
             MAX_EVENT_PER_OPERATION <span class="kw">as </span>u64,
             MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64,
             <span class="number">5000</span>, <span class="comment">// MAX_EVENTS_PER_QUERY,
@@ -3680,54 +3618,6 @@
 
         <span class="macro">assert_eq!</span>(emit_addr_1_count, (threshold) <span class="kw">as </span>u64);
         <span class="macro">assert_eq!</span>(emit_addr_2_count, (threshold + <span class="number">1 </span>+ <span class="number">2</span>) <span class="kw">as </span>u64);
-
-        <span class="comment">// Check if we correctly count the number of events in the DB with slot related filters
-        // First with filters that should give a count of 0 (too early, too late, or inconsistent start/end)
-        </span><span class="kw">let </span>slot_start_1 = Slot::new(<span class="number">3</span>, <span class="number">0</span>); <span class="comment">// start is after the last slot
-        </span><span class="kw">let </span>slot_end_1 = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// end is before the first slot
-        </span><span class="kw">let </span>slot_start_end_1 = Slot::new(<span class="number">2</span>, <span class="number">0</span>)..Slot::new(<span class="number">1</span>, <span class="number">0</span>); <span class="comment">// start is after end
-
-        // Then with filters that should give a positive count
-        // num_thread * max_events_per_operation * max_operations_per_block
-        </span><span class="kw">let </span>slot_start_2 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);
-        <span class="kw">let </span>slot_end_2 = Slot::new(<span class="number">2</span>, <span class="number">0</span>);
-        <span class="kw">let </span>slot_start_end_2 = Slot::new(<span class="number">1</span>, <span class="number">0</span>)..Slot::new(<span class="number">2</span>, <span class="number">0</span>);
-
-        <span class="kw">let </span>slot_start_count_1 = cache
-            .filter_item_estimate_count(<span class="kw-2">&amp;</span>KeyIndent::Event, <span class="kw-2">&amp;</span>FilterItem::SlotStart(slot_start_1))
-            .unwrap();
-        <span class="kw">let </span>slot_end_count_1 = cache
-            .filter_item_estimate_count(<span class="kw-2">&amp;</span>KeyIndent::Event, <span class="kw-2">&amp;</span>FilterItem::SlotEnd(slot_end_1))
-            .unwrap();
-        <span class="kw">let </span>slot_start_end_count_1 = cache
-            .filter_item_estimate_count(
-                <span class="kw-2">&amp;</span>KeyIndent::Event,
-                <span class="kw-2">&amp;</span>FilterItem::SlotStartEnd(slot_start_end_1.start, slot_start_end_1.end),
-            )
-            .unwrap();
-
-        <span class="kw">let </span>slot_start_count_2 = cache
-            .filter_item_estimate_count(<span class="kw-2">&amp;</span>KeyIndent::Event, <span class="kw-2">&amp;</span>FilterItem::SlotStart(slot_start_2))
-            .unwrap();
-        <span class="kw">let </span>slot_end_count_2 = cache
-            .filter_item_estimate_count(<span class="kw-2">&amp;</span>KeyIndent::Event, <span class="kw-2">&amp;</span>FilterItem::SlotEnd(slot_end_2))
-            .unwrap();
-        <span class="kw">let </span>slot_start_end_count_2 = cache
-            .filter_item_estimate_count(
-                <span class="kw-2">&amp;</span>KeyIndent::Event,
-                <span class="kw-2">&amp;</span>FilterItem::SlotStartEnd(slot_start_end_2.start, slot_start_end_2.end),
-            )
-            .unwrap();
-
-        <span class="macro">assert_eq!</span>(slot_start_count_1, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(slot_end_count_1, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(slot_start_end_count_1, <span class="number">0</span>);
-
-        <span class="kw">let </span>expected_count_per_period =
-            THREAD_COUNT <span class="kw">as </span>u64 * MAX_EVENT_PER_OPERATION <span class="kw">as </span>u64 * MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64;
-        <span class="macro">assert_eq!</span>(slot_start_count_2, expected_count_per_period);
-        <span class="macro">assert_eq!</span>(slot_end_count_2, <span class="number">2 </span>* expected_count_per_period); <span class="comment">// 2 periods as first_slot is (0,0)
-        </span><span class="macro">assert_eq!</span>(slot_start_end_count_2, expected_count_per_period);
 
         <span class="comment">// Check if we query first by emitter address then is_error
 
