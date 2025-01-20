@@ -677,21 +677,28 @@ impl EventCache {
     ) -> Result<u64, ModelsError> {
         match filter_item {
             FilterItem::SlotStart(start) => {
-                let diff = self.last_slot.slots_since(start, self.thread_count)?;
-                // Note: Pessimistic estimation - should we keep an average count of events per slot
-                //       and use that instead?
+                let diff = self
+                    .last_slot
+                    .slots_since(start, self.thread_count)
+                    .unwrap_or(0); // If start is after self.last_slot, we have no events in the filter
+                                   // Note: Pessimistic estimation - should we keep an average count of events per slot
+                                   //       and use that instead?
                 Ok(diff
                     .saturating_mul(self.max_events_per_operation)
                     .saturating_mul(self.max_operations_per_block))
             }
             FilterItem::SlotStartEnd(start, end) => {
-                let diff = end.slots_since(start, self.thread_count)?;
+                // If start is after end, we have no events in the filter as it is inconsistent
+                let diff = end.slots_since(start, self.thread_count).unwrap_or(0);
                 Ok(diff
                     .saturating_mul(self.max_events_per_operation)
                     .saturating_mul(self.max_operations_per_block))
             }
             FilterItem::SlotEnd(end) => {
-                let diff = end.slots_since(&self.first_slot, self.thread_count)?;
+                // If end is after self.first_slot, we have no events in the filter
+                let diff = end
+                    .slots_since(&self.first_slot, self.thread_count)
+                    .unwrap_or(0);
                 Ok(diff
                     .saturating_mul(self.max_events_per_operation)
                     .saturating_mul(self.max_operations_per_block))
@@ -1798,6 +1805,54 @@ mod tests {
 
         assert_eq!(emit_addr_1_count, (threshold) as u64);
         assert_eq!(emit_addr_2_count, (threshold + 1 + 2) as u64);
+
+        // Check if we correctly count the number of events in the DB with slot related filters
+        // First with filters that should give a count of 0 (too early, too late, or inconsistent start/end)
+        let slot_start_1 = Slot::new(3, 0); // start is after the last slot
+        let slot_end_1 = Slot::new(0, 0); // end is before the first slot
+        let slot_start_end_1 = Slot::new(2, 0)..Slot::new(1, 0); // start is after end
+
+        // Then with filters that should give a positive count
+        // num_thread * max_events_per_operation * max_operations_per_block
+        let slot_start_2 = Slot::new(1, 0);
+        let slot_end_2 = Slot::new(2, 0);
+        let slot_start_end_2 = Slot::new(1, 0)..Slot::new(2, 0);
+
+        let slot_start_count_1 = cache
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotStart(slot_start_1))
+            .unwrap();
+        let slot_end_count_1 = cache
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotEnd(slot_end_1))
+            .unwrap();
+        let slot_start_end_count_1 = cache
+            .filter_item_estimate_count(
+                &KeyIndent::Event,
+                &FilterItem::SlotStartEnd(slot_start_end_1.start, slot_start_end_1.end),
+            )
+            .unwrap();
+
+        let slot_start_count_2 = cache
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotStart(slot_start_2))
+            .unwrap();
+        let slot_end_count_2 = cache
+            .filter_item_estimate_count(&KeyIndent::Event, &FilterItem::SlotEnd(slot_end_2))
+            .unwrap();
+        let slot_start_end_count_2 = cache
+            .filter_item_estimate_count(
+                &KeyIndent::Event,
+                &FilterItem::SlotStartEnd(slot_start_end_2.start, slot_start_end_2.end),
+            )
+            .unwrap();
+
+        assert_eq!(slot_start_count_1, 0);
+        assert_eq!(slot_end_count_1, 0);
+        assert_eq!(slot_start_end_count_1, 0);
+
+        let expected_count_per_period =
+            THREAD_COUNT as u64 * MAX_EVENT_PER_OPERATION as u64 * MAX_OPERATIONS_PER_BLOCK as u64;
+        assert_eq!(slot_start_count_2, expected_count_per_period);
+        assert_eq!(slot_end_count_2, 2 * expected_count_per_period); // 2 periods as first_slot is (0,0)
+        assert_eq!(slot_start_end_count_2, expected_count_per_period);
 
         // Check if we query first by emitter address then is_error
 
