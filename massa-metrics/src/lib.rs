@@ -201,6 +201,7 @@ pub struct MassaMetrics {
 
     // network versions votes <version, votes>
     network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
+    network_current_version: IntGauge,
 
     pub tick_delay: Duration,
 
@@ -451,6 +452,9 @@ impl MassaMetrics {
         let deferred_calls_failed =
             IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
 
+        let network_current_version =
+            IntGauge::new("network_current_version", "current version of network").unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -505,6 +509,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
+                let _ = prometheus::register(Box::new(network_current_version.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -561,6 +566,7 @@ impl MassaMetrics {
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
+                network_current_version,
                 tick_delay,
                 deferred_calls_executed,
                 deferred_calls_failed,
@@ -758,6 +764,10 @@ impl MassaMetrics {
 
     pub fn inc_deferred_calls_failed(&self) {
         self.deferred_calls_failed.inc();
+    }
+
+    pub fn set_network_current_version(&self, version: u32) {
+        self.network_current_version.set(version as i64);
     }
 
     // Update the network version vote metrics
