@@ -61,3 +61,6 @@ pub const KEY_LEN_SER_ERROR: &str = "critical: key length serialization failed";
 // deferred calls
 pub const DEFERRED_CALL_DESER_ERROR: &str = "critical: message deserialization failed";
 pub const DEFERRED_CALL_SER_ERROR: &str = "critical: message serialization failed";
+pub const DEFERRED_CALL_TOTAL_GAS: &str = "deferred_call_total_gas";
+
+pub const DEFERRED_CALL_TOTAL_REGISTERED: &str = "deferred_call_total_registered";

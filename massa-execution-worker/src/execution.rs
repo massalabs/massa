@@ -1950,6 +1950,9 @@ impl ExecutionState {
             let messages = context_guard!(self)
                 .take_async_batch_v1(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
 
+            // clear operation id (otherwise events will be generated using this operation id)
+            self.execution_context.lock().origin_operation_id = None;
+
             // Try executing asynchronous messages.
             // Effects are cancelled on failure and the sender is reimbursed.
             for (_message_id, message) in messages {
