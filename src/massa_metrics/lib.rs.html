@@ -854,6 +854,32 @@
 <a href="#854" id="854">854</a>
 <a href="#855" id="855">855</a>
 <a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -1057,6 +1083,7 @@
 
     <span class="comment">// network versions votes &lt;version, votes&gt;
     </span>network_versions_votes: Arc&lt;RwLock&lt;HashMap&lt;u32, IntGauge&gt;&gt;&gt;,
+    network_current_version: IntGauge,
 
     <span class="kw">pub </span>tick_delay: Duration,
 
@@ -1307,6 +1334,9 @@
         <span class="kw">let </span>deferred_calls_failed =
             IntCounter::new(<span class="string">"deferred_calls_failed"</span>, <span class="string">"number of deferred calls failed"</span>).unwrap();
 
+        <span class="kw">let </span>network_current_version =
+            IntGauge::new(<span class="string">"network_current_version"</span>, <span class="string">"current version of network"</span>).unwrap();
+
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
@@ -1361,6 +1391,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(block_slot_delay.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_executed.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_failed.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(network_current_version.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1417,6 +1448,7 @@
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
+                network_current_version,
                 tick_delay,
                 deferred_calls_executed,
                 deferred_calls_failed,
@@ -1616,10 +1648,16 @@
         <span class="self">self</span>.deferred_calls_failed.inc();
     }
 
+    <span class="kw">pub fn </span>set_network_current_version(<span class="kw-2">&amp;</span><span class="self">self</span>, version: u32) {
+        <span class="self">self</span>.network_current_version.set(version <span class="kw">as </span>i64);
+    }
+
     <span class="comment">// Update the network version vote metrics
     </span><span class="kw">pub fn </span>update_network_version_vote(<span class="kw-2">&amp;</span><span class="self">self</span>, data: HashMap&lt;u32, u64&gt;) {
         <span class="kw">if </span><span class="self">self</span>.enabled {
             <span class="kw">let </span><span class="kw-2">mut </span>write = <span class="self">self</span>.network_versions_votes.write().unwrap();
+
+            <span class="kw">let </span>current_version: u32 = <span class="self">self</span>.network_current_version.get() <span class="kw">as </span>u32;
 
             {
                 <span class="kw">let </span>missing_version = write
@@ -1635,9 +1673,23 @@
                         }
                     }
                 }
+
+                <span class="kw">if </span>current_version &gt; <span class="number">0 </span>{
+                    <span class="comment">// remove metrics for version 0 if we have a current version &gt; 0
+                    // in this case 0 means no vote
+                    </span><span class="kw">if let </span><span class="prelude-val">Some</span>(counter) = write.remove(<span class="kw-2">&amp;</span><span class="number">0</span>) {
+                        <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = prometheus::unregister(Box::new(counter)) {
+                            <span class="macro">warn!</span>(<span class="string">"Failed to unregister network_version_vote_0 : {}"</span>, e);
+                        }
+                    }
+                }
             }
 
             <span class="kw">for </span>(version, count) <span class="kw">in </span>data.into_iter() {
+                <span class="kw">if </span>version.eq(<span class="kw-2">&amp;</span><span class="number">0</span>) &amp;&amp; current_version &gt; <span class="number">0 </span>{
+                    <span class="comment">// skip version 0 if we have a current version
+                    </span><span class="kw">continue</span>;
+                }
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(actual_counter) = write.get_mut(<span class="kw-2">&amp;</span>version) {
                     actual_counter.set(count <span class="kw">as </span>i64);
                 } <span class="kw">else </span>{

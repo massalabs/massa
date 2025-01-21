@@ -163,6 +163,7 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -299,6 +300,7 @@
                                 }
 
                                 {
+                                    massa_metrics.set_network_current_version(mip_store.get_network_version_current());
                                     <span class="kw">let </span>network_stats= mip_store.<span class="number">0</span>.read().get_network_versions_stats();
                                     massa_metrics.update_network_version_vote(network_stats);
                                 }
