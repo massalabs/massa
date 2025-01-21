@@ -775,6 +775,8 @@ impl MassaMetrics {
         if self.enabled {
             let mut write = self.network_versions_votes.write().unwrap();
 
+            let current_version: u32 = self.network_current_version.get() as u32;
+
             {
                 let missing_version = write
                     .keys()
@@ -789,9 +791,23 @@ impl MassaMetrics {
                         }
                     }
                 }
+
+                if current_version > 0 {
+                    // remove metrics for version 0 if we have a current version > 0
+                    // in this case 0 means no vote
+                    if let Some(counter) = write.remove(&0) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_0 : {}", e);
+                        }
+                    }
+                }
             }
 
             for (version, count) in data.into_iter() {
+                if version.eq(&0) && current_version > 0 {
+                    // skip version 0 if we have a current version
+                    continue;
+                }
                 if let Some(actual_counter) = write.get_mut(&version) {
                     actual_counter.set(count as i64);
                 } else {
