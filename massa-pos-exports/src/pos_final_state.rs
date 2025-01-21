@@ -13,7 +13,9 @@ use massa_db_exports::{
 use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
-use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
+use massa_serialization::{
+    buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
+};
 use nom::AsBytes;
 use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included};

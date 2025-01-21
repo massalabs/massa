@@ -156,12 +156,12 @@ impl Serializer<DeferredCall> for DeferredCallSerializer {
 #[derive(Clone)]
 pub struct DeferredCallDeserializer {
     slot_deserializer: SlotDeserializer,
-    address_deserializer: AddressDeserializer,
-    string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
-    vec_u8_deserializer: VecU8Deserializer,
+    pub(crate) address_deserializer: AddressDeserializer,
+    pub(crate) string_deserializer: StringDeserializer<U16VarIntDeserializer, u16>,
+    pub(crate) vec_u8_deserializer: VecU8Deserializer,
     pub(crate) amount_deserializer: AmountDeserializer,
     pub(crate) u64_var_int_deserializer: U64VarIntDeserializer,
-    bool_deserializer: BoolDeserializer,
+    pub(crate) bool_deserializer: BoolDeserializer,
 }
 
 impl DeferredCallDeserializer {
