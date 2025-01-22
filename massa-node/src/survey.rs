@@ -134,6 +134,7 @@ impl MassaSurvey {
                                 }
 
                                 {
+                                    massa_metrics.set_network_current_version(mip_store.get_network_version_current());
                                     let network_stats= mip_store.0.read().get_network_versions_stats();
                                     massa_metrics.update_network_version_vote(network_stats);
                                 }
