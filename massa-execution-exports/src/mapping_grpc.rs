@@ -22,6 +22,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 /// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
+    network_version: u32,
     max_datastore_query_config: Option<u32>,
     max_datastore_key_length: u8,
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
@@ -188,6 +189,12 @@ pub fn to_querystate_filter(
                 Ok(ExecutionQueryRequestItem::Events(event_filter))
             }
             exec::RequestItem::DeferredCallQuote(value) => {
+                if network_version < 1 {
+                    return Err(ModelsError::InvalidVersionError(
+                        "deferred call quote is not supported in this network version".to_string(),
+                    ));
+                }
+
                 Ok(ExecutionQueryRequestItem::DeferredCallQuote {
                     target_slot: value
                         .target_slot
@@ -200,10 +207,22 @@ pub fn to_querystate_filter(
                 })
             }
             exec::RequestItem::DeferredCallInfo(info) => {
+                if network_version < 1 {
+                    return Err(ModelsError::InvalidVersionError(
+                        "deferred call quote is not supported in this network version".to_string(),
+                    ));
+                }
+
                 let id = DeferredCallId::from_str(&info.call_id)?;
                 Ok(ExecutionQueryRequestItem::DeferredCallInfo(id))
             }
             exec::RequestItem::DeferredCallsBySlot(value) => {
+                if network_version < 1 {
+                    return Err(ModelsError::InvalidVersionError(
+                        "deferred call quote is not supported in this network version".to_string(),
+                    ));
+                }
+
                 Ok(ExecutionQueryRequestItem::DeferredCallsBySlot(
                     value
                         .slot

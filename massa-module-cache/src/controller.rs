@@ -1,6 +1,6 @@
 use massa_hash::Hash;
 use massa_models::prehash::BuildHashMapper;
-use massa_sc_runtime::{Compiler, RuntimeModule};
+use massa_sc_runtime::{Compiler, CondomLimits, RuntimeModule};
 use schnellru::{ByLength, LruMap};
 use tracing::debug;
 
@@ -39,13 +39,23 @@ impl ModuleCache {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.lru_cache.reset();
+        self.hd_cache.reset();
+    }
+
     /// Internal function to compile and build `ModuleInfo`
-    fn compile_cached(&mut self, bytecode: &[u8], hash: Hash) -> ModuleInfo {
+    fn compile_cached(
+        &mut self,
+        bytecode: &[u8],
+        hash: Hash,
+        condom_limits: CondomLimits,
+    ) -> ModuleInfo {
         match RuntimeModule::new(
             bytecode,
             self.cfg.gas_costs.clone(),
             Compiler::CL,
-            self.cfg.condom_limits.clone(),
+            condom_limits,
         ) {
             Ok(module) => {
                 debug!("compilation of module {} succeeded", hash);
@@ -60,13 +70,12 @@ impl ModuleCache {
     }
 
     /// Save a new or an already existing module in the cache
-    pub fn save_module(&mut self, bytecode: &[u8]) {
+    pub fn save_module(&mut self, bytecode: &[u8], condom_limits: CondomLimits) {
         let hash = Hash::compute_from(bytecode);
-        if let Some(hd_module_info) = self.hd_cache.get(
-            hash,
-            self.cfg.gas_costs.clone(),
-            self.cfg.condom_limits.clone(),
-        ) {
+        if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.cfg.gas_costs.clone(), condom_limits.clone())
+        {
             debug!("save_module: {} present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info);
         } else if let Some(lru_module_info) = self.lru_cache.get(hash) {
@@ -74,7 +83,7 @@ impl ModuleCache {
             self.hd_cache.insert(hash, lru_module_info);
         } else {
             debug!("save_module: {} missing", hash);
-            let module_info = self.compile_cached(bytecode, hash);
+            let module_info = self.compile_cached(bytecode, hash, condom_limits);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info);
         }
@@ -100,7 +109,7 @@ impl ModuleCache {
     /// * `ModuleInfo::Invalid` if the module is invalid
     /// * `ModuleInfo::Module` if the module is valid and has no delta
     /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
-    fn load_module_info(&mut self, bytecode: &[u8]) -> ModuleInfo {
+    fn load_module_info(&mut self, bytecode: &[u8], condom_limits: CondomLimits) -> ModuleInfo {
         if bytecode.is_empty() {
             let error_msg = "load_module: bytecode is absent".to_string();
             debug!(error_msg);
@@ -119,17 +128,16 @@ impl ModuleCache {
         if let Some(lru_module_info) = self.lru_cache.get(hash) {
             debug!("load_module: {} present in lru", hash);
             lru_module_info
-        } else if let Some(hd_module_info) = self.hd_cache.get(
-            hash,
-            self.cfg.gas_costs.clone(),
-            self.cfg.condom_limits.clone(),
-        ) {
+        } else if let Some(hd_module_info) =
+            self.hd_cache
+                .get(hash, self.cfg.gas_costs.clone(), condom_limits.clone())
+        {
             debug!("load_module: {} missing in lru but present in hd", hash);
             self.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
         } else {
             debug!("load_module: {} missing", hash);
-            let module_info = self.compile_cached(bytecode, hash);
+            let module_info = self.compile_cached(bytecode, hash, condom_limits);
             self.hd_cache.insert(hash, module_info.clone());
             self.lru_cache.insert(hash, module_info.clone());
             module_info
@@ -144,6 +152,7 @@ impl ModuleCache {
         &mut self,
         bytecode: &[u8],
         execution_gas: u64,
+        condom_limits: CondomLimits,
     ) -> Result<RuntimeModule, CacheError> {
         // Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
@@ -155,7 +164,7 @@ impl ModuleCache {
             )))?;
         // TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
-        let module_info = self.load_module_info(bytecode);
+        let module_info = self.load_module_info(bytecode, condom_limits);
         let module = match module_info {
             ModuleInfo::Invalid(err) => {
                 let err_msg = format!("invalid module: {}", err);
@@ -184,6 +193,7 @@ impl ModuleCache {
         &self,
         bytecode: &[u8],
         limit: u64,
+        condom_limits: CondomLimits,
     ) -> Result<RuntimeModule, CacheError> {
         debug!("load_tmp_module");
         // Do not actually debit the instance creation cost from the provided gas
@@ -198,7 +208,7 @@ impl ModuleCache {
             bytecode,
             self.cfg.gas_costs.clone(),
             Compiler::SP,
-            self.cfg.condom_limits.clone(),
+            condom_limits,
         )?;
         Ok(module)
     }

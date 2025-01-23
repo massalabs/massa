@@ -17,7 +17,8 @@ use massa_hash::Hash;
 use massa_ledger_exports::{LedgerEntryUpdate, MockLedgerControllerWrapper};
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
-    CHAINID, ENDORSEMENT_COUNT, GENESIS_KEY, LEDGER_ENTRY_DATASTORE_BASE_SIZE, THREAD_COUNT,
+    CHAINID, ENDORSEMENT_COUNT, GENESIS_KEY, LEDGER_ENTRY_DATASTORE_BASE_SIZE,
+    MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT,
 };
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::prehash::PreHashMap;
@@ -35,6 +36,8 @@ use massa_pos_exports::{
 };
 use massa_signature::KeyPair;
 use massa_test_framework::{TestUniverse, WaitPoint};
+use massa_versioning::mips::get_mip_list;
+use massa_versioning::versioning::{MipStatsConfig, MipStore};
 use mockall::predicate;
 use num::rational::Ratio;
 use parking_lot::RwLock;
@@ -106,6 +109,19 @@ fn final_state_boilerplate(
         .write()
         .expect_get_pos_state()
         .return_const(pos_final_state);
+
+    let mip_stats_config = MipStatsConfig {
+        block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
+        warn_announced_version_ratio: Ratio::new_raw(30, 100),
+    };
+    let mip_list = get_mip_list();
+    let mip_store =
+        MipStore::try_from((mip_list, mip_stats_config)).expect("mip store creation failed");
+
+    mock_final_state
+        .write()
+        .expect_get_mip_store()
+        .return_const(mip_store);
 
     let async_pool =
         custom_async_pool.unwrap_or(AsyncPool::new(AsyncPoolConfig::default(), db.clone()));

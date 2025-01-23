@@ -68,6 +68,7 @@ impl ActiveHistory {
         &self,
         message_id: &AsyncMessageId,
         mut current_updates: AsyncMessageUpdate,
+        execution_compound_version: u32,
     ) -> HistorySearchResult<SetUpdateOrDelete<AsyncMessage, AsyncMessageUpdate>> {
         for history_element in self.0.iter().rev() {
             match history_element
@@ -81,11 +82,16 @@ impl ActiveHistory {
                     msg.apply(current_updates);
                     return HistorySearchResult::Present(SetUpdateOrDelete::Set(msg));
                 }
-                Some(SetUpdateOrDelete::Update(msg_update)) => {
-                    let mut combined_message_update = msg_update.clone();
-                    combined_message_update.apply(current_updates);
-                    current_updates = combined_message_update;
-                }
+                Some(SetUpdateOrDelete::Update(msg_update)) => match execution_compound_version {
+                    0 => {
+                        current_updates.apply(msg_update.clone());
+                    }
+                    _ => {
+                        let mut combined_message_update = msg_update.clone();
+                        combined_message_update.apply(current_updates);
+                        current_updates = combined_message_update;
+                    }
+                },
                 Some(SetUpdateOrDelete::Delete) => return HistorySearchResult::Absent,
                 _ => (),
             }
@@ -498,14 +504,14 @@ mod test {
         // Test fetch_message with message_id (expect HistorySearchResult::Absent)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history.fetch_message(&message_id, current_updates);
+            let fetched = active_history.fetch_message(&message_id, current_updates, 1);
             assert_matches!(fetched, HistorySearchResult::Absent);
         }
 
         // Test fetch_message with message_id_2 (expect HistorySearchResult::Set)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history.fetch_message(&message_id_2, current_updates);
+            let fetched = active_history.fetch_message(&message_id_2, current_updates, 1);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 assert_eq!(msg, msg_2);
@@ -526,7 +532,7 @@ mod test {
                 validity_end: SetOrKeep::Set(validity_end_new),
                 ..Default::default()
             };
-            let fetched = active_history.fetch_message(&message_id_2, current_updates);
+            let fetched = active_history.fetch_message(&message_id_2, current_updates, 1);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 assert_ne!(msg, msg_2);
@@ -542,7 +548,7 @@ mod test {
         // Test fetch_message with message_id_3 (expect HistorySearchResult::Present)
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history.fetch_message(&message_id_3, current_updates);
+            let fetched = active_history.fetch_message(&message_id_3, current_updates, 1);
 
             if let HistorySearchResult::Present(SetUpdateOrDelete::Set(msg)) = fetched {
                 // Check the updates were applied correctly
@@ -561,7 +567,7 @@ mod test {
         // Expect updates to be empty (or default) here
         {
             let current_updates = AsyncMessageUpdate::default();
-            let fetched = active_history.fetch_message(&message_id_3_2, current_updates);
+            let fetched = active_history.fetch_message(&message_id_3_2, current_updates, 1);
             if let HistorySearchResult::Present(SetUpdateOrDelete::Update(updates)) = fetched {
                 assert_eq!(updates, AsyncMessageUpdate::default());
             } else {

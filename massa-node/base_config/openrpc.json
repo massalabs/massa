@@ -2041,6 +2041,7 @@
                 "additionalProperties": false
             },
             "DeferredCall": {
+                "title": "DeferredCall",
                 "type": "object",
                 "required": [
                     "sender_address",
@@ -2087,6 +2088,7 @@
                 }
             },
             "DeferredCallsQuoteRequest": {
+                "title": "DeferredCallsQuoteRequest",
                 "type": "object",
                 "required": [
                     "target_slot",
@@ -2106,6 +2108,7 @@
                 }
             },
             "DeferredCallsQuoteResponse": {
+                "title": "DeferredCallsQuoteResponse",
                 "type": "object",
                 "required": [
                     "target_slot",
@@ -2129,6 +2132,7 @@
                 }
             },
             "DeferredCallResponse": {
+                "title": "DeferredCallResponse",
                 "type": "object",
                 "required": [
                     "call_id",
@@ -2144,6 +2148,7 @@
                 }
             },
             "DeferredCallsSlotResponse": {
+                "title": "DeferredCallsSlotResponse",
                 "type": "object",
                 "properties": {
                     "slot": {

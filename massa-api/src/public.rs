@@ -1222,6 +1222,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         req: Vec<DeferredCallsQuoteRequest>,
     ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if req.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1267,6 +1277,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<String>,
     ) -> RpcResult<Vec<DeferredCallResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if arg.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1307,6 +1327,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if slots.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
