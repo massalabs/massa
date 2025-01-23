@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["check_input_operation"]};
+window.SIDEBAR_ITEMS = {"fn":["check_input_operation","get_address_datastore_keys_to_state_query_item"]};
