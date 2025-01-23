@@ -36,7 +36,7 @@ macro_rules! metadata_key {
 
 pub(crate) struct HDCache {
     /// RocksDB database
-    db: DB,
+    db: Option<DB>,
     /// How many entries are in the db. Count is initialized at creation time by iterating
     /// over all the entries in the db then it is maintained in memory
     entry_count: usize,
@@ -69,13 +69,31 @@ impl HDCache {
         let entry_count = 0;
 
         Self {
-            db,
+            db: Some(db),
             entry_count,
             max_entry_count,
             snip_amount,
             meta_ser: ModuleMetadataSerializer::new(),
             meta_deser: ModuleMetadataDeserializer::new(),
         }
+    }
+
+    pub fn reset(&mut self) {
+        let path = self.db.as_ref().unwrap().path().to_path_buf();
+
+        // Close the existing database by dropping it
+        let _ = self.db.take();
+
+        // Destroy the database files
+        if path.exists() {
+            if let Err(e) = DB::destroy(&Options::default(), path.clone()) {
+                warn!("Failed to destroy the db: {:?}", e);
+            }
+        }
+        // Reopen the database
+        let db = DB::open_default(&path).expect(OPEN_ERROR);
+        self.db = Some(db);
+        self.entry_count = 0;
     }
 
     /// Insert a new module in the cache
@@ -109,7 +127,11 @@ impl HDCache {
         let mut batch = WriteBatch::default();
         batch.put(module_key!(hash), ser_module);
         batch.put(metadata_key!(hash), ser_metadata);
-        self.db.write(batch).expect(CRUD_ERROR);
+        self.db
+            .as_ref()
+            .expect(CRUD_ERROR)
+            .write(batch)
+            .expect(CRUD_ERROR);
 
         self.entry_count = self.entry_count.saturating_add(1);
 
@@ -127,6 +149,8 @@ impl HDCache {
             .serialize(&ModuleMetadata::Delta(init_cost), &mut ser_metadata)
             .expect(DATA_SER_ERROR);
         self.db
+            .as_ref()
+            .expect(CRUD_ERROR)
             .put(metadata_key!(hash), ser_metadata)
             .expect(CRUD_ERROR);
     }
@@ -138,6 +162,8 @@ impl HDCache {
             .serialize(&ModuleMetadata::Invalid(err_msg), &mut ser_metadata)
             .expect(DATA_SER_ERROR);
         self.db
+            .as_ref()
+            .expect(CRUD_ERROR)
             .put(metadata_key!(hash), ser_metadata)
             .expect(CRUD_ERROR);
     }
@@ -151,6 +177,8 @@ impl HDCache {
     ) -> Option<ModuleInfo> {
         let mut iterator = self
             .db
+            .as_ref()
+            .expect(CRUD_ERROR)
             .iterator(IteratorMode::From(&module_key!(hash), Direction::Forward));
 
         if let (Some(Ok((key_1, ser_module))), Some(Ok((key_2, ser_metadata)))) =
@@ -187,7 +215,7 @@ impl HDCache {
 
     /// Try to remove as much as `self.amount_to_snip` entries from the db
     fn snip(&mut self) {
-        let mut iter = self.db.raw_iterator();
+        let mut iter = self.db.as_ref().expect(CRUD_ERROR).raw_iterator();
         let mut batch = WriteBatch::default();
         let mut snipped_count: usize = 0;
 
@@ -224,7 +252,11 @@ impl HDCache {
         }
 
         // delete the key and reduce entry_count
-        self.db.write(batch).expect(CRUD_ERROR);
+        self.db
+            .as_ref()
+            .expect(CRUD_ERROR)
+            .write(batch)
+            .expect(CRUD_ERROR);
         self.entry_count -= snipped_count;
     }
 }

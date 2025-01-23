@@ -27,6 +27,10 @@ impl LRUCache {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.cache.clear();
+    }
+
     /// If the module is contained in the cache:
     /// * retrieve a copy of it
     /// * move it up in the LRU cache

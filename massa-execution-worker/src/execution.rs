@@ -45,7 +45,7 @@ use massa_models::{amount::Amount, slot::Slot};
 use massa_module_cache::config::ModuleCacheConfig;
 use massa_module_cache::controller::ModuleCache;
 use massa_pos_exports::SelectorController;
-use massa_sc_runtime::{Interface, Response, VMError};
+use massa_sc_runtime::{CondomLimits, Interface, Response, VMError};
 use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
@@ -140,6 +140,7 @@ pub(crate) struct ExecutionState {
     pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
     #[cfg(feature = "dump-block")]
     block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
+    cur_execution_version: u32,
 }
 
 impl ExecutionState {
@@ -188,14 +189,16 @@ impl ExecutionState {
         })));
 
         // Create an empty placeholder execution context, with shared atomic access
-        let execution_context = Arc::new(Mutex::new(ExecutionContext::new(
+        let execution_context = ExecutionContext::new(
             config.clone(),
             final_state.clone(),
             active_history.clone(),
             module_cache.clone(),
             mip_store.clone(),
             execution_trail_hash,
-        )));
+        );
+        let cur_execution_version = execution_context.execution_component_version;
+        let execution_context = Arc::new(Mutex::new(execution_context));
 
         // Instantiate the interface providing ABI access to the VM, share the execution context with it
         let execution_interface = Box::new(InterfaceImpl::new(
@@ -238,6 +241,7 @@ impl ExecutionState {
             config,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
+            cur_execution_version,
         }
     }
 
@@ -301,6 +305,30 @@ impl ExecutionState {
 
         // append generated events to the final event store
         exec_out.events.finalize();
+
+        let ts = get_block_slot_timestamp(
+            self.config.thread_count,
+            self.config.t0,
+            self.config.genesis_timestamp,
+            exec_out.slot,
+        )
+        .expect("Time overflow");
+
+        let cur_version = self
+            .final_state
+            .read()
+            .get_mip_store()
+            .get_network_version_active_at(ts);
+
+        if cur_version == 0 {
+            // Truncate the events before saving them to the event store
+            // Note: this is only needed during the MIP transition period
+            // When it becomes active, we will refuse such events so no need to truncate them
+            for event in exec_out.events.0.iter_mut() {
+                event.data.truncate(self.config.max_event_size_v1);
+            }
+        }
+
         self.final_events_cache.save_events(exec_out.events.0);
 
         // update the prometheus metrics
@@ -446,6 +474,7 @@ impl ExecutionState {
 
         // lock execution context
         let mut context = context_guard!(self);
+        let execution_component_version = context.execution_component_version;
 
         // ignore the operation if it was already executed
         if context.is_op_executed(&operation_id) {
@@ -467,15 +496,21 @@ impl ExecutionState {
         // set the context origin operation ID
         // Note: set operation ID early as if context.transfer_coins fails, event_create will use
         // operation ID in the event message
-        context.origin_operation_id = Some(operation_id);
+        if execution_component_version >= 1 {
+            context.origin_operation_id = Some(operation_id);
+        }
 
         // debit the fee from the operation sender
         if let Err(err) =
             context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
         {
             let mut error = format!("could not spend fees: {}", err);
-            if error.len() > self.config.max_event_size {
-                error.truncate(self.config.max_event_size);
+            let max_event_size = match execution_component_version {
+                0 => self.config.max_event_size_v0,
+                _ => self.config.max_event_size_v1,
+            };
+            if error.len() > max_event_size {
+                error.truncate(max_event_size);
             }
             let event = context.event_create(error.clone(), true);
             context.event_emit(event);
@@ -490,6 +525,10 @@ impl ExecutionState {
 
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
+
+        if execution_component_version == 0 {
+            context.origin_operation_id = Some(operation_id);
+        }
 
         Ok(context_snapshot)
     }
@@ -953,10 +992,12 @@ impl ExecutionState {
             _ => panic!("unexpected operation type"),
         };
 
+        let condom_limits;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
 
+            condom_limits = context.get_condom_limits();
             // Set the call stack to a single element:
             // * the execution will happen in the context of the address of the operation's sender
             // * the context will give the operation's sender write access to its own ledger entry
@@ -971,17 +1012,17 @@ impl ExecutionState {
         };
 
         // load the tmp module
-        let module = self
-            .module_cache
-            .read()
-            .load_tmp_module(bytecode, *max_gas)?;
+        let module =
+            self.module_cache
+                .read()
+                .load_tmp_module(bytecode, *max_gas, condom_limits.clone())?;
         // run the VM
         let _res = massa_sc_runtime::run_main(
             &*self.execution_interface,
             module,
             *max_gas,
             self.config.gas_costs.clone(),
-            self.config.condom_limits.clone(),
+            condom_limits,
         )
         .map_err(|error| ExecutionError::VMError {
             context: "ExecuteSC".to_string(),
@@ -1026,9 +1067,12 @@ impl ExecutionState {
 
         // prepare the current slot context for executing the operation
         let bytecode;
+        let condom_limits;
         {
             // acquire write access to the context
             let mut context = context_guard!(self);
+
+            condom_limits = context.get_condom_limits();
 
             // Set the call stack
             // This needs to be defined before anything can fail, so that the emitted event contains the right stack
@@ -1074,7 +1118,11 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let module = self.module_cache.write().load_module(&bytecode, max_gas)?;
+
+        let module =
+            self.module_cache
+                .write()
+                .load_module(&bytecode, max_gas, condom_limits.clone())?;
         let response = massa_sc_runtime::run_function(
             &*self.execution_interface,
             module,
@@ -1082,7 +1130,7 @@ impl ExecutionState {
             param,
             max_gas,
             self.config.gas_costs.clone(),
-            self.config.condom_limits.clone(),
+            condom_limits,
         );
         match response {
             Ok(Response { init_gas_cost, .. })
@@ -1117,6 +1165,7 @@ impl ExecutionState {
         &self,
         message: AsyncMessage,
         bytecode: Option<Bytecode>,
+        execution_version: u32,
     ) -> Result<AsyncMessageExecutionResult, ExecutionError> {
         let mut result = AsyncMessageExecutionResult::new();
         #[cfg(feature = "execution-info")]
@@ -1136,7 +1185,10 @@ impl ExecutionState {
             context.stack = vec![
                 ExecutionStackElement {
                     address: message.sender,
-                    coins: Default::default(),
+                    coins: match execution_version {
+                        0 => message.coins,
+                        _ => Default::default(),
+                    },
                     owned_addresses: vec![message.sender],
                     operation_datastore: None,
                 },
@@ -1188,17 +1240,31 @@ impl ExecutionState {
 
         // load and execute the compiled module
         // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-        let Ok(module) = self
-            .module_cache
-            .write()
-            .load_module(&bytecode, message.max_gas)
-        else {
-            let err =
-                ExecutionError::RuntimeError("could not load module for async execution".into());
-            let mut context = context_guard!(self);
-            context.reset_to_snapshot(context_snapshot, err.clone());
-            context.cancel_async_message(&message);
-            return Err(err);
+        let module = match context_guard!(self).execution_component_version {
+            0 => self.module_cache.write().load_module(
+                &bytecode,
+                message.max_gas,
+                CondomLimits::default(),
+            )?,
+            _ => {
+                match self.module_cache.write().load_module(
+                    &bytecode,
+                    message.max_gas,
+                    self.config.condom_limits.clone(),
+                ) {
+                    Ok(module) => module,
+                    Err(err) => {
+                        let err = ExecutionError::RuntimeError(format!(
+                            "could not load module for async execution: {}",
+                            err
+                        ));
+                        let mut context = context_guard!(self);
+                        context.reset_to_snapshot(context_snapshot, err.clone());
+                        context.cancel_async_message(&message);
+                        return Err(err);
+                    }
+                }
+            }
         };
 
         let response = massa_sc_runtime::run_function(
@@ -1326,6 +1392,7 @@ impl ExecutionState {
                 let module = self.module_cache.write().load_module(
                     &bytecode,
                     call.get_effective_gas(self.config.deferred_calls_config.call_cst_gas_cost),
+                    self.config.condom_limits.clone(),
                 )?;
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
@@ -1395,7 +1462,7 @@ impl ExecutionState {
     /// # Returns
     /// An `ExecutionOutput` structure summarizing the output of the executed slot
     pub fn execute_slot(
-        &self,
+        &mut self,
         slot: &Slot,
         exec_target: Option<&(BlockId, ExecutionBlockMetadata)>,
         selector: Box<dyn SelectorController>,
@@ -1424,38 +1491,92 @@ impl ExecutionState {
             self.mip_store.clone(),
         );
 
-        // Deferred calls
-        let calls = execution_context.deferred_calls_advance_slot(*slot);
+        let execution_version = execution_context.execution_component_version;
+        if self.cur_execution_version != execution_version {
+            // Reset the cache because a new execution version has become active
+            info!("A new execution version has become active! Resetting the module-cache.");
+            self.module_cache.write().reset();
+            self.cur_execution_version = execution_version;
+        }
 
-        // Apply the created execution context for slot execution
-        *context_guard!(self) = execution_context;
+        let mut deferred_calls_slot_gas = 0;
 
-        for (id, call) in calls.slot_calls {
-            let cancelled = call.cancelled;
-            match self.execute_deferred_call(&id, call) {
-                Ok(_exec) => {
-                    if cancelled {
-                        continue;
-                    }
-                    info!("executed deferred call: {:?}", id);
-                    cfg_if::cfg_if! {
-                        if #[cfg(feature = "execution-trace")] {
-                            // Safe to unwrap
-                            slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
-                        } else if #[cfg(feature = "execution-info")] {
-                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
-                            exec_info.deferred_calls_messages.push(Ok(_exec));
+        // deferred calls execution
+
+        match execution_version {
+            0 => {
+                // Get asynchronous messages to execute
+                let messages = execution_context.take_async_batch_v0(
+                    self.config.max_async_gas,
+                    self.config.async_msg_cst_gas_cost,
+                );
+
+                // Apply the created execution context for slot execution
+                *context_guard!(self) = execution_context;
+
+                // Try executing asynchronous messages.
+                // Effects are cancelled on failure and the sender is reimbursed.
+                for (opt_bytecode, message) in messages {
+                    match self.execute_async_message(message, opt_bytecode, execution_version) {
+                        Ok(_message_return) => {
+                            cfg_if::cfg_if! {
+                                if #[cfg(feature = "execution-trace")] {
+                                    // Safe to unwrap
+                                    slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                                } else if #[cfg(feature = "execution-info")] {
+                                    slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                                    exec_info.async_messages.push(Ok(_message_return));
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            let msg = format!("failed executing async message: {}", err);
+                            #[cfg(feature = "execution-info")]
+                            exec_info.async_messages.push(Err(msg.clone()));
+                            debug!(msg);
                         }
                     }
                 }
-                Err(err) => {
-                    let msg = format!("failed executing deferred call: {}", err);
-                    #[cfg(feature = "execution-info")]
-                    exec_info.deferred_calls_messages.push(Err(msg.clone()));
-                    dbg!(msg);
+            }
+            _ => {
+                // Deferred calls
+                let calls = execution_context.deferred_calls_advance_slot(*slot);
+
+                deferred_calls_slot_gas = calls.effective_slot_gas;
+
+                // Apply the created execution context for slot execution
+                *context_guard!(self) = execution_context;
+
+                for (id, call) in calls.slot_calls {
+                    let cancelled = call.cancelled;
+                    match self.execute_deferred_call(&id, call) {
+                        Ok(_exec) => {
+                            if cancelled {
+                                continue;
+                            }
+                            info!("executed deferred call: {:?}", id);
+                            cfg_if::cfg_if! {
+                                if #[cfg(feature = "execution-trace")] {
+                                    // Safe to unwrap
+                                    slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
+                                } else if #[cfg(feature = "execution-info")] {
+                                    slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
+                                    exec_info.deferred_calls_messages.push(Ok(_exec));
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            let msg = format!("failed executing deferred call: {}", err);
+                            #[cfg(feature = "execution-info")]
+                            exec_info.deferred_calls_messages.push(Err(msg.clone()));
+                            dbg!(msg);
+                        }
+                    }
                 }
             }
         }
+
+        // Block execution
 
         let mut block_info: Option<ExecutedBlockInfo> = None;
         // Set block gas (max_gas_per_block - gas used by deferred calls)
@@ -1639,87 +1760,171 @@ impl ExecutionState {
             // Update speculative rolls state production stats
             context.update_production_stats(&block_creator_addr, *slot, Some(*block_id));
 
-            // Divide the total block credits into parts + remainder
-            let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
-            let block_credit_part = block_credits
-                .checked_div_u64(block_credit_part_count)
-                .expect("critical: block_credits checked_div factor is 0");
-            let remainder = block_credits
-                .checked_rem_u64(block_credit_part_count)
-                .expect("critical: block_credits checked_rem factor is 0");
+            match execution_version {
+                0 => {
+                    // Credit endorsement producers and endorsed block producers
+                    let mut remaining_credit = block_credits;
+                    let block_credit_part = block_credits
+                        .checked_div_u64(3 * (1 + (self.config.endorsement_count)))
+                        .expect("critical: block_credits checked_div factor is 0");
 
-            // Give 3 parts + remainder to the block producer to stimulate block production
-            // even in the absence of endorsements.
-            let mut block_producer_credit = block_credit_part
-                .saturating_mul_u64(3)
-                .saturating_add(remainder);
+                    for endorsement_creator in endorsement_creators {
+                        // credit creator of the endorsement with coins
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                remaining_credit =
+                                    remaining_credit.saturating_sub(block_credit_part);
 
-            for endorsement_creator in endorsement_creators {
-                // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
-                // and dissuade from emitting the block too early (before the endorsements have propageted).
-                block_producer_credit = block_producer_credit.saturating_add(block_credit_part);
+                                #[cfg(feature = "execution-info")]
+                                exec_info
+                                    .endorsement_creator_rewards
+                                    .insert(endorsement_creator, block_credit_part);
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
+                                    block_credit_part, endorsement_creator, err
+                                )
+                            }
+                        }
 
-                // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
-                // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
-                // and to not publish too late (will not be included in the block).
-                match context.transfer_coins(
-                    None,
-                    Some(endorsement_creator),
-                    block_credit_part,
-                    false,
-                ) {
-                    Ok(_) => {
-                        #[cfg(feature = "execution-info")]
-                        exec_info
-                            .endorsement_creator_rewards
-                            .insert(endorsement_creator, block_credit_part);
-                    }
-                    Err(err) => {
-                        debug!(
-                            "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
-                            block_credit_part, endorsement_creator, err
-                        )
-                    }
-                }
-
-                // Credit the creator of the endorsed block with 1 part.
-                // This is done to incentivize block producers to be endorsed,
-                // typically by not publishing their blocks too late.
-                match context.transfer_coins(
-                    None,
-                    Some(endorsement_target_creator),
-                    block_credit_part,
-                    false,
-                ) {
-                    Ok(_) => {
-                        #[cfg(feature = "execution-info")]
-                        {
-                            exec_info.endorsement_target_reward =
-                                Some((endorsement_target_creator, block_credit_part));
+                        // credit creator of the endorsed block with coins
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_target_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                remaining_credit =
+                                    remaining_credit.saturating_sub(block_credit_part);
+                                #[cfg(feature = "execution-info")]
+                                {
+                                    exec_info.endorsement_target_reward =
+                                        Some((endorsement_target_creator, block_credit_part));
+                                }
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
+                                    block_credit_part, endorsement_target_creator, err
+                                )
+                            }
                         }
                     }
-                    Err(err) => {
+
+                    // Credit block creator with remaining_credit
+                    if let Err(err) = context.transfer_coins(
+                        None,
+                        Some(block_creator_addr),
+                        remaining_credit,
+                        false,
+                    ) {
                         debug!(
-                            "failed to credit {} coins to endorsement target creator {} on block execution: {}",
-                            block_credit_part, endorsement_target_creator, err
+                            "failed to credit {} coins to block creator {} on block execution: {}",
+                            remaining_credit, block_creator_addr, err
                         )
+                    } else {
+                        #[cfg(feature = "execution-info")]
+                        {
+                            exec_info.block_producer_reward =
+                                Some((block_creator_addr, remaining_credit));
+                        }
                     }
                 }
-            }
+                _ => {
+                    // Divide the total block credits into parts + remainder
+                    let block_credit_part_count = 3 * (1 + self.config.endorsement_count);
+                    let block_credit_part = block_credits
+                        .checked_div_u64(block_credit_part_count)
+                        .expect("critical: block_credits checked_div factor is 0");
+                    let remainder = block_credits
+                        .checked_rem_u64(block_credit_part_count)
+                        .expect("critical: block_credits checked_rem factor is 0");
 
-            // Credit block producer
-            if let Err(err) =
-                context.transfer_coins(None, Some(block_creator_addr), block_producer_credit, false)
-            {
-                debug!(
-                    "failed to credit {} coins to block creator {} on block execution: {}",
-                    block_producer_credit, block_creator_addr, err
-                )
-            } else {
-                #[cfg(feature = "execution-info")]
-                {
-                    exec_info.block_producer_reward =
-                        Some((block_creator_addr, block_producer_credit));
+                    // Give 3 parts + remainder to the block producer to stimulate block production
+                    // even in the absence of endorsements.
+                    let mut block_producer_credit = block_credit_part
+                        .saturating_mul_u64(3)
+                        .saturating_add(remainder);
+
+                    for endorsement_creator in endorsement_creators {
+                        // Credit the creator of the block with 1 part to stimulate endorsement inclusion of endorsements,
+                        // and dissuade from emitting the block too early (before the endorsements have propageted).
+                        block_producer_credit =
+                            block_producer_credit.saturating_add(block_credit_part);
+
+                        // Credit creator of the endorsement with 1 part to stimulate the production of endorsements.
+                        // This also motivates endorsers to not publish their endorsements too early (will not endorse the right block),
+                        // and to not publish too late (will not be included in the block).
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                #[cfg(feature = "execution-info")]
+                                exec_info
+                                    .endorsement_creator_rewards
+                                    .insert(endorsement_creator, block_credit_part);
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement creator {} for an endorsed block execution: {}",
+                                    block_credit_part, endorsement_creator, err
+                                )
+                            }
+                        }
+
+                        // Credit the creator of the endorsed block with 1 part.
+                        // This is done to incentivize block producers to be endorsed,
+                        // typically by not publishing their blocks too late.
+                        match context.transfer_coins(
+                            None,
+                            Some(endorsement_target_creator),
+                            block_credit_part,
+                            false,
+                        ) {
+                            Ok(_) => {
+                                #[cfg(feature = "execution-info")]
+                                {
+                                    exec_info.endorsement_target_reward =
+                                        Some((endorsement_target_creator, block_credit_part));
+                                }
+                            }
+                            Err(err) => {
+                                debug!(
+                                    "failed to credit {} coins to endorsement target creator {} on block execution: {}",
+                                    block_credit_part, endorsement_target_creator, err
+                                )
+                            }
+                        }
+                    }
+
+                    // Credit block producer
+                    if let Err(err) = context.transfer_coins(
+                        None,
+                        Some(block_creator_addr),
+                        block_producer_credit,
+                        false,
+                    ) {
+                        debug!(
+                            "failed to credit {} coins to block creator {} on block execution: {}",
+                            block_producer_credit, block_creator_addr, err
+                        )
+                    } else {
+                        #[cfg(feature = "execution-info")]
+                        {
+                            exec_info.block_producer_reward =
+                                Some((block_creator_addr, block_producer_credit));
+                        }
+                    }
                 }
             }
         } else {
@@ -1730,40 +1935,47 @@ impl ExecutionState {
             context_guard!(self).update_production_stats(&producer_addr, *slot, None);
         }
 
-        // Get asynchronous messages to execute
-        // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
-        let async_msg_gas_available = self
-            .config
-            .max_async_gas
-            .saturating_sub(calls.effective_slot_gas)
-            .saturating_add(remaining_block_gas);
-        let messages = context_guard!(self)
-            .take_async_batch(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+        // Async msg execution
 
-        // clear operation id (otherwise events will be generated using this operation id)
-        self.execution_context.lock().origin_operation_id = None;
+        if execution_version > 0 {
+            // Get asynchronous messages to execute
+            // The gas available for async messages is the remaining block gas + async remaining gas (max_async - gas used by deferred calls)
+            let async_msg_gas_available = self
+                .config
+                .max_async_gas
+                .saturating_sub(deferred_calls_slot_gas)
+                .saturating_add(remaining_block_gas);
 
-        // Try executing asynchronous messages.
-        // Effects are cancelled on failure and the sender is reimbursed.
-        for (_message_id, message) in messages {
-            let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
-            match self.execute_async_message(message, opt_bytecode) {
-                Ok(_message_return) => {
-                    cfg_if::cfg_if! {
-                        if #[cfg(feature = "execution-trace")] {
-                            // Safe to unwrap
-                            slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
-                        } else if #[cfg(feature = "execution-info")] {
-                            slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
-                            exec_info.async_messages.push(Ok(_message_return));
+            // Get asynchronous messages to execute
+            let messages = context_guard!(self)
+                .take_async_batch_v1(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
+
+            // clear operation id (otherwise events will be generated using this operation id)
+            self.execution_context.lock().origin_operation_id = None;
+
+            // Try executing asynchronous messages.
+            // Effects are cancelled on failure and the sender is reimbursed.
+            for (_message_id, message) in messages {
+                let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
+
+                match self.execute_async_message(message, opt_bytecode, execution_version) {
+                    Ok(_message_return) => {
+                        cfg_if::cfg_if! {
+                            if #[cfg(feature = "execution-trace")] {
+                                // Safe to unwrap
+                                slot_trace.asc_call_stacks.push(_message_return.traces.unwrap().0);
+                            } else if #[cfg(feature = "execution-info")] {
+                                slot_trace.asc_call_stacks.push(_message_return.traces.clone().unwrap().0);
+                                exec_info.async_messages.push(Ok(_message_return));
+                            }
                         }
                     }
-                }
-                Err(err) => {
-                    let msg = format!("failed executing async message: {}", err);
-                    #[cfg(feature = "execution-info")]
-                    exec_info.async_messages.push(Err(msg.clone()));
-                    debug!(msg);
+                    Err(err) => {
+                        let msg = format!("failed executing async message: {}", err);
+                        #[cfg(feature = "execution-info")]
+                        exec_info.async_messages.push(Err(msg.clone()));
+                        debug!(msg);
+                    }
                 }
             }
         }
@@ -1990,6 +2202,7 @@ impl ExecutionState {
         // run the interpreter according to the target type
         let exec_response = match req.target {
             ReadOnlyExecutionTarget::BytecodeExecution(bytecode) => {
+                let condom_limits = execution_context.get_condom_limits();
                 {
                     let mut context = context_guard!(self);
                     *context = execution_context;
@@ -2003,10 +2216,11 @@ impl ExecutionState {
                 }
 
                 // load the tmp module
-                let module = self
-                    .module_cache
-                    .read()
-                    .load_tmp_module(&bytecode, req.max_gas)?;
+                let module = self.module_cache.read().load_tmp_module(
+                    &bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )?;
 
                 // run the VM
                 massa_sc_runtime::run_main(
@@ -2014,7 +2228,7 @@ impl ExecutionState {
                     module,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    self.config.condom_limits.clone(),
+                    condom_limits,
                 )
                 .map_err(|error| ExecutionError::VMError {
                     context: "ReadOnlyExecutionTarget::BytecodeExecution".to_string(),
@@ -2033,6 +2247,7 @@ impl ExecutionState {
                     .unwrap_or_default()
                     .0;
 
+                let condom_limits = execution_context.get_condom_limits();
                 {
                     let mut context = context_guard!(self);
                     *context = execution_context;
@@ -2057,10 +2272,11 @@ impl ExecutionState {
 
                 // load and execute the compiled module
                 // IMPORTANT: do not keep a lock here as `run_function` uses the `get_module` interface
-                let module = self
-                    .module_cache
-                    .write()
-                    .load_module(&bytecode, req.max_gas)?;
+                let module = self.module_cache.write().load_module(
+                    &bytecode,
+                    req.max_gas,
+                    condom_limits.clone(),
+                )?;
 
                 let response = massa_sc_runtime::run_function(
                     &*self.execution_interface,
@@ -2069,7 +2285,7 @@ impl ExecutionState {
                     &parameter,
                     req.max_gas,
                     self.config.gas_costs.clone(),
-                    self.config.condom_limits.clone(),
+                    condom_limits,
                 );
 
                 match response {

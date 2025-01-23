@@ -10,8 +10,13 @@ use massa_async_pool::{
 };
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
-use massa_models::slot::Slot;
 use massa_models::types::{Applicable, SetUpdateOrDelete};
+use massa_models::{
+    config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},
+    slot::Slot,
+    timeslots::get_block_slot_timestamp,
+};
+use massa_versioning::versioning::MipComponent;
 use parking_lot::RwLock;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -131,6 +136,7 @@ impl SpeculativeAsyncPool {
                     &slot,
                     &message_info.validity_start,
                     &message_info.validity_end,
+                    self.get_execution_component_version(&slot),
                 )
                 && message_info.can_be_executed
             {
@@ -140,7 +146,11 @@ impl SpeculativeAsyncPool {
             }
         }
 
-        let taken = self.fetch_msgs(wanted_messages, true);
+        let taken = self.fetch_msgs(
+            wanted_messages,
+            true,
+            self.get_execution_component_version(&slot),
+        );
 
         for (message_id, _) in taken.iter() {
             self.message_infos.remove(message_id);
@@ -162,14 +172,17 @@ impl SpeculativeAsyncPool {
         &mut self,
         slot: &Slot,
         ledger_changes: &LedgerChanges,
+        fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let execution_component_version = self.get_execution_component_version(slot);
+
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
 
         let mut eliminated_infos = Vec::new();
         self.message_infos.retain(|id, info| {
-            if Self::is_message_expired(slot, &info.validity_end) {
+            if Self::is_message_expired(slot, &info.validity_end, execution_component_version) {
                 eliminated_infos.push((*id, info.clone()));
                 false
             } else {
@@ -180,7 +193,11 @@ impl SpeculativeAsyncPool {
         let mut eliminated_new_messages = Vec::new();
         self.pool_changes.0.retain(|k, v| match v {
             SetUpdateOrDelete::Set(message) => {
-                if Self::is_message_expired(slot, &message.validity_end) {
+                if Self::is_message_expired(
+                    slot,
+                    &message.validity_end,
+                    execution_component_version,
+                ) {
                     eliminated_new_messages.push((*k, v.clone()));
                     false
                 } else {
@@ -220,22 +237,29 @@ impl SpeculativeAsyncPool {
         }
 
         // Query triggered messages
-        let triggered_msg =
-            self.fetch_msgs(triggered_info.iter().map(|(id, _)| id).collect(), false);
+        let triggered_msg = self.fetch_msgs(
+            triggered_info.iter().map(|(id, _)| id).collect(),
+            false,
+            execution_component_version,
+        );
 
         for (msg_id, _msg) in triggered_msg.iter() {
             self.pool_changes.push_activate(*msg_id);
         }
 
         // Query eliminated messages
-        let mut eliminated_msg =
-            self.fetch_msgs(eliminated_infos.iter().map(|(id, _)| id).collect(), true);
-
-        eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
-            SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
-            SetUpdateOrDelete::Update(_v) => None,
-            SetUpdateOrDelete::Delete => None,
-        }));
+        let mut eliminated_msg = self.fetch_msgs(
+            eliminated_infos.iter().map(|(id, _)| id).collect(),
+            true,
+            execution_component_version,
+        );
+        if fix_eliminated_msg {
+            eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
+                SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
+                SetUpdateOrDelete::Update(_v) => None,
+                SetUpdateOrDelete::Delete => None,
+            }));
+        }
         eliminated_msg
     }
 
@@ -243,6 +267,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         mut wanted_ids: Vec<&AsyncMessageId>,
         delete_existing: bool,
+        execution_component_version: u32,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut msgs = Vec::new();
 
@@ -277,6 +302,7 @@ impl SpeculativeAsyncPool {
             match self.active_history.read().fetch_message(
                 message_id,
                 current_changes.get(message_id).cloned().unwrap_or_default(),
+                execution_component_version,
             ) {
                 Present(SetUpdateOrDelete::Set(mut msg)) => {
                     msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
@@ -288,7 +314,14 @@ impl SpeculativeAsyncPool {
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
-                        *e = msg_update.clone();
+                        match execution_component_version {
+                            0 => {
+                                e.apply(msg_update.clone());
+                            }
+                            _ => {
+                                *e = msg_update.clone();
+                            }
+                        }
                     });
                     return true;
                 }
@@ -318,12 +351,29 @@ impl SpeculativeAsyncPool {
         msgs
     }
 
+    fn get_execution_component_version(&self, slot: &Slot) -> u32 {
+        let ts = get_block_slot_timestamp(THREAD_COUNT, T0, *GENESIS_TIMESTAMP, *slot)
+            .expect("Time overflow when getting block slot timestamp for MIP");
+
+        self.final_state
+            .read()
+            .get_mip_store()
+            .get_latest_component_version_at(&MipComponent::Execution, ts)
+    }
+
     /// Return true if a message (given its validity end) is expired
     /// Must be consistent with is_message_valid
-    fn is_message_expired(slot: &Slot, message_validity_end: &Slot) -> bool {
+    fn is_message_expired(
+        slot: &Slot,
+        message_validity_end: &Slot,
+        execution_component_version: u32,
+    ) -> bool {
         // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
-        *slot > *message_validity_end
+        match execution_component_version {
+            0 => *slot >= *message_validity_end,
+            _ => *slot > *message_validity_end,
+        }
     }
 
     /// Return true if a message (given its validity_start & validity end) is ready to execute
@@ -332,10 +382,14 @@ impl SpeculativeAsyncPool {
         slot: &Slot,
         message_validity_start: &Slot,
         message_validity_end: &Slot,
+        execution_component_version: u32,
     ) -> bool {
         // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
-        slot >= message_validity_start && slot <= message_validity_end
+        match execution_component_version {
+            0 => slot >= message_validity_start && slot < message_validity_end,
+            _ => slot >= message_validity_start && slot <= message_validity_end,
+        }
     }
 }
 
@@ -358,42 +412,50 @@ mod tests {
 
         assert!(!SpeculativeAsyncPool::is_message_expired(
             &slot1,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
         assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
             &slot1,
             &slot_validity_start,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
 
         assert!(!SpeculativeAsyncPool::is_message_expired(
             &slot_validity_start,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
         assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
             &slot_validity_start,
             &slot_validity_start,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
 
         assert!(!SpeculativeAsyncPool::is_message_expired(
             &slot_validity_end,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
         assert!(SpeculativeAsyncPool::is_message_ready_to_execute(
             &slot_validity_end,
             &slot_validity_start,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
 
         assert!(SpeculativeAsyncPool::is_message_expired(
             &slot2,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
         assert!(!SpeculativeAsyncPool::is_message_ready_to_execute(
             &slot2,
             &slot_validity_start,
-            &slot_validity_end
+            &slot_validity_end,
+            1
         ));
     }
 }

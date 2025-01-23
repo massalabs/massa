@@ -111,9 +111,8 @@ massa_event_cache = { path = "./massa-event-cache" }
 # Massa projects dependencies
 # massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", branch = "deferred_calls" }
 # massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "branch" = "deferred_calls" }
-massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "b5267178eaf266ec724691d7de163e4c34343416" }
-massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "f5a584b9f8050f332c9ed332bd0a40f8e0372807" }
-
+massa-proto-rs = { git = "https://github.com/massalabs/massa-proto-rs", "rev" = "c9a7c55914f3d308996113df0936f15d96490313" }
+massa-sc-runtime = { git = "https://github.com/massalabs/massa-sc-runtime", "rev" = "cd14c775aff31b8c0f49064613118f428f9dd45f" }
 
 peernet = { git = "https://github.com/massalabs/PeerNet", "rev" = "04b05ddd320fbe76cc858115af7b5fc28bdb8310" }
 # Dev only - use local dependencies

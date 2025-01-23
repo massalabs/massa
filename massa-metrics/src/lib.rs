@@ -201,6 +201,7 @@ pub struct MassaMetrics {
 
     // network versions votes <version, votes>
     network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
+    network_current_version: IntGauge,
 
     pub tick_delay: Duration,
 
@@ -451,6 +452,9 @@ impl MassaMetrics {
         let deferred_calls_failed =
             IntCounter::new("deferred_calls_failed", "number of deferred calls failed").unwrap();
 
+        let network_current_version =
+            IntGauge::new("network_current_version", "current version of network").unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -505,6 +509,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_executed.clone()));
                 let _ = prometheus::register(Box::new(deferred_calls_failed.clone()));
+                let _ = prometheus::register(Box::new(network_current_version.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -561,6 +566,7 @@ impl MassaMetrics {
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
+                network_current_version,
                 tick_delay,
                 deferred_calls_executed,
                 deferred_calls_failed,
@@ -760,10 +766,16 @@ impl MassaMetrics {
         self.deferred_calls_failed.inc();
     }
 
+    pub fn set_network_current_version(&self, version: u32) {
+        self.network_current_version.set(version as i64);
+    }
+
     // Update the network version vote metrics
     pub fn update_network_version_vote(&self, data: HashMap<u32, u64>) {
         if self.enabled {
             let mut write = self.network_versions_votes.write().unwrap();
+
+            let current_version: u32 = self.network_current_version.get() as u32;
 
             {
                 let missing_version = write
@@ -779,9 +791,23 @@ impl MassaMetrics {
                         }
                     }
                 }
+
+                if current_version > 0 {
+                    // remove metrics for version 0 if we have a current version > 0
+                    // in this case 0 means no vote
+                    if let Some(counter) = write.remove(&0) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_0 : {}", e);
+                        }
+                    }
+                }
             }
 
             for (version, count) in data.into_iter() {
+                if version.eq(&0) && current_version > 0 {
+                    // skip version 0 if we have a current version
+                    continue;
+                }
                 if let Some(actual_counter) = write.get_mut(&version) {
                     actual_counter.set(count as i64);
                 } else {

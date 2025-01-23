@@ -46,6 +46,8 @@ pub struct NodeStatus {
     pub chain_id: u64,
     /// minimal fees to include an operation in a block
     pub minimal_fees: Amount,
+    /// current mip version
+    pub current_mip_version: u32,
 }
 
 impl std::fmt::Display for NodeStatus {

@@ -458,6 +458,12 @@ impl MassaRpcServer for API<Public> {
         let config = CompactConfig::default();
         let now = MassaTime::now();
 
+        let current_mip_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
         let last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,
             api_settings.t0,
@@ -555,6 +561,7 @@ impl MassaRpcServer for API<Public> {
             current_cycle,
             chain_id: self.0.api_settings.chain_id,
             minimal_fees: self.0.api_settings.minimal_fees,
+            current_mip_version,
         })
     }
 
@@ -1160,6 +1167,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         req: Vec<DeferredCallsQuoteRequest>,
     ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if req.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1205,6 +1222,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         arg: Vec<String>,
     ) -> RpcResult<Vec<DeferredCallResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if arg.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }
@@ -1245,6 +1272,16 @@ impl MassaRpcServer for API<Public> {
         &self,
         slots: Vec<Slot>,
     ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
+        let current_network_version = self
+            .0
+            .keypair_factory
+            .mip_store
+            .get_network_version_current();
+
+        if current_network_version < 1 {
+            return Err(ApiError::NotFound.into());
+        }
+
         if slots.len() as u64 > self.0.api_settings.max_arguments {
             return Err(ApiError::BadRequest("too many arguments".into()).into());
         }

@@ -960,6 +960,7 @@ pub(crate) fn get_status(
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: Some(grpc.grpc_config.minimal_fees.into()),
+        current_mip_version: grpc.keypair_factory.mip_store.get_network_version_current(),
     };
 
     Ok(grpc_api::GetStatusResponse {
@@ -992,11 +993,13 @@ pub(crate) fn query_state(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
+    let current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
     let queries = request
         .into_inner()
         .queries
         .into_iter()
-        .map(to_querystate_filter)
+        .map(|q| to_querystate_filter(q, current_network_version))
         .collect::<Result<Vec<_>, _>>()?;
 
     if queries.is_empty() {
