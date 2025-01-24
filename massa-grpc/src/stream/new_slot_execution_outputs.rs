@@ -43,7 +43,7 @@ struct Filter {
     // Executed ops changes filter
     executed_ops_changes_filter: Option<ExecutedOpsChangesFilter>,
     // Ledger changes filter
-    ledger_changes_filter: Option<LedgerChangesFilter>,
+    ledger_changes_filter: Option<grpc_api::ledger_changes_filter::Filter>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -69,23 +69,7 @@ struct ExecutedDenounciationFilter {
 }
 
 #[derive(Clone, Debug, Default)]
-struct ExecutionEventFilter {
-    // Do not return any message
-    none: Option<()>,
-    caller_address: Option<String>,
-    emitter_address: Option<String>,
-    original_operation_id: Option<String>,
-    is_failure: Option<bool>,
-}
-
-#[derive(Clone, Debug, Default)]
 struct ExecutedOpsChangesFilter {
-    // Do not return any message
-    none: Option<()>,
-}
-
-#[derive(Clone, Debug, Default)]
-struct LedgerChangesFilter {
     // Do not return any message
     none: Option<()>,
 }
@@ -217,7 +201,7 @@ fn get_filter(
     let mut executed_denounciation_filter: Option<ExecutedDenounciationFilter> = None;
     let mut execution_event_filter: Option<grpc_api::execution_event_filter::Filter> = None;
     let mut executed_ops_changes_filter: Option<ExecutedOpsChangesFilter> = None;
-    let mut ledger_changes_filter: Option<LedgerChangesFilter> = None;
+    let mut ledger_changes_filter: Option<grpc_api::ledger_changes_filter::Filter> = None;
 
     for query in request.filters.into_iter() {
         if let Some(filter) = query.filter {
@@ -296,21 +280,7 @@ fn get_filter(
                         }
                 }
                 }},
-                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => {
-                    if let Some(filter) = filter.filter {
-                        match filter {
-                            grpc_api::ledger_changes_filter::Filter::None(_) => {
-                                ledger_changes_filter = Some(LedgerChangesFilter {
-                                    none: Some(()),
-                                });
-                            },
-                            _ => {
-                                ledger_changes_filter = Some(LedgerChangesFilter {
-                                none: None,
-                            })
-                        }
-                }
-                }},
+                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => ledger_changes_filter = filter.filter.into(),
             }
         }
     }
@@ -455,8 +425,19 @@ fn filter_map_exec_output(
         }
     }
     if let Some(ledger_changes_filter) = &filters.ledger_changes_filter {
-        if ledger_changes_filter.none.is_some() {
-            exec_output.state_changes.ledger_changes.0.clear();
+        exec_output
+            .state_changes
+            .ledger_changes
+            .0
+            .retain(|addr, _ledger_change| match ledger_changes_filter {
+                grpc_api::ledger_changes_filter::Filter::None(_) => false,
+                grpc_api::ledger_changes_filter::Filter::Address(filter_addr) => {
+                    return addr.to_string().eq(filter_addr);
+                }
+            });
+
+        if exec_output.state_changes.ledger_changes.0.is_empty() {
+            return None;
         }
     }
 
