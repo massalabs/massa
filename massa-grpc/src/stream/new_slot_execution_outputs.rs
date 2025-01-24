@@ -8,7 +8,7 @@ use futures_util::StreamExt;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, NewSlotExecutionOutputsRequest};
-use massa_proto_rs::massa::model::v1::{self as grpc_model};
+use massa_proto_rs::massa::model::v1::{self as grpc_model, AsyncPoolChangeType};
 use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::pin::Pin;
@@ -39,7 +39,7 @@ struct Filter {
     // Executed denounciation filter
     executed_denounciation_filter: Option<ExecutedDenounciationFilter>,
     // Execution event filter
-    execution_event_filter: Option<ExecutionEventFilter>,
+    execution_event_filter: Option<grpc_api::execution_event_filter::Filter>,
     // Executed ops changes filter
     executed_ops_changes_filter: Option<ExecutedOpsChangesFilter>,
     // Ledger changes filter
@@ -50,6 +50,16 @@ struct Filter {
 struct AsyncPoolChangesFilter {
     // Do not return any message
     none: Option<()>,
+    // The types of the changes
+    change_types: Option<i32>,
+    // The handlers functions names
+    handlers: Option<String>,
+    // destination addresses
+    destination_addresses: Option<String>,
+
+    emitter_addresses: Option<String>,
+
+    can_be_executed: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -62,6 +72,10 @@ struct ExecutedDenounciationFilter {
 struct ExecutionEventFilter {
     // Do not return any message
     none: Option<()>,
+    caller_address: Option<String>,
+    emitter_address: Option<String>,
+    original_operation_id: Option<String>,
+    is_failure: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -201,7 +215,7 @@ fn get_filter(
     let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
     let mut async_pool_changes_filter: Option<AsyncPoolChangesFilter> = None;
     let mut executed_denounciation_filter: Option<ExecutedDenounciationFilter> = None;
-    let mut execution_event_filter: Option<ExecutionEventFilter> = None;
+    let mut execution_event_filter: Option<grpc_api::execution_event_filter::Filter > = None;
     let mut executed_ops_changes_filter: Option<ExecutedOpsChangesFilter> = None;
     let mut ledger_changes_filter: Option<LedgerChangesFilter> = None;
 
@@ -240,20 +254,22 @@ fn get_filter(
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
                     if let Some(filter) = filter.filter {
+                        let nested_filter = async_pool_changes_filter.get_or_insert_with(AsyncPoolChangesFilter::default);
                         match filter {
                             grpc_api::async_pool_changes_filter::Filter::None(_) => {
-                                async_pool_changes_filter = Some(AsyncPoolChangesFilter {
-                                    none: Some(()),
-                                });
+                                nested_filter.none = Some(());
                             },
-                            _ => {
-                                async_pool_changes_filter = Some(AsyncPoolChangesFilter {
-                                none: None,
-                            })
+                            grpc_api::async_pool_changes_filter::Filter::Type(change_type) => {
+                                // nested_filter.change_types.get_or_insert(change_type);
+                                nested_filter.change_types = Some(change_type);
+                            },
+                            grpc_api::async_pool_changes_filter::Filter::Handler(h) => nested_filter.handlers = Some(h),
+                            grpc_api::async_pool_changes_filter::Filter::DestinationAddress(dest_addr) => nested_filter.destination_addresses = Some(dest_addr),
+                            grpc_api::async_pool_changes_filter::Filter::EmitterAddress(emit_addr) => nested_filter.emitter_addresses = Some(emit_addr),
+                            grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(b) => nested_filter.can_be_executed = Some(b),
                         }
                     }
                 }
-            },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => {
                     if let Some(filter) = filter.filter {
                         match filter {
@@ -265,20 +281,21 @@ fn get_filter(
                     }
                 }},
                 grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
-                    if let Some(filter) = filter.filter {
-                        match filter {
-                            grpc_api::execution_event_filter::Filter::None(_) => {
-                                execution_event_filter = Some(ExecutionEventFilter {
-                                    none: Some(()),
-                                });
-                            },
-                            _ => {
-                                execution_event_filter = Some(ExecutionEventFilter {
-                                none: None,
-                            })
-                        }
-                }
-                }},
+                    execution_event_filter = filter.filter.into();
+                
+                //     let event_filter = execution_event_filter.get_or_insert_with(ExecutionEventFilter::default);
+                //     if let Some(filter) = filter.filter {
+                //         match filter {
+                //             grpc_api::execution_event_filter::Filter::None(_) => {
+                //                event_filter.none = Some(());
+                //             }
+                //             grpc_api::execution_event_filter::Filter::CallerAddress(caller) => event_filter.caller_address = Some(caller),
+                //             grpc_api::execution_event_filter::Filter::EmitterAddress(_) => todo!(),
+                //             grpc_api::execution_event_filter::Filter::OriginalOperationId(_) => todo!(),
+                //             grpc_api::execution_event_filter::Filter::IsFailure(_) => todo!(),
+                //         }
+                // }
+            },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
                     if let Some(filter) = filter.filter {
                         match filter {
@@ -398,9 +415,38 @@ fn filter_map_exec_output(
     }
 
     if let Some(execution_event_filter) = &filters.execution_event_filter {
-        if execution_event_filter.none.is_some() {
-            exec_output.events.clear();
+     
+            exec_output.events.0.retain(|event| {
+                match execution_event_filter {
+                    grpc_api::execution_event_filter::Filter::None(_empty) => return false,
+                            grpc_api::execution_event_filter::Filter::CallerAddress(addr) => {
+                                if let Some(call) = event.context.call_stack.front() {
+                                    return  call.to_string().eq(addr) ;
+                                 } else {
+                                     return false;
+                                 }
+                            },
+                            grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => {
+                                if let Some(emit) = event.context.call_stack.back() {
+                                   return  emit.to_string().eq(addr) ;
+                                } else {
+                                    return false;
+                                }
+                            },
+                            grpc_api::execution_event_filter::Filter::OriginalOperationId(_) => todo!(),
+                            grpc_api::execution_event_filter::Filter::IsFailure(_) => todo!(),
+                    
+                }
+            });
+        
+
+        if exec_output.events.0.is_empty() {
+            return None;
         }
+
+        // if execution_event_filter.none.is_some() {
+        //     exec_output.events.clear();
+        // }
     }
 
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
