@@ -215,7 +215,7 @@ fn get_filter(
     let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
     let mut async_pool_changes_filter: Option<AsyncPoolChangesFilter> = None;
     let mut executed_denounciation_filter: Option<ExecutedDenounciationFilter> = None;
-    let mut execution_event_filter: Option<grpc_api::execution_event_filter::Filter > = None;
+    let mut execution_event_filter: Option<grpc_api::execution_event_filter::Filter> = None;
     let mut executed_ops_changes_filter: Option<ExecutedOpsChangesFilter> = None;
     let mut ledger_changes_filter: Option<LedgerChangesFilter> = None;
 
@@ -280,22 +280,7 @@ fn get_filter(
                             },
                     }
                 }},
-                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
-                    execution_event_filter = filter.filter.into();
-                
-                //     let event_filter = execution_event_filter.get_or_insert_with(ExecutionEventFilter::default);
-                //     if let Some(filter) = filter.filter {
-                //         match filter {
-                //             grpc_api::execution_event_filter::Filter::None(_) => {
-                //                event_filter.none = Some(());
-                //             }
-                //             grpc_api::execution_event_filter::Filter::CallerAddress(caller) => event_filter.caller_address = Some(caller),
-                //             grpc_api::execution_event_filter::Filter::EmitterAddress(_) => todo!(),
-                //             grpc_api::execution_event_filter::Filter::OriginalOperationId(_) => todo!(),
-                //             grpc_api::execution_event_filter::Filter::IsFailure(_) => todo!(),
-                //         }
-                // }
-            },
+                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => execution_event_filter = filter.filter.into(),
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
                     if let Some(filter) = filter.filter {
                         match filter {
@@ -415,38 +400,40 @@ fn filter_map_exec_output(
     }
 
     if let Some(execution_event_filter) = &filters.execution_event_filter {
-     
-            exec_output.events.0.retain(|event| {
-                match execution_event_filter {
-                    grpc_api::execution_event_filter::Filter::None(_empty) => return false,
-                            grpc_api::execution_event_filter::Filter::CallerAddress(addr) => {
-                                if let Some(call) = event.context.call_stack.front() {
-                                    return  call.to_string().eq(addr) ;
-                                 } else {
-                                     return false;
-                                 }
-                            },
-                            grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => {
-                                if let Some(emit) = event.context.call_stack.back() {
-                                   return  emit.to_string().eq(addr) ;
-                                } else {
-                                    return false;
-                                }
-                            },
-                            grpc_api::execution_event_filter::Filter::OriginalOperationId(_) => todo!(),
-                            grpc_api::execution_event_filter::Filter::IsFailure(_) => todo!(),
-                    
+        exec_output
+            .events
+            .0
+            .retain(|event| match execution_event_filter {
+                grpc_api::execution_event_filter::Filter::None(_empty) => return false,
+                grpc_api::execution_event_filter::Filter::CallerAddress(addr) => {
+                    if let Some(call) = event.context.call_stack.front() {
+                        return call.to_string().eq(addr);
+                    } else {
+                        return false;
+                    }
+                }
+                grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => {
+                    if let Some(emit) = event.context.call_stack.back() {
+                        return emit.to_string().eq(addr);
+                    } else {
+                        return false;
+                    }
+                }
+                grpc_api::execution_event_filter::Filter::OriginalOperationId(ope_id) => {
+                    if let Some(ope) = &event.context.origin_operation_id {
+                        return ope.to_string().eq(ope_id);
+                    } else {
+                        return false;
+                    }
+                }
+                grpc_api::execution_event_filter::Filter::IsFailure(b) => {
+                    return event.context.is_error == *b
                 }
             });
-        
 
         if exec_output.events.0.is_empty() {
             return None;
         }
-
-        // if execution_event_filter.none.is_some() {
-        //     exec_output.events.clear();
-        // }
     }
 
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
