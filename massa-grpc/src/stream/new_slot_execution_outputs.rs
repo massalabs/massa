@@ -36,7 +36,7 @@ struct Filter {
     // Executed denounciation filter
     executed_denounciation_filter: Option<grpc_api::executed_denounciation_filter::Filter>,
     // Execution event filter
-    execution_event_filter: Option<grpc_api::execution_event_filter::Filter>,
+    execution_event_filter: Option<Vec<grpc_api::execution_event_filter::Filter>>,
     // Executed ops changes filter
     executed_ops_changes_filter: Option<grpc_api::executed_ops_changes_filter::Filter>,
     // Ledger changes filter
@@ -173,7 +173,13 @@ fn get_filter(
                 grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => result.slot_ranges_filter = Some(s_range),
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => result.async_pool_changes_filter = filter.filter.into(),
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter.into(),
-                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => result.execution_event_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
+                    if let Some(request_f) = filter.filter {
+                        result.execution_event_filter.get_or_insert(Vec::new()).push(request_f.into());
+                    } else {
+                        result.execution_event_filter = None;
+                    }
+                },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => result.executed_ops_changes_filter = filter.filter.into(),
                 grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => result.ledger_changes_filter = filter.filter.into(),
             }
@@ -237,37 +243,29 @@ fn filter_map_exec_output(
         }
     }
 
-    if let Some(execution_event_filter) = &filters.execution_event_filter {
-        exec_output
-            .events
-            .0
-            .retain(|event| match execution_event_filter {
-                grpc_api::execution_event_filter::Filter::None(_empty) => return false,
-                grpc_api::execution_event_filter::Filter::CallerAddress(addr) => {
-                    if let Some(call) = event.context.call_stack.front() {
-                        return call.to_string().eq(addr);
-                    } else {
-                        return false;
-                    }
-                }
-                grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => {
-                    if let Some(emit) = event.context.call_stack.back() {
-                        return emit.to_string().eq(addr);
-                    } else {
-                        return false;
-                    }
-                }
-                grpc_api::execution_event_filter::Filter::OriginalOperationId(ope_id) => {
-                    if let Some(ope) = &event.context.origin_operation_id {
-                        return ope.to_string().eq(ope_id);
-                    } else {
-                        return false;
-                    }
-                }
+    if let Some(execution_event_filter) = filters.execution_event_filter.as_ref() {
+        exec_output.events.0.retain(|event| {
+            execution_event_filter.iter().all(|filter| match filter {
+                grpc_api::execution_event_filter::Filter::None(_) => false,
+                grpc_api::execution_event_filter::Filter::CallerAddress(addr) => event
+                    .context
+                    .call_stack
+                    .front()
+                    .map_or(false, |call| call.to_string().eq(addr)),
+                grpc_api::execution_event_filter::Filter::EmitterAddress(addr) => event
+                    .context
+                    .call_stack
+                    .back()
+                    .map_or(false, |emit| emit.to_string().eq(addr)),
+                grpc_api::execution_event_filter::Filter::OriginalOperationId(ope_id) => event
+                    .context
+                    .origin_operation_id
+                    .map_or(false, |ope| ope.to_string().eq(ope_id)),
                 grpc_api::execution_event_filter::Filter::IsFailure(b) => {
-                    return event.context.is_error == *b
+                    event.context.is_error.eq(b)
                 }
-            });
+            })
+        });
 
         if exec_output.events.0.is_empty() {
             return None;
