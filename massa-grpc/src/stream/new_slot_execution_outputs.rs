@@ -3,13 +3,10 @@
 use crate::config::GrpcConfig;
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
-use crate::SlotRange;
 use futures_util::StreamExt;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
-use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{self as grpc_api, NewSlotExecutionOutputsRequest};
-use massa_proto_rs::massa::model::v1::{self as grpc_model, AsyncPoolChangeType};
-use std::collections::HashSet;
+use massa_proto_rs::massa::model::v1::{self as grpc_model};
 use std::io::ErrorKind;
 use std::pin::Pin;
 use tokio::select;
@@ -31,47 +28,19 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
 #[derive(Clone, Debug, Default)]
 struct Filter {
     // Execution output status to filter
-    status_filter: Option<HashSet<i32>>,
+    status_filter: Option<i32>,
     // Slot range to filter
-    slot_ranges_filter: Option<HashSet<SlotRange>>,
+    slot_ranges_filter: Option<grpc_model::SlotRange>,
     // Async pool changes filter
-    async_pool_changes_filter: Option<AsyncPoolChangesFilter>,
+    async_pool_changes_filter: Option<grpc_api::async_pool_changes_filter::Filter>,
     // Executed denounciation filter
-    executed_denounciation_filter: Option<ExecutedDenounciationFilter>,
+    executed_denounciation_filter: Option<grpc_api::executed_denounciation_filter::Filter>,
     // Execution event filter
     execution_event_filter: Option<grpc_api::execution_event_filter::Filter>,
     // Executed ops changes filter
-    executed_ops_changes_filter: Option<ExecutedOpsChangesFilter>,
+    executed_ops_changes_filter: Option<grpc_api::executed_ops_changes_filter::Filter>,
     // Ledger changes filter
     ledger_changes_filter: Option<grpc_api::ledger_changes_filter::Filter>,
-}
-
-#[derive(Clone, Debug, Default)]
-struct AsyncPoolChangesFilter {
-    // Do not return any message
-    none: Option<()>,
-    // The types of the changes
-    change_types: Option<i32>,
-    // The handlers functions names
-    handlers: Option<String>,
-    // destination addresses
-    destination_addresses: Option<String>,
-
-    emitter_addresses: Option<String>,
-
-    can_be_executed: Option<bool>,
-}
-
-#[derive(Clone, Debug, Default)]
-struct ExecutedDenounciationFilter {
-    // Do not return any message
-    none: Option<()>,
-}
-
-#[derive(Clone, Debug, Default)]
-struct ExecutedOpsChangesFilter {
-    // Do not return any message
-    none: Option<()>,
 }
 
 /// Creates a new stream of new produced and received slot execution outputs
@@ -195,105 +164,23 @@ fn get_filter(
         )));
     }
 
-    let mut status_filter: Option<HashSet<i32>> = None;
-    let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
-    let mut async_pool_changes_filter: Option<AsyncPoolChangesFilter> = None;
-    let mut executed_denounciation_filter: Option<ExecutedDenounciationFilter> = None;
-    let mut execution_event_filter: Option<grpc_api::execution_event_filter::Filter> = None;
-    let mut executed_ops_changes_filter: Option<ExecutedOpsChangesFilter> = None;
-    let mut ledger_changes_filter: Option<grpc_api::ledger_changes_filter::Filter> = None;
+    let mut result = Filter::default();
 
     for query in request.filters.into_iter() {
         if let Some(filter) = query.filter {
             match filter {
-                grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => {
-                    let statuses = status_filter.get_or_insert_with(HashSet::new);
-                    // The limit is the number of valid enum values
-                    if statuses.len() as u32 > 3 {
-                        return Err(GrpcError::InvalidArgument(format!(
-                            "too many statuses received. Only a maximum of {} statuses are accepted per request",
-                            2
-                        )));
-                    }
-                    statuses.insert(status);
-                },
-                grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => {
-                    let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
-                    if slot_ranges.len() as u32 > grpc_config.max_slot_ranges_per_request {
-                        return Err(GrpcError::InvalidArgument(format!(
-                            "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
-                         grpc_config.max_slot_ranges_per_request
-                        )));
-                    }
-
-                    let start_slot = s_range.start_slot.map(|s| s.into());
-                    let end_slot = s_range.end_slot.map(|s| s.into());
-
-                    let slot_range = SlotRange {
-                        start_slot,
-                        end_slot,
-                    };
-                    slot_range.check()?;
-                    slot_ranges.insert(slot_range);
-                },
-                grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
-                    if let Some(filter) = filter.filter {
-                        let nested_filter = async_pool_changes_filter.get_or_insert_with(AsyncPoolChangesFilter::default);
-                        match filter {
-                            grpc_api::async_pool_changes_filter::Filter::None(_) => {
-                                nested_filter.none = Some(());
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::Type(change_type) => {
-                                // nested_filter.change_types.get_or_insert(change_type);
-                                nested_filter.change_types = Some(change_type);
-                            },
-                            grpc_api::async_pool_changes_filter::Filter::Handler(h) => nested_filter.handlers = Some(h),
-                            grpc_api::async_pool_changes_filter::Filter::DestinationAddress(dest_addr) => nested_filter.destination_addresses = Some(dest_addr),
-                            grpc_api::async_pool_changes_filter::Filter::EmitterAddress(emit_addr) => nested_filter.emitter_addresses = Some(emit_addr),
-                            grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(b) => nested_filter.can_be_executed = Some(b),
-                        }
-                    }
-                }
-                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => {
-                    if let Some(filter) = filter.filter {
-                        match filter {
-                            grpc_api::executed_denounciation_filter::Filter::None(_) => {
-                                executed_denounciation_filter = Some(ExecutedDenounciationFilter {
-                                    none: Some(()),
-                                });
-                            },
-                    }
-                }},
-                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => execution_event_filter = filter.filter.into(),
-                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
-                    if let Some(filter) = filter.filter {
-                        match filter {
-                            grpc_api::executed_ops_changes_filter::Filter::None(_) => {
-                                executed_ops_changes_filter = Some(ExecutedOpsChangesFilter {
-                                    none: Some(()),
-                                });
-                            },
-                            _ => {
-                                executed_ops_changes_filter = Some(ExecutedOpsChangesFilter {
-                                none: None,
-                            })
-                        }
-                }
-                }},
-                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => ledger_changes_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => result.status_filter = Some(status),
+                grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => result.slot_ranges_filter = Some(s_range),
+                grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => result.async_pool_changes_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => result.execution_event_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => result.executed_ops_changes_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => result.ledger_changes_filter = filter.filter.into(),
             }
         }
     }
 
-    Ok(Filter {
-        status_filter,
-        slot_ranges_filter,
-        async_pool_changes_filter,
-        executed_denounciation_filter,
-        execution_event_filter,
-        executed_ops_changes_filter,
-        ledger_changes_filter,
-    })
+    Ok(result)
 }
 
 /// Return if the slot execution outputs should be send to client
@@ -304,22 +191,26 @@ fn filter_map(
 ) -> Option<SlotExecutionOutput> {
     match &slot_execution_output {
         SlotExecutionOutput::ExecutedSlot(e_output) => {
-            let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
             if let Some(status_filter) = &filters.status_filter {
-                if !status_filter.contains(&id) {
+                let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
+
+                if !status_filter.eq(&id) {
                     return None;
                 }
             }
+
             filter_map_exec_output(e_output.clone(), filters, grpc_config)
                 .map(SlotExecutionOutput::ExecutedSlot)
         }
         SlotExecutionOutput::FinalizedSlot(e_output) => {
-            let id = grpc_model::ExecutionOutputStatus::Final as i32;
             if let Some(status_filter) = &filters.status_filter {
-                if !status_filter.contains(&id) {
+                let id = grpc_model::ExecutionOutputStatus::Final as i32;
+
+                if !status_filter.eq(&id) {
                     return None;
                 }
             }
+
             filter_map_exec_output(e_output.clone(), filters, grpc_config)
                 .map(SlotExecutionOutput::FinalizedSlot)
         }
@@ -333,39 +224,16 @@ fn filter_map_exec_output(
     grpc_config: &GrpcConfig,
 ) -> Option<ExecutionOutput> {
     if let Some(slot_ranges) = &filters.slot_ranges_filter {
-        let mut start_slot = Slot::new(0, 0); // inclusive
-        let mut end_slot = Slot::new(u64::MAX, grpc_config.thread_count - 1); // exclusive
-
-        for slot_range in slot_ranges {
-            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
-            end_slot = end_slot.min(
-                slot_range
-                    .end_slot
-                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - 1)),
-            );
+        if let Some(start) = slot_ranges.start_slot {
+            if exec_output.slot < start.into() {
+                return None;
+            }
         }
-        end_slot = end_slot.max(start_slot);
-        let current_slot = exec_output.slot;
 
-        if current_slot < start_slot || current_slot >= end_slot {
-            return None;
-        }
-    }
-
-    if let Some(slot_ranges) = &filters.slot_ranges_filter {
-        let slot_changes_matches = slot_ranges.iter().any(|slot_range| {
-            let start_slot_check = slot_range
-                .start_slot
-                .map_or(true, |start_slot| exec_output.slot >= start_slot);
-            let end_slot_check = slot_range
-                .end_slot
-                .map_or(true, |end_slot| exec_output.slot <= end_slot);
-
-            start_slot_check && end_slot_check
-        });
-
-        if !slot_changes_matches {
-            return None;
+        if let Some(end) = slot_ranges.end_slot {
+            if exec_output.slot >= end.into() {
+                return None;
+            }
         }
     }
 
@@ -407,23 +275,100 @@ fn filter_map_exec_output(
     }
 
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
-        if async_pool_changes_filter.none.is_some() {
-            exec_output.state_changes.async_pool_changes.0.clear();
+        exec_output.state_changes.async_pool_changes.0.retain(
+            |(_msg_id, _slot, _emission_index), changes| match async_pool_changes_filter {
+                grpc_api::async_pool_changes_filter::Filter::None(_empty) => return false,
+                grpc_api::async_pool_changes_filter::Filter::Type(filter_type) => match changes {
+                    massa_models::types::SetUpdateOrDelete::Set(_) => {
+                        (grpc_model::AsyncPoolChangeType::Set as i32).eq(filter_type)
+                    }
+                    massa_models::types::SetUpdateOrDelete::Update(_) => {
+                        (grpc_model::AsyncPoolChangeType::Update as i32).eq(filter_type)
+                    }
+                    massa_models::types::SetUpdateOrDelete::Delete => {
+                        (grpc_model::AsyncPoolChangeType::Delete as i32).eq(filter_type)
+                    }
+                },
+                grpc_api::async_pool_changes_filter::Filter::Handler(handler) => match changes {
+                    massa_models::types::SetUpdateOrDelete::Set(msg) => msg.function.eq(handler),
+                    massa_models::types::SetUpdateOrDelete::Update(msg) => match &msg.function {
+                        massa_models::types::SetOrKeep::Set(func) => func.eq(handler),
+                        massa_models::types::SetOrKeep::Keep => false,
+                    },
+                    massa_models::types::SetUpdateOrDelete::Delete => false,
+                },
+                grpc_api::async_pool_changes_filter::Filter::DestinationAddress(
+                    filter_dest_addr,
+                ) => match changes {
+                    massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                        msg.destination.to_string().eq(filter_dest_addr)
+                    }
+                    massa_models::types::SetUpdateOrDelete::Update(msg) => match msg.destination {
+                        massa_models::types::SetOrKeep::Set(dest) => {
+                            dest.to_string().eq(filter_dest_addr)
+                        }
+                        massa_models::types::SetOrKeep::Keep => false,
+                    },
+                    massa_models::types::SetUpdateOrDelete::Delete => false,
+                },
+                grpc_api::async_pool_changes_filter::Filter::EmitterAddress(filter_emit_addr) => {
+                    match changes {
+                        massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                            msg.sender.to_string().eq(filter_emit_addr)
+                        }
+                        massa_models::types::SetUpdateOrDelete::Update(msg) => match msg.sender {
+                            massa_models::types::SetOrKeep::Set(addr) => {
+                                addr.to_string().eq(filter_emit_addr)
+                            }
+                            massa_models::types::SetOrKeep::Keep => false,
+                        },
+                        massa_models::types::SetUpdateOrDelete::Delete => false,
+                    }
+                }
+                grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(filter_exec) => {
+                    match changes {
+                        massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                            msg.can_be_executed.eq(filter_exec)
+                        }
+                        massa_models::types::SetUpdateOrDelete::Update(msg) => {
+                            match msg.can_be_executed {
+                                massa_models::types::SetOrKeep::Set(b) => b.eq(filter_exec),
+                                massa_models::types::SetOrKeep::Keep => false,
+                            }
+                        }
+                        massa_models::types::SetUpdateOrDelete::Delete => false,
+                    }
+                }
+            },
+        );
+
+        if exec_output.state_changes.async_pool_changes.0.is_empty() {
+            return None;
         }
     }
+
     if let Some(executed_denounciation_filter) = &filters.executed_denounciation_filter {
-        if executed_denounciation_filter.none.is_some() {
-            exec_output
-                .state_changes
-                .executed_denunciations_changes
-                .clear();
+        match executed_denounciation_filter {
+            grpc_api::executed_denounciation_filter::Filter::None(_empty) => return None,
         }
     }
+
     if let Some(executed_ops_changes_filter) = &filters.executed_ops_changes_filter {
-        if executed_ops_changes_filter.none.is_some() {
-            exec_output.state_changes.executed_ops_changes.clear();
+        exec_output
+            .state_changes
+            .executed_ops_changes
+            .retain(|op, (_success, _slot)| match executed_ops_changes_filter {
+                grpc_api::executed_ops_changes_filter::Filter::None(_) => false,
+                grpc_api::executed_ops_changes_filter::Filter::OperationId(filter_op_id) => {
+                    return op.to_string().eq(filter_op_id);
+                }
+            });
+
+        if exec_output.state_changes.executed_ops_changes.is_empty() {
+            return None;
         }
     }
+
     if let Some(ledger_changes_filter) = &filters.ledger_changes_filter {
         exec_output
             .state_changes
