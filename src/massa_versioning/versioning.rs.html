@@ -2737,36 +2737,6 @@
 <a href="#2737" id="2737">2737</a>
 <a href="#2738" id="2738">2738</a>
 <a href="#2739" id="2739">2739</a>
-<a href="#2740" id="2740">2740</a>
-<a href="#2741" id="2741">2741</a>
-<a href="#2742" id="2742">2742</a>
-<a href="#2743" id="2743">2743</a>
-<a href="#2744" id="2744">2744</a>
-<a href="#2745" id="2745">2745</a>
-<a href="#2746" id="2746">2746</a>
-<a href="#2747" id="2747">2747</a>
-<a href="#2748" id="2748">2748</a>
-<a href="#2749" id="2749">2749</a>
-<a href="#2750" id="2750">2750</a>
-<a href="#2751" id="2751">2751</a>
-<a href="#2752" id="2752">2752</a>
-<a href="#2753" id="2753">2753</a>
-<a href="#2754" id="2754">2754</a>
-<a href="#2755" id="2755">2755</a>
-<a href="#2756" id="2756">2756</a>
-<a href="#2757" id="2757">2757</a>
-<a href="#2758" id="2758">2758</a>
-<a href="#2759" id="2759">2759</a>
-<a href="#2760" id="2760">2760</a>
-<a href="#2761" id="2761">2761</a>
-<a href="#2762" id="2762">2762</a>
-<a href="#2763" id="2763">2763</a>
-<a href="#2764" id="2764">2764</a>
-<a href="#2765" id="2765">2765</a>
-<a href="#2766" id="2766">2766</a>
-<a href="#2767" id="2767">2767</a>
-<a href="#2768" id="2768">2768</a>
-<a href="#2769" id="2769">2769</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -2814,8 +2784,6 @@
     Block,
     VM,
     FinalStateHashKind,
-    Execution,
-    FinalState,
     <span class="attr">#[doc(hidden)]
     #[num_enum(default)]
     </span>__Nonexhaustive,
@@ -3961,9 +3929,7 @@
 
         <span class="kw">for </span>(mip_info, mip_state) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.store {
             <span class="kw">match </span>mip_state.state {
-                ComponentState::Defined(..)
-                | ComponentState::Started(..)
-                | ComponentState::LockedIn(..) =&gt; {
+                ComponentState::Defined(..) =&gt; {
                     <span class="comment">// all good if it does not start / timeout during shutdown period
                     </span><span class="kw">if </span>shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.start)
                         || shutdown_range.contains(<span class="kw-2">&amp;</span>mip_info.timeout)
@@ -3977,6 +3943,16 @@
                         ));
                         <span class="kw">break</span>;
                     }
+                }
+                ComponentState::Started(..) | ComponentState::LockedIn(..) =&gt; {
+                    <span class="comment">// assume this should have been reset
+                    </span>has_error = <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(
+                        mip_info.clone(),
+                        mip_state.state,
+                        shutdown_start_ts,
+                        shutdown_end_ts,
+                    ));
+                    <span class="kw">break</span>;
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="comment">// active / failed, error, nothing to do
@@ -4071,12 +4047,6 @@
         <span class="self">self</span>.store = new_store;
         <span class="self">self</span>.stats = new_stats;
         <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="comment">// get network versions stats
-    // &lt;network_version, count&gt;
-    </span><span class="kw">pub fn </span>get_network_versions_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HashMap&lt;u32, u64&gt; {
-        <span class="self">self</span>.stats.network_version_counters.clone()
     }
 
     <span class="comment">// Final state
@@ -5156,9 +5126,6 @@
 
             <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_1);
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-            <span class="macro">assert_eq!</span>(ms_1, ComponentState::defined());
-            <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
-
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -5186,8 +5153,6 @@
 
             <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_1);
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-            <span class="macro">assert_eq!</span>(ms_1, ComponentState::defined());
-            <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -5215,8 +5180,6 @@
 
             <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), <span class="kw-2">&amp;</span>mi_1);
             <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-            <span class="macro">assert_eq!</span>(ms_1, ComponentState::started(Ratio::zero()));
-            <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
             <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
                 [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
                 mip_stats_cfg.clone(),
@@ -5227,29 +5190,6 @@
                 is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end),
                 <span class="prelude-val">Err</span>(IsConsistentWithShutdownPeriodError::NonConsistent(..))
             );
-            update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
-            <span class="macro">assert!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end).is_ok());
-            <span class="comment">// _dump_store(&amp;store);
-        </span>}
-
-        <span class="comment">// MipInfo 1 @ state 'Started' after shutdown
-        </span>{
-            mi_1.start = get_slot_ts(Slot::new(<span class="number">9</span>, <span class="number">2</span>));
-            mi_1.timeout = get_slot_ts(Slot::new(<span class="number">10</span>, <span class="number">7</span>));
-            mi_2.start = get_slot_ts(Slot::new(<span class="number">11</span>, <span class="number">4</span>));
-            mi_2.timeout = get_slot_ts(Slot::new(<span class="number">12</span>, <span class="number">0</span>));
-
-            <span class="kw">let </span>ms_1 = advance_state_until(ComponentState::started(Ratio::zero()), <span class="kw-2">&amp;</span>mi_1);
-            <span class="kw">let </span>ms_2 = advance_state_until(ComponentState::defined(), <span class="kw-2">&amp;</span>mi_2);
-            <span class="macro">assert_eq!</span>(ms_1, ComponentState::started(Ratio::zero()));
-            <span class="macro">assert_eq!</span>(ms_2, ComponentState::defined());
-            <span class="kw">let </span><span class="kw-2">mut </span>store = MipStoreRaw::try_from((
-                [(mi_1.clone(), ms_1), (mi_2.clone(), ms_2)],
-                mip_stats_cfg.clone(),
-            ))
-            .unwrap();
-
-            <span class="macro">assert!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end).is_ok());
             update_store(<span class="kw-2">&amp;mut </span>store, shutdown_start, shutdown_end);
             <span class="macro">assert!</span>(is_consistent(<span class="kw-2">&amp;</span>store, shutdown_start, shutdown_end).is_ok());
             <span class="comment">// _dump_store(&amp;store);

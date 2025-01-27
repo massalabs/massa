@@ -723,16 +723,6 @@
 <a href="#723" id="723">723</a>
 <a href="#724" id="724">724</a>
 <a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
-<a href="#728" id="728">728</a>
-<a href="#729" id="729">729</a>
-<a href="#730" id="730">730</a>
-<a href="#731" id="731">731</a>
-<a href="#732" id="732">732</a>
-<a href="#733" id="733">733</a>
-<a href="#734" id="734">734</a>
-<a href="#735" id="735">735</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::VecDeque,
     fmt::{Debug, Display},
@@ -987,8 +977,7 @@
 <span class="macro">gen_varint!</span> {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, <span class="string">"`u16`"</span>;
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, <span class="string">"`u32`"</span>;
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">"`u64`"</span>;
-u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, <span class="string">"`u128`"
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, <span class="string">"`u64`"
 </span>}
 
 <span class="attr">#[derive(Clone)]
@@ -1216,22 +1205,13 @@ u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, <span class="st
     }
 }
 
-<span class="comment">// Helper function to convert a slice to an array of a given size, if possible,
-// and then returning it with the rest of the slice.
-</span><span class="kw">pub fn </span>buf_to_array_ctr&lt;F: Fn(<span class="kw-2">&amp;</span>[u8; N]) -&gt; V, V, <span class="kw">const </span>N: usize&gt;(
-    buf: <span class="kw-2">&amp;</span>[u8],
-    ctr: F,
-) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>[u8], V)&gt; {
-    <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>buf[N..], ctr(<span class="kw-2">&amp;</span>buf.get(..N)<span class="question-mark">?</span>.try_into().ok()<span class="question-mark">?</span>)))
-}
-
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use crate</span>::{DeserializeError, Deserializer, Serializer};
     <span class="kw">use </span>num::rational::Ratio;
     <span class="kw">use </span>paste::paste;
 
-    <span class="comment">// This macro creates a suite of tests for all types of numbers declared as parameters. This list of the
+    <span class="comment">// This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
     // tests for each type :
     // - Test with a normal case that everything works
     // - Test with a normal case but a more bigger number that everything works
