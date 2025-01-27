@@ -33,7 +33,7 @@ Return list of updated / added if successful, UpdateWithError otherwise</p>
     t0: MassaTime,
     genesis_timestamp: MassaTime,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.81.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/1.81.0/std/primitive.unit.html">()</a>, <a class="enum" href="enum.IsConsistentWithShutdownPeriodError.html" title="enum massa_versioning::versioning::IsConsistentWithShutdownPeriodError">IsConsistentWithShutdownPeriodError</a>&gt;</h4></section></summary><div class="docblock"><p>Check if store is consistent with given last network shutdown
-On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent</p>
+On a network shutdown, the MIP infos will be edited, but we still need to check if this is consistent</p>
 </div></details><section id="method.update_for_network_shutdown" class="method"><a class="src rightside" href="../../src/massa_versioning/versioning.rs.html#1228-1311">source</a><h4 class="code-header">fn <a href="#method.update_for_network_shutdown" class="fn">update_for_network_shutdown</a>(
     &amp;mut self,
     shutdown_start: Slot,

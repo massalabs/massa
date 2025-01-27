@@ -2937,44 +2937,6 @@
 
 <span class="kw">impl </span>Eq <span class="kw">for </span>Advance {}
 
-<span class="comment">// A Lightweight version of 'Advance' (used in MipState history)
-</span><span class="attr">#[derive(Clone, Debug)]
-</span><span class="kw">pub struct </span>AdvanceLW {
-    <span class="doccomment">/// % of past blocks with this version
-    </span><span class="kw">pub </span>threshold: Ratio&lt;u64&gt;,
-    <span class="doccomment">/// Current time (timestamp)
-    </span><span class="kw">pub </span>now: MassaTime,
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Advance&gt; <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Advance) -&gt; <span class="self">Self </span>{
-        <span class="self">Self </span>{
-            threshold: value.threshold,
-            now: value.now,
-        }
-    }
-}
-
-<span class="kw">impl </span>Ord <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
-        (<span class="self">self</span>.now, <span class="self">self</span>.threshold).cmp(<span class="kw-2">&amp;</span>(other.now, other.threshold))
-    }
-}
-
-<span class="kw">impl </span>PartialOrd <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
-        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
-    }
-}
-
-<span class="kw">impl </span>PartialEq <span class="kw">for </span>AdvanceLW {
-    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
-        <span class="self">self</span>.threshold == other.threshold &amp;&amp; <span class="self">self</span>.now == other.now
-    }
-}
-
-<span class="kw">impl </span>Eq <span class="kw">for </span>AdvanceLW {}
-
 <span class="macro">transitions!</span>(ComponentState,
     [
         (Defined, Advance) =&gt; [Defined, Started, Failed],
@@ -3037,6 +2999,44 @@
         Failed {}
     }
 }
+
+<span class="comment">// A Lightweight version of 'Advance' (used in MipState history)
+</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="kw">pub struct </span>AdvanceLW {
+    <span class="doccomment">/// % of past blocks with this version
+    </span><span class="kw">pub </span>threshold: Ratio&lt;u64&gt;,
+    <span class="doccomment">/// Current time (timestamp)
+    </span><span class="kw">pub </span>now: MassaTime,
+}
+
+<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>Advance&gt; <span class="kw">for </span>AdvanceLW {
+    <span class="kw">fn </span>from(value: <span class="kw-2">&amp;</span>Advance) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            threshold: value.threshold,
+            now: value.now,
+        }
+    }
+}
+
+<span class="kw">impl </span>Ord <span class="kw">for </span>AdvanceLW {
+    <span class="kw">fn </span>cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; Ordering {
+        (<span class="self">self</span>.now, <span class="self">self</span>.threshold).cmp(<span class="kw-2">&amp;</span>(other.now, other.threshold))
+    }
+}
+
+<span class="kw">impl </span>PartialOrd <span class="kw">for </span>AdvanceLW {
+    <span class="kw">fn </span>partial_cmp(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Ordering&gt; {
+        <span class="prelude-val">Some</span>(<span class="self">self</span>.cmp(other))
+    }
+}
+
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>AdvanceLW {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.threshold == other.threshold &amp;&amp; <span class="self">self</span>.now == other.now
+    }
+}
+
+<span class="kw">impl </span>Eq <span class="kw">for </span>AdvanceLW {}
 
 <span class="doccomment">/// Error returned by `MipState::is_consistent_with`
 </span><span class="attr">#[derive(Error, Debug, PartialEq)]
@@ -3909,7 +3909,7 @@
     <span class="comment">// Network restart
 
     </span><span class="doccomment">/// Check if store is consistent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
+    /// On a network shutdown, the MIP infos will be edited, but we still need to check if this is consistent
     </span><span class="kw">fn </span>is_consistent_with_shutdown_period(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         shutdown_start: Slot,

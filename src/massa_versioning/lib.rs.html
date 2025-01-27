@@ -93,12 +93,15 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General description
 //! MIP = Massa Improvement proposal (similar to Bitcoin Improvement Proposal - BIP or Ethereum - EIP)
 //!
-//! MIPInfo -&gt; represent a MIP (name, versions, time ranges)
+//! MipComponent -&gt; A component that is going to be updated (e.g. Address v2)
+//! MIPInfo -&gt; represent a MIP (name, versions, time ranges, components)
 //! MIPState -&gt; Deployment state of a MIPInfo
 //! MIPStore -&gt; A map of MIPInfo -&gt; MipState
 //!
@@ -140,6 +143,7 @@
 //!
 //! MipState has:
 //! * A state machine (stores the current state of deployment for a MipInfo)
+//!   * Usual state changes: Defined -&gt; Started -&gt; LockedIn -&gt; Active
 //! * A history (stores a list of `Advance` message that 'really' updated the state machine)
 //!
 //! An auto generated graph of the state machine can be found here:
