@@ -3,7 +3,8 @@
 //! # General description
 //! MIP = Massa Improvement proposal (similar to Bitcoin Improvement Proposal - BIP or Ethereum - EIP)
 //!
-//! MIPInfo -> represent a MIP (name, versions, time ranges)
+//! MipComponent -> A component that is going to be updated (e.g. Address v2)
+//! MIPInfo -> represent a MIP (name, versions, time ranges, components)
 //! MIPState -> Deployment state of a MIPInfo
 //! MIPStore -> A map of MIPInfo -> MipState
 //!
@@ -45,6 +46,7 @@
 //!
 //! MipState has:
 //! * A state machine (stores the current state of deployment for a MipInfo)
+//!   * Usual state changes: Defined -> Started -> LockedIn -> Active
 //! * A history (stores a list of `Advance` message that 'really' updated the state machine)
 //!
 //! An auto generated graph of the state machine can be found here:
