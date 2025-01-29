@@ -30,17 +30,17 @@ struct Filter {
     // Execution output status to filter
     status_filter: Option<i32>,
     // Slot range to filter
-    slot_ranges_filter: Option<grpc_model::SlotRange>,
+    slot_ranges_filter: Option<Vec<grpc_model::SlotRange>>,
     // Async pool changes filter
-    async_pool_changes_filter: Option<grpc_api::async_pool_changes_filter::Filter>,
+    async_pool_changes_filter: Option<Vec<grpc_api::async_pool_changes_filter::Filter>>,
     // Executed denounciation filter
     executed_denounciation_filter: Option<grpc_api::executed_denounciation_filter::Filter>,
     // Execution event filter
     execution_event_filter: Option<Vec<grpc_api::execution_event_filter::Filter>>,
     // Executed ops changes filter
-    executed_ops_changes_filter: Option<grpc_api::executed_ops_changes_filter::Filter>,
+    executed_ops_changes_filter: Option<Vec<grpc_api::executed_ops_changes_filter::Filter>>,
     // Ledger changes filter
-    ledger_changes_filter: Option<grpc_api::ledger_changes_filter::Filter>,
+    ledger_changes_filter: Option<Vec<grpc_api::ledger_changes_filter::Filter>>,
 }
 
 /// Creates a new stream of new produced and received slot execution outputs
@@ -170,8 +170,16 @@ fn get_filter(
         if let Some(filter) = query.filter {
             match filter {
                 grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => result.status_filter = Some(status),
-                grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => result.slot_ranges_filter = Some(s_range),
-                grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => result.async_pool_changes_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => {
+                        result.slot_ranges_filter.get_or_insert(Vec::new()).push(s_range.into());
+                },
+                grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
+                    if let Some(request_f) = filter.filter {
+                        result.async_pool_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                    } else {
+                        result.async_pool_changes_filter = None;
+                    }
+                },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter.into(),
                 grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
                     if let Some(request_f) = filter.filter {
@@ -180,8 +188,20 @@ fn get_filter(
                         result.execution_event_filter = None;
                     }
                 },
-                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => result.executed_ops_changes_filter = filter.filter.into(),
-                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => result.ledger_changes_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
+                    if let Some(request_f) = filter.filter {
+                        result.executed_ops_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                    } else {
+                        result.execution_event_filter = None;
+                    }
+                },
+                grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => {
+                    if let Some(request_f) = filter.filter {
+                        result.ledger_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                    } else {
+                        result.ledger_changes_filter = None;
+                    }
+                },
             }
         }
     }
@@ -227,19 +247,18 @@ fn filter_map(
 fn filter_map_exec_output(
     mut exec_output: ExecutionOutput,
     filters: &Filter,
-    grpc_config: &GrpcConfig,
+    _grpc_config: &GrpcConfig,
 ) -> Option<ExecutionOutput> {
     if let Some(slot_ranges) = &filters.slot_ranges_filter {
-        if let Some(start) = slot_ranges.start_slot {
-            if exec_output.slot < start.into() {
-                return None;
-            }
-        }
-
-        if let Some(end) = slot_ranges.end_slot {
-            if exec_output.slot >= end.into() {
-                return None;
-            }
+        if slot_ranges.iter().any(|slot_range| {
+            slot_range
+                .start_slot
+                .map_or(false, |start| exec_output.slot < start.into())
+                || slot_range
+                    .end_slot
+                    .map_or(false, |end| exec_output.slot >= end.into())
+        }) {
+            return None;
         }
     }
 
@@ -274,43 +293,54 @@ fn filter_map_exec_output(
 
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
         exec_output.state_changes.async_pool_changes.0.retain(
-            |(_msg_id, _slot, _emission_index), changes| match async_pool_changes_filter {
-                grpc_api::async_pool_changes_filter::Filter::None(_empty) => return false,
-                grpc_api::async_pool_changes_filter::Filter::Type(filter_type) => match changes {
-                    massa_models::types::SetUpdateOrDelete::Set(_) => {
-                        (grpc_model::AsyncPoolChangeType::Set as i32).eq(filter_type)
-                    }
-                    massa_models::types::SetUpdateOrDelete::Update(_) => {
-                        (grpc_model::AsyncPoolChangeType::Update as i32).eq(filter_type)
-                    }
-                    massa_models::types::SetUpdateOrDelete::Delete => {
-                        (grpc_model::AsyncPoolChangeType::Delete as i32).eq(filter_type)
-                    }
-                },
-                grpc_api::async_pool_changes_filter::Filter::Handler(handler) => match changes {
-                    massa_models::types::SetUpdateOrDelete::Set(msg) => msg.function.eq(handler),
-                    massa_models::types::SetUpdateOrDelete::Update(msg) => match &msg.function {
-                        massa_models::types::SetOrKeep::Set(func) => func.eq(handler),
-                        massa_models::types::SetOrKeep::Keep => false,
-                    },
-                    massa_models::types::SetUpdateOrDelete::Delete => false,
-                },
-                grpc_api::async_pool_changes_filter::Filter::DestinationAddress(
-                    filter_dest_addr,
-                ) => match changes {
-                    massa_models::types::SetUpdateOrDelete::Set(msg) => {
-                        msg.destination.to_string().eq(filter_dest_addr)
-                    }
-                    massa_models::types::SetUpdateOrDelete::Update(msg) => match msg.destination {
-                        massa_models::types::SetOrKeep::Set(dest) => {
-                            dest.to_string().eq(filter_dest_addr)
+            |(_msg_id, _slot, _emission_index), changes| {
+                async_pool_changes_filter.iter().all(|filter| match filter {
+                    grpc_api::async_pool_changes_filter::Filter::None(_empty) => return false,
+                    grpc_api::async_pool_changes_filter::Filter::Type(filter_type) => match changes
+                    {
+                        massa_models::types::SetUpdateOrDelete::Set(_) => {
+                            (grpc_model::AsyncPoolChangeType::Set as i32).eq(filter_type)
                         }
-                        massa_models::types::SetOrKeep::Keep => false,
+                        massa_models::types::SetUpdateOrDelete::Update(_) => {
+                            (grpc_model::AsyncPoolChangeType::Update as i32).eq(filter_type)
+                        }
+                        massa_models::types::SetUpdateOrDelete::Delete => {
+                            (grpc_model::AsyncPoolChangeType::Delete as i32).eq(filter_type)
+                        }
                     },
-                    massa_models::types::SetUpdateOrDelete::Delete => false,
-                },
-                grpc_api::async_pool_changes_filter::Filter::EmitterAddress(filter_emit_addr) => {
-                    match changes {
+                    grpc_api::async_pool_changes_filter::Filter::Handler(handler) => {
+                        match changes {
+                            massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                                msg.function.eq(handler)
+                            }
+                            massa_models::types::SetUpdateOrDelete::Update(msg) => {
+                                match &msg.function {
+                                    massa_models::types::SetOrKeep::Set(func) => func.eq(handler),
+                                    massa_models::types::SetOrKeep::Keep => false,
+                                }
+                            }
+                            massa_models::types::SetUpdateOrDelete::Delete => false,
+                        }
+                    }
+                    grpc_api::async_pool_changes_filter::Filter::DestinationAddress(
+                        filter_dest_addr,
+                    ) => match changes {
+                        massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                            msg.destination.to_string().eq(filter_dest_addr)
+                        }
+                        massa_models::types::SetUpdateOrDelete::Update(msg) => {
+                            match msg.destination {
+                                massa_models::types::SetOrKeep::Set(dest) => {
+                                    dest.to_string().eq(filter_dest_addr)
+                                }
+                                massa_models::types::SetOrKeep::Keep => false,
+                            }
+                        }
+                        massa_models::types::SetUpdateOrDelete::Delete => false,
+                    },
+                    grpc_api::async_pool_changes_filter::Filter::EmitterAddress(
+                        filter_emit_addr,
+                    ) => match changes {
                         massa_models::types::SetUpdateOrDelete::Set(msg) => {
                             msg.sender.to_string().eq(filter_emit_addr)
                         }
@@ -321,22 +351,22 @@ fn filter_map_exec_output(
                             massa_models::types::SetOrKeep::Keep => false,
                         },
                         massa_models::types::SetUpdateOrDelete::Delete => false,
-                    }
-                }
-                grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(filter_exec) => {
-                    match changes {
-                        massa_models::types::SetUpdateOrDelete::Set(msg) => {
-                            msg.can_be_executed.eq(filter_exec)
-                        }
-                        massa_models::types::SetUpdateOrDelete::Update(msg) => {
-                            match msg.can_be_executed {
-                                massa_models::types::SetOrKeep::Set(b) => b.eq(filter_exec),
-                                massa_models::types::SetOrKeep::Keep => false,
+                    },
+                    grpc_api::async_pool_changes_filter::Filter::CanBeExecuted(filter_exec) => {
+                        match changes {
+                            massa_models::types::SetUpdateOrDelete::Set(msg) => {
+                                msg.can_be_executed.eq(filter_exec)
                             }
+                            massa_models::types::SetUpdateOrDelete::Update(msg) => {
+                                match msg.can_be_executed {
+                                    massa_models::types::SetOrKeep::Set(b) => b.eq(filter_exec),
+                                    massa_models::types::SetOrKeep::Keep => false,
+                                }
+                            }
+                            massa_models::types::SetUpdateOrDelete::Delete => false,
                         }
-                        massa_models::types::SetUpdateOrDelete::Delete => false,
                     }
-                }
+                })
             },
         );
 
@@ -355,11 +385,13 @@ fn filter_map_exec_output(
         exec_output
             .state_changes
             .executed_ops_changes
-            .retain(|op, (_success, _slot)| match executed_ops_changes_filter {
-                grpc_api::executed_ops_changes_filter::Filter::None(_) => false,
-                grpc_api::executed_ops_changes_filter::Filter::OperationId(filter_op_id) => {
-                    return op.to_string().eq(filter_op_id);
-                }
+            .retain(|op, (_success, _slot)| {
+                executed_ops_changes_filter.iter().all(|f| match f {
+                    grpc_api::executed_ops_changes_filter::Filter::None(_empty) => false,
+                    grpc_api::executed_ops_changes_filter::Filter::OperationId(filter_ope_id) => {
+                        op.to_string().eq(filter_ope_id)
+                    }
+                })
             });
 
         if exec_output.state_changes.executed_ops_changes.is_empty() {
@@ -372,11 +404,13 @@ fn filter_map_exec_output(
             .state_changes
             .ledger_changes
             .0
-            .retain(|addr, _ledger_change| match ledger_changes_filter {
-                grpc_api::ledger_changes_filter::Filter::None(_) => false,
-                grpc_api::ledger_changes_filter::Filter::Address(filter_addr) => {
-                    return addr.to_string().eq(filter_addr);
-                }
+            .retain(|addr, _ledger_change| {
+                ledger_changes_filter.iter().all(|filter| match filter {
+                    grpc_api::ledger_changes_filter::Filter::None(_empty) => false,
+                    grpc_api::ledger_changes_filter::Filter::Address(filter_addr) => {
+                        addr.to_string().eq(filter_addr)
+                    }
+                })
             });
 
         if exec_output.state_changes.ledger_changes.0.is_empty() {
