@@ -215,40 +215,39 @@ fn filter_map(
     filters: &Filter,
     grpc_config: &GrpcConfig,
 ) -> Option<SlotExecutionOutput> {
-    match &slot_execution_output {
-        SlotExecutionOutput::ExecutedSlot(e_output) => {
-            if let Some(status_filter) = &filters.status_filter {
-                let id = grpc_model::ExecutionOutputStatus::Candidate as i32;
-
-                if !status_filter.eq(&id) {
-                    return None;
-                }
-            }
-
-            filter_map_exec_output(e_output.clone(), filters, grpc_config)
-                .map(SlotExecutionOutput::ExecutedSlot)
-        }
-        SlotExecutionOutput::FinalizedSlot(e_output) => {
-            if let Some(status_filter) = &filters.status_filter {
-                let id = grpc_model::ExecutionOutputStatus::Final as i32;
-
-                if !status_filter.eq(&id) {
-                    return None;
-                }
-            }
-
-            filter_map_exec_output(e_output.clone(), filters, grpc_config)
-                .map(SlotExecutionOutput::FinalizedSlot)
-        }
+    match slot_execution_output {
+        SlotExecutionOutput::ExecutedSlot(e_output) => filter_map_exec_output_inner(
+            e_output,
+            filters,
+            grpc_config,
+            grpc_model::ExecutionOutputStatus::Candidate as i32,
+        )
+        .map(SlotExecutionOutput::ExecutedSlot),
+        SlotExecutionOutput::FinalizedSlot(e_output) => filter_map_exec_output_inner(
+            e_output,
+            filters,
+            grpc_config,
+            grpc_model::ExecutionOutputStatus::Final as i32,
+        )
+        .map(SlotExecutionOutput::FinalizedSlot),
     }
 }
 
 // Return if the execution outputs should be send and remove the fields that are not needed
-fn filter_map_exec_output(
+fn filter_map_exec_output_inner(
     mut exec_output: ExecutionOutput,
     filters: &Filter,
     _grpc_config: &GrpcConfig,
+    exec_status: i32,
 ) -> Option<ExecutionOutput> {
+    // Filter on status
+    if let Some(status) = filters.status_filter {
+        if status.ne(&exec_status) {
+            return None;
+        }
+    }
+
+    // Filter Slot Range
     if let Some(slot_ranges) = &filters.slot_ranges_filter {
         if slot_ranges.iter().any(|slot_range| {
             slot_range
@@ -262,6 +261,7 @@ fn filter_map_exec_output(
         }
     }
 
+    // Filter Exec event
     if let Some(execution_event_filter) = filters.execution_event_filter.as_ref() {
         exec_output.events.0.retain(|event| {
             execution_event_filter.iter().all(|filter| match filter {
@@ -291,6 +291,7 @@ fn filter_map_exec_output(
         }
     }
 
+    // Filter async pool changes
     if let Some(async_pool_changes_filter) = &filters.async_pool_changes_filter {
         exec_output.state_changes.async_pool_changes.0.retain(
             |(_msg_id, _slot, _emission_index), changes| {
@@ -381,6 +382,7 @@ fn filter_map_exec_output(
         }
     }
 
+    // Filter executed ops id
     if let Some(executed_ops_changes_filter) = &filters.executed_ops_changes_filter {
         exec_output
             .state_changes
@@ -399,6 +401,7 @@ fn filter_map_exec_output(
         }
     }
 
+    // Filter ledger changes
     if let Some(ledger_changes_filter) = &filters.ledger_changes_filter {
         exec_output
             .state_changes
