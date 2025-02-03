@@ -529,6 +529,7 @@ impl ExecutionState {
         if execution_component_version == 0 {
             context.origin_operation_id = Some(operation_id);
         }
+        context.event_count_in_current_exec = 0;
 
         Ok(context_snapshot)
     }
@@ -1199,6 +1200,7 @@ impl ExecutionState {
                     operation_datastore: None,
                 },
             ];
+            context.event_count_in_current_exec = 0;
 
             // check the target address
             if let Err(err) = context.check_target_sc_address(message.destination) {
@@ -1357,6 +1359,7 @@ impl ExecutionState {
                             operation_datastore: None,
                         },
                     ];
+                    context.event_count_in_current_exec = 0;
 
                     // Ensure that the target address is an SC address
                     // Ensure that the target address exists

@@ -105,6 +105,10 @@ pub struct ExecutionContextSnapshot {
     /// This is used to avoid stack overflow issues in the VM (that would crash the node instead of failing the call),
     /// by limiting the depth of recursion contracts can have with the max_recursive_calls_depth value.
     pub recursion_counter: u16,
+
+    /// Counts the number of event in the current execution_context
+    /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
+    pub event_count_in_current_exec: u16,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -202,6 +206,10 @@ pub struct ExecutionContext {
 
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
+
+    /// Counts the number of event in the current execution_context
+    /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
+    pub event_count_in_current_exec: u16,
 }
 
 impl ExecutionContext {
@@ -286,6 +294,7 @@ impl ExecutionContext {
             execution_component_version: mip_store
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
+            event_count_in_current_exec: 0,
         }
     }
 
@@ -309,6 +318,7 @@ impl ExecutionContext {
             unsafe_rng: self.unsafe_rng.clone(),
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
+            event_count_in_current_exec: self.event_count_in_current_exec,
         }
     }
 
@@ -355,6 +365,7 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
+        self.event_count_in_current_exec = snapshot.event_count_in_current_exec;
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
