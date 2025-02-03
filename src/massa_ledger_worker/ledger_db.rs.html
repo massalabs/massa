@@ -681,24 +681,142 @@
 <a href="#681" id="681">681</a>
 <a href="#682" id="682">682</a>
 <a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! Module to interact with the disk ledger
 
 </span><span class="kw">use </span>massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
-    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 <span class="kw">use </span>massa_ledger_exports::<span class="kw-2">*</span>;
 <span class="kw">use </span>massa_models::amount::AmountDeserializer;
 <span class="kw">use </span>massa_models::bytecode::BytecodeDeserializer;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
+<span class="kw">use </span>massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+<span class="kw">use </span>parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
 <span class="kw">use </span>std::collections::{BTreeSet, HashMap};
 <span class="kw">use </span>std::fmt::Debug;
 
@@ -793,7 +911,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
         <span class="kw">for </span>(address, entry) <span class="kw">in </span>initial_ledger {
-            <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>address, entry, <span class="kw-2">&amp;mut </span>batch);
+            <span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>address, entry, <span class="kw-2">&amp;mut </span>batch, <span class="number">0</span>);
         }
 
         <span class="self">self</span>.db.write().write_batch(
@@ -808,14 +926,19 @@
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * batch: the batch to apply the changes to
-    </span><span class="kw">pub fn </span>apply_changes_to_batch(<span class="kw-2">&amp;</span><span class="self">self</span>, changes: LedgerChanges, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    </span><span class="kw">pub fn </span>apply_changes_to_batch(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        changes: LedgerChanges,
+        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        final_state_component_version: u32,
+    ) {
         <span class="comment">// for all incoming changes
         </span><span class="kw">for </span>(addr, change) <span class="kw">in </span>changes.<span class="number">0 </span>{
             <span class="kw">match </span>change {
                 <span class="comment">// the incoming change sets a ledger entry to a new one
                 </span>SetUpdateOrDelete::Set(new_entry) =&gt; {
                     <span class="comment">// inserts/overwrites the entry with the incoming one
-                    </span><span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>addr, new_entry, batch);
+                    </span><span class="self">self</span>.put_entry(<span class="kw-2">&amp;</span>addr, new_entry, batch, final_state_component_version);
                 }
                 <span class="comment">// the incoming change updates an existing ledger entry
                 </span>SetUpdateOrDelete::Update(entry_update) =&gt; {
@@ -826,7 +949,7 @@
                 <span class="comment">// the incoming change deletes a ledger entry
                 </span>SetUpdateOrDelete::Delete =&gt; {
                     <span class="comment">// delete the entry, if it exists
-                    </span><span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>addr, batch);
+                    </span><span class="self">self</span>.delete_entry(<span class="kw-2">&amp;</span>addr, batch, final_state_component_version);
                 }
             }
         }
@@ -966,8 +1089,19 @@
     /// * `addr`: associated address
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
-    </span><span class="kw">fn </span>put_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, ledger_entry: LedgerEntry, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    </span><span class="kw">fn </span>put_entry(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        ledger_entry: LedgerEntry,
+        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        final_state_component_version: u32,
+    ) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+        <span class="kw">if </span>final_state_component_version &gt; <span class="number">0 </span>{
+            <span class="comment">// Ensures any potential previous entry is fully deleted.
+            </span>delete_datastore_entries(addr, <span class="kw-2">&amp;</span>db, batch, final_state_component_version);
+        }
 
         <span class="comment">// Version
         //TODO: Get version number from parameters
@@ -1115,7 +1249,12 @@
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    </span><span class="kw">fn </span>delete_entry(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+    </span><span class="kw">fn </span>delete_entry(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        final_state_component_version: u32,
+    ) {
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// version
@@ -1139,18 +1278,32 @@
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        <span class="comment">// datastore
-        </span><span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
+        delete_datastore_entries(addr, <span class="kw-2">&amp;</span>db, batch, final_state_component_version);
+    }
+}
 
-        <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, <span class="kw">_</span>)| key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap())
-        {
-            db.delete_key(batch, serialized_key.to_vec());
-        }
+<span class="comment">// Helper function to delete all datastore entries for a given address
+// Needs to be called in put entry and delete entry
+// Note: This function takes a lock on the DB to avoid multiple reads.
+</span><span class="kw">fn </span>delete_datastore_entries(
+    addr: <span class="kw-2">&amp;</span>Address,
+    db: <span class="kw-2">&amp;</span>RwLockReadGuard&lt;RawRwLock, Box&lt;<span class="kw">dyn </span>MassaDBController&gt;&gt;,
+    batch: <span class="kw-2">&amp;mut </span>std::collections::BTreeMap&lt;Vec&lt;u8&gt;, <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt;,
+    final_state_component_version: u32,
+) {
+    <span class="comment">// datastore
+    </span><span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
+    <span class="kw">for </span>(serialized_key, <span class="kw">_</span>) <span class="kw">in </span>db
+        .iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(key, <span class="kw">_</span>)| <span class="kw">match </span>final_state_component_version {
+            <span class="number">0 </span>=&gt; key &lt;= <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap(),
+            <span class="kw">_ </span>=&gt; key &lt; <span class="kw-2">&amp;</span>end_prefix(<span class="kw-2">&amp;</span>key_prefix).unwrap(),
+        })
+    {
+        db.delete_key(batch, serialized_key.to_vec());
     }
 }
 
@@ -1189,6 +1342,30 @@
             }
         }
         addresses
+    }
+
+    <span class="doccomment">/// Get the entire datastore for a given address (no deserialization)
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    </span><span class="attr">#[allow(dead_code)]
+    #[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
+    </span><span class="kw">pub fn </span>get_entire_datastore_raw(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+    ) -&gt; std::collections::BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
+        <span class="kw">let </span>db = <span class="self">self</span>.db.read();
+
+        <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
+        <span class="comment">// Need an end_prefix otherwise the iterator can return entries not belonging to the given
+        // address
+        </span><span class="kw">let </span>end_prefix = key_prefix[<span class="number">0</span>..key_prefix.len() - <span class="number">1</span>].to_vec();
+
+        db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(k, <span class="kw">_</span>)| k.starts_with(<span class="kw-2">&amp;</span>end_prefix))
+        .collect()
     }
 
     <span class="doccomment">/// Get the entire datastore for a given address.
@@ -1243,7 +1420,8 @@
     <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>massa_hash::HashXof;
-    <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
+    <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    <span class="kw">use </span>massa_models::types::SetOrKeep;
     <span class="kw">use </span>massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},
@@ -1257,13 +1435,13 @@
     <span class="kw">use </span>std::sync::Arc;
     <span class="kw">use </span>tempfile::TempDir;
 
-    <span class="kw">fn </span>init_test_ledger(addr: Address) -&gt; (LedgerDB, BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) {
+    <span class="kw">fn </span>setup_test_ledger(addr: Address) -&gt; (LedgerDB, DBBatch, BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;) {
         <span class="comment">// init data
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>data = BTreeMap::new();
-        data.insert(<span class="string">b"1"</span>.to_vec(), <span class="string">b"a"</span>.to_vec());
         data.insert(<span class="string">b"2"</span>.to_vec(), <span class="string">b"b"</span>.to_vec());
         data.insert(<span class="string">b"3"</span>.to_vec(), <span class="string">b"c"</span>.to_vec());
+
         <span class="kw">let </span>entry = LedgerEntry {
             balance: Amount::from_str(<span class="string">"42"</span>).unwrap(),
             datastore: data.clone(),
@@ -1294,22 +1472,27 @@
         <span class="kw">let </span>ledger_db = LedgerDB::new(db.clone(), <span class="number">32</span>, <span class="number">255</span>, <span class="number">1000</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
 
-        ledger_db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch);
+        ledger_db.put_entry(<span class="kw-2">&amp;</span>addr, entry, <span class="kw-2">&amp;mut </span>batch, <span class="number">0</span>);
         ledger_db.update_entry(<span class="kw-2">&amp;</span>addr, entry_update, <span class="kw-2">&amp;mut </span>batch);
-        ledger_db
-            .db
-            .write()
-            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+        <span class="comment">// ledger_db
+        //     .db
+        //     .write()
+        //     .write_batch(batch, Default::default(), None);
 
-        <span class="comment">// return db and initial data
-        </span>(ledger_db, data)
+        // return db and initial data
+        // (ledger_db, data)
+        </span>(ledger_db, batch, data)
     }
 
     <span class="doccomment">/// Functional test of `LedgerDB`
     </span><span class="attr">#[test]
     </span><span class="kw">fn </span>test_ledger_db() {
         <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>KeyPair::generate(<span class="number">0</span>).unwrap().get_public_key());
-        <span class="kw">let </span>(ledger_db, data) = init_test_ledger(addr);
+        <span class="kw">let </span>(ledger_db, batch, data) = setup_test_ledger(addr);
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
 
         <span class="kw">let </span>amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
@@ -1341,7 +1524,7 @@
 
         <span class="comment">// delete entry
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
-        ledger_db.delete_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;mut </span>batch);
+        ledger_db.delete_entry(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;mut </span>batch, <span class="number">1</span>);
         ledger_db
             .db
             .write()
@@ -1362,6 +1545,55 @@
     </span><span class="kw">fn </span>test_end_prefix() {
         <span class="macro">assert_eq!</span>(end_prefix(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>]), <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">8</span>]));
         <span class="macro">assert_eq!</span>(end_prefix(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">6</span>, <span class="number">255</span>]), <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="number">5</span>, <span class="number">7</span>]));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_ledger_delete() {
+        <span class="kw">let </span>keypair = KeyPair::generate(<span class="number">0</span>).unwrap();
+        <span class="kw">let </span>addr = Address::from_public_key(<span class="kw-2">&amp;</span>keypair.get_public_key());
+        <span class="kw">let </span>(ledger_db, <span class="kw-2">mut </span>batch, _data) = setup_test_ledger(addr);
+
+        <span class="comment">// Add a key, value into db with a prefix right after datastore (datastore indent = 3, here we use indent = 4)
+        // This is to test if delete_datastore_entries only delete datastore entries
+        </span><span class="kw">let </span><span class="kw-2">mut </span>datastore_key = <span class="macro">vec!</span>[];
+        ledger_db
+            .key_serializer_db
+            .serialize(
+                <span class="kw-2">&amp;</span>Key::new(<span class="kw-2">&amp;</span>addr, KeyType::DATASTORE(<span class="string">b"a"</span>.to_vec())),
+                <span class="kw-2">&amp;mut </span>datastore_key,
+            )
+            .expect(KEY_SER_ERROR);
+        <span class="kw">let </span>datastore_key_len = datastore_key.len();
+        <span class="comment">// We modify the datastore key indent (from 3 to 4) so this is not a 'datastore' key anymore
+        </span>datastore_key[datastore_key_len - <span class="number">2</span>] = DATASTORE_IDENT + <span class="number">1</span>;
+        <span class="comment">// Value is not important here
+        </span><span class="kw">let </span>datastore_value = <span class="string">b"a"</span>.to_vec();
+        batch.insert(datastore_key.clone(), <span class="prelude-val">Some</span>(datastore_value.clone()));
+        <span class="comment">//
+
+        // Write batch into db
+        </span>ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+
+        <span class="kw">let </span>datastore = ledger_db.get_entire_datastore(<span class="kw-2">&amp;</span>addr);
+        <span class="comment">// println!("datastore: {:?}", datastore);
+        </span><span class="macro">assert!</span>(!datastore.is_empty());
+
+        <span class="kw">let </span><span class="kw-2">mut </span>batch = DBBatch::new();
+        <span class="kw">let </span>guard = ledger_db.db.read();
+        delete_datastore_entries(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>guard, <span class="kw-2">&amp;mut </span>batch, <span class="number">1</span>);
+        drop(guard);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>guard = ledger_db.db.write();
+        guard.write_batch(batch, Default::default(), <span class="prelude-val">None</span>);
+        drop(guard);
+
+        <span class="kw">let </span>datastore = ledger_db.get_entire_datastore_raw(<span class="kw-2">&amp;</span>addr);
+        <span class="comment">// println!("datastore: {:?}", datastore);
+        </span><span class="macro">assert_eq!</span>(datastore.len(), <span class="number">1</span>);
+        <span class="macro">assert!</span>(datastore.contains_key(<span class="kw-2">&amp;</span>datastore_key));
     }
 }
 </code></pre></div></section></main></body></html>
