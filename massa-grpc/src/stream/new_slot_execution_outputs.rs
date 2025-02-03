@@ -171,33 +171,33 @@ fn get_filter(
             match filter {
                 grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => result.status_filter = Some(status),
                 grpc_api::new_slot_execution_outputs_filter::Filter::SlotRange(s_range) => {
-                        result.slot_ranges_filter.get_or_insert(Vec::new()).push(s_range.into());
+                        result.slot_ranges_filter.get_or_insert(Vec::new()).push(s_range);
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
-                        result.async_pool_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                        result.async_pool_changes_filter.get_or_insert(Vec::new()).push(request_f);
                     } else {
                         result.async_pool_changes_filter = None;
                     }
                 },
-                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter.into(),
+                grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter,
                 grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
                     if let Some(request_f) = filter.filter {
-                        result.execution_event_filter.get_or_insert(Vec::new()).push(request_f.into());
+                        result.execution_event_filter.get_or_insert(Vec::new()).push(request_f);
                     } else {
                         result.execution_event_filter = None;
                     }
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
-                        result.executed_ops_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                        result.executed_ops_changes_filter.get_or_insert(Vec::new()).push(request_f);
                     } else {
                         result.execution_event_filter = None;
                     }
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
-                        result.ledger_changes_filter.get_or_insert(Vec::new()).push(request_f.into());
+                        result.ledger_changes_filter.get_or_insert(Vec::new()).push(request_f);
                     } else {
                         result.ledger_changes_filter = None;
                     }
@@ -295,7 +295,7 @@ fn filter_map_exec_output(
         exec_output.state_changes.async_pool_changes.0.retain(
             |(_msg_id, _slot, _emission_index), changes| {
                 async_pool_changes_filter.iter().all(|filter| match filter {
-                    grpc_api::async_pool_changes_filter::Filter::None(_empty) => return false,
+                    grpc_api::async_pool_changes_filter::Filter::None(_empty) => false,
                     grpc_api::async_pool_changes_filter::Filter::Type(filter_type) => match changes
                     {
                         massa_models::types::SetUpdateOrDelete::Set(_) => {
