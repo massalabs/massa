@@ -176,7 +176,7 @@ impl InterfaceImpl {
     // Allow certain addresses to bypass:
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
-    fn bypass_event_limitation(&self) -> bool {
+    fn bypass_event_limitation(&self, call_stack: Vec<Address>) -> bool {
         // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
         // and SC_2 will generate the event.
         // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
@@ -185,7 +185,6 @@ impl InterfaceImpl {
             Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
             Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
         ];
-        let call_stack = context_guard!(self).get_call_stack();
         call_stack.len() > 1 && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
     }
 }
@@ -1230,8 +1229,9 @@ impl Interface for InterfaceImpl {
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
+        let mut context = context_guard!(self);
 
-        let bypass_event_limitation = self.bypass_event_limitation();
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
         let max_event_size = match (execution_component_version, bypass_event_limitation) {
@@ -1243,8 +1243,6 @@ impl Interface for InterfaceImpl {
         if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
-
-        let mut context = context_guard!(self);
 
         let event = context.event_create(data, false);
 
@@ -1268,8 +1266,9 @@ impl Interface for InterfaceImpl {
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
+        let mut context = context_guard!(self);
 
-        let bypass_event_limitation = self.bypass_event_limitation();
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
 
         // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
         let max_event_size = match (execution_component_version, bypass_event_limitation) {
@@ -1283,7 +1282,6 @@ impl Interface for InterfaceImpl {
         };
 
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
-        let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
 
         context.user_event_count_in_current_exec =
