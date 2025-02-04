@@ -2434,6 +2434,7 @@
 <a href="#2434" id="2434">2434</a>
 <a href="#2435" id="2435">2435</a>
 <a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2613,7 +2614,8 @@
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
     </span><span class="kw">fn </span>bypass_event_limitation(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="comment">// NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2
+        <span class="comment">// NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
+        // and SC_2 will generate the event.
         // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
         </span><span class="kw">let </span>allowed_router_addresses = [
             Address::from_str(<span class="string">"AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy"</span>).unwrap(),
