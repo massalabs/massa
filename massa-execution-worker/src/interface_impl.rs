@@ -180,17 +180,12 @@ impl InterfaceImpl {
         // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
         // and SC_2 will generate the event.
         // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
+        // These addresses are respectively the the Mainnet and Buildnet routers for Dusa 
         let allowed_router_addresses = [
             Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
             Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
         ];
-        let call_stack = context_guard!(self).get_call_stack();
-        if call_stack.len() > 1
-            && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
-        {
-            return true;
-        }
-        false
+        call_stack.len() > 1 && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
     }
 }
 
