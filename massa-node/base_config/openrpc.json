@@ -133,6 +133,39 @@
             ],
             "params": [
                 {
+                    "name": "address keys request",
+                    "description": "Vector of addresses for which to retrieve datastore keys",
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GetAddressDatastoreKeysRequest"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "address keys response",
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/GetAddressDatastoreKeysResponse"
+                    }
+                }
+            },
+            "name": "get_addresses_datastore_keys",
+            "summary": "Retrieve datastore keys for given addresses",
+            "description": "Returns a list of datastore keys associated with the given addresses. This endpoint allows fetching storage keys for multiple addresses in a single request."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
                     "name": "addressFilter",
                     "description": "Need to provide at least one valid address filter",
                     "schema": {
@@ -2623,6 +2656,91 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "GetAddressDatastoreKeysRequest": {
+                "title": "GetAddressDatastoreKeysRequest",
+                "required": [
+                    "address",
+                    "prefix",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "prefix": {
+                        "$ref": "#/components/schemas/Bytes"
+                    },
+                    "is_final": {
+                        "type": "boolean"
+                    },
+                    "start_key": {
+                        "description": "start key to filter",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_start_key": {
+                        "description": "include or exclude start_key",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    },
+                    "end_key": {
+                        "description": "The end key to filter the keys",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_end_key": {
+                        "description": "include or exclude end_key",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    },
+                    "count": {
+                        "description": "limit the number of keys",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    }
+                }
+            },
+            "GetAddressDatastoreKeysResponse": {
+                "title": "GetAddressDatastoreKeysResponse",
+                "required": [
+                    "address",
+                    "keys",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "is_final": {
+                        "type": "boolean"
+                    },
+                    "keys": {
+                        "title": "keys list",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Bytes"
+                        }
+                    }
+                }
             },
             "GraphInterval": {
                 "title": "GraphInterval",

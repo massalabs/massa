@@ -23,6 +23,7 @@ use massa_pos_exports::ProductionStats;
 use massa_storage::Storage;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Bound;
 
 #[cfg(feature = "execution-trace")]
 use crate::types_trace_info::{SlotAbiCallStack, Transfer};
@@ -68,19 +69,31 @@ pub enum ExecutionQueryRequestItem {
     AddressBytecodeCandidate(Address),
     /// gets the bytecode (final) of an address, returns ExecutionQueryResponseItem::Bytecode(bytecode) or an error if the address is not found
     AddressBytecodeFinal(Address),
-    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    /// gets the datastore keys (candidate) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     AddressDatastoreKeysCandidate {
         /// Address for which to query the datastore
-        addr: Address,
+        address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
+        /// Bound to start from
+        start_key: Bound<Vec<u8>>,
+        /// End bound
+        end_key: Bound<Vec<u8>>,
+        /// Maximum number of keys to return
+        count: Option<u32>,
     },
-    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::KeyList(keys) or an error if the address is not found
+    /// gets the datastore keys (final) of an address, returns ExecutionQueryResponseItem::AddressDatastoreKeys(keys, addr, is_final) or an error if the address is not found
     AddressDatastoreKeysFinal {
         /// Address for which to query the datastore
-        addr: Address,
+        address: Address,
         /// Filter only entries whose key starts with a prefix
         prefix: Vec<u8>,
+        /// Bound to start from
+        start_key: Bound<Vec<u8>>,
+        /// End bound
+        end_key: Bound<Vec<u8>>,
+        /// Maximum number of keys to return
+        count: Option<u32>,
     },
     /// gets a datastore value (candidate) for an address, returns ExecutionQueryResponseItem::DatastoreValue(keys) or an error if the address or key is not found
     AddressDatastoreValueCandidate {
@@ -154,8 +167,8 @@ pub enum ExecutionQueryResponseItem {
     Bytecode(Bytecode),
     /// datastore value
     DatastoreValue(Vec<u8>),
-    /// list of keys
-    KeyList(BTreeSet<Vec<u8>>),
+    /// list of keys (keys, address, is_final)
+    AddressDatastoreKeys(BTreeSet<Vec<u8>>, Address, bool),
     /// deferred call quote (target_slot, gas_request, available, price)
     DeferredCallQuote(Slot, u64, bool, Amount),
     /// deferred call info value

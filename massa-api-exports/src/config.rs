@@ -51,6 +51,8 @@ pub struct APIConfig {
     pub enable_ws: bool,
     /// max datastore value length
     pub max_datastore_value_length: u64,
+    /// max datastore key length
+    pub max_datastore_key_length: u8,
     /// max op datastore entry
     pub max_op_datastore_entry_count: u64,
     /// max datastore key length
@@ -87,4 +89,8 @@ pub struct APIConfig {
     pub minimal_fees: Amount,
     /// deferred calls config
     pub deferred_calls_config: DeferredCallsConfig,
+    /// max datastore keys queries
+    pub max_datastore_keys_queries: Option<u32>,
+    /// Limit the number of addresses in a single datastore keys request
+    pub max_addresses_datastore_keys_query: Option<u32>,
 }

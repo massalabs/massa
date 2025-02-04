@@ -82,6 +82,7 @@
 mod active_history;
 mod context;
 mod controller;
+mod datastore_scan;
 mod execution;
 mod interface_impl;
 mod request_queue;

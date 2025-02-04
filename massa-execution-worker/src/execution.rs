@@ -10,6 +10,7 @@
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::context::{ExecutionContext, ExecutionContextSnapshot};
+use crate::datastore_scan::scan_datastore;
 use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
@@ -27,7 +28,6 @@ use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
 use massa_models::bytecode::Bytecode;
-use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
 use massa_models::execution::EventFilter;
@@ -35,7 +35,6 @@ use massa_models::output_event::SCOutputEvent;
 use massa_models::prehash::PreHashSet;
 use massa_models::stats::ExecutionStats;
 use massa_models::timeslots::get_block_slot_timestamp;
-use massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 use massa_models::{
     address::Address,
     block_id::BlockId,
@@ -50,6 +49,7 @@ use massa_versioning::versioning::MipStore;
 use massa_wallet::Wallet;
 use parking_lot::{Mutex, RwLock};
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
@@ -2408,65 +2408,40 @@ impl ExecutionState {
         )
     }
 
+    pub fn get_final_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        self.final_state
+            .read()
+            .get_ledger()
+            .get_datastore_keys(addr, prefix, start_key, end_key, count)
+    }
+
     /// Get every final and active datastore key of the given address
     #[allow(clippy::type_complexity)]
     pub fn get_final_and_candidate_datastore_keys(
         &self,
         addr: &Address,
         prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
     ) -> (Option<BTreeSet<Vec<u8>>>, Option<BTreeSet<Vec<u8>>>) {
-        // here, get the final keys from the final ledger, and make a copy of it for the candidate list
-        // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        let final_keys = self
-            .final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix);
-
-        let mut candidate_keys = final_keys.clone();
-
-        // compute prefix range
-        let prefix_range = get_prefix_bounds(prefix);
-        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
-
-        // traverse the history from oldest to newest, applying additions and deletions
-        for output in &self.active_history.read().0 {
-            match output.state_changes.ledger_changes.get(addr) {
-                // address absent from the changes
-                None => (),
-
-                // address ledger entry being reset to an absolute new list of keys
-                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = Some(
-                        new_ledger_entry
-                            .datastore
-                            .range::<Vec<u8>, _>(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                // address ledger entry being updated
-                Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_with(Default::default);
-                    for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
-                    {
-                        match ds_update {
-                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete => c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                // address ledger entry being deleted
-                Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys = None;
-                }
-            }
-        }
-
-        (final_keys, candidate_keys)
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            self.final_state.clone(),
+            self.active_history.clone(),
+            None,
+        )
     }
 
     pub fn get_address_cycle_infos(&self, address: &Address) -> Vec<ExecutionAddressCycleInfo> {

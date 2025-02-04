@@ -955,6 +955,9 @@ async fn launch(
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
+        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
     };
 
     // spawn Massa API
@@ -1253,6 +1256,8 @@ fn configure_grpc(
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: *CHAINID,
         minimal_fees,
+        max_datastore_keys_queries: settings.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
     }
 }
 

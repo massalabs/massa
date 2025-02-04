@@ -993,24 +993,29 @@ pub(crate) fn query_state(
     grpc: &MassaPublicGrpc,
     request: tonic::Request<grpc_api::QueryStateRequest>,
 ) -> Result<grpc_api::QueryStateResponse, GrpcError> {
-    let current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
-    let queries = request
-        .into_inner()
-        .queries
-        .into_iter()
-        .map(|q| to_querystate_filter(q, current_network_version))
-        .collect::<Result<Vec<_>, _>>()?;
-
+    let queries = request.into_inner().queries;
     if queries.is_empty() {
         return Err(GrpcError::InvalidArgument(
             "no query items specified".to_string(),
         ));
     }
-
     if queries.len() as u32 > grpc.grpc_config.max_query_items_per_request {
         return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_query_items_per_request)));
     }
+
+    let current_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
+    let queries = queries
+        .into_iter()
+        .map(|q| {
+            to_querystate_filter(
+                q,
+                current_version,
+                grpc.grpc_config.max_datastore_keys_queries,
+                grpc.grpc_config.max_datastore_key_length,
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let response = grpc
         .execution_controller
