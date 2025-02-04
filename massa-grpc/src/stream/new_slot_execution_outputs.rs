@@ -23,8 +23,7 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
     >,
 >;
 
-//TODO implement remaining sub filters
-// Type declaration for NewSlotExecutionOutputsFilter
+/// Type declaration for NewSlotExecutionOutputsFilter
 #[derive(Clone, Debug, Default)]
 struct Filter {
     // Execution output status to filter
@@ -176,30 +175,22 @@ fn get_filter(
                 grpc_api::new_slot_execution_outputs_filter::Filter::AsyncPoolChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
                         result.async_pool_changes_filter.get_or_insert(Vec::new()).push(request_f);
-                    } else {
-                        result.async_pool_changes_filter = None;
-                    }
+                    } 
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedDenounciationFilter(filter) => result.executed_denounciation_filter = filter.filter,
                 grpc_api::new_slot_execution_outputs_filter::Filter::EventFilter(filter) => {
                     if let Some(request_f) = filter.filter {
                         result.execution_event_filter.get_or_insert(Vec::new()).push(request_f);
-                    } else {
-                        result.execution_event_filter = None;
                     }
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::ExecutedOpsChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
                         result.executed_ops_changes_filter.get_or_insert(Vec::new()).push(request_f);
-                    } else {
-                        result.execution_event_filter = None;
                     }
                 },
                 grpc_api::new_slot_execution_outputs_filter::Filter::LedgerChangesFilter(filter) => {
                     if let Some(request_f) = filter.filter {
                         result.ledger_changes_filter.get_or_insert(Vec::new()).push(request_f);
-                    } else {
-                        result.ledger_changes_filter = None;
                     }
                 },
             }
@@ -378,7 +369,12 @@ fn filter_map_exec_output_inner(
 
     if let Some(executed_denounciation_filter) = &filters.executed_denounciation_filter {
         match executed_denounciation_filter {
-            grpc_api::executed_denounciation_filter::Filter::None(_empty) => return None,
+            grpc_api::executed_denounciation_filter::Filter::None(_empty) => {
+                exec_output
+                    .state_changes
+                    .executed_denunciations_changes
+                    .clear();
+            }
         }
     }
 
