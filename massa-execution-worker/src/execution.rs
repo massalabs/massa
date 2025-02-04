@@ -496,9 +496,7 @@ impl ExecutionState {
         // set the context origin operation ID
         // Note: set operation ID early as if context.transfer_coins fails, event_create will use
         // operation ID in the event message
-        if execution_component_version >= 1 {
-            context.origin_operation_id = Some(operation_id);
-        }
+        context.origin_operation_id = Some(operation_id);
 
         // debit the fee from the operation sender
         if let Err(err) =
@@ -525,10 +523,9 @@ impl ExecutionState {
 
         // set the creator address
         context.creator_address = Some(operation.content_creator_address);
-
-        if execution_component_version == 0 {
-            context.origin_operation_id = Some(operation_id);
-        }
+        context.gas_remaining_before_subexecution = None;
+        context.recursion_counter = 0;
+        context.user_event_count_in_current_exec = 0;
 
         Ok(context_snapshot)
     }
@@ -1199,6 +1196,10 @@ impl ExecutionState {
                     operation_datastore: None,
                 },
             ];
+            context.origin_operation_id = None;
+            context.gas_remaining_before_subexecution = None;
+            context.recursion_counter = 0;
+            context.user_event_count_in_current_exec = 0;
 
             // check the target address
             if let Err(err) = context.check_target_sc_address(message.destination) {
@@ -1357,6 +1358,10 @@ impl ExecutionState {
                             operation_datastore: None,
                         },
                     ];
+                    context.origin_operation_id = None;
+                    context.gas_remaining_before_subexecution = None;
+                    context.recursion_counter = 0;
+                    context.user_event_count_in_current_exec = 0;
 
                     // Ensure that the target address is an SC address
                     // Ensure that the target address exists
