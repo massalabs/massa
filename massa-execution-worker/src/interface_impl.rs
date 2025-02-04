@@ -52,7 +52,6 @@ use tracing::warn;
     test
 ))]
 use massa_models::datastore::Datastore;
-use massa_models::execution::EventFilter;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
@@ -1227,21 +1226,14 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
 
         let event = context.event_create(data, false);
-        let event_filter = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: event.context.origin_operation_id,
-            is_final: None,
-            is_error: None,
-        };
+
+        context.user_event_count_in_current_exec =
+            context.user_event_count_in_current_exec.saturating_add(1);
+
         if execution_component_version > 0 {
-            let event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(&event_filter)
-                .count();
-            if event_per_op >= self.config.max_event_per_operation {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
@@ -1268,21 +1260,13 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
 
-        let event_filter = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: event.context.origin_operation_id,
-            is_final: None,
-            is_error: None,
-        };
+        context.user_event_count_in_current_exec =
+            context.user_event_count_in_current_exec.saturating_add(1);
+
         if execution_component_version > 0 {
-            let event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(&event_filter)
-                .count();
-            if event_per_op >= self.config.max_event_per_operation {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
