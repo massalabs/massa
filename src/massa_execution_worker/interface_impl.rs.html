@@ -2405,25 +2405,6 @@
 <a href="#2405" id="2405">2405</a>
 <a href="#2406" id="2406">2406</a>
 <a href="#2407" id="2407">2407</a>
-<a href="#2408" id="2408">2408</a>
-<a href="#2409" id="2409">2409</a>
-<a href="#2410" id="2410">2410</a>
-<a href="#2411" id="2411">2411</a>
-<a href="#2412" id="2412">2412</a>
-<a href="#2413" id="2413">2413</a>
-<a href="#2414" id="2414">2414</a>
-<a href="#2415" id="2415">2415</a>
-<a href="#2416" id="2416">2416</a>
-<a href="#2417" id="2417">2417</a>
-<a href="#2418" id="2418">2418</a>
-<a href="#2419" id="2419">2419</a>
-<a href="#2420" id="2420">2420</a>
-<a href="#2421" id="2421">2421</a>
-<a href="#2422" id="2422">2422</a>
-<a href="#2423" id="2423">2423</a>
-<a href="#2424" id="2424">2424</a>
-<a href="#2425" id="2425">2425</a>
-<a href="#2426" id="2426">2426</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2598,21 +2579,6 @@
         <span class="kw">let </span>context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }
-
-    <span class="comment">// Allow certain addresses to bypass:
-    // - the event size limit
-    // - the event count per operation / asc / deferred_call
-    </span><span class="kw">fn </span>bypass_event_limitation(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="kw">let </span>allowed_addresses = <span class="macro">vec!</span>[
-            Address::from_str(<span class="string">"AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy"</span>).unwrap(),
-            Address::from_str(<span class="string">"AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd"</span>).unwrap(),
-        ];
-        <span class="kw">let </span>call_stack = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_call_stack();
-        <span class="kw">if </span>call_stack.len() &gt; <span class="number">1 </span>&amp;&amp; allowed_addresses.contains(<span class="kw-2">&amp;</span>call_stack[call_stack.len() - <span class="number">1</span>]) {
-            <span class="kw">return </span><span class="bool-val">true</span>;
-        }
-        <span class="bool-val">false
-    </span>}
 }
 
 <span class="kw">impl </span>InterfaceClone <span class="kw">for </span>InterfaceImpl {
@@ -3660,9 +3626,7 @@
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
         };
 
-        <span class="kw">let </span>bypass_limits = <span class="self">self</span>.bypass_event_limitation();
-
-        <span class="kw">if </span>data.len() &gt; max_event_size &amp;&amp; !bypass_limits {
+        <span class="kw">if </span>data.len() &gt; max_event_size {
             <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
@@ -3673,7 +3637,7 @@
         context.user_event_count_in_current_exec =
             context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
 
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>&amp;&amp; !bypass_limits {
+        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
             <span class="kw">let </span>event_per_op = context.user_event_count_in_current_exec <span class="kw">as </span>usize;
 
             <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation {
@@ -3695,9 +3659,7 @@
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
         };
 
-        <span class="kw">let </span>bypass_limits = <span class="self">self</span>.bypass_event_limitation();
-
-        <span class="kw">if </span>data.len() &gt; max_event_size &amp;&amp; !bypass_limits {
+        <span class="kw">if </span>data.len() &gt; max_event_size {
             <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
 
@@ -3708,7 +3670,7 @@
         context.user_event_count_in_current_exec =
             context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
 
-        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>&amp;&amp; !bypass_limits {
+        <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
             <span class="kw">let </span>event_per_op = context.user_event_count_in_current_exec <span class="kw">as </span>usize;
 
             <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation {
