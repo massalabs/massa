@@ -172,6 +172,25 @@ impl InterfaceImpl {
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }
+
+    // Allow certain addresses to bypass:
+    // - the event size limit
+    // - the user event count per operation / asc / deferred_call
+    fn bypass_event_limitation(&self) -> bool {
+        // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2
+        // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
+        let allowed_router_addresses = [
+            Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
+            Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
+        ];
+        let call_stack = context_guard!(self).get_call_stack();
+        if call_stack.len() > 1
+            && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
+        {
+            return true;
+        }
+        false
+    }
 }
 
 impl InterfaceClone for InterfaceImpl {
@@ -1214,9 +1233,14 @@ impl Interface for InterfaceImpl {
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
-        let max_event_size = match execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
+
+        let bypass_event_limitation = self.bypass_event_limitation();
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
         };
 
         if data.len() > max_event_size {
@@ -1233,7 +1257,7 @@ impl Interface for InterfaceImpl {
         if execution_component_version > 0 {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
+            if event_per_op > self.config.max_event_per_operation && !bypass_event_limitation {
                 bail!("Too many event for this operation");
             }
         }
@@ -1247,9 +1271,14 @@ impl Interface for InterfaceImpl {
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
-        let max_event_size = match execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
+
+        let bypass_event_limitation = self.bypass_event_limitation();
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
         };
 
         if data.len() > max_event_size {
@@ -1266,7 +1295,7 @@ impl Interface for InterfaceImpl {
         if execution_component_version > 0 {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation {
+            if event_per_op > self.config.max_event_per_operation && !bypass_event_limitation {
                 bail!("Too many event for this operation");
             }
         }
