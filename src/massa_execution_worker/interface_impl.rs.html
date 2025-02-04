@@ -2429,8 +2429,6 @@
 <a href="#2429" id="2429">2429</a>
 <a href="#2430" id="2430">2430</a>
 <a href="#2431" id="2431">2431</a>
-<a href="#2432" id="2432">2432</a>
-<a href="#2433" id="2433">2433</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2609,7 +2607,7 @@
     <span class="comment">// Allow certain addresses to bypass:
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
-    </span><span class="kw">fn </span>bypass_event_limitation(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    </span><span class="kw">fn </span>bypass_event_limitation(<span class="kw-2">&amp;</span><span class="self">self</span>, call_stack: Vec&lt;Address&gt;) -&gt; bool {
         <span class="comment">// NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
         // and SC_2 will generate the event.
         // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
@@ -2618,7 +2616,6 @@
             Address::from_str(<span class="string">"AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy"</span>).unwrap(),
             Address::from_str(<span class="string">"AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd"</span>).unwrap(),
         ];
-        <span class="kw">let </span>call_stack = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_call_stack();
         call_stack.len() &gt; <span class="number">1 </span>&amp;&amp; allowed_router_addresses.contains(<span class="kw-2">&amp;</span>call_stack[call_stack.len() - <span class="number">2</span>])
     }
 }
@@ -3663,8 +3660,9 @@
     /// data: the string data that is the payload of the event
     </span><span class="kw">fn </span>generate_event(<span class="kw-2">&amp;</span><span class="self">self</span>, data: String) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-        <span class="kw">let </span>bypass_event_limitation = <span class="self">self</span>.bypass_event_limitation();
+        <span class="kw">let </span>bypass_event_limitation = <span class="self">self</span>.bypass_event_limitation(context.get_call_stack());
 
         <span class="comment">// Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
         </span><span class="kw">let </span>max_event_size = <span class="kw">match </span>(execution_component_version, bypass_event_limitation) {
@@ -3676,8 +3674,6 @@
         <span class="kw">if </span>data.len() &gt; max_event_size {
             <span class="macro">bail!</span>(<span class="string">"Event data size is too large"</span>);
         };
-
-        <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         <span class="kw">let </span>event = context.event_create(data, <span class="bool-val">false</span>);
 
@@ -3701,8 +3697,9 @@
     /// data: the bytes_array data that is the payload of the event
     </span><span class="kw">fn </span>generate_event_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Vec&lt;u8&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_interface_version()<span class="question-mark">?</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-        <span class="kw">let </span>bypass_event_limitation = <span class="self">self</span>.bypass_event_limitation();
+        <span class="kw">let </span>bypass_event_limitation = <span class="self">self</span>.bypass_event_limitation(context.get_call_stack());
 
         <span class="comment">// Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
         </span><span class="kw">let </span>max_event_size = <span class="kw">match </span>(execution_component_version, bypass_event_limitation) {
@@ -3716,7 +3713,6 @@
         };
 
         <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, data));
-        <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>event = context.event_create(data_str, <span class="bool-val">false</span>);
 
         context.user_event_count_in_current_exec =
