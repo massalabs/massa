@@ -172,6 +172,21 @@ impl InterfaceImpl {
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
     }
+
+    // Allow certain addresses to bypass:
+    // - the event size limit
+    // - the event count per operation / asc / deferred_call
+    fn bypass_event_limitation(&self) -> bool {
+        let allowed_addresses = vec![
+            Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
+            Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
+        ];
+        let call_stack = context_guard!(self).get_call_stack();
+        if call_stack.len() > 1 && allowed_addresses.contains(&call_stack[call_stack.len() - 1]) {
+            return true;
+        }
+        false
+    }
 }
 
 impl InterfaceClone for InterfaceImpl {
@@ -1219,7 +1234,9 @@ impl Interface for InterfaceImpl {
             _ => self.config.max_event_size_v1,
         };
 
-        if data.len() > max_event_size {
+        let bypass_event_limitation = self.bypass_event_limitation();
+
+        if data.len() > max_event_size && !bypass_event_limitation {
             bail!("Event data size is too large");
         };
 
@@ -1230,7 +1247,7 @@ impl Interface for InterfaceImpl {
         context.user_event_count_in_current_exec =
             context.user_event_count_in_current_exec.saturating_add(1);
 
-        if execution_component_version > 0 {
+        if execution_component_version > 0 && !bypass_event_limitation {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
             if event_per_op > self.config.max_event_per_operation {
@@ -1251,8 +1268,10 @@ impl Interface for InterfaceImpl {
             0 => self.config.max_event_size_v0,
             _ => self.config.max_event_size_v1,
         };
+        
+        let bypass_event_limitation = self.bypass_event_limitation();
 
-        if data.len() > max_event_size {
+        if data.len() > max_event_size && !bypass_event_limitation {
             bail!("Event data size is too large");
         };
 
@@ -1263,7 +1282,7 @@ impl Interface for InterfaceImpl {
         context.user_event_count_in_current_exec =
             context.user_event_count_in_current_exec.saturating_add(1);
 
-        if execution_component_version > 0 {
+        if execution_component_version > 0 && !bypass_event_limitation {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
             if event_per_op > self.config.max_event_per_operation {
