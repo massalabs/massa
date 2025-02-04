@@ -177,7 +177,8 @@ impl InterfaceImpl {
     // - the event size limit
     // - the user event count per operation / asc / deferred_call
     fn bypass_event_limitation(&self) -> bool {
-        // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2
+        // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
+        // and SC_2 will generate the event.
         // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
         let allowed_router_addresses = [
             Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
