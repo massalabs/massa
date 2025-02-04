@@ -2743,6 +2743,8 @@
 <a href="#2743" id="2743">2743</a>
 <a href="#2744" id="2744">2744</a>
 <a href="#2745" id="2745">2745</a>
+<a href="#2746" id="2746">2746</a>
+<a href="#2747" id="2747">2747</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -3241,9 +3243,7 @@
         <span class="comment">// set the context origin operation ID
         // Note: set operation ID early as if context.transfer_coins fails, event_create will use
         // operation ID in the event message
-        </span><span class="kw">if </span>execution_component_version &gt;= <span class="number">1 </span>{
-            context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
-        }
+        </span>context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
 
         <span class="comment">// debit the fee from the operation sender
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
@@ -3270,11 +3270,9 @@
 
         <span class="comment">// set the creator address
         </span>context.creator_address = <span class="prelude-val">Some</span>(operation.content_creator_address);
-
-        <span class="kw">if </span>execution_component_version == <span class="number">0 </span>{
-            context.origin_operation_id = <span class="prelude-val">Some</span>(operation_id);
-        }
-        context.event_count_in_current_exec = <span class="number">0</span>;
+        context.gas_remaining_before_subexecution = <span class="prelude-val">None</span>;
+        context.recursion_counter = <span class="number">0</span>;
+        context.user_event_count_in_current_exec = <span class="number">0</span>;
 
         <span class="prelude-val">Ok</span>(context_snapshot)
     }
@@ -3945,7 +3943,10 @@
                     operation_datastore: <span class="prelude-val">None</span>,
                 },
             ];
-            context.event_count_in_current_exec = <span class="number">0</span>;
+            context.origin_operation_id = <span class="prelude-val">None</span>;
+            context.gas_remaining_before_subexecution = <span class="prelude-val">None</span>;
+            context.recursion_counter = <span class="number">0</span>;
+            context.user_event_count_in_current_exec = <span class="number">0</span>;
 
             <span class="comment">// check the target address
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.check_target_sc_address(message.destination) {
@@ -4104,7 +4105,10 @@
                             operation_datastore: <span class="prelude-val">None</span>,
                         },
                     ];
-                    context.event_count_in_current_exec = <span class="number">0</span>;
+                    context.origin_operation_id = <span class="prelude-val">None</span>;
+                    context.gas_remaining_before_subexecution = <span class="prelude-val">None</span>;
+                    context.recursion_counter = <span class="number">0</span>;
+                    context.user_event_count_in_current_exec = <span class="number">0</span>;
 
                     <span class="comment">// Ensure that the target address is an SC address
                     // Ensure that the target address exists

@@ -1670,13 +1670,13 @@
     <span class="doccomment">/// speculative roll state changes caused so far in the context
     </span><span class="kw">pub </span>pos_changes: PoSChanges,
 
-    <span class="doccomment">/// counter of newly created addresses so far at this slot during this execution
+    <span class="doccomment">/// counter of newly created addresses so far for this slot (does not reset after each execution)
     </span><span class="kw">pub </span>created_addr_index: u64,
 
-    <span class="doccomment">/// counter of newly created events so far during this execution
+    <span class="doccomment">/// counter of newly created events so far for this slot (does not reset after each execution)
     </span><span class="kw">pub </span>created_event_index: u64,
 
-    <span class="doccomment">/// counter of async messages emitted so far in this execution
+    <span class="doccomment">/// counter of async messages emitted so far for this slot (does not reset after each execution)
     </span><span class="kw">pub </span>created_message_index: u64,
 
     <span class="doccomment">/// address call stack, most recent is at the back
@@ -1697,9 +1697,9 @@
     /// by limiting the depth of recursion contracts can have with the max_recursive_calls_depth value.
     </span><span class="kw">pub </span>recursion_counter: u16,
 
-    <span class="doccomment">/// Counts the number of event in the current execution_context
+    <span class="doccomment">/// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
-    </span><span class="kw">pub </span>event_count_in_current_exec: u16,
+    </span><span class="kw">pub </span>user_event_count_in_current_exec: u16,
 }
 
 <span class="doccomment">/// An execution context that needs to be initialized before executing bytecode,
@@ -1798,9 +1798,9 @@
     <span class="doccomment">/// recursion counter, incremented for each new nested call
     </span><span class="kw">pub </span>recursion_counter: u16,
 
-    <span class="doccomment">/// Counts the number of event in the current execution_context
+    <span class="doccomment">/// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
-    </span><span class="kw">pub </span>event_count_in_current_exec: u16,
+    </span><span class="kw">pub </span>user_event_count_in_current_exec: u16,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1885,7 +1885,7 @@
             execution_component_version: mip_store
                 .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
             recursion_counter: <span class="number">0</span>,
-            event_count_in_current_exec: <span class="number">0</span>,
+            user_event_count_in_current_exec: <span class="number">0</span>,
         }
     }
 
@@ -1909,7 +1909,7 @@
             unsafe_rng: <span class="self">self</span>.unsafe_rng.clone(),
             gas_remaining_before_subexecution: <span class="self">self</span>.gas_remaining_before_subexecution,
             recursion_counter: <span class="self">self</span>.recursion_counter,
-            event_count_in_current_exec: <span class="self">self</span>.event_count_in_current_exec,
+            user_event_count_in_current_exec: <span class="self">self</span>.user_event_count_in_current_exec,
         }
     }
 
@@ -1956,7 +1956,7 @@
         <span class="self">self</span>.unsafe_rng = snapshot.unsafe_rng;
         <span class="self">self</span>.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         <span class="self">self</span>.recursion_counter = snapshot.recursion_counter;
-        <span class="self">self</span>.event_count_in_current_exec = snapshot.event_count_in_current_exec;
+        <span class="self">self</span>.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
 
         <span class="comment">// For events, set snapshot delta to error events.
         </span><span class="kw">for </span>event <span class="kw">in </span><span class="self">self</span>.events.<span class="number">0</span>.range_mut(snapshot.event_count..) {
