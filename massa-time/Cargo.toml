@@ -1,6 +1,6 @@
 [package]
 name = "massa_time"
-version = "28.7.0"
+version = "28.8.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 

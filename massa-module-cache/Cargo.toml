@@ -1,6 +1,6 @@
 [package]
 name = "massa_module_cache"
-version = "28.7.0"
+version = "28.8.0"
 edition = "2021"
 
 [dependencies]

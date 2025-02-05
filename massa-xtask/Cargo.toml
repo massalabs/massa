@@ -1,6 +1,6 @@
 [package]
 name = "massa_xtask"
-version = "28.7.0"
+version = "28.8.0"
 edition = "2021"
 
 [features]
