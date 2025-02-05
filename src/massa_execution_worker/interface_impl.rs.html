@@ -2429,6 +2429,12 @@
 <a href="#2429" id="2429">2429</a>
 <a href="#2430" id="2430">2430</a>
 <a href="#2431" id="2431">2431</a>
+<a href="#2432" id="2432">2432</a>
+<a href="#2433" id="2433">2433</a>
+<a href="#2434" id="2434">2434</a>
+<a href="#2435" id="2435">2435</a>
+<a href="#2436" id="2436">2436</a>
+<a href="#2437" id="2437">2437</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -3677,13 +3683,16 @@
 
         <span class="kw">let </span>event = context.event_create(data, <span class="bool-val">false</span>);
 
-        context.user_event_count_in_current_exec =
-            context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
+        <span class="comment">// Do not increment the event count if we bypass the event limitation
+        </span><span class="kw">if </span>!bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
+        }
 
         <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
             <span class="kw">let </span>event_per_op = context.user_event_count_in_current_exec <span class="kw">as </span>usize;
 
-            <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation &amp;&amp; !bypass_event_limitation {
+            <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation {
                 <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
             }
         }
@@ -3715,13 +3724,16 @@
         <span class="kw">let </span>data_str = String::from_utf8(data.clone()).unwrap_or(<span class="macro">format!</span>(<span class="string">"{:?}"</span>, data));
         <span class="kw">let </span>event = context.event_create(data_str, <span class="bool-val">false</span>);
 
-        context.user_event_count_in_current_exec =
-            context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
+        <span class="comment">// Do not increment the event count if we bypass the event limitation
+        </span><span class="kw">if </span>!bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(<span class="number">1</span>);
+        }
 
         <span class="kw">if </span>execution_component_version &gt; <span class="number">0 </span>{
             <span class="kw">let </span>event_per_op = context.user_event_count_in_current_exec <span class="kw">as </span>usize;
 
-            <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation &amp;&amp; !bypass_event_limitation {
+            <span class="kw">if </span>event_per_op &gt; <span class="self">self</span>.config.max_event_per_operation {
                 <span class="macro">bail!</span>(<span class="string">"Too many event for this operation"</span>);
             }
         }
