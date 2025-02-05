@@ -1246,13 +1246,16 @@ impl Interface for InterfaceImpl {
 
         let event = context.event_create(data, false);
 
-        context.user_event_count_in_current_exec =
-            context.user_event_count_in_current_exec.saturating_add(1);
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
 
         if execution_component_version > 0 {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation && !bypass_event_limitation {
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
@@ -1284,13 +1287,16 @@ impl Interface for InterfaceImpl {
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
         let event = context.event_create(data_str, false);
 
-        context.user_event_count_in_current_exec =
-            context.user_event_count_in_current_exec.saturating_add(1);
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
 
         if execution_component_version > 0 {
             let event_per_op = context.user_event_count_in_current_exec as usize;
 
-            if event_per_op > self.config.max_event_per_operation && !bypass_event_limitation {
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
