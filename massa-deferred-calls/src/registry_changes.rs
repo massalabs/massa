@@ -4,7 +4,7 @@ use massa_models::{
     amount::Amount,
     deferred_calls::DeferredCallId,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    types::{SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer},
+    types::{SetOrKeepDeserializer, SetOrKeepSerializer},
 };
 use massa_serialization::{
     Deserializer, SerializeError, Serializer, U128VarIntDeserializer, U128VarIntSerializer,
@@ -36,7 +36,8 @@ pub struct DeferredCallRegistryChanges {
     pub slots_change: BTreeMap<Slot, DeferredRegistrySlotChanges>,
 
     pub effective_total_gas: DeferredRegistryGasChange<u128>,
-    pub total_calls_registered: SetOrKeep<u64>,
+    // stats : (success, failed, cancel)
+    pub exec_stats: (u64, u64, u64),
 }
 
 impl Default for DeferredCallRegistryChanges {
@@ -44,7 +45,7 @@ impl Default for DeferredCallRegistryChanges {
         Self {
             slots_change: Default::default(),
             effective_total_gas: DeferredRegistryGasChange::Keep,
-            total_calls_registered: SetOrKeep::Keep,
+            exec_stats: (0, 0, 0),
         }
     }
 }
@@ -106,17 +107,6 @@ impl DeferredCallRegistryChanges {
             DeferredRegistryGasChange::Keep => None,
         }
     }
-
-    pub fn set_total_calls_registered(&mut self, total_calls_registered: u64) {
-        self.total_calls_registered = SetOrKeep::Set(total_calls_registered);
-    }
-
-    pub fn get_total_calls_registered(&self) -> Option<u64> {
-        match self.total_calls_registered {
-            SetOrKeep::Set(v) => Some(v),
-            SetOrKeep::Keep => None,
-        }
-    }
 }
 
 pub struct DeferredRegistryChangesSerializer {
@@ -124,7 +114,6 @@ pub struct DeferredRegistryChangesSerializer {
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
     pub(crate) effective_total_gas_serializer: SetOrKeepSerializer<u128, U128VarIntSerializer>,
-    pub(crate) total_calls_registered_serializer: SetOrKeepSerializer<u64, U64VarIntSerializer>,
 }
 
 impl DeferredRegistryChangesSerializer {
@@ -134,7 +123,6 @@ impl DeferredRegistryChangesSerializer {
             slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
-            total_calls_registered_serializer: SetOrKeepSerializer::new(U64VarIntSerializer::new()),
         }
     }
 }
@@ -146,6 +134,7 @@ impl Default for DeferredRegistryChangesSerializer {
 }
 
 impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializer {
+    // only used in tests
     fn serialize(
         &self,
         value: &DeferredCallRegistryChanges,
@@ -166,9 +155,9 @@ impl Serializer<DeferredCallRegistryChanges> for DeferredRegistryChangesSerializ
         self.effective_total_gas_serializer
             .serialize(&value.effective_total_gas, buffer)?;
 
-        self.total_calls_registered_serializer
-            .serialize(&value.total_calls_registered, buffer)?;
-
+        self.u64_serializer.serialize(&value.exec_stats.0, buffer)?;
+        self.u64_serializer.serialize(&value.exec_stats.1, buffer)?;
+        self.u64_serializer.serialize(&value.exec_stats.2, buffer)?;
         Ok(())
     }
 }
@@ -179,8 +168,6 @@ pub struct DeferredRegistryChangesDeserializer {
     pub(crate) slot_deserializer: SlotDeserializer,
     pub(crate) effective_total_gas_deserializer:
         SetOrKeepDeserializer<u128, U128VarIntDeserializer>,
-    pub(crate) total_calls_registered_deserializer:
-        SetOrKeepDeserializer<u64, U64VarIntDeserializer>,
 }
 
 impl DeferredRegistryChangesDeserializer {
@@ -195,13 +182,11 @@ impl DeferredRegistryChangesDeserializer {
             effective_total_gas_deserializer: SetOrKeepDeserializer::new(
                 U128VarIntDeserializer::new(Included(u128::MIN), Included(u128::MAX)),
             ),
-            total_calls_registered_deserializer: SetOrKeepDeserializer::new(
-                U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
-            ),
         }
     }
 }
 
+// only used in tests
 impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeserializer {
     fn deserialize<'a, E: ParseError<&'a [u8]> + ContextError<&'a [u8]>>(
         &self,
@@ -229,16 +214,24 @@ impl Deserializer<DeferredCallRegistryChanges> for DeferredRegistryChangesDeseri
                 context("Failed total_gas deserialization", |input| {
                     self.effective_total_gas_deserializer.deserialize(input)
                 }),
-                context("Failed total call registered deserialization", |input| {
-                    self.total_calls_registered_deserializer.deserialize(input)
-                }),
+                tuple((
+                    context("Failed u64 deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
+                    context("Failed u64 deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
+                    context("Failed u64 deserialization", |input| {
+                        self.u64_deserializer.deserialize(input)
+                    }),
+                )),
             )),
         )
         .map(
-            |(changes, total_gas, total_calls_registered)| DeferredCallRegistryChanges {
+            |(changes, total_gas, exec_stats)| DeferredCallRegistryChanges {
                 slots_change: changes.into_iter().collect::<BTreeMap<_, _>>(),
                 effective_total_gas: total_gas,
-                total_calls_registered,
+                exec_stats,
             },
         )
         .parse(buffer)
@@ -271,7 +264,7 @@ mod tests {
         let mut changes = DeferredCallRegistryChanges {
             slots_change: BTreeMap::new(),
             effective_total_gas: Default::default(),
-            total_calls_registered: Default::default(),
+            exec_stats: (0, 0, 0),
         };
 
         let mut registry_slot_changes = DeferredRegistrySlotChanges::default();

@@ -1454,9 +1454,6 @@ impl ExecutionState {
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
                 context.deferred_call_fail_exec(id, &call);
-                self.massa_metrics.inc_deferred_calls_failed();
-            } else {
-                self.massa_metrics.inc_deferred_calls_executed();
             }
             execution_result
         }
@@ -1510,6 +1507,8 @@ impl ExecutionState {
         }
 
         let mut deferred_calls_slot_gas = 0;
+        // (success, fail, cancel)
+        let mut deferred_calls_stats = (0, 0, 0);
 
         // deferred calls execution
 
@@ -1562,8 +1561,10 @@ impl ExecutionState {
                     match self.execute_deferred_call(&id, call) {
                         Ok(_exec) => {
                             if cancelled {
+                                deferred_calls_stats.2 += 1;
                                 continue;
                             }
+                            deferred_calls_stats.0 += 1;
                             info!("executed deferred call: {:?}", id);
                             cfg_if::cfg_if! {
                                 if #[cfg(feature = "execution-trace")] {
@@ -1576,6 +1577,7 @@ impl ExecutionState {
                             }
                         }
                         Err(err) => {
+                            deferred_calls_stats.1 += 1;
                             let msg = format!("failed executing deferred call: {}", err);
                             #[cfg(feature = "execution-info")]
                             exec_info.deferred_calls_messages.push(Err(msg.clone()));
@@ -2040,6 +2042,8 @@ impl ExecutionState {
                 );
             }
         }
+
+        exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
 
         // Return the execution output
         exec_out
