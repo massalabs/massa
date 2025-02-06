@@ -80,13 +80,13 @@ pub struct ExecutionContextSnapshot {
     /// speculative roll state changes caused so far in the context
     pub pos_changes: PoSChanges,
 
-    /// counter of newly created addresses so far at this slot during this execution
+    /// counter of newly created addresses so far for this slot (does not reset after each execution)
     pub created_addr_index: u64,
 
-    /// counter of newly created events so far during this execution
+    /// counter of newly created events so far for this slot (does not reset after each execution)
     pub created_event_index: u64,
 
-    /// counter of async messages emitted so far in this execution
+    /// counter of async messages emitted so far for this slot (does not reset after each execution)
     pub created_message_index: u64,
 
     /// address call stack, most recent is at the back
@@ -106,6 +106,10 @@ pub struct ExecutionContextSnapshot {
     /// This is used to avoid stack overflow issues in the VM (that would crash the node instead of failing the call),
     /// by limiting the depth of recursion contracts can have with the max_recursive_calls_depth value.
     pub recursion_counter: u16,
+
+    /// Counts the number of event (apart from system events) in the current execution_context
+    /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
+    pub user_event_count_in_current_exec: u16,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -203,6 +207,10 @@ pub struct ExecutionContext {
 
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
+
+    /// Counts the number of event (apart from system events) in the current execution_context
+    /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
+    pub user_event_count_in_current_exec: u16,
 }
 
 impl ExecutionContext {
@@ -287,6 +295,7 @@ impl ExecutionContext {
             execution_component_version: mip_store
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
+            user_event_count_in_current_exec: 0,
         }
     }
 
@@ -310,6 +319,7 @@ impl ExecutionContext {
             unsafe_rng: self.unsafe_rng.clone(),
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
+            user_event_count_in_current_exec: self.user_event_count_in_current_exec,
         }
     }
 
@@ -356,6 +366,7 @@ impl ExecutionContext {
         self.unsafe_rng = snapshot.unsafe_rng;
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
+        self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {

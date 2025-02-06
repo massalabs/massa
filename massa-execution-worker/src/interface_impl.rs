@@ -52,7 +52,6 @@ use tracing::warn;
     test
 ))]
 use massa_models::datastore::Datastore;
-use massa_models::execution::EventFilter;
 
 /// helper for locking the context mutex
 macro_rules! context_guard {
@@ -172,6 +171,21 @@ impl InterfaceImpl {
         );
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
+    }
+
+    // Allow certain addresses to bypass:
+    // - the event size limit
+    // - the user event count per operation / asc / deferred_call
+    fn bypass_event_limitation(&self, call_stack: Vec<Address>) -> bool {
+        // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
+        // and SC_2 will generate the event.
+        // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
+        // These addresses are respectively the the Mainnet and Buildnet routers for Dusa
+        let allowed_router_addresses = [
+            Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
+            Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
+        ];
+        call_stack.len() > 1 && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
     }
 }
 
@@ -1249,33 +1263,33 @@ impl Interface for InterfaceImpl {
     /// data: the string data that is the payload of the event
     fn generate_event(&self, data: String) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
-        let max_event_size = match execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
+        let mut context = context_guard!(self);
+
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
         };
 
         if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
-        let mut context = context_guard!(self);
-
         let event = context.event_create(data, false);
-        let event_filter = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: event.context.origin_operation_id,
-            is_final: None,
-            is_error: None,
-        };
+
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
+
         if execution_component_version > 0 {
-            let event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(&event_filter)
-                .count();
-            if event_per_op >= self.config.max_event_per_operation {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
@@ -1289,9 +1303,15 @@ impl Interface for InterfaceImpl {
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
         let execution_component_version = self.get_interface_version()?;
-        let max_event_size = match execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
+        let mut context = context_guard!(self);
+
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
         };
 
         if data.len() > max_event_size {
@@ -1299,24 +1319,18 @@ impl Interface for InterfaceImpl {
         };
 
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
-        let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
 
-        let event_filter = EventFilter {
-            start: None,
-            end: None,
-            emitter_address: None,
-            original_caller_address: None,
-            original_operation_id: event.context.origin_operation_id,
-            is_final: None,
-            is_error: None,
-        };
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
+
         if execution_component_version > 0 {
-            let event_per_op = context
-                .events
-                .get_filtered_sc_output_events_iter(&event_filter)
-                .count();
-            if event_per_op >= self.config.max_event_per_operation {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
                 bail!("Too many event for this operation");
             }
         }
