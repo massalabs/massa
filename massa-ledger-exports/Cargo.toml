@@ -1,6 +1,6 @@
 [package]
 name = "massa_ledger_exports"
-version = "28.8.0"
+version = "28.9.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
