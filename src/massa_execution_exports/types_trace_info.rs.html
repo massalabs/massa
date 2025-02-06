@@ -148,7 +148,73 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-</pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+</pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
+</span><span class="doccomment">//! # General description
+//!
+//! 'execution-trace' is a Rust feature that can be enabled for the execution module to provide
+//! trace of coin transfers.
+//!
+//! Note: that the 'execution-trace' feature is also present in [massa-sc-runtime](https://github.com/massalabs/massa-sc-runtime).
+//!
+//! # Transfers collected
+//!
+//! * TX transfers: Massa coins transferred by regular operation.
+//! * SC transfers: Massa coins transferred by various ABI calls.
+//!   * Transfers are nested (if happened during a SC call or localCall).
+//!
+//! Note: in massa-sc-runtime, all SC ABI are collected and stored
+//! (see [assembly_script_get_balance](https://github.com/massalabs/massa-sc-runtime/blob/main/src/as_execution/abi.rs#L149)
+//! Note 2: there is a filter in get_slot_transfers functions (json-rpc get_slots_transfers &amp; grpc get_slot_transfers) to return only the coin transfers.
+//!
+//! # API
+//!
+//! * json-rpc public:
+//!   * get_slots_transfers
+//! * grpc public:
+//!   * get_slot_transfers
+//!
+//! # Usage
+//!
+//! The 'execution-trace' feature was originally developed for the [transfer-indexer](https://github.com/massalabs/transfers-indexer)
+//! which is used as a starting point for exchange (CEX) integration.
+//!
+//! # Tests
+//!
+//! * Unit tests in massa-execution-worker
+
+</span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
@@ -173,8 +239,6 @@
     </span><span class="kw">pub </span>slot: Slot,
     <span class="doccomment">/// asc call stacks
     </span><span class="kw">pub </span>asc_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
-    <span class="doccomment">/// deferred call stacks
-    </span><span class="kw">pub </span>deferred_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
     <span class="doccomment">/// operation call stacks
     </span><span class="kw">pub </span>operation_call_stacks: PreHashMap&lt;OperationId, Vec&lt;AbiTrace&gt;&gt;,
 }
@@ -240,7 +304,7 @@
         <span class="kw">while </span>!to_process.is_empty() {
             <span class="kw">let </span>t = to_process.pop_front();
             <span class="kw">if let </span><span class="prelude-val">Some</span>(trace) = t {
-                <span class="kw">if </span>abi_names.iter().any(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name) {
+                <span class="kw">if </span>abi_names.iter().find(|t| <span class="kw-2">*</span>(<span class="kw-2">*</span>t) == trace.name).is_some() {
                     <span class="comment">// filtered.extend(&amp;trace)
                     </span>filtered.push(trace);
                 }
