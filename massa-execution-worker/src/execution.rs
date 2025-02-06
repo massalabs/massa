@@ -1327,9 +1327,14 @@ impl ExecutionState {
                 call.parameters.len() as u64,
                 self.config.max_function_length,
             );
-            context
-                .transfer_coins(None, Some(call.sender_address), amount, false)
-                .expect("Error refunding storage costs");
+            if let Err(e) = context.transfer_coins(None, Some(call.sender_address), amount, false) {
+                warn!(
+                    "could not refund storage costs to sender: {} - amount: {} - e:{}",
+                    call.sender_address,
+                    amount,
+                    e.to_string()
+                );
+            }
 
             context.get_snapshot()
         };
