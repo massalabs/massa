@@ -19,6 +19,7 @@ use crate::public::{
 
 #[cfg(feature = "execution-trace")]
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
+use crate::stream::new_slot_execution_outputs_server::new_slot_execution_outputs_server;
 #[cfg(feature = "execution-trace")]
 use crate::stream::new_slot_transfers::new_slot_transfers;
 
@@ -285,6 +286,17 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
     ) -> Result<tonic::Response<Self::NewSlotExecutionOutputsStream>, tonic::Status> {
         Ok(tonic::Response::new(
             new_slot_execution_outputs(self, request).await?,
+        ))
+    }
+
+    type NewSlotExecutionOutputsServerStream = NewSlotExecutionOutputsStreamType;
+
+    async fn new_slot_execution_outputs_server(
+        &self,
+        request: tonic::Request<grpc_api::NewSlotExecutionOutputsRequest>,
+    ) -> Result<tonic::Response<Self::NewSlotExecutionOutputsServerStream>, tonic::Status> {
+        Ok(tonic::Response::new(
+            new_slot_execution_outputs_server(self, request).await?,
         ))
     }
 

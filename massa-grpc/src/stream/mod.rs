@@ -10,8 +10,10 @@ pub mod new_filled_blocks;
 pub mod new_operations;
 /// subscribe new slot abi call stacks
 pub mod new_slot_abi_call_stacks;
-/// subscribe new slot execution outputs
+/// subscribe new slot execution outputs (bi directional streaming)
 pub mod new_slot_execution_outputs;
+/// subscribe new slot execution outputs (unidirectional streaming)
+pub mod new_slot_execution_outputs_server;
 /// subscribe new slot transfers
 pub mod new_slot_transfers;
 /// send_blocks streaming
@@ -20,5 +22,7 @@ pub mod send_blocks;
 pub mod send_endorsements;
 /// send operations
 pub mod send_operations;
+/// tools
+mod tools;
 /// subscribe tx throughput
 pub mod tx_throughput;
