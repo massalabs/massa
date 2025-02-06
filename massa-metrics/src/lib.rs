@@ -247,8 +247,6 @@ impl MassaMetrics {
             consensus_vec.push(gauge);
         }
 
-        DEFERRED_CALL_REGISTERED.set(0);
-
         // set available processors
         let process_available_processors =
             IntGauge::new("process_available_processors", "number of processors")
