@@ -91,8 +91,13 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_async_pool::AsyncPool;
 <span class="kw">use </span>massa_db_exports::{DBBatch, ShareableMassaDBController};
+<span class="kw">use </span>massa_deferred_calls::DeferredCallRegistry;
 <span class="kw">use </span>massa_executed_ops::ExecutedDenunciations;
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerController;
@@ -183,5 +188,8 @@
 
     <span class="doccomment">/// Get mutable reference to MIP Store
     </span><span class="kw">fn </span>get_mip_store_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>MipStore;
+
+    <span class="doccomment">/// Get deferred call registry
+    </span><span class="kw">fn </span>get_deferred_call_registry(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DeferredCallRegistry;
 }
 </code></pre></div></section></main></body></html>

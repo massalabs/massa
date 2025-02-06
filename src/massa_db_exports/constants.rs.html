@@ -56,6 +56,15 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre></div><pre class="rust"><code><span class="comment">// Commons
 </span><span class="kw">pub const </span>METADATA_CF: <span class="kw-2">&amp;</span>str = <span class="string">"metadata"</span>;
 <span class="kw">pub const </span>STATE_CF: <span class="kw-2">&amp;</span>str = <span class="string">"state"</span>;
@@ -87,6 +96,7 @@
 <span class="kw">pub const </span>MIP_STORE_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"versioning/"</span>;
 <span class="kw">pub const </span>MIP_STORE_STATS_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"versioning_stats/"</span>;
 <span class="kw">pub const </span>EXECUTION_TRAIL_HASH_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"execution_trail_hash/"</span>;
+<span class="kw">pub const </span>DEFERRED_CALLS_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"deferred_calls/"</span>;
 
 <span class="comment">// Async Pool
 </span><span class="kw">pub const </span>MESSAGE_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: message deserialization failed"</span>;
@@ -114,4 +124,12 @@
 </span><span class="kw">pub const </span>KEY_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: key deserialization failed"</span>;
 <span class="kw">pub const </span>KEY_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: key serialization failed"</span>;
 <span class="kw">pub const </span>KEY_LEN_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: key length serialization failed"</span>;
+
+<span class="comment">// deferred calls
+</span><span class="kw">pub const </span>DEFERRED_CALL_DESER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: message deserialization failed"</span>;
+<span class="kw">pub const </span>DEFERRED_CALL_SER_ERROR: <span class="kw-2">&amp;</span>str = <span class="string">"critical: message serialization failed"</span>;
+<span class="kw">pub const </span>DEFERRED_CALL_TOTAL_GAS: <span class="kw-2">&amp;</span>str = <span class="string">"deferred_call_total_gas"</span>;
+
+<span class="kw">pub const </span>DEFERRED_CALL_TOTAL_REGISTERED: <span class="kw-2">&amp;</span>str = <span class="string">"deferred_call_total_registered"</span>;
+<span class="kw">pub const </span>DEFERRED_CALL_TOTAL_CANCELLED: <span class="kw-2">&amp;</span>str = <span class="string">"deferred_call_total_cancelled"</span>;
 </code></pre></div></section></main></body></html>
