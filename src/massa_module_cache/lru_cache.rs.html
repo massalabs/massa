@@ -65,10 +65,6 @@
 <a href="#65" id="65">65</a>
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
-<a href="#68" id="68">68</a>
-<a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a>
-<a href="#71" id="71">71</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
@@ -96,10 +92,6 @@
         LRUCache {
             cache: LruMap::with_hasher(ByLength::new(cache_size), BuildHashMapper::default()),
         }
-    }
-
-    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.cache.clear();
     }
 
     <span class="doccomment">/// If the module is contained in the cache:
