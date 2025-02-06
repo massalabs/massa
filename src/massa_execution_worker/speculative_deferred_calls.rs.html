@@ -658,73 +658,6 @@
 <a href="#658" id="658">658</a>
 <a href="#659" id="659">659</a>
 <a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
-<a href="#669" id="669">669</a>
-<a href="#670" id="670">670</a>
-<a href="#671" id="671">671</a>
-<a href="#672" id="672">672</a>
-<a href="#673" id="673">673</a>
-<a href="#674" id="674">674</a>
-<a href="#675" id="675">675</a>
-<a href="#676" id="676">676</a>
-<a href="#677" id="677">677</a>
-<a href="#678" id="678">678</a>
-<a href="#679" id="679">679</a>
-<a href="#680" id="680">680</a>
-<a href="#681" id="681">681</a>
-<a href="#682" id="682">682</a>
-<a href="#683" id="683">683</a>
-<a href="#684" id="684">684</a>
-<a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
-<a href="#696" id="696">696</a>
-<a href="#697" id="697">697</a>
-<a href="#698" id="698">698</a>
-<a href="#699" id="699">699</a>
-<a href="#700" id="700">700</a>
-<a href="#701" id="701">701</a>
-<a href="#702" id="702">702</a>
-<a href="#703" id="703">703</a>
-<a href="#704" id="704">704</a>
-<a href="#705" id="705">705</a>
-<a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
-<a href="#712" id="712">712</a>
-<a href="#713" id="713">713</a>
-<a href="#714" id="714">714</a>
-<a href="#715" id="715">715</a>
-<a href="#716" id="716">716</a>
-<a href="#717" id="717">717</a>
-<a href="#718" id="718">718</a>
-<a href="#719" id="719">719</a>
-<a href="#720" id="720">720</a>
-<a href="#721" id="721">721</a>
-<a href="#722" id="722">722</a>
-<a href="#723" id="723">723</a>
-<a href="#724" id="724">724</a>
-<a href="#725" id="725">725</a>
-<a href="#726" id="726">726</a>
-<a href="#727" id="727">727</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Speculative async call registry.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -784,31 +717,6 @@
     <span class="doccomment">/// Add a new call to the list of changes of this `SpeculativeDeferredCallRegistry`
     </span><span class="kw">pub fn </span>push_new_call(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: DeferredCallId, call: DeferredCall) {
         <span class="self">self</span>.deferred_calls_changes.set_call(id, call);
-    }
-
-    <span class="kw">pub fn </span>get_total_calls_registered(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="self">self</span>.deferred_calls_changes.get_total_calls_registered() {
-            <span class="kw">return </span>v;
-        }
-
-        {
-            <span class="kw">let </span>history = <span class="self">self</span>.active_history.read();
-            <span class="kw">for </span>history_item <span class="kw">in </span>history.<span class="number">0</span>.iter().rev() {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = history_item
-                    .state_changes
-                    .deferred_call_changes
-                    .get_total_calls_registered()
-                {
-                    <span class="kw">return </span>v;
-                }
-            }
-        }
-
-        <span class="kw">return </span><span class="self">self
-            </span>.final_state
-            .read()
-            .get_deferred_call_registry()
-            .get_nb_call_registered();
     }
 
     <span class="kw">pub fn </span>get_effective_total_gas(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u128 {
@@ -969,22 +877,9 @@
 
         slot_calls.effective_total_gas = total_gas_after;
 
-        massa_metrics::set_deferred_calls_total_gas(slot_calls.effective_total_gas);
-
         <span class="comment">// delete call in the current slot
-        </span><span class="kw">let </span><span class="kw-2">mut </span>nb_call_to_execute = <span class="number">0</span>;
-        <span class="kw">for </span>(id, call) <span class="kw">in </span><span class="kw-2">&amp;</span>slot_calls.slot_calls {
-            <span class="comment">// cancelled call is already decremented from the total calls registered
-            </span><span class="kw">if </span>!call.cancelled {
-                nb_call_to_execute += <span class="number">1</span>;
-            }
+        </span><span class="kw">for </span>id <span class="kw">in </span>slot_calls.slot_calls.keys() {
             <span class="self">self</span>.delete_call(id, current_slot);
-        }
-
-        <span class="kw">if </span>nb_call_to_execute &gt; <span class="number">0 </span>{
-            <span class="kw">let </span>total_calls_registered = <span class="self">self</span>.get_total_calls_registered();
-            <span class="kw">let </span>new_call_registered = total_calls_registered.saturating_sub(nb_call_to_execute);
-            <span class="self">self</span>.set_total_calls_registered(new_call_registered);
         }
 
         slot_calls
@@ -1075,25 +970,6 @@
         <span class="comment">// Add a cancellation to the current changes
         </span><span class="self">self</span>.deferred_calls_changes
             .set_call(id.clone(), call.clone());
-
-        <span class="kw">let </span>current_gas = <span class="self">self</span>.get_effective_slot_gas(<span class="kw-2">&amp;</span>call.target_slot);
-
-        <span class="comment">// set slot gas
-        // slot_gas = current_gas - (call_gas + call_cst_gas_cost (vm allocation cost))
-        </span><span class="self">self</span>.deferred_calls_changes.set_effective_slot_gas(
-            call.target_slot,
-            current_gas.saturating_sub(call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost)),
-        );
-
-        <span class="kw">let </span>effective_gas_call = call.get_effective_gas(<span class="self">self</span>.config.call_cst_gas_cost) <span class="kw">as </span>u128;
-        <span class="comment">// set total gas
-        </span><span class="self">self</span>.deferred_calls_changes.set_effective_total_gas(
-            <span class="self">self</span>.get_effective_total_gas()
-                .saturating_sub(effective_gas_call),
-        );
-
-        <span class="kw">let </span>new_total_calls_registered = <span class="self">self</span>.get_total_calls_registered().saturating_sub(<span class="number">1</span>);
-        <span class="self">self</span>.set_total_calls_registered(new_total_calls_registered);
 
         <span class="prelude-val">Ok</span>(res)
     }
@@ -1283,22 +1159,12 @@
         <span class="self">self</span>.deferred_calls_changes
             .set_effective_total_gas(effective_total_gas.saturating_add(call_effective_gas));
 
-        <span class="comment">// increment total calls registered
-        </span><span class="kw">let </span>new_total_calls_registered = <span class="self">self</span>.get_total_calls_registered().saturating_add(<span class="number">1</span>);
-        <span class="self">self</span>.set_total_calls_registered(new_total_calls_registered);
-
         <span class="prelude-val">Ok</span>(id)
     }
 
     <span class="doccomment">/// Take the deferred registry slot changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>take(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; DeferredCallRegistryChanges {
         std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.deferred_calls_changes)
-    }
-
-    <span class="kw">fn </span>set_total_calls_registered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, nb_calls: u64) {
-        massa_metrics::set_deferred_calls_registered(nb_calls <span class="kw">as </span>usize);
-        <span class="self">self</span>.deferred_calls_changes
-            .set_total_calls_registered(nb_calls);
     }
 }
 

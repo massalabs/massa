@@ -2750,6 +2750,10 @@
 <a href="#2750" id="2750">2750</a>
 <a href="#2751" id="2751">2751</a>
 <a href="#2752" id="2752">2752</a>
+<a href="#2753" id="2753">2753</a>
+<a href="#2754" id="2754">2754</a>
+<a href="#2755" id="2755">2755</a>
+<a href="#2756" id="2756">2756</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -4206,9 +4210,6 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                 context.reset_to_snapshot(snapshot, err.clone());
                 context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
-                <span class="self">self</span>.massa_metrics.inc_deferred_calls_failed();
-            } <span class="kw">else </span>{
-                <span class="self">self</span>.massa_metrics.inc_deferred_calls_executed();
             }
             execution_result
         }
@@ -4262,6 +4263,8 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>deferred_calls_slot_gas = <span class="number">0</span>;
+        <span class="comment">// (success, fail, cancel)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>deferred_calls_stats = (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
 
         <span class="comment">// deferred calls execution
 
@@ -4314,8 +4317,10 @@
                     <span class="kw">match </span><span class="self">self</span>.execute_deferred_call(<span class="kw-2">&amp;</span>id, call) {
                         <span class="prelude-val">Ok</span>(_exec) =&gt; {
                             <span class="kw">if </span>cancelled {
+                                deferred_calls_stats.<span class="number">2 </span>+= <span class="number">1</span>;
                                 <span class="kw">continue</span>;
                             }
+                            deferred_calls_stats.<span class="number">0 </span>+= <span class="number">1</span>;
                             <span class="macro">info!</span>(<span class="string">"executed deferred call: {:?}"</span>, id);
                             <span class="macro">cfg_if::cfg_if!</span> {
                                 <span class="kw">if </span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)] </span>{
@@ -4328,6 +4333,7 @@
                             }
                         }
                         <span class="prelude-val">Err</span>(err) =&gt; {
+                            deferred_calls_stats.<span class="number">1 </span>+= <span class="number">1</span>;
                             <span class="kw">let </span>msg = <span class="macro">format!</span>(<span class="string">"failed executing deferred call: {}"</span>, err);
                             <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
                             </span>exec_info.deferred_calls_messages.push(<span class="prelude-val">Err</span>(msg.clone()));
@@ -4792,6 +4798,8 @@
                 );
             }
         }
+
+        exec_out.state_changes.deferred_call_changes.exec_stats = deferred_calls_stats;
 
         <span class="comment">// Return the execution output
         </span>exec_out
