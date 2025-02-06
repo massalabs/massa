@@ -360,8 +360,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::config::{GrpcConfig, ServiceName};
 <span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span>futures_util::FutureExt;
-<span class="kw">use </span>hyper::service::Service;
-<span class="kw">use </span>hyper::{Body, Method, Request, Response};
+<span class="kw">use </span>hyper::{Method, Request, Response};
 <span class="kw">use </span>massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
 <span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolController};
@@ -379,7 +378,7 @@
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::body::BoxBody;
 <span class="kw">use </span>tonic::codegen::CompressionEncoding;
-<span class="kw">use </span>tonic::transport::NamedService;
+<span class="kw">use </span>tonic::server::NamedService;
 <span class="kw">use </span>tonic::transport::{Certificate, Identity, ServerTlsConfig};
 <span class="kw">use </span>tonic_health::server::HealthReporter;
 <span class="kw">use </span>tonic_web::GrpcWebLayer;
@@ -521,7 +520,7 @@
 <span class="comment">// Configure and start the gRPC API with the given service
 </span><span class="kw">async fn </span>serve&lt;S&gt;(service: S, config: <span class="kw-2">&amp;</span>GrpcConfig) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, GrpcError&gt;
 <span class="kw">where
-    </span>S: Service&lt;Request&lt;Body&gt;, Response = Response&lt;BoxBody&gt;, Error = Infallible&gt;
+    </span>S: tower_service::Service&lt;Request&lt;BoxBody&gt;, Response = Response&lt;BoxBody&gt;, Error = Infallible&gt;
         + NamedService
         + Clone
         + Send
@@ -554,7 +553,7 @@
         }
 
         <span class="kw">let </span>cert = std::fs::read_to_string(config.server_certificate_path.clone())
-            .expect(<span class="string">"error, failed to read server certificat"</span>);
+            .expect(<span class="string">"error, failed to read server certificate"</span>);
         <span class="kw">let </span>key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect(<span class="string">"error, failed to read server private key"</span>);
 
@@ -589,7 +588,8 @@
         };
         <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(file_descriptor_set)
-            .build()<span class="question-mark">?</span>;
+            <span class="comment">//.build()?;
+            </span>.build_v1()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Some</span>(reflection_service)
     } <span class="kw">else </span>{
@@ -672,7 +672,7 @@
             gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
                 .expect(<span class="string">"error, failed to generate cert"</span>);
         std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect(<span class="string">"error, failed to write client certificat"</span>);
+            .expect(<span class="string">"error, failed to write client certificate"</span>);
         std::fs::write(
             config.client_private_key_path.clone(),
             client_private_key_pem,
@@ -681,13 +681,13 @@
     }
 
     std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect(<span class="string">"error, failed to write certificat authority root"</span>);
+        .expect(<span class="string">"error, failed to write certificate authority root"</span>);
 
     <span class="kw">let </span>(cert_pem, server_private_key_pem) =
         gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-            .expect(<span class="string">"error, failed to generate server certificat"</span>);
+            .expect(<span class="string">"error, failed to generate server certificate"</span>);
     std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect(<span class="string">"error, failed to write server certificat"</span>);
+        .expect(<span class="string">"error, failed to write server certificate"</span>);
     std::fs::write(
         config.server_private_key_path.clone(),
         server_private_key_pem,
