@@ -1589,6 +1589,30 @@
 <a href="#1589" id="1589">1589</a>
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
+<a href="#1611" id="1611">1611</a>
+<a href="#1612" id="1612">1612</a>
+<a href="#1613" id="1613">1613</a>
+<a href="#1614" id="1614">1614</a>
+<a href="#1615" id="1615">1615</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1620,6 +1644,7 @@
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
+<span class="kw">use </span>massa_models::datastore::cleanup_datastore_key_range_query;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="kw">use </span>massa_models::denunciation::DenunciationIndex;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
@@ -2232,8 +2257,31 @@
     }
 
     <span class="doccomment">/// gets the datastore keys of an address if it exists in the speculative ledger, or returns None
-    </span><span class="kw">pub fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="self">self</span>.speculative_ledger.get_keys(address, prefix)
+    </span><span class="kw">pub fn </span>get_keys(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;, ExecutionError&gt; {
+        <span class="comment">// TODO when updating the ABI, make sure to set this value to a maximum defined as a CONSTANT for determinism
+        // The API will use a different, user-configurable max value
+        </span><span class="kw">let </span>max_datastore_query = <span class="prelude-val">None</span>;
+
+        <span class="comment">// cleanup bounds
+        </span><span class="kw">let </span>(prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+            prefix,
+            start_key,
+            end_key,
+            count,
+            <span class="self">self</span>.config.max_datastore_key_length,
+            max_datastore_query,
+        )<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="self">self
+            </span>.speculative_ledger
+            .get_keys(addr, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count))
     }
 
     <span class="doccomment">/// gets the data from a datastore entry of an address if it exists in the speculative ledger, or returns None

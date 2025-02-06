@@ -870,6 +870,16 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -906,46 +916,29 @@
         <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_REGISTERED: IntGauge = <span class="macro">register_int_gauge!</span>(
         <span class="string">"deferred_calls_registered"</span>, <span class="string">"number of deferred calls registered" </span>).unwrap();
 
-        <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_CANCELLED: IntGauge = <span class="macro">register_int_gauge!</span>(
-            <span class="string">"deferred_calls_cancelled"</span>, <span class="string">"number of deferred calls cancelled" </span>).unwrap();
-
-        <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_EXECUTED: IntGauge = <span class="macro">register_int_gauge!</span>(
-            <span class="string">"deferred_calls_executed"</span>, <span class="string">"number of deferred calls executed" </span>).unwrap();
-
-        <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALL_FAILED: IntGauge = <span class="macro">register_int_gauge!</span>(
-            <span class="string">"deferred_calls_failed"</span>, <span class="string">"number of deferred calls failed" </span>).unwrap();
-
         <span class="kw">static </span><span class="kw-2">ref </span>DEFERRED_CALLS_TOTAL_GAS: IntGauge = <span class="macro">register_int_gauge!</span>(
             <span class="string">"deferred_calls_total_gas"</span>, <span class="string">"total gas used by deferred calls" </span>).unwrap();
 
+}
+
+<span class="kw">pub fn </span>dec_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.dec();
 }
 
 <span class="kw">pub fn </span>inc_deferred_calls_registered() {
     DEFERRED_CALL_REGISTERED.inc();
 }
 
+<span class="kw">pub fn </span>set_deferred_calls_registered(val: usize) {
+    DEFERRED_CALL_REGISTERED.set(val <span class="kw">as </span>i64);
+}
+
 <span class="kw">pub fn </span>set_deferred_calls_total_gas(val: u128) {
     DEFERRED_CALLS_TOTAL_GAS.set(val <span class="kw">as </span>i64);
 }
 
-<span class="kw">pub fn </span>inc_deferred_calls_executed_by(val: u64) {
-    DEFERRED_CALL_EXECUTED.set(DEFERRED_CALL_EXECUTED.get().saturating_add(val <span class="kw">as </span>i64));
-}
-
-<span class="kw">pub fn </span>inc_deferred_calls_failed_by(val: u64) {
-    DEFERRED_CALL_FAILED.set(DEFERRED_CALL_FAILED.get().saturating_add(val <span class="kw">as </span>i64));
-}
-
-<span class="kw">pub fn </span>dec_deferred_calls_cancelled_by(val: u64) {
-    DEFERRED_CALL_CANCELLED.set(DEFERRED_CALL_CANCELLED.get().saturating_sub(val <span class="kw">as </span>i64));
-}
-
-<span class="kw">pub fn </span>dec_deferred_calls_registered_by(val: u64) {
-    DEFERRED_CALL_REGISTERED.set(DEFERRED_CALL_REGISTERED.get().saturating_sub(val <span class="kw">as </span>i64));
-}
-
-<span class="kw">pub fn </span>inc_deferred_calls_cancelled() {
-    DEFERRED_CALL_CANCELLED.inc();
+<span class="kw">pub fn </span>get_deferred_calls_registered() -&gt; i64 {
+    DEFERRED_CALL_REGISTERED.get()
 }
 
 <span class="kw">pub fn </span>set_blocks_counter(val: usize) {
@@ -1093,6 +1086,10 @@
     network_current_version: IntGauge,
 
     <span class="kw">pub </span>tick_delay: Duration,
+
+    <span class="comment">// deferred calls metrics
+    </span>deferred_calls_executed: IntCounter,
+    deferred_calls_failed: IntCounter,
 }
 
 <span class="kw">impl </span>MassaMetrics {
@@ -1118,6 +1115,8 @@
 
             consensus_vec.push(gauge);
         }
+
+        set_deferred_calls_registered(<span class="number">0</span>);
 
         <span class="comment">// set available processors
         </span><span class="kw">let </span>process_available_processors =
@@ -1326,6 +1325,15 @@
         )
         .unwrap();
 
+        <span class="kw">let </span>deferred_calls_executed = IntCounter::new(
+            <span class="string">"deferred_calls_executed"</span>,
+            <span class="string">"number of deferred calls executed"</span>,
+        )
+        .unwrap();
+
+        <span class="kw">let </span>deferred_calls_failed =
+            IntCounter::new(<span class="string">"deferred_calls_failed"</span>, <span class="string">"number of deferred calls failed"</span>).unwrap();
+
         <span class="kw">let </span>network_current_version =
             IntGauge::new(<span class="string">"network_current_version"</span>, <span class="string">"current version of network"</span>).unwrap();
 
@@ -1381,6 +1389,8 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_period.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(current_time_thread.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(block_slot_delay.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_executed.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(deferred_calls_failed.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(network_current_version.clone()));
 
                 stopper = server::bind_metrics(addr);
@@ -1440,6 +1450,8 @@
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
                 network_current_version,
                 tick_delay,
+                deferred_calls_executed,
+                deferred_calls_failed,
             },
             stopper,
         )
@@ -1626,6 +1638,14 @@
 
     <span class="kw">pub fn </span>set_block_slot_delay(<span class="kw-2">&amp;</span><span class="self">self</span>, delay: f64) {
         <span class="self">self</span>.block_slot_delay.observe(delay);
+    }
+
+    <span class="kw">pub fn </span>inc_deferred_calls_executed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.deferred_calls_executed.inc();
+    }
+
+    <span class="kw">pub fn </span>inc_deferred_calls_failed(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.deferred_calls_failed.inc();
     }
 
     <span class="kw">pub fn </span>set_network_current_version(<span class="kw-2">&amp;</span><span class="self">self</span>, version: u32) {

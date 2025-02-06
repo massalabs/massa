@@ -323,13 +323,20 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{collections::BTreeMap, ops::Bound};
 
 <span class="kw">use </span>massa_models::{
     amount::Amount,
     deferred_calls::DeferredCallId,
     slot::{Slot, SlotDeserializer, SlotSerializer},
-    types::{SetOrKeepDeserializer, SetOrKeepSerializer},
+    types::{SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer},
 };
 <span class="kw">use </span>massa_serialization::{
     Deserializer, SerializeError, Serializer, U128VarIntDeserializer, U128VarIntSerializer,
@@ -361,8 +368,7 @@
     </span><span class="kw">pub </span>slots_change: BTreeMap&lt;Slot, DeferredRegistrySlotChanges&gt;,
 
     <span class="kw">pub </span>effective_total_gas: DeferredRegistryGasChange&lt;u128&gt;,
-    <span class="comment">// stats : (success, failed, cancel)
-    </span><span class="kw">pub </span>exec_stats: (u64, u64, u64),
+    <span class="kw">pub </span>total_calls_registered: SetOrKeep&lt;u64&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>DeferredCallRegistryChanges {
@@ -370,7 +376,7 @@
         <span class="self">Self </span>{
             slots_change: Default::default(),
             effective_total_gas: DeferredRegistryGasChange::Keep,
-            exec_stats: (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>),
+            total_calls_registered: SetOrKeep::Keep,
         }
     }
 }
@@ -432,6 +438,17 @@
             DeferredRegistryGasChange::Keep =&gt; <span class="prelude-val">None</span>,
         }
     }
+
+    <span class="kw">pub fn </span>set_total_calls_registered(<span class="kw-2">&amp;mut </span><span class="self">self</span>, total_calls_registered: u64) {
+        <span class="self">self</span>.total_calls_registered = SetOrKeep::Set(total_calls_registered);
+    }
+
+    <span class="kw">pub fn </span>get_total_calls_registered(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;u64&gt; {
+        <span class="kw">match </span><span class="self">self</span>.total_calls_registered {
+            SetOrKeep::Set(v) =&gt; <span class="prelude-val">Some</span>(v),
+            SetOrKeep::Keep =&gt; <span class="prelude-val">None</span>,
+        }
+    }
 }
 
 <span class="kw">pub struct </span>DeferredRegistryChangesSerializer {
@@ -439,6 +456,7 @@
     slot_changes_serializer: DeferredRegistrySlotChangesSerializer,
     slot_serializer: SlotSerializer,
     <span class="kw">pub</span>(<span class="kw">crate</span>) effective_total_gas_serializer: SetOrKeepSerializer&lt;u128, U128VarIntSerializer&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) total_calls_registered_serializer: SetOrKeepSerializer&lt;u64, U64VarIntSerializer&gt;,
 }
 
 <span class="kw">impl </span>DeferredRegistryChangesSerializer {
@@ -448,6 +466,7 @@
             slot_changes_serializer: DeferredRegistrySlotChangesSerializer::new(),
             slot_serializer: SlotSerializer::new(),
             effective_total_gas_serializer: SetOrKeepSerializer::new(U128VarIntSerializer::new()),
+            total_calls_registered_serializer: SetOrKeepSerializer::new(U64VarIntSerializer::new()),
         }
     }
 }
@@ -459,8 +478,7 @@
 }
 
 <span class="kw">impl </span>Serializer&lt;DeferredCallRegistryChanges&gt; <span class="kw">for </span>DeferredRegistryChangesSerializer {
-    <span class="comment">// only used in tests
-    </span><span class="kw">fn </span>serialize(
+    <span class="kw">fn </span>serialize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         value: <span class="kw-2">&amp;</span>DeferredCallRegistryChanges,
         buffer: <span class="kw-2">&amp;mut </span>Vec&lt;u8&gt;,
@@ -480,9 +498,9 @@
         <span class="self">self</span>.effective_total_gas_serializer
             .serialize(<span class="kw-2">&amp;</span>value.effective_total_gas, buffer)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.exec_stats.<span class="number">0</span>, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.exec_stats.<span class="number">1</span>, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.u64_serializer.serialize(<span class="kw-2">&amp;</span>value.exec_stats.<span class="number">2</span>, buffer)<span class="question-mark">?</span>;
+        <span class="self">self</span>.total_calls_registered_serializer
+            .serialize(<span class="kw-2">&amp;</span>value.total_calls_registered, buffer)<span class="question-mark">?</span>;
+
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -493,6 +511,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) slot_deserializer: SlotDeserializer,
     <span class="kw">pub</span>(<span class="kw">crate</span>) effective_total_gas_deserializer:
         SetOrKeepDeserializer&lt;u128, U128VarIntDeserializer&gt;,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) total_calls_registered_deserializer:
+        SetOrKeepDeserializer&lt;u64, U64VarIntDeserializer&gt;,
 }
 
 <span class="kw">impl </span>DeferredRegistryChangesDeserializer {
@@ -507,12 +527,14 @@
             effective_total_gas_deserializer: SetOrKeepDeserializer::new(
                 U128VarIntDeserializer::new(Included(u128::MIN), Included(u128::MAX)),
             ),
+            total_calls_registered_deserializer: SetOrKeepDeserializer::new(
+                U64VarIntDeserializer::new(Included(u64::MIN), Included(u64::MAX)),
+            ),
         }
     }
 }
 
-<span class="comment">// only used in tests
-</span><span class="kw">impl </span>Deserializer&lt;DeferredCallRegistryChanges&gt; <span class="kw">for </span>DeferredRegistryChangesDeserializer {
+<span class="kw">impl </span>Deserializer&lt;DeferredCallRegistryChanges&gt; <span class="kw">for </span>DeferredRegistryChangesDeserializer {
     <span class="kw">fn </span>deserialize&lt;<span class="lifetime">'a</span>, E: ParseError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt; + ContextError&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8]&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         buffer: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
@@ -539,24 +561,16 @@
                 context(<span class="string">"Failed total_gas deserialization"</span>, |input| {
                     <span class="self">self</span>.effective_total_gas_deserializer.deserialize(input)
                 }),
-                tuple((
-                    context(<span class="string">"Failed u64 deserialization"</span>, |input| {
-                        <span class="self">self</span>.u64_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">"Failed u64 deserialization"</span>, |input| {
-                        <span class="self">self</span>.u64_deserializer.deserialize(input)
-                    }),
-                    context(<span class="string">"Failed u64 deserialization"</span>, |input| {
-                        <span class="self">self</span>.u64_deserializer.deserialize(input)
-                    }),
-                )),
+                context(<span class="string">"Failed total call registered deserialization"</span>, |input| {
+                    <span class="self">self</span>.total_calls_registered_deserializer.deserialize(input)
+                }),
             )),
         )
         .map(
-            |(changes, total_gas, exec_stats)| DeferredCallRegistryChanges {
+            |(changes, total_gas, total_calls_registered)| DeferredCallRegistryChanges {
                 slots_change: changes.into_iter().collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
                 effective_total_gas: total_gas,
-                exec_stats,
+                total_calls_registered,
             },
         )
         .parse(buffer)
@@ -589,7 +603,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>changes = DeferredCallRegistryChanges {
             slots_change: BTreeMap::new(),
             effective_total_gas: Default::default(),
-            exec_stats: (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>),
+            total_calls_registered: Default::default(),
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>registry_slot_changes = DeferredRegistrySlotChanges::default();
