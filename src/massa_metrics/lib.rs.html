@@ -870,8 +870,6 @@
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
 <a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -1120,8 +1118,6 @@
 
             consensus_vec.push(gauge);
         }
-
-        DEFERRED_CALL_REGISTERED.set(<span class="number">0</span>);
 
         <span class="comment">// set available processors
         </span><span class="kw">let </span>process_available_processors =
