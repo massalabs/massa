@@ -1,3 +1,37 @@
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! # General description
+//!
+//! 'execution-trace' is a Rust feature that can be enabled for the execution module to provide
+//! trace of coin transfers.
+//!
+//! Note: that the 'execution-trace' feature is also present in [massa-sc-runtime](https://github.com/massalabs/massa-sc-runtime).
+//!
+//! # Transfers collected
+//!
+//! * TX transfers: Massa coins transferred by regular operation.
+//! * SC transfers: Massa coins transferred by various ABI calls.
+//!   * Transfers are nested (if happened during a SC call or localCall).
+//!
+//! Note: in massa-sc-runtime, all SC ABI are collected and stored
+//! (see [assembly_script_get_balance](https://github.com/massalabs/massa-sc-runtime/blob/main/src/as_execution/abi.rs#L149)
+//! Note 2: there is a filter in get_slot_transfers functions (json-rpc get_slots_transfers & grpc get_slot_transfers) to return only the coin transfers.
+//!
+//! # API
+//!
+//! * json-rpc public:
+//!   * get_slots_transfers
+//! * grpc public:
+//!   * get_slot_transfers
+//!
+//! # Usage
+//!
+//! The 'execution-trace' feature was originally developed for the [transfer-indexer](https://github.com/massalabs/transfers-indexer)
+//! which is used as a starting point for exchange (CEX) integration.
+//!
+//! # Tests
+//!
+//! * Unit tests in massa-execution-worker
+
 #[cfg(feature = "execution-trace")]
 use std::collections::VecDeque;
 

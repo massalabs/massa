@@ -41,6 +41,10 @@
 //!
 //! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
+//!
+//! # Execution trace
+//!
+//! See documentation in types_trace_info.rs file.
 
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
