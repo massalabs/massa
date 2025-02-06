@@ -18,10 +18,13 @@
 //!
 //! # API
 //!
-//! * json-rpc public:
+//! * json-rpc public api:
 //!   * get_slots_transfers
-//! * grpc public:
+//! * grpc public api:
 //!   * get_slot_transfers
+//! * grpc public stream api:
+//!   * new_slot_transfers
+//!   * new_slot_abi_call_stacks
 //!
 //! # Usage
 //!
