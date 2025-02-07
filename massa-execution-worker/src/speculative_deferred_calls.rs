@@ -59,31 +59,6 @@ impl SpeculativeDeferredCallRegistry {
         self.deferred_calls_changes.set_call(id, call);
     }
 
-    pub fn get_total_calls_registered(&self) -> u64 {
-        if let Some(v) = self.deferred_calls_changes.get_total_calls_registered() {
-            return v;
-        }
-
-        {
-            let history = self.active_history.read();
-            for history_item in history.0.iter().rev() {
-                if let Some(v) = history_item
-                    .state_changes
-                    .deferred_call_changes
-                    .get_total_calls_registered()
-                {
-                    return v;
-                }
-            }
-        }
-
-        return self
-            .final_state
-            .read()
-            .get_deferred_call_registry()
-            .get_nb_call_registered();
-    }
-
     pub fn get_effective_total_gas(&self) -> u128 {
         // get total gas from current changes
         if let Some(v) = self.deferred_calls_changes.get_effective_total_gas() {
@@ -242,22 +217,9 @@ impl SpeculativeDeferredCallRegistry {
 
         slot_calls.effective_total_gas = total_gas_after;
 
-        massa_metrics::set_deferred_calls_total_gas(slot_calls.effective_total_gas);
-
         // delete call in the current slot
-        let mut nb_call_to_execute = 0;
-        for (id, call) in &slot_calls.slot_calls {
-            // cancelled call is already decremented from the total calls registered
-            if !call.cancelled {
-                nb_call_to_execute += 1;
-            }
+        for id in slot_calls.slot_calls.keys() {
             self.delete_call(id, current_slot);
-        }
-
-        if nb_call_to_execute > 0 {
-            let total_calls_registered = self.get_total_calls_registered();
-            let new_call_registered = total_calls_registered.saturating_sub(nb_call_to_execute);
-            self.set_total_calls_registered(new_call_registered);
         }
 
         slot_calls
@@ -348,25 +310,6 @@ impl SpeculativeDeferredCallRegistry {
         // Add a cancellation to the current changes
         self.deferred_calls_changes
             .set_call(id.clone(), call.clone());
-
-        let current_gas = self.get_effective_slot_gas(&call.target_slot);
-
-        // set slot gas
-        // slot_gas = current_gas - (call_gas + call_cst_gas_cost (vm allocation cost))
-        self.deferred_calls_changes.set_effective_slot_gas(
-            call.target_slot,
-            current_gas.saturating_sub(call.get_effective_gas(self.config.call_cst_gas_cost)),
-        );
-
-        let effective_gas_call = call.get_effective_gas(self.config.call_cst_gas_cost) as u128;
-        // set total gas
-        self.deferred_calls_changes.set_effective_total_gas(
-            self.get_effective_total_gas()
-                .saturating_sub(effective_gas_call),
-        );
-
-        let new_total_calls_registered = self.get_total_calls_registered().saturating_sub(1);
-        self.set_total_calls_registered(new_total_calls_registered);
 
         Ok(res)
     }
@@ -556,22 +499,12 @@ impl SpeculativeDeferredCallRegistry {
         self.deferred_calls_changes
             .set_effective_total_gas(effective_total_gas.saturating_add(call_effective_gas));
 
-        // increment total calls registered
-        let new_total_calls_registered = self.get_total_calls_registered().saturating_add(1);
-        self.set_total_calls_registered(new_total_calls_registered);
-
         Ok(id)
     }
 
     /// Take the deferred registry slot changes
     pub(crate) fn take(&mut self) -> DeferredCallRegistryChanges {
         std::mem::take(&mut self.deferred_calls_changes)
-    }
-
-    fn set_total_calls_registered(&mut self, nb_calls: u64) {
-        massa_metrics::set_deferred_calls_registered(nb_calls as usize);
-        self.deferred_calls_changes
-            .set_total_calls_registered(nb_calls);
     }
 }
 
