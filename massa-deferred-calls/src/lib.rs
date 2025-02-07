@@ -548,6 +548,13 @@ impl DeferredCallRegistry {
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();
         } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
+            let db = self.db.read();
+            let mut db_batch = DBBatch::new();
+            db.delete_key(
+                &mut db_batch,
+                DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec(),
+            );
+
             return true;
         }
         false
