@@ -7,8 +7,8 @@ use macros::{
 };
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
-    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS,
-    DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
+    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS, KEY_DESER_ERROR,
+    STATE_CF,
 };
 use massa_models::address::Address;
 use massa_serialization::{buf_to_array_ctr, DeserializeError, Deserializer, Serializer};
@@ -54,7 +54,6 @@ impl DeferredCallRegistry {
     /*
      DB layout:
         [DEFERRED_CALL_TOTAL_GAS] -> u128 // total currently booked gas
-        [DEFERRED_CALL_TOTAL_REGISTERED] -> u64 // total call registered
         [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS] -> u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
         [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE] -> u64 // deleted when set to 0
         [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -> DeferredCalls.x // call data
@@ -69,24 +68,6 @@ impl DeferredCallRegistry {
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
-        }
-    }
-
-    pub fn get_nb_call_registered(&self) -> u64 {
-        match self
-            .db
-            .read()
-            .get_cf(STATE_CF, DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec())
-            .expect(CRUD_ERROR)
-        {
-            Some(v) => {
-                self.registry_changes_deserializer
-                    .u64_deserializer
-                    .deserialize::<DeserializeError>(&v)
-                    .expect(DEFERRED_CALL_DESER_ERROR)
-                    .1
-            }
-            None => 0,
         }
     }
 
@@ -363,6 +344,11 @@ impl DeferredCallRegistry {
             for (id, call_change) in slot_changes.calls.iter() {
                 match call_change {
                     DeferredRegistryCallChange::Set(call) => {
+                        if call.cancelled {
+                            massa_metrics::inc_deferred_calls_cancelled();
+                        } else {
+                            massa_metrics::inc_deferred_calls_registered();
+                        }
                         self.put_entry(slot, id, call, batch);
                     }
                     DeferredRegistryCallChange::Delete => {
@@ -411,7 +397,8 @@ impl DeferredCallRegistry {
         }
 
         match changes.effective_total_gas {
-            DeferredRegistryGasChange::Set(_) => {
+            DeferredRegistryGasChange::Set(val) => {
+                massa_metrics::set_deferred_calls_total_gas(val);
                 let key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
                 let mut value_ser = Vec::new();
                 self.registry_changes_serializer
@@ -423,6 +410,28 @@ impl DeferredCallRegistry {
                     .put_or_update_entry_value(batch, key, &value_ser);
             }
             DeferredRegistryGasChange::Keep => {}
+        }
+
+        if changes.exec_stats.0 > 0 {
+            // deferred calls that has been executed successfully
+            massa_metrics::inc_deferred_calls_executed_by(changes.exec_stats.0);
+        }
+        if changes.exec_stats.1 > 0 {
+            // deferred calls that has failed
+            massa_metrics::inc_deferred_calls_failed_by(changes.exec_stats.1);
+        }
+        if changes.exec_stats.2 > 0 {
+            // deferred calls that has been cancelled
+            massa_metrics::dec_deferred_calls_cancelled_by(changes.exec_stats.2);
+        }
+        let total_no_more_registered = changes
+            .exec_stats
+            .0
+            .saturating_add(changes.exec_stats.1)
+            .saturating_add(changes.exec_stats.2);
+        if total_no_more_registered > 0 {
+            // update the number of deferred calls registered
+            massa_metrics::dec_deferred_calls_registered_by(total_no_more_registered);
         }
     }
 
@@ -538,15 +547,6 @@ impl DeferredCallRegistry {
                 .effective_total_gas_deserializer
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();
-        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
-            let db = self.db.read();
-            let mut db_batch = DBBatch::new();
-            db.delete_key(
-                &mut db_batch,
-                DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec(),
-            );
-
-            return true;
         }
         false
     }
