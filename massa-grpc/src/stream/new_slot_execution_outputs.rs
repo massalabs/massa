@@ -2,7 +2,6 @@
 
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
-use crate::stream::tools::filter_map;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::io::ErrorKind;
@@ -11,7 +10,7 @@ use tokio::select;
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
-use super::tools::{get_filter_slot_exec_out, FilterNewSlotExec};
+use super::trait_filters_impl::{FilterGrpc, FilterNewSlotExec};
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<
@@ -42,7 +41,7 @@ pub(crate) async fn new_slot_execution_outputs(
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             let mut filters: FilterNewSlotExec =
-                match get_filter_slot_exec_out(request.clone(), &grpc_config) {
+                match FilterNewSlotExec::build_from_request(request.clone(), &grpc_config) {
                     Ok(filter) => filter,
                     Err(err) => {
                         error!("failed to get filter: {}", err);
@@ -60,12 +59,9 @@ pub(crate) async fn new_slot_execution_outputs(
                     event = subscriber.recv() => {
                         match event {
                             Ok(massa_slot_execution_output) => {
-                                let slot_execution_output = filter_map(massa_slot_execution_output, &filters, &grpc_config);
-                                // Check if the slot execution output should be sent
-                                if let Some(slot_execution_output) = slot_execution_output {
-                                    // Send the new slot execution output through the channel
+                                if let Some(data) = filters.filter_output(massa_slot_execution_output, &grpc_config) {
                                     if let Err(e) = tx.send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
-                                            output: Some(slot_execution_output.into())
+                                        output: Some(data.into()),
                                     })).await {
                                         error!("failed to send new slot execution output : {}", e);
                                         break;
@@ -83,7 +79,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter_slot_exec_out(message.clone(), &grpc_config) {
+                                        filters = match FilterNewSlotExec::build_from_request(message.clone(), &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

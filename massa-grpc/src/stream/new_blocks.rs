@@ -2,7 +2,6 @@
 
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
-use crate::stream::tools::{get_filter_new_blocks, should_send_new_blocks};
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::io::ErrorKind;
@@ -10,6 +9,8 @@ use std::pin::Pin;
 use tokio::select;
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
+
+use super::trait_filters_impl::{FilterGrpc, FilterNewBlocks};
 
 /// Type declaration for NewBlocks
 pub type NewBlocksStreamType = Pin<
@@ -36,7 +37,7 @@ pub(crate) async fn new_blocks(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match get_filter_new_blocks(request, &grpc_config) {
+            let mut filters = match FilterNewBlocks::build_from_request(request, &grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -55,16 +56,16 @@ pub(crate) async fn new_blocks(
                         match event {
                             Ok(massa_block) => {
                                 // Check if the block should be sent
-                                if !should_send_new_blocks(&massa_block, &filters, &grpc_config) {
-                                    continue;
+                                if let Some(data) = filters.filter_output(massa_block, &grpc_config) {
+                                    // Send the new block through the channel
+                                    if let Err(e) = tx.send(Ok(grpc_api::NewBlocksResponse {
+                                        signed_block: Some(data.into())
+                                    })).await {
+                                        error!("failed to send new block : {}", e);
+                                        break;
+                                    }
                                 }
-                                // Send the new block through the channel
-                                if let Err(e) = tx.send(Ok(grpc_api::NewBlocksResponse {
-                                    signed_block: Some(massa_block.into())
-                                })).await {
-                                    error!("failed to send new block : {}", e);
-                                    break;
-                                }
+
                             },
                             Err(e) => error!("error on receive new block : {}", e)
                         }
@@ -75,7 +76,7 @@ pub(crate) async fn new_blocks(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter_new_blocks(message, &grpc_config) {
+                                        filters = match FilterNewBlocks::build_from_request(message, &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

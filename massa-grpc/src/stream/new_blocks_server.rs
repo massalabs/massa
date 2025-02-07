@@ -2,7 +2,7 @@ use tonic::Request;
 
 use super::{
     new_blocks::NewBlocksStreamType,
-    tools::{get_filter_new_blocks, should_send_new_blocks},
+    trait_filters_impl::{FilterGrpc, FilterNewBlocks},
 };
 use crate::{error::GrpcError, server::MassaPublicGrpc};
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -23,7 +23,8 @@ pub(crate) async fn new_blocks_server(
     let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
-        let filters = match get_filter_new_blocks(request, &grpc_config) {
+        // let filters = match get_filter_new_blocks(request, &grpc_config) {
+        let filter = match FilterNewBlocks::build_from_request(request, &grpc_config) {
             Ok(filter) => filter,
             Err(err) => {
                 error!("failed to get filter: {}", err);
@@ -40,18 +41,17 @@ pub(crate) async fn new_blocks_server(
             match subscriber.recv().await {
                 Ok(massa_block) => {
                     // Check if the block should be sent
-                    if !should_send_new_blocks(&massa_block, &filters, &grpc_config) {
-                        continue;
-                    }
-                    // Send the new block through the channel
-                    if let Err(e) = tx
-                        .send(Ok(grpc_api::NewBlocksResponse {
-                            signed_block: Some(massa_block.into()),
-                        }))
-                        .await
-                    {
-                        error!("failed to send new block : {}", e);
-                        break;
+                    if let Some(data) = filter.filter_output(massa_block, &grpc_config) {
+                        // Send the new block through the channel
+                        if let Err(e) = tx
+                            .send(Ok(grpc_api::NewBlocksResponse {
+                                signed_block: Some(data.into()),
+                            }))
+                            .await
+                        {
+                            error!("failed to send new block : {}", e);
+                            break;
+                        }
                     }
                 }
                 Err(e) => error!("error on receive new block : {}", e),

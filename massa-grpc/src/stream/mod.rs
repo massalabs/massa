@@ -25,6 +25,6 @@ pub mod send_endorsements;
 /// send operations
 pub mod send_operations;
 /// tools
-mod tools;
+mod trait_filters_impl;
 /// subscribe tx throughput
 pub mod tx_throughput;

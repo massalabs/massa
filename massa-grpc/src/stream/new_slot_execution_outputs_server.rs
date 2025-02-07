@@ -1,6 +1,6 @@
 use super::{
     new_slot_execution_outputs::NewSlotExecutionOutputsStreamType,
-    tools::{filter_map, get_filter_slot_exec_out, FilterNewSlotExec},
+    trait_filters_impl::{FilterGrpc, FilterNewSlotExec},
 };
 use crate::{error::GrpcError, server::MassaPublicGrpc};
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -20,7 +20,7 @@ pub(crate) async fn new_slot_execution_outputs_server(
     let inner_req = request.into_inner();
     tokio::spawn(async move {
         let filters: FilterNewSlotExec =
-            match get_filter_slot_exec_out(inner_req.clone(), &grpc.grpc_config) {
+            match FilterNewSlotExec::build_from_request(inner_req.clone(), &grpc.grpc_config) {
                 Ok(filter) => filter,
                 Err(err) => {
                     error!("failed to get filter: {}", err);
@@ -37,7 +37,7 @@ pub(crate) async fn new_slot_execution_outputs_server(
                 Ok(massa_slot_execution_output) => {
                     // Check if the slot execution output should be sent
                     if let Some(slot_execution_output) =
-                        filter_map(massa_slot_execution_output, &filters, &grpc.grpc_config)
+                        filters.filter_output(massa_slot_execution_output, &grpc.grpc_config)
                     {
                         // Send the new slot execution output through the channel
                         if let Err(e) = tx
