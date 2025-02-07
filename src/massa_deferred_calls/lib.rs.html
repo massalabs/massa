@@ -624,7 +624,6 @@
 <a href="#624" id="624">624</a>
 <a href="#625" id="625">625</a>
 <a href="#626" id="626">626</a>
-<a href="#627" id="627">627</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>call::{DeferredCallDeserializer, DeferredCallSerializer};
 <span class="kw">use </span>config::DeferredCallsConfig;
 <span class="kw">use </span>macros::{
@@ -681,7 +680,6 @@
     <span class="comment">/*
      DB layout:
         [DEFERRED_CALL_TOTAL_GAS] -&gt; u128 // total currently booked gas
-        [DEFERRED_CALL_TOTAL_REGISTERED] -&gt; u64 // total call registered
         [DEFERRED_CALLS_PREFIX][slot][SLOT_TOTAL_GAS] -&gt; u64 // total gas booked for a slot (optional, default 0, deleted when set to 0)
         [DEFERRED_CALLS_PREFIX][slot][SLOT_BASE_FEE] -&gt; u64 // deleted when set to 0
         [DEFERRED_CALLS_PREFIX][slot][CALLS_TAG][id][CALL_FIELD_X_TAG] -&gt; DeferredCalls.x // call data
@@ -696,24 +694,6 @@
             call_id_deserializer: DeferredCallIdDeserializer::new(),
             registry_changes_deserializer: DeferredRegistryChangesDeserializer::new(config),
             registry_changes_serializer: DeferredRegistryChangesSerializer::new(),
-        }
-    }
-
-    <span class="kw">pub fn </span>get_nb_call_registered(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
-        <span class="kw">match </span><span class="self">self
-            </span>.db
-            .read()
-            .get_cf(STATE_CF, DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec())
-            .expect(CRUD_ERROR)
-        {
-            <span class="prelude-val">Some</span>(v) =&gt; {
-                <span class="self">self</span>.registry_changes_deserializer
-                    .u64_deserializer
-                    .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>v)
-                    .expect(DEFERRED_CALL_DESER_ERROR)
-                    .<span class="number">1
-            </span>}
-            <span class="prelude-val">None </span>=&gt; <span class="number">0</span>,
         }
     }
 
@@ -990,6 +970,11 @@
             <span class="kw">for </span>(id, call_change) <span class="kw">in </span>slot_changes.calls.iter() {
                 <span class="kw">match </span>call_change {
                     DeferredRegistryCallChange::Set(call) =&gt; {
+                        <span class="kw">if </span>call.cancelled {
+                            massa_metrics::inc_deferred_calls_cancelled();
+                        } <span class="kw">else </span>{
+                            massa_metrics::inc_deferred_calls_registered();
+                        }
                         <span class="self">self</span>.put_entry(slot, id, call, batch);
                     }
                     DeferredRegistryCallChange::Delete =&gt; {
@@ -1038,7 +1023,8 @@
         }
 
         <span class="kw">match </span>changes.effective_total_gas {
-            DeferredRegistryGasChange::Set(<span class="kw">_</span>) =&gt; {
+            DeferredRegistryGasChange::Set(val) =&gt; {
+                massa_metrics::set_deferred_calls_total_gas(val);
                 <span class="kw">let </span>key = DEFERRED_CALL_TOTAL_GAS.as_bytes().to_vec();
                 <span class="kw">let </span><span class="kw-2">mut </span>value_ser = Vec::new();
                 <span class="self">self</span>.registry_changes_serializer
@@ -1052,19 +1038,26 @@
             DeferredRegistryGasChange::Keep =&gt; {}
         }
 
-        <span class="kw">match </span>changes.total_calls_registered {
-            DeferredRegistryGasChange::Set(<span class="kw">_</span>) =&gt; {
-                <span class="kw">let </span>key = DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec();
-                <span class="kw">let </span><span class="kw-2">mut </span>value_ser = Vec::new();
-                <span class="self">self</span>.registry_changes_serializer
-                    .total_calls_registered_serializer
-                    .serialize(<span class="kw-2">&amp;</span>changes.total_calls_registered, <span class="kw-2">&amp;mut </span>value_ser)
-                    .expect(DEFERRED_CALL_SER_ERROR);
-                <span class="self">self</span>.db
-                    .read()
-                    .put_or_update_entry_value(batch, key, <span class="kw-2">&amp;</span>value_ser);
-            }
-            DeferredRegistryGasChange::Keep =&gt; {}
+        <span class="kw">if </span>changes.exec_stats.<span class="number">0 </span>&gt; <span class="number">0 </span>{
+            <span class="comment">// deferred calls that has been executed successfully
+            </span>massa_metrics::inc_deferred_calls_executed_by(changes.exec_stats.<span class="number">0</span>);
+        }
+        <span class="kw">if </span>changes.exec_stats.<span class="number">1 </span>&gt; <span class="number">0 </span>{
+            <span class="comment">// deferred calls that has failed
+            </span>massa_metrics::inc_deferred_calls_failed_by(changes.exec_stats.<span class="number">1</span>);
+        }
+        <span class="kw">if </span>changes.exec_stats.<span class="number">2 </span>&gt; <span class="number">0 </span>{
+            <span class="comment">// deferred calls that has been cancelled
+            </span>massa_metrics::dec_deferred_calls_cancelled_by(changes.exec_stats.<span class="number">2</span>);
+        }
+        <span class="kw">let </span>total_no_more_registered = changes
+            .exec_stats
+            .<span class="number">0
+            </span>.saturating_add(changes.exec_stats.<span class="number">1</span>)
+            .saturating_add(changes.exec_stats.<span class="number">2</span>);
+        <span class="kw">if </span>total_no_more_registered &gt; <span class="number">0 </span>{
+            <span class="comment">// update the number of deferred calls registered
+            </span>massa_metrics::dec_deferred_calls_registered_by(total_no_more_registered);
         }
     }
 
@@ -1181,11 +1174,16 @@
                 .deserialize::&lt;DeserializeError&gt;(serialized_value)
                 .is_ok();
         } <span class="kw">else if </span>serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
-            <span class="kw">return </span><span class="self">self
-                </span>.registry_changes_deserializer
-                .total_calls_registered_deserializer
-                .deserialize::&lt;DeserializeError&gt;(serialized_value)
-                .is_ok();
+            <span class="comment">// Should be remove on next version (&gt; MAIN.2.5)
+            // Follow up issue https://github.com/massalabs/massa/issues/4854
+            </span><span class="kw">let </span>db = <span class="self">self</span>.db.read();
+            <span class="kw">let </span><span class="kw-2">mut </span>db_batch = DBBatch::new();
+            db.delete_key(
+                <span class="kw-2">&amp;mut </span>db_batch,
+                DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec(),
+            );
+
+            <span class="kw">return </span><span class="bool-val">true</span>;
         }
         <span class="bool-val">false
     </span>}

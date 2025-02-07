@@ -2435,40 +2435,6 @@
 <a href="#2435" id="2435">2435</a>
 <a href="#2436" id="2436">2436</a>
 <a href="#2437" id="2437">2437</a>
-<a href="#2438" id="2438">2438</a>
-<a href="#2439" id="2439">2439</a>
-<a href="#2440" id="2440">2440</a>
-<a href="#2441" id="2441">2441</a>
-<a href="#2442" id="2442">2442</a>
-<a href="#2443" id="2443">2443</a>
-<a href="#2444" id="2444">2444</a>
-<a href="#2445" id="2445">2445</a>
-<a href="#2446" id="2446">2446</a>
-<a href="#2447" id="2447">2447</a>
-<a href="#2448" id="2448">2448</a>
-<a href="#2449" id="2449">2449</a>
-<a href="#2450" id="2450">2450</a>
-<a href="#2451" id="2451">2451</a>
-<a href="#2452" id="2452">2452</a>
-<a href="#2453" id="2453">2453</a>
-<a href="#2454" id="2454">2454</a>
-<a href="#2455" id="2455">2455</a>
-<a href="#2456" id="2456">2456</a>
-<a href="#2457" id="2457">2457</a>
-<a href="#2458" id="2458">2458</a>
-<a href="#2459" id="2459">2459</a>
-<a href="#2460" id="2460">2460</a>
-<a href="#2461" id="2461">2461</a>
-<a href="#2462" id="2462">2462</a>
-<a href="#2463" id="2463">2463</a>
-<a href="#2464" id="2464">2464</a>
-<a href="#2465" id="2465">2465</a>
-<a href="#2466" id="2466">2466</a>
-<a href="#2467" id="2467">2467</a>
-<a href="#2468" id="2468">2468</a>
-<a href="#2469" id="2469">2469</a>
-<a href="#2470" id="2470">2470</a>
-<a href="#2471" id="2471">2471</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2930,21 +2896,7 @@
     </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
-
-        <span class="kw">match </span>context.get_keys(
-            <span class="kw-2">&amp;</span>addr,
-            prefix_opt.unwrap_or_default(),
-            start_key,
-            end_key,
-            count,
-        )<span class="question-mark">? </span>{
+        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>addr, prefix_opt.unwrap_or_default()) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2959,20 +2911,7 @@
     </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
-
-        <span class="kw">match </span>context.get_keys(
-            addr,
-            prefix_opt.unwrap_or_default(),
-            start_key,
-            end_key,
-            count,
-        )<span class="question-mark">? </span>{
+        <span class="kw">match </span>context.get_keys(addr, prefix_opt.unwrap_or_default()) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2990,14 +2929,7 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>end_key = std::ops::Bound::Unbounded;
-        <span class="comment">// TODO update when implementing the ABI key limits
-        </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
-
-        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, prefix, start_key, end_key, count)<span class="question-mark">? </span>{
+        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, prefix) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
