@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["filter_map","filter_map_exec_output_inner","get_filter","new_slot_execution_outputs"],"struct":["Filter"],"type":["NewSlotExecutionOutputsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["filter_map","filter_map_exec_output","get_filter","new_slot_execution_outputs"],"struct":["AsyncPoolChangesFilter","ExecutedDenounciationFilter","ExecutedOpsChangesFilter","ExecutionEventFilter","Filter","LedgerChangesFilter"],"type":["NewSlotExecutionOutputsStreamType"]};
