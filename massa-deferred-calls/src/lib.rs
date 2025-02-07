@@ -538,8 +538,6 @@ impl DeferredCallRegistry {
                 .effective_total_gas_deserializer
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();
-        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
-            return true;
         }
         false
     }
