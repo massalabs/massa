@@ -79,6 +79,10 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # Overview
@@ -93,9 +97,9 @@
 //! an instance of `ExecutionManager` is returned (see the documentation of `start_execution_worker` in `massa-execution-worker`),
 //! as well as an instance of `ExecutionController`.
 //!
-//! The non-cloneable `ExecutionManager` allows stopping the execution worker thread.
+//! The non-clonable `ExecutionManager` allows stopping the execution worker thread.
 //!
-//! The cloneable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker
+//! The clonable `ExecutionController` allows sending updates on the latest blockclique changes to the execution worker
 //! for it to keep track of them and execute the operations present in blocks.
 //! It also allows various read-only queries such as executing bytecode
 //! while ignoring all the changes it would cause to the consensus state (read-only execution),
@@ -122,6 +126,10 @@
 //!
 //! When the crate feature `test-exports` is enabled, tooling useful for test-exports purposes is exported.
 //! See `test_exports/mod.rs` for details.
+//!
+//! # Execution trace
+//!
+//! See documentation in types_trace_info.rs file.
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -140,7 +148,7 @@
 <span class="kw">pub use </span>controller_traits::{ExecutionController, ExecutionManager};
 <span class="kw">pub use </span>error::{ExecutionError, ExecutionQueryError};
 <span class="kw">pub use </span>event_store::EventStore;
-<span class="kw">pub use </span>massa_sc_runtime::{CondomLimits, GasCosts};
+<span class="kw">pub use </span>massa_sc_runtime::GasCosts;
 <span class="kw">pub use </span>settings::{ExecutionConfig, StorageCostsConstants};
 <span class="kw">pub use </span>types::{
     ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,
