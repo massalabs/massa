@@ -548,6 +548,8 @@ impl DeferredCallRegistry {
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();
         } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
+            // Should be remove on next version (> MAIN.2.5)
+            // Follow up issue https://github.com/massalabs/massa/issues/4854
             let db = self.db.read();
             let mut db_batch = DBBatch::new();
             db.delete_key(
