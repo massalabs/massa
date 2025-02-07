@@ -1597,7 +1597,7 @@ fn deferred_calls() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Set(call.max_gas.saturating_add(call2.max_gas).into()),
-            total_calls_registered: SetOrKeep::Set(2),
+            exec_stats: (0, 0, 0),
         },
         &mut db_batch,
     );
@@ -1813,7 +1813,7 @@ fn deferred_call_register() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Keep,
-            total_calls_registered: SetOrKeep::Set(0),
+            exec_stats: (0, 0, 0),
         },
         &mut db_batch,
     );
@@ -1958,7 +1958,7 @@ fn deferred_call_register_fail() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Set(2000),
-            total_calls_registered: SetOrKeep::Set(1),
+            exec_stats: (0, 0, 0),
         },
         &mut db_batch,
     );
@@ -2141,7 +2141,7 @@ fn deferred_call_exists() {
         DeferredCallRegistryChanges {
             slots_change: slot_changes,
             effective_total_gas: SetOrKeep::Set(2000),
-            total_calls_registered: SetOrKeep::Set(1),
+            exec_stats: (0, 0, 0),
         },
         &mut db_batch,
     );
