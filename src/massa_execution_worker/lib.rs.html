@@ -117,8 +117,6 @@
 <a href="#117" id="117">117</a>
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General description
@@ -137,6 +135,8 @@
 //! and must be the only module with runtime write access to the final ledger.
 //!
 //! # A note on finality
+//!
+//!
 //!
 //! The operations contained in a final slot are ready to be executed as final
 //! only once all the previous slots are final and their operations are executed as final or ready to be so.
@@ -194,10 +194,6 @@
 //!
 //! ## `stats.rs`
 //! Defines a structure that gathers execution statistics.
-//!
-//! ## execution-info
-//!
-//! See documentation in execution_info.rs file.
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
