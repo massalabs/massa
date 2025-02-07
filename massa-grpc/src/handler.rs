@@ -19,8 +19,9 @@ use crate::public::{
 
 #[cfg(feature = "execution-trace")]
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
-use crate::stream::new_blocks_server::new_blocks_server;
-use crate::stream::new_slot_execution_outputs_server::new_slot_execution_outputs_server;
+use crate::stream::new_blocks::new_blocks_server;
+use crate::stream::new_operations::new_operations_server;
+use crate::stream::new_slot_execution_outputs::new_slot_execution_outputs_server;
 #[cfg(feature = "execution-trace")]
 use crate::stream::new_slot_transfers::new_slot_transfers;
 
@@ -279,6 +280,18 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         ))
     }
 
+    type NewFilledBlocksServerStream = NewFilledBlocksStreamType;
+
+    async fn new_filled_blocks_server(
+        &self,
+        request: tonic::Request<grpc_api::NewFilledBlocksRequest>,
+    ) -> Result<tonic::Response<Self::NewFilledBlocksServerStream>, tonic::Status> {
+        Err(tonic::Status::unavailable("not available"))
+        // Ok(tonic::Response::new(
+        //     new_filled_blocks(self, request).await?,
+        // ))
+    }
+
     type NewOperationsStream = NewOperationsStreamType;
 
     /// handler for subscribe new operations stream
@@ -287,6 +300,18 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         request: tonic::Request<tonic::Streaming<grpc_api::NewOperationsRequest>>,
     ) -> Result<tonic::Response<Self::NewOperationsStream>, tonic::Status> {
         Ok(tonic::Response::new(new_operations(self, request).await?))
+    }
+
+    type NewOperationsServerStream = NewOperationsStreamType;
+
+    /// handler for subscribe new operations stream
+    async fn new_operations_server(
+        &self,
+        request: tonic::Request<grpc_api::NewOperationsRequest>,
+    ) -> Result<tonic::Response<Self::NewOperationsServerStream>, tonic::Status> {
+        Ok(tonic::Response::new(
+            new_operations_server(self, request).await?,
+        ))
     }
 
     type NewSlotExecutionOutputsStream = NewSlotExecutionOutputsStreamType;
@@ -393,6 +418,18 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         Ok(tonic::Response::new(
             transactions_throughput(self, request).await?,
         ))
+    }
+
+    type TransactionsThroughputServerStream = TransactionsThroughputStreamType;
+
+    async fn transactions_throughput_server(
+        &self,
+        request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
+    ) -> Result<tonic::Response<Self::TransactionsThroughputServerStream>, tonic::Status> {
+        Err(tonic::Status::unavailable("not available"))
+        // Ok(tonic::Response::new(
+        //     transactions_throughput(self, request).await?,
+        // ))
     }
 }
 

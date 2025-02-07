@@ -7,15 +7,19 @@ use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
 use massa_models::block::SecureShareBlock;
 use massa_models::block_id::BlockId;
+use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{
-    self as grpc_api, NewBlocksRequest, NewSlotExecutionOutputsRequest,
+    self as grpc_api, NewBlocksRequest, NewOperationsRequest, NewSlotExecutionOutputsRequest,
 };
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
-pub(crate) trait FilterGrpc<R, T, D> {
-    fn build_from_request(request: R, grpc_config: &GrpcConfig) -> Result<T, GrpcError>;
-    fn filter_output(&self, content: D, grpc_config: &GrpcConfig) -> Option<D>;
+pub(crate) trait FilterGrpc<RequestType, FilterType, Data> {
+    fn build_from_request(
+        request: RequestType,
+        grpc_config: &GrpcConfig,
+    ) -> Result<FilterType, GrpcError>;
+    fn filter_output(&self, content: Data, grpc_config: &GrpcConfig) -> Option<Data>;
 }
 
 /// Type declaration for NewSlotExecutionOutputsFilter
@@ -35,6 +39,17 @@ pub(crate) struct FilterNewSlotExec {
     executed_ops_changes_filter: Option<Vec<grpc_api::executed_ops_changes_filter::Filter>>,
     // Ledger changes filter
     ledger_changes_filter: Option<Vec<grpc_api::ledger_changes_filter::Filter>>,
+}
+
+// Type declaration for NewOperationsFilter
+#[derive(Debug)]
+pub(crate) struct FilterNewOperations {
+    // Operation ids to filter
+    operation_ids: Option<HashSet<OperationId>>,
+    // Addresses to filter
+    addresses: Option<HashSet<Address>>,
+    // Operation types to filter
+    operation_types: Option<HashSet<i32>>,
 }
 
 impl FilterGrpc<NewSlotExecutionOutputsRequest, FilterNewSlotExec, SlotExecutionOutput>
@@ -444,5 +459,107 @@ impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterN
         }
 
         None
+    }
+}
+
+impl FilterGrpc<NewOperationsRequest, FilterNewOperations, SecureShareOperation>
+    for FilterNewOperations
+{
+    fn build_from_request(
+        request: NewOperationsRequest,
+        grpc_config: &GrpcConfig,
+    ) -> Result<FilterNewOperations, GrpcError> {
+        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+            return Err(GrpcError::InvalidArgument(format!(
+                "too many filters received. Only a maximum of {} filters are accepted per request",
+                grpc_config.max_filters_per_request
+            )));
+        }
+
+        let mut operation_ids_filter: Option<HashSet<OperationId>> = None;
+        let mut addresses_filter: Option<HashSet<Address>> = None;
+        let mut operation_types_filter: Option<HashSet<i32>> = None;
+
+        // Get params filter from the request.
+        for query in request.filters.into_iter() {
+            if let Some(filter) = query.filter {
+                match filter {
+                    grpc_api::new_operations_filter::Filter::OperationIds(ids) => {
+                        if ids.operation_ids.len() as u32
+                            > grpc_config.max_operation_ids_per_request
+                        {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many operation ids received. Only a maximum of {} operation ids are accepted per request",
+                             grpc_config.max_block_ids_per_request
+                            )));
+                        }
+                        let operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
+                        for id in ids.operation_ids {
+                            operation_ids.insert(OperationId::from_str(&id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid operation id: {}", id))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_operations_filter::Filter::Addresses(addrs) => {
+                        if addrs.addresses.len() as u32 > grpc_config.max_addresses_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                             grpc_config.max_addresses_per_request
+                            )));
+                        }
+                        let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                        for address in addrs.addresses {
+                            addresses.insert(Address::from_str(&address).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_operations_filter::Filter::OperationTypes(ope_types) => {
+                        // The length limited to the number of operation types in the enum
+                        if ope_types.op_types.len() as u64 > 6 {
+                            return Err(GrpcError::InvalidArgument(
+                                "too many operation types received. Only a maximum of 6 operation types are accepted per request".to_string()
+                            ));
+                        }
+                        let operation_types =
+                            operation_types_filter.get_or_insert_with(HashSet::new);
+                        operation_types.extend(&ope_types.op_types);
+                    }
+                }
+            }
+        }
+
+        Ok(FilterNewOperations {
+            operation_ids: operation_ids_filter,
+            addresses: addresses_filter,
+            operation_types: operation_types_filter,
+        })
+    }
+
+    fn filter_output(
+        &self,
+        content: SecureShareOperation,
+        _grpc_config: &GrpcConfig,
+    ) -> Option<SecureShareOperation> {
+        if let Some(operation_ids) = &self.operation_ids {
+            if !operation_ids.contains(&content.id) {
+                return None;
+            }
+        }
+
+        if let Some(addresses) = &self.addresses {
+            if !addresses.contains(&content.content_creator_address) {
+                return None;
+            }
+        }
+
+        if let Some(operation_types) = &self.operation_types {
+            let op_type = grpc_model::OpType::from(content.content.op.clone()) as i32;
+            if !operation_types.contains(&op_type) {
+                return None;
+            }
+        }
+
+        Some(content)
     }
 }
