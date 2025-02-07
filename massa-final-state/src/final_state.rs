@@ -557,6 +557,16 @@ impl FinalState {
 
     /// Internal function called by is_db_valid
     fn _is_db_valid(&self) -> AnyResult<()> {
+        {
+            let mut db = self.db.write();
+            let mut db_batch = DBBatch::new();
+            db.delete_key(
+                &mut db_batch,
+                DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec(),
+            );
+            db.write_batch(db_batch, DBBatch::new(), None);
+        }
+
         let db = self.db.read();
 
         // check if the execution trial hash is present and valid
