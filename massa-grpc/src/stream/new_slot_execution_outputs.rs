@@ -11,7 +11,7 @@ use tokio::select;
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
-use super::tools::{get_filter, Filter};
+use super::tools::{get_filter_slot_exec_out, FilterNewSlotExec};
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<
@@ -41,17 +41,18 @@ pub(crate) async fn new_slot_execution_outputs(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters: Filter = match get_filter(request.clone(), &grpc_config) {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back NewBlocks error response: {}", e);
+            let mut filters: FilterNewSlotExec =
+                match get_filter_slot_exec_out(request.clone(), &grpc_config) {
+                    Ok(filter) => filter,
+                    Err(err) => {
+                        error!("failed to get filter: {}", err);
+                        // Send the error response back to the client
+                        if let Err(e) = tx.send(Err(err.into())).await {
+                            error!("failed to send back NewBlocks error response: {}", e);
+                        }
+                        return;
                     }
-                    return;
-                }
-            };
+                };
 
             loop {
                 select! {
@@ -82,7 +83,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message.clone(), &grpc_config) {
+                                        filters = match get_filter_slot_exec_out(message.clone(), &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);

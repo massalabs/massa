@@ -1,6 +1,6 @@
 use super::{
     new_slot_execution_outputs::NewSlotExecutionOutputsStreamType,
-    tools::{filter_map, get_filter, Filter},
+    tools::{filter_map, get_filter_slot_exec_out, FilterNewSlotExec},
 };
 use crate::{error::GrpcError, server::MassaPublicGrpc};
 use massa_proto_rs::massa::api::v1 as grpc_api;
@@ -19,17 +19,18 @@ pub(crate) async fn new_slot_execution_outputs_server(
     let grpc = grpc.clone();
     let inner_req = request.into_inner();
     tokio::spawn(async move {
-        let filters: Filter = match get_filter(inner_req.clone(), &grpc.grpc_config) {
-            Ok(filter) => filter,
-            Err(err) => {
-                error!("failed to get filter: {}", err);
-                // Send the error response back to the client
-                if let Err(e) = tx.send(Err(err.into())).await {
-                    error!("failed to send back error response: {}", e);
+        let filters: FilterNewSlotExec =
+            match get_filter_slot_exec_out(inner_req.clone(), &grpc.grpc_config) {
+                Ok(filter) => filter,
+                Err(err) => {
+                    error!("failed to get filter: {}", err);
+                    // Send the error response back to the client
+                    if let Err(e) = tx.send(Err(err.into())).await {
+                        error!("failed to send back error response: {}", e);
+                    }
+                    return;
                 }
-                return;
-            }
-        };
+            };
         loop {
             // Receive a new slot execution output from the subscriber
             match subscriber.recv().await {
