@@ -12,9 +12,8 @@ use anyhow::{anyhow, Result as AnyResult};
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
-    CYCLE_HISTORY_PREFIX, DEFERRED_CALLS_PREFIX, DEFERRED_CALL_TOTAL_GAS,
-    DEFERRED_CALL_TOTAL_REGISTERED, DEFERRED_CREDITS_PREFIX, EXECUTED_DENUNCIATIONS_PREFIX,
-    EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
+    CYCLE_HISTORY_PREFIX, DEFERRED_CALLS_PREFIX, DEFERRED_CALL_TOTAL_GAS, DEFERRED_CREDITS_PREFIX,
+    EXECUTED_DENUNCIATIONS_PREFIX, EXECUTED_OPS_PREFIX, LEDGER_PREFIX, MIP_STORE_PREFIX, STATE_CF,
 };
 use massa_db_exports::{EXECUTION_TRAIL_HASH_PREFIX, MIP_STORE_STATS_PREFIX, VERSIONING_CF};
 use massa_deferred_calls::DeferredCallRegistry;
@@ -673,7 +672,6 @@ impl FinalState {
                 // no checks here as they are performed above by direct reading
             } else if serialized_key.starts_with(DEFERRED_CALLS_PREFIX.as_bytes())
                 || serialized_key.eq(DEFERRED_CALL_TOTAL_GAS.as_bytes())
-                || serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes())
             {
                 if !self
                     .deferred_call_registry

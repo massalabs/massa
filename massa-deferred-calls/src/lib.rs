@@ -7,8 +7,8 @@ use macros::{
 };
 use massa_db_exports::{
     DBBatch, ShareableMassaDBController, CRUD_ERROR, DEFERRED_CALLS_PREFIX,
-    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS,
-    DEFERRED_CALL_TOTAL_REGISTERED, KEY_DESER_ERROR, STATE_CF,
+    DEFERRED_CALL_DESER_ERROR, DEFERRED_CALL_SER_ERROR, DEFERRED_CALL_TOTAL_GAS, KEY_DESER_ERROR,
+    STATE_CF,
 };
 use massa_models::address::Address;
 use massa_serialization::{buf_to_array_ctr, DeserializeError, Deserializer, Serializer};
@@ -547,17 +547,6 @@ impl DeferredCallRegistry {
                 .effective_total_gas_deserializer
                 .deserialize::<DeserializeError>(serialized_value)
                 .is_ok();
-        } else if serialized_key.eq(DEFERRED_CALL_TOTAL_REGISTERED.as_bytes()) {
-            // Should be remove on next version (> MAIN.2.5)
-            // Follow up issue https://github.com/massalabs/massa/issues/4854
-            let db = self.db.read();
-            let mut db_batch = DBBatch::new();
-            db.delete_key(
-                &mut db_batch,
-                DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec(),
-            );
-
-            return true;
         }
         false
     }
