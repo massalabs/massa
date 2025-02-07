@@ -424,21 +424,6 @@ impl DeferredCallRegistry {
             }
             DeferredRegistryGasChange::Keep => {}
         }
-
-        match changes.total_calls_registered {
-            DeferredRegistryGasChange::Set(_) => {
-                let key = DEFERRED_CALL_TOTAL_REGISTERED.as_bytes().to_vec();
-                let mut value_ser = Vec::new();
-                self.registry_changes_serializer
-                    .total_calls_registered_serializer
-                    .serialize(&changes.total_calls_registered, &mut value_ser)
-                    .expect(DEFERRED_CALL_SER_ERROR);
-                self.db
-                    .read()
-                    .put_or_update_entry_value(batch, key, &value_ser);
-            }
-            DeferredRegistryGasChange::Keep => {}
-        }
     }
 
     pub fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool {
