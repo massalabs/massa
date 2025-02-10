@@ -20,6 +20,7 @@ use crate::public::{
 #[cfg(feature = "execution-trace")]
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
 use crate::stream::new_blocks::new_blocks_server;
+use crate::stream::new_endorsements::new_endorsements_server;
 use crate::stream::new_filled_blocks::new_filled_blocks_server;
 use crate::stream::new_operations::new_operations_server;
 use crate::stream::new_slot_execution_outputs::new_slot_execution_outputs_server;
@@ -262,12 +263,24 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
 
     type NewEndorsementsStream = NewEndorsementsStreamType;
 
-    /// handler for subscribe new operations stream
+    /// handler for subscribe new endorsements stream
     async fn new_endorsements(
         &self,
         request: tonic::Request<tonic::Streaming<grpc_api::NewEndorsementsRequest>>,
     ) -> Result<tonic::Response<Self::NewEndorsementsStream>, tonic::Status> {
         Ok(tonic::Response::new(new_endorsements(self, request).await?))
+    }
+
+    type NewEndorsementsServerStream = NewEndorsementsStreamType;
+
+    /// handler for subscribe new endorsements  unidirectional stream
+    async fn new_endorsements_server(
+        &self,
+        request: tonic::Request<grpc_api::NewEndorsementsRequest>,
+    ) -> Result<tonic::Response<Self::NewEndorsementsStream>, tonic::Status> {
+        Ok(tonic::Response::new(
+            new_endorsements_server(self, request).await?,
+        ))
     }
 
     type NewFilledBlocksStream = NewFilledBlocksStreamType;

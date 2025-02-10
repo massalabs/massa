@@ -9,10 +9,7 @@ use tokio::{select, time};
 use tonic::{Request, Streaming};
 use tracing::error;
 
-use super::{
-    trait_filters_impl::{FilterGrpc, FilterNewOperations},
-    INTERVAL_STREAM_CHECK,
-};
+use super::trait_filters_impl::{FilterGrpc, FilterNewOperations};
 
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<
@@ -124,13 +121,11 @@ pub(crate) async fn new_operations_server(
 ) -> Result<NewOperationsStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    // Get the inner stream from the request
+    // Get the inner request
     let request = request.into_inner();
     // Subscribe to the new operations channel
     let mut subscriber = grpc.pool_broadcasts.operation_sender.subscribe();
     // Clone grpc to be able to use it in the spawned task
-    // let grpc = grpc.clone();
-
     let config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
@@ -147,7 +142,7 @@ pub(crate) async fn new_operations_server(
         };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
-        let mut interval = time::interval(Duration::from_secs(INTERVAL_STREAM_CHECK));
+        let mut interval = time::interval(Duration::from_secs(config.interval_stream_check));
 
         // Continuously loop until the stream ends or an error occurs
         loop {

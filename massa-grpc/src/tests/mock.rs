@@ -113,6 +113,7 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
         minimal_fees: Amount::zero(),
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
         max_datastore_keys_queries: Some(1000),
+        interval_stream_check: 10,
     };
 
     let mip_stats_config = MipStatsConfig {

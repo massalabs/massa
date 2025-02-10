@@ -7,11 +7,12 @@ use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
 use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_id::BlockId;
+use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{
-    self as grpc_api, NewBlocksRequest, NewFilledBlocksRequest, NewOperationsRequest,
-    NewSlotExecutionOutputsRequest,
+    self as grpc_api, NewBlocksRequest, NewEndorsementsRequest, NewFilledBlocksRequest,
+    NewOperationsRequest, NewSlotExecutionOutputsRequest,
 };
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
@@ -76,6 +77,17 @@ pub(crate) struct FilterNewFilledBlocks {
     addresses: Option<HashSet<Address>>,
     // Slot range to filter
     slot_ranges: Option<HashSet<SlotRange>>,
+}
+
+// Type declaration for NewEndorsementsFilter
+#[derive(Debug)]
+pub(crate) struct NewEndorsementsFilter {
+    // Endorsement ids to filter
+    endorsement_ids: Option<HashSet<EndorsementId>>,
+    // Addresses to filter
+    addresses: Option<HashSet<Address>>,
+    // Block ids to filter
+    block_ids: Option<HashSet<BlockId>>,
 }
 
 impl FilterGrpc<NewSlotExecutionOutputsRequest, FilterNewSlotExec, SlotExecutionOutput>
@@ -690,6 +702,117 @@ impl FilterGrpc<NewFilledBlocksRequest, FilterNewFilledBlocks, FilledBlock>
             let current_slot = content.header.content.slot;
 
             if !(current_slot >= start_slot && current_slot < end_slot) {
+                return None;
+            }
+        }
+
+        Some(content)
+    }
+}
+
+impl FilterGrpc<NewEndorsementsRequest, NewEndorsementsFilter, SecureShareEndorsement>
+    for NewEndorsementsFilter
+{
+    fn build_from_request(
+        request: NewEndorsementsRequest,
+        grpc_config: &GrpcConfig,
+    ) -> Result<NewEndorsementsFilter, GrpcError> {
+        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+            return Err(GrpcError::InvalidArgument(format!(
+                "too many filters received. Only a maximum of {} filters are accepted per request",
+                grpc_config.max_filters_per_request
+            )));
+        }
+
+        let mut endorsement_ids_filter: Option<HashSet<EndorsementId>> = None;
+        let mut addresses_filter: Option<HashSet<Address>> = None;
+        let mut block_ids_filter: Option<HashSet<BlockId>> = None;
+
+        // Get params filter from the request.
+        for query in request.filters.into_iter() {
+            if let Some(filter) = query.filter {
+                match filter {
+                    grpc_api::new_endorsements_filter::Filter::EndorsementIds(ids) => {
+                        if ids.endorsement_ids.len() as u32
+                            > grpc_config.max_endorsement_ids_per_request
+                        {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
+                             grpc_config.max_block_ids_per_request
+                            )));
+                        }
+                        let endorsement_ids =
+                            endorsement_ids_filter.get_or_insert_with(HashSet::new);
+                        for id in ids.endorsement_ids {
+                            endorsement_ids.insert(EndorsementId::from_str(&id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!(
+                                    "invalid endorsement id: {}",
+                                    id
+                                ))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_endorsements_filter::Filter::Addresses(addrs) => {
+                        if addrs.addresses.len() as u32 > grpc_config.max_addresses_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                             grpc_config.max_addresses_per_request
+                            )));
+                        }
+                        let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                        for address in addrs.addresses {
+                            addresses.insert(Address::from_str(&address).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_endorsements_filter::Filter::BlockIds(ids) => {
+                        if ids.block_ids.len() as u32 > grpc_config.max_block_ids_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                                grpc_config.max_block_ids_per_request
+                            )));
+                        }
+                        let block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
+                        for block_id in ids.block_ids {
+                            block_ids.insert(BlockId::from_str(&block_id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!(
+                                    "invalid block id: {}",
+                                    block_id
+                                ))
+                            })?);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(NewEndorsementsFilter {
+            endorsement_ids: endorsement_ids_filter,
+            addresses: addresses_filter,
+            block_ids: block_ids_filter,
+        })
+    }
+
+    fn filter_output(
+        &self,
+        content: SecureShareEndorsement,
+        _grpc_config: &GrpcConfig,
+    ) -> Option<SecureShareEndorsement> {
+        if let Some(endorsement_ids) = &self.endorsement_ids {
+            if !endorsement_ids.contains(&content.id) {
+                return None;
+            }
+        }
+
+        if let Some(addresses) = &self.addresses {
+            if !addresses.contains(&content.content_creator_address) {
+                return None;
+            }
+        }
+
+        if let Some(block_ids) = &self.block_ids {
+            if !block_ids.contains(&content.content.endorsed_block) {
                 return None;
             }
         }

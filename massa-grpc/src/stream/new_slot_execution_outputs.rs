@@ -12,7 +12,6 @@ use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
 use super::trait_filters_impl::{FilterGrpc, FilterNewSlotExec};
-use super::INTERVAL_STREAM_CHECK;
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<
@@ -159,7 +158,8 @@ pub(crate) async fn new_slot_execution_outputs_server(
             };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
-        let mut interval = time::interval(Duration::from_secs(INTERVAL_STREAM_CHECK));
+        let mut interval =
+            time::interval(Duration::from_secs(grpc.grpc_config.interval_stream_check));
 
         // Continuously loop until the stream ends or an error occurs
         loop {

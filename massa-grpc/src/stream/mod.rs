@@ -24,6 +24,3 @@ pub mod send_operations;
 mod trait_filters_impl;
 /// subscribe tx throughput
 pub mod tx_throughput;
-
-/// This is used to check if the stream is still alive
-pub(crate) const INTERVAL_STREAM_CHECK: u64 = 10;
