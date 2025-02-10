@@ -91,3 +91,58 @@ pub(crate) async fn transactions_throughput(
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     Ok(Box::pin(out_stream) as TransactionsThroughputStreamType)
 }
+
+/// The function returns a stream unidirectional of transaction throughput statistics
+pub(crate) async fn transactions_throughput_server(
+    grpc: &MassaPublicGrpc,
+    request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
+) -> Result<TransactionsThroughputStreamType, GrpcError> {
+    let execution_controller = grpc.execution_controller.clone();
+
+    // Create a channel for sending responses to the client
+    let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Extract the incoming stream of operations messages
+    let request = request.into_inner();
+
+    // Spawn a new Tokio task to handle the stream processing
+    tokio::spawn(async move {
+        let mut interval = if let Some(interval_user) = request.interval {
+            time::interval(Duration::from_secs(interval_user))
+        } else {
+            time::interval(Duration::from_secs(DEFAULT_THROUGHPUT_INTERVAL))
+        };
+
+        // Continuously loop until the stream ends or an error occurs
+        loop {
+            // Execute the code block whenever the timer ticks
+            interval.tick().await;
+
+            let stats = execution_controller.get_stats();
+            // Calculate the throughput over the time window
+            let nb_sec_range = stats
+                .time_window_end
+                .saturating_sub(stats.time_window_start)
+                .to_duration()
+                .as_secs();
+            let throughput = stats
+                .final_executed_operations_count
+                .checked_div(nb_sec_range as usize)
+                .unwrap_or_default() as u32;
+            // Send the throughput response back to the client
+            if let Err(e) = tx
+                .send(Ok(grpc_api::TransactionsThroughputResponse { throughput }))
+                .await
+            {
+                // Log an error if sending the response fails
+                error!(
+                    "failed to send back transactions_throughput response: {}",
+                    e
+                );
+                break;
+            }
+        }
+    });
+
+    let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+    Ok(Box::pin(out_stream) as TransactionsThroughputStreamType)
+}

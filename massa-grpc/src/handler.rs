@@ -27,6 +27,7 @@ use crate::stream::new_slot_execution_outputs::new_slot_execution_outputs_server
 use crate::stream::new_slot_transfers::new_slot_transfers;
 
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
+use crate::stream::tx_throughput::transactions_throughput_server;
 use crate::stream::{
     new_blocks::{new_blocks, NewBlocksStreamType},
     new_endorsements::{new_endorsements, NewEndorsementsStreamType},
@@ -424,12 +425,11 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
 
     async fn transactions_throughput_server(
         &self,
-        _request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
+        request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
     ) -> Result<tonic::Response<Self::TransactionsThroughputServerStream>, tonic::Status> {
-        Err(tonic::Status::unavailable("not available"))
-        // Ok(tonic::Response::new(
-        //     transactions_throughput(self, request).await?,
-        // ))
+        Ok(tonic::Response::new(
+            transactions_throughput_server(self, request).await?,
+        ))
     }
 }
 
