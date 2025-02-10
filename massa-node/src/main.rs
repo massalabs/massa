@@ -1258,7 +1258,7 @@ fn configure_grpc(
         minimal_fees,
         max_datastore_keys_queries: settings.max_datastore_keys_query,
         max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        interval_stream_check: settings.interval_check_stream,
+        unidirectional_stream_interval_check: settings.unidirectional_stream_interval_check,
     }
 }
 

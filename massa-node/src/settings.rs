@@ -378,7 +378,7 @@ pub struct GrpcSettings {
     /// Max keys returned by a datastore key query
     pub max_datastore_keys_query: Option<u32>,
     /// interval for check the connection stream
-    pub interval_check_stream: u64,
+    pub unidirectional_stream_interval_check: u64,
 }
 
 /// gRPC API settings.

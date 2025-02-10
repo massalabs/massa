@@ -141,7 +141,7 @@ pub struct GrpcConfig {
     /// max datastore key length
     pub max_datastore_key_length: u8,
     /// interval check for stream connection
-    pub interval_stream_check: u64,
+    pub unidirectional_stream_interval_check: u64,
 }
 
 /// gRPC API configuration.

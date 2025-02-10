@@ -155,7 +155,9 @@ pub(crate) async fn new_endorsements_server(
         };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
-        let mut interval = time::interval(Duration::from_secs(grpc_config.interval_stream_check));
+        let mut interval = time::interval(Duration::from_secs(
+            grpc_config.unidirectional_stream_interval_check,
+        ));
 
         loop {
             select! {

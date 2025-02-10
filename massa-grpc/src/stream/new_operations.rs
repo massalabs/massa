@@ -142,7 +142,9 @@ pub(crate) async fn new_operations_server(
         };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
-        let mut interval = time::interval(Duration::from_secs(config.interval_stream_check));
+        let mut interval = time::interval(Duration::from_secs(
+            config.unidirectional_stream_interval_check,
+        ));
 
         // Continuously loop until the stream ends or an error occurs
         loop {
