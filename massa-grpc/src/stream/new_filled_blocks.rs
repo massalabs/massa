@@ -7,11 +7,13 @@ use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1 as grpc_api;
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tokio::select;
+use std::time::Duration;
+use tokio::{select, time};
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
 use super::trait_filters_impl::FilterNewFilledBlocks;
+use super::INTERVAL_STREAM_CHECK;
 
 /// Type declaration for NewFilledBlocks
 pub type NewFilledBlocksStreamType = Pin<
@@ -151,24 +153,39 @@ pub(crate) async fn new_filled_blocks_server(
             }
         };
 
+        // Create a timer that ticks every 10 seconds to check if the client is still connected
+        let mut interval = time::interval(Duration::from_secs(INTERVAL_STREAM_CHECK));
+
+        // Continuously loop until the stream ends or an error occurs
         loop {
-            // Receive a new block from the subscriber
-            match subscriber.recv().await {
-                Ok(massa_filled_block) => {
-                    // Check if the block should be sent
-                    if let Some(data) = filter.filter_output(massa_filled_block, &grpc_config) {
-                        if let Err(e) = tx
-                            .send(Ok(grpc_api::NewFilledBlocksResponse {
-                                filled_block: Some(data.into()),
-                            }))
-                            .await
-                        {
-                            error!("failed to send new filled block : {}", e);
-                            break;
-                        }
+            select! {
+                // Receive a new filled block from the subscriber
+                event = subscriber.recv() => {
+                    match event {
+                       Ok(massa_filled_block) => {
+                           // Check if the block should be sent
+                           if let Some(data) = filter.filter_output(massa_filled_block, &grpc_config) {
+                               if let Err(e) = tx
+                                   .send(Ok(grpc_api::NewFilledBlocksResponse {
+                                       filled_block: Some(data.into()),
+                                   }))
+                                   .await
+                               {
+                                   error!("failed to send new filled block : {}", e);
+                                   break;
+                               }
+                           }
+                       }
+                       Err(e) => error!("error on receive new filled block : {}", e),
+                    }
+                },
+                // Execute the code block whenever the timer ticks
+                _ = interval.tick() => {
+                    if tx.is_closed() {
+                        // Client disconnected
+                        break;
                     }
                 }
-                Err(e) => error!("error on receive new filled block : {}", e),
             }
         }
     });

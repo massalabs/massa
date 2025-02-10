@@ -6,11 +6,13 @@ use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::io::ErrorKind;
 use std::pin::Pin;
-use tokio::select;
+use std::time::Duration;
+use tokio::{select, time};
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
 
 use super::trait_filters_impl::{FilterGrpc, FilterNewSlotExec};
+use super::INTERVAL_STREAM_CHECK;
 
 /// Type declaration for NewSlotExecutionOutputs
 pub type NewSlotExecutionOutputsStreamType = Pin<
@@ -155,27 +157,43 @@ pub(crate) async fn new_slot_execution_outputs_server(
                     return;
                 }
             };
+
+        // Create a timer that ticks every 10 seconds to check if the client is still connected
+        let mut interval = time::interval(Duration::from_secs(INTERVAL_STREAM_CHECK));
+
+        // Continuously loop until the stream ends or an error occurs
         loop {
-            // Receive a new slot execution output from the subscriber
-            match subscriber.recv().await {
-                Ok(massa_slot_execution_output) => {
-                    // Check if the slot execution output should be sent
-                    if let Some(slot_execution_output) =
-                        filters.filter_output(massa_slot_execution_output, &grpc.grpc_config)
-                    {
-                        // Send the new slot execution output through the channel
-                        if let Err(e) = tx
-                            .send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
-                                output: Some(slot_execution_output.into()),
-                            }))
-                            .await
-                        {
-                            error!("failed to send new slot execution output : {}", e);
-                            break;
+            select! {
+                // Receive a new filled block from the subscriber
+                event = subscriber.recv() => {
+                    match event {
+                        Ok(massa_slot_execution_output) => {
+                            // Check if the slot execution output should be sent
+                            if let Some(slot_execution_output) =
+                                filters.filter_output(massa_slot_execution_output, &grpc.grpc_config)
+                            {
+                                // Send the new slot execution output through the channel
+                                if let Err(e) = tx
+                                    .send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
+                                        output: Some(slot_execution_output.into()),
+                                    }))
+                                    .await
+                                {
+                                    error!("failed to send new slot execution output : {}", e);
+                                    break;
+                                }
+                            }
                         }
+                        Err(e) => error!("error on receive new slot execution output : {}", e),
+                    }
+                },
+                // Execute the code block whenever the timer ticks
+                _ = interval.tick() => {
+                    if tx.is_closed() {
+                        // Client disconnected
+                        break;
                     }
                 }
-                Err(e) => error!("error on receive new slot execution output : {}", e),
             }
         }
     });

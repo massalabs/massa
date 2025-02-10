@@ -4,12 +4,15 @@ use crate::error::GrpcError;
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
 use massa_proto_rs::massa::api::v1::{self as grpc_api};
-use std::pin::Pin;
-use tokio::select;
+use std::{pin::Pin, time::Duration};
+use tokio::{select, time};
 use tonic::{Request, Streaming};
 use tracing::error;
 
-use super::trait_filters_impl::{FilterGrpc, FilterNewOperations};
+use super::{
+    trait_filters_impl::{FilterGrpc, FilterNewOperations},
+    INTERVAL_STREAM_CHECK,
+};
 
 /// Type declaration for NewOperations
 pub type NewOperationsStreamType = Pin<
@@ -143,24 +146,40 @@ pub(crate) async fn new_operations_server(
             }
         };
 
+        // Create a timer that ticks every 10 seconds to check if the client is still connected
+        let mut interval = time::interval(Duration::from_secs(INTERVAL_STREAM_CHECK));
+
+        // Continuously loop until the stream ends or an error occurs
         loop {
-            match subscriber.recv().await {
-                Ok(massa_operation) => {
-                    // Check if the operation should be sent
-                    if let Some(data) = filter.filter_output(massa_operation, &config) {
-                        // Send the new operation through the channel
-                        if let Err(e) = tx
-                            .send(Ok(grpc_api::NewOperationsResponse {
-                                signed_operation: Some(data.into()),
-                            }))
-                            .await
-                        {
-                            error!("failed to send operation : {}", e);
-                            break;
+            select! {
+                // Receive a new filled block from the subscriber
+                event = subscriber.recv() => {
+                    match event {
+                        Ok(massa_operation) => {
+                            // Check if the operation should be sent
+                            if let Some(data) = filter.filter_output(massa_operation, &config) {
+                                // Send the new operation through the channel
+                                if let Err(e) = tx
+                                    .send(Ok(grpc_api::NewOperationsResponse {
+                                        signed_operation: Some(data.into()),
+                                    }))
+                                    .await
+                                {
+                                    error!("failed to send operation : {}", e);
+                                    break;
+                                }
+                            }
                         }
+                        Err(e) => error!("error on receive new operation: {}", e)
+                    }
+                },
+                // Execute the code block whenever the timer ticks
+                _ = interval.tick() => {
+                    if tx.is_closed() {
+                        // Client disconnected
+                        break;
                     }
                 }
-                Err(e) => error!("{}", e),
             }
         }
     });
