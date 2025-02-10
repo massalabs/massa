@@ -20,6 +20,7 @@ use crate::public::{
 #[cfg(feature = "execution-trace")]
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
 use crate::stream::new_blocks::new_blocks_server;
+use crate::stream::new_filled_blocks::new_filled_blocks_server;
 use crate::stream::new_operations::new_operations_server;
 use crate::stream::new_slot_execution_outputs::new_slot_execution_outputs_server;
 #[cfg(feature = "execution-trace")]
@@ -286,10 +287,9 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         &self,
         request: tonic::Request<grpc_api::NewFilledBlocksRequest>,
     ) -> Result<tonic::Response<Self::NewFilledBlocksServerStream>, tonic::Status> {
-        Err(tonic::Status::unavailable("not available"))
-        // Ok(tonic::Response::new(
-        //     new_filled_blocks(self, request).await?,
-        // ))
+        Ok(tonic::Response::new(
+            new_filled_blocks_server(self, request).await?,
+        ))
     }
 
     type NewOperationsStream = NewOperationsStreamType;
@@ -424,7 +424,7 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
 
     async fn transactions_throughput_server(
         &self,
-        request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
+        _request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
     ) -> Result<tonic::Response<Self::TransactionsThroughputServerStream>, tonic::Status> {
         Err(tonic::Status::unavailable("not available"))
         // Ok(tonic::Response::new(

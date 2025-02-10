@@ -5,20 +5,24 @@ use crate::SlotRange;
 use crate::{config::GrpcConfig, error::GrpcError};
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
-use massa_models::block::SecureShareBlock;
+use massa_models::block::{FilledBlock, SecureShareBlock};
 use massa_models::block_id::BlockId;
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::slot::Slot;
 use massa_proto_rs::massa::api::v1::{
-    self as grpc_api, NewBlocksRequest, NewOperationsRequest, NewSlotExecutionOutputsRequest,
+    self as grpc_api, NewBlocksRequest, NewFilledBlocksRequest, NewOperationsRequest,
+    NewSlotExecutionOutputsRequest,
 };
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
+/// Trait implementation for filtering the output based on the request
 pub(crate) trait FilterGrpc<RequestType, FilterType, Data> {
+    /// Build the filter from the request
     fn build_from_request(
         request: RequestType,
         grpc_config: &GrpcConfig,
     ) -> Result<FilterType, GrpcError>;
+    /// Filter the output based on the filter
     fn filter_output(&self, content: Data, grpc_config: &GrpcConfig) -> Option<Data>;
 }
 
@@ -50,6 +54,28 @@ pub(crate) struct FilterNewOperations {
     addresses: Option<HashSet<Address>>,
     // Operation types to filter
     operation_types: Option<HashSet<i32>>,
+}
+
+// Type declaration for NewBlocksFilter
+#[derive(Clone, Debug)]
+pub(crate) struct FilterNewBlocks {
+    // Block ids to filter
+    block_ids: Option<HashSet<BlockId>>,
+    // Addresses to filter
+    addresses: Option<HashSet<Address>>,
+    // Slot range to filter
+    slot_ranges: Option<HashSet<SlotRange>>,
+}
+
+// Type declaration for NewFilledBlocksFilter
+#[derive(Clone, Debug)]
+pub(crate) struct FilterNewFilledBlocks {
+    // Block ids to filter
+    block_ids: Option<HashSet<BlockId>>,
+    // Addresses to filter
+    addresses: Option<HashSet<Address>>,
+    // Slot range to filter
+    slot_ranges: Option<HashSet<SlotRange>>,
 }
 
 impl FilterGrpc<NewSlotExecutionOutputsRequest, FilterNewSlotExec, SlotExecutionOutput>
@@ -323,17 +349,6 @@ fn filter_map_exec_output_inner(
     Some(exec_output)
 }
 
-// Type declaration for NewBlocksFilter
-#[derive(Clone, Debug)]
-pub(crate) struct FilterNewBlocks {
-    // Block ids to filter
-    block_ids: Option<HashSet<BlockId>>,
-    // Addresses to filter
-    addresses: Option<HashSet<Address>>,
-    // Slot range to filter
-    slot_ranges: Option<HashSet<SlotRange>>,
-}
-
 impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterNewBlocks {
     fn build_from_request(
         request: NewBlocksRequest,
@@ -450,15 +465,12 @@ impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterN
             end_slot = end_slot.max(start_slot);
             let current_slot = content.content.header.content.slot;
 
-            if current_slot >= start_slot // inclusive
-                && current_slot < end_slot
-            {
-                // exclusive
-                return Some(content);
+            if !(current_slot >= start_slot && current_slot < end_slot) {
+                return None;
             }
         }
 
-        None
+        Some(content)
     }
 }
 
@@ -556,6 +568,128 @@ impl FilterGrpc<NewOperationsRequest, FilterNewOperations, SecureShareOperation>
         if let Some(operation_types) = &self.operation_types {
             let op_type = grpc_model::OpType::from(content.content.op.clone()) as i32;
             if !operation_types.contains(&op_type) {
+                return None;
+            }
+        }
+
+        Some(content)
+    }
+}
+
+impl FilterGrpc<NewFilledBlocksRequest, FilterNewFilledBlocks, FilledBlock>
+    for FilterNewFilledBlocks
+{
+    fn build_from_request(
+        request: NewFilledBlocksRequest,
+        grpc_config: &GrpcConfig,
+    ) -> Result<FilterNewFilledBlocks, GrpcError> {
+        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+            return Err(GrpcError::InvalidArgument(format!(
+                "too many filters received. Only a maximum of {} filters are accepted per request",
+                grpc_config.max_filters_per_request
+            )));
+        }
+
+        let mut block_ids_filter: Option<HashSet<BlockId>> = None;
+        let mut addresses_filter: Option<HashSet<Address>> = None;
+        let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
+
+        // Get params filter from the request.
+        for query in request.filters.into_iter() {
+            if let Some(filter) = query.filter {
+                match filter {
+                    grpc_api::new_blocks_filter::Filter::BlockIds(ids) => {
+                        if ids.block_ids.len() as u32 > grpc_config.max_block_ids_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many block ids received. Only a maximum of {} block ids are accepted per request",
+                                grpc_config.max_block_ids_per_request
+                            )));
+                        }
+                        let block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
+                        for block_id in ids.block_ids {
+                            block_ids.insert(BlockId::from_str(&block_id).map_err(|_| {
+                                GrpcError::InvalidArgument(format!(
+                                    "invalid block id: {}",
+                                    block_id
+                                ))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_blocks_filter::Filter::Addresses(addrs) => {
+                        if addrs.addresses.len() as u32 > grpc_config.max_addresses_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many addresses received. Only a maximum of {} addresses are accepted per request",
+                             grpc_config.max_addresses_per_request
+                            )));
+                        }
+
+                        let addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                        for address in addrs.addresses {
+                            addresses.insert(Address::from_str(&address).map_err(|_| {
+                                GrpcError::InvalidArgument(format!("invalid address: {}", address))
+                            })?);
+                        }
+                    }
+                    grpc_api::new_blocks_filter::Filter::SlotRange(s_range) => {
+                        let slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
+                        if slot_ranges.len() as u32 > grpc_config.max_slot_ranges_per_request {
+                            return Err(GrpcError::InvalidArgument(format!(
+                                "too many slot ranges received. Only a maximum of {} slot ranges are accepted per request",
+                             grpc_config.max_slot_ranges_per_request
+                            )));
+                        }
+
+                        let start_slot = s_range.start_slot.map(|s| s.into());
+                        let end_slot = s_range.end_slot.map(|s| s.into());
+
+                        let slot_range = SlotRange {
+                            start_slot,
+                            end_slot,
+                        };
+                        slot_range.check()?;
+                        slot_ranges.insert(slot_range);
+                    }
+                }
+            }
+        }
+
+        Ok(FilterNewFilledBlocks {
+            block_ids: block_ids_filter,
+            addresses: addresses_filter,
+            slot_ranges: slot_ranges_filter,
+        })
+    }
+
+    fn filter_output(&self, content: FilledBlock, grpc_config: &GrpcConfig) -> Option<FilledBlock> {
+        if let Some(block_ids) = &self.block_ids {
+            if !block_ids.contains(&content.header.id) {
+                return None;
+            }
+        }
+
+        if let Some(addresses) = &self.addresses {
+            if !addresses.contains(&content.header.content_creator_address) {
+                return None;
+            }
+        }
+
+        if let Some(slot_ranges) = &self.slot_ranges {
+            let mut start_slot = Slot::new(0, 0); // inclusive
+            let mut end_slot = Slot::new(u64::MAX, grpc_config.thread_count - 1); // exclusive
+
+            for slot_range in slot_ranges {
+                start_slot =
+                    start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(0, 0)));
+                end_slot = end_slot.min(
+                    slot_range
+                        .end_slot
+                        .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - 1)),
+                );
+            }
+            end_slot = end_slot.max(start_slot);
+            let current_slot = content.header.content.slot;
+
+            if !(current_slot >= start_slot && current_slot < end_slot) {
                 return None;
             }
         }
