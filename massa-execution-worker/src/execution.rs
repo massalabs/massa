@@ -53,11 +53,6 @@ use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
-// use crate::execution_info::{
-//     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
-// };
-// #[cfg(feature = "execution-info")]
-// use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
@@ -1735,10 +1730,10 @@ impl ExecutionState {
                             match &operation.content.op {
                                 OperationType::RollBuy { roll_count } => exec_info
                                     .operations
-                                    .push(OperationInfo::RollBuy(*roll_count)),
+                                    .push(OperationInfo::RollBuy(operation.content_creator_address, *roll_count)),
                                 OperationType::RollSell { roll_count } => exec_info
                                     .operations
-                                    .push(OperationInfo::RollSell(*roll_count)),
+                                    .push(OperationInfo::RollSell(operation.content_creator_address, *roll_count)),
                                 _ => {}
                             }
                         }

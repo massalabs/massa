@@ -34,9 +34,9 @@ impl ExecutionInfo {
 #[derive(Debug, Clone)]
 pub enum OperationInfo {
     /// Roll buy amount
-    RollBuy(u64),
+    RollBuy(Address, u64),
     /// Roll sell amount
-    RollSell(u64),
+    RollSell(Address, u64),
 }
 
 /// Struct for execution info
