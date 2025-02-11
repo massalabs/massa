@@ -592,6 +592,9 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         event_cache_size: SETTINGS.execution.event_cache_size,
         event_snip_amount: SETTINGS.execution.event_snip_amount,
+        broadcast_slot_execution_info_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_info_channel_capacity,
     };
 
     let execution_channels = ExecutionChannels {
@@ -606,8 +609,7 @@ async fn launch(
         .0,
         #[cfg(feature = "execution-info")]
         slot_execution_info_sender: broadcast::channel(
-            // FIXME
-            execution_config.broadcast_slot_execution_traces_channel_capacity,
+            execution_config.broadcast_slot_execution_info_channel_capacity,
         ).0,
     };
 

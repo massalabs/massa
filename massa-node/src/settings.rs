@@ -40,6 +40,8 @@ pub struct ExecutionSettings {
     pub event_cache_size: usize,
     pub event_snip_amount: usize,
     pub max_event_per_query: usize,
+    /// slot execution info channel capacity
+    pub broadcast_slot_execution_info_channel_capacity: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
