@@ -2469,6 +2469,84 @@
 <a href="#2469" id="2469">2469</a>
 <a href="#2470" id="2470">2470</a>
 <a href="#2471" id="2471">2471</a>
+<a href="#2472" id="2472">2472</a>
+<a href="#2473" id="2473">2473</a>
+<a href="#2474" id="2474">2474</a>
+<a href="#2475" id="2475">2475</a>
+<a href="#2476" id="2476">2476</a>
+<a href="#2477" id="2477">2477</a>
+<a href="#2478" id="2478">2478</a>
+<a href="#2479" id="2479">2479</a>
+<a href="#2480" id="2480">2480</a>
+<a href="#2481" id="2481">2481</a>
+<a href="#2482" id="2482">2482</a>
+<a href="#2483" id="2483">2483</a>
+<a href="#2484" id="2484">2484</a>
+<a href="#2485" id="2485">2485</a>
+<a href="#2486" id="2486">2486</a>
+<a href="#2487" id="2487">2487</a>
+<a href="#2488" id="2488">2488</a>
+<a href="#2489" id="2489">2489</a>
+<a href="#2490" id="2490">2490</a>
+<a href="#2491" id="2491">2491</a>
+<a href="#2492" id="2492">2492</a>
+<a href="#2493" id="2493">2493</a>
+<a href="#2494" id="2494">2494</a>
+<a href="#2495" id="2495">2495</a>
+<a href="#2496" id="2496">2496</a>
+<a href="#2497" id="2497">2497</a>
+<a href="#2498" id="2498">2498</a>
+<a href="#2499" id="2499">2499</a>
+<a href="#2500" id="2500">2500</a>
+<a href="#2501" id="2501">2501</a>
+<a href="#2502" id="2502">2502</a>
+<a href="#2503" id="2503">2503</a>
+<a href="#2504" id="2504">2504</a>
+<a href="#2505" id="2505">2505</a>
+<a href="#2506" id="2506">2506</a>
+<a href="#2507" id="2507">2507</a>
+<a href="#2508" id="2508">2508</a>
+<a href="#2509" id="2509">2509</a>
+<a href="#2510" id="2510">2510</a>
+<a href="#2511" id="2511">2511</a>
+<a href="#2512" id="2512">2512</a>
+<a href="#2513" id="2513">2513</a>
+<a href="#2514" id="2514">2514</a>
+<a href="#2515" id="2515">2515</a>
+<a href="#2516" id="2516">2516</a>
+<a href="#2517" id="2517">2517</a>
+<a href="#2518" id="2518">2518</a>
+<a href="#2519" id="2519">2519</a>
+<a href="#2520" id="2520">2520</a>
+<a href="#2521" id="2521">2521</a>
+<a href="#2522" id="2522">2522</a>
+<a href="#2523" id="2523">2523</a>
+<a href="#2524" id="2524">2524</a>
+<a href="#2525" id="2525">2525</a>
+<a href="#2526" id="2526">2526</a>
+<a href="#2527" id="2527">2527</a>
+<a href="#2528" id="2528">2528</a>
+<a href="#2529" id="2529">2529</a>
+<a href="#2530" id="2530">2530</a>
+<a href="#2531" id="2531">2531</a>
+<a href="#2532" id="2532">2532</a>
+<a href="#2533" id="2533">2533</a>
+<a href="#2534" id="2534">2534</a>
+<a href="#2535" id="2535">2535</a>
+<a href="#2536" id="2536">2536</a>
+<a href="#2537" id="2537">2537</a>
+<a href="#2538" id="2538">2538</a>
+<a href="#2539" id="2539">2539</a>
+<a href="#2540" id="2540">2540</a>
+<a href="#2541" id="2541">2541</a>
+<a href="#2542" id="2542">2542</a>
+<a href="#2543" id="2543">2543</a>
+<a href="#2544" id="2544">2544</a>
+<a href="#2545" id="2545">2545</a>
+<a href="#2546" id="2546">2546</a>
+<a href="#2547" id="2547">2547</a>
+<a href="#2548" id="2548">2548</a>
+<a href="#2549" id="2549">2549</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -2477,27 +2555,23 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
-<span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
-<span class="kw">use </span>massa_execution_exports::ExecutionConfig;
-<span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
-<span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
-<span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
+<span class="kw">use </span>massa_execution_exports::{ExecutionConfig, ExecutionStackElement};
 <span class="kw">use </span>massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
+    bytecode::Bytecode,
+    datastore::get_prefix_bounds,
+    deferred_calls::DeferredCallId,
     slot::Slot,
     timeslots::get_block_slot_timestamp,
 };
 <span class="kw">use </span>massa_proto_rs::massa::model::v1::{
     AddressCategory, ComparisonResult, NativeAmount, NativeTime,
 };
-<span class="kw">use </span>massa_sc_runtime::RuntimeModule;
-<span class="kw">use </span>massa_sc_runtime::{Interface, InterfaceClone};
-<span class="kw">use </span>massa_signature::PublicKey;
-<span class="kw">use </span>massa_signature::Signature;
+<span class="kw">use </span>massa_sc_runtime::{bail, Interface, InterfaceClone, InterfaceError, <span class="prelude-ty">Result</span>, RuntimeModule};
+<span class="kw">use </span>massa_signature::{PublicKey, Signature};
 <span class="kw">use </span>massa_time::MassaTime;
 <span class="attr">#[cfg(any(
     feature = <span class="string">"gas_calibration"</span>,
@@ -2670,7 +2744,7 @@
 <span class="doccomment">/// Helper function that creates an amount from a NativeAmount
 </span><span class="kw">fn </span>amount_from_native_amount(amount: <span class="kw-2">&amp;</span>NativeAmount) -&gt; <span class="prelude-ty">Result</span>&lt;Amount&gt; {
     <span class="kw">let </span>amount = Amount::from_mantissa_scale(amount.mantissa, amount.scale)
-        .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
+        .map_err(|err| <span class="macro">format!</span>(<span class="string">"{}"</span>, err))<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(amount)
 }
@@ -2700,8 +2774,12 @@
     option_address_string: <span class="prelude-ty">Option</span>&lt;String&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Address&gt; {
     <span class="kw">match </span>option_address_string {
-        <span class="prelude-val">Some</span>(address_string) =&gt; Address::from_str(<span class="kw-2">&amp;</span>address_string).map_err(|e| e.into()),
-        <span class="prelude-val">None </span>=&gt; context.get_current_address().map_err(|e| e.into()),
+        <span class="prelude-val">Some</span>(address_string) =&gt; {
+            Address::from_str(<span class="kw-2">&amp;</span>address_string).map_err(|e| e.to_string().into())
+        }
+        <span class="prelude-val">None </span>=&gt; context
+            .get_current_address()
+            .map_err(|e| e.to_string().into()),
     }
 }
 
@@ -2735,7 +2813,9 @@
         <span class="kw">if </span>execution_component_version &gt; <span class="number">0
             </span>&amp;&amp; context.recursion_counter &gt; <span class="self">self</span>.config.max_recursive_calls_depth
         {
-            <span class="macro">bail!</span>(<span class="string">"recursion depth limit reached"</span>);
+            <span class="kw">return </span><span class="prelude-val">Err</span>(InterfaceError::DepthError(
+                <span class="string">"recursion depth limit reached"</span>.to_string(),
+            ));
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -2746,7 +2826,11 @@
 
         <span class="kw">match </span>context.recursion_counter.checked_sub(<span class="number">1</span>) {
             <span class="prelude-val">Some</span>(value) =&gt; context.recursion_counter = value,
-            <span class="prelude-val">None </span>=&gt; <span class="macro">bail!</span>(<span class="string">"recursion counter underflow"</span>),
+            <span class="prelude-val">None </span>=&gt; {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(InterfaceError::DepthError(
+                    <span class="string">"recursion counter underflow"</span>.to_string(),
+                ));
+            }
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -2765,13 +2849,15 @@
     /// The target bytecode or an error
     </span><span class="kw">fn </span>init_call(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, raw_coins: u64) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="comment">// get target address
-        </span><span class="kw">let </span>to_address = Address::from_str(address)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>to_address = Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// write-lock context
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         <span class="comment">// check that the target address is a SC address and if it exists
-        </span>context.check_target_sc_address(to_address)<span class="question-mark">?</span>;
+        </span>context
+            .check_target_sc_address(to_address)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// get target bytecode
         </span><span class="kw">let </span>bytecode = <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>to_address) {
@@ -2835,7 +2921,8 @@
         <span class="kw">let </span>ret = context
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>;
+            .load_module(bytecode, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(ret)
     }
@@ -2848,11 +2935,11 @@
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>condom_limits = context.get_condom_limits();
 
-        <span class="kw">let </span>ret =
-            context
-                .module_cache
-                .write()
-                .load_tmp_module(bytecode, gas_limit, condom_limits)<span class="question-mark">?</span>;
+        <span class="kw">let </span>ret = context
+            .module_cache
+            .write()
+            .load_tmp_module(bytecode, gas_limit, condom_limits)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(ret)
     }
@@ -2866,7 +2953,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     </span><span class="kw">fn </span>get_balance(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>address = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(context.get_balance(<span class="kw-2">&amp;</span>address).unwrap_or_default().to_raw())
     }
 
@@ -2881,7 +2968,8 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_balance_wasmv1`
     </span><span class="kw">fn </span>get_balance_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>address = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>address =
+            massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
             .get_balance(<span class="kw-2">&amp;</span>address)
             .unwrap_or_default()
@@ -2929,7 +3017,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     </span><span class="kw">fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// TODO update when implementing the ABI key limits
         </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
@@ -2938,13 +3026,16 @@
         <span class="comment">// TODO update when implementing the ABI key limits
         </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
 
-        <span class="kw">match </span>context.get_keys(
-            <span class="kw-2">&amp;</span>addr,
-            prefix_opt.unwrap_or_default(),
-            start_key,
-            end_key,
-            count,
-        )<span class="question-mark">? </span>{
+        <span class="kw">match </span>context
+            .get_keys(
+                <span class="kw-2">&amp;</span>addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                end_key,
+                count,
+            )
+            .map_err(|e| e.to_string())<span class="question-mark">?
+        </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2957,7 +3048,7 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_keys_wasmv1`
     </span><span class="kw">fn </span>get_keys_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, prefix_opt: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="comment">// TODO update when implementing the ABI key limits
         </span><span class="kw">let </span>start_key = std::ops::Bound::Unbounded;
@@ -2966,13 +3057,16 @@
         <span class="comment">// TODO update when implementing the ABI key limits
         </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
 
-        <span class="kw">match </span>context.get_keys(
-            addr,
-            prefix_opt.unwrap_or_default(),
-            start_key,
-            end_key,
-            count,
-        )<span class="question-mark">? </span>{
+        <span class="kw">match </span>context
+            .get_keys(
+                addr,
+                prefix_opt.unwrap_or_default(),
+                start_key,
+                end_key,
+                count,
+            )
+            .map_err(|e| e.to_string())<span class="question-mark">?
+        </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -2997,7 +3091,10 @@
         <span class="comment">// TODO update when implementing the ABI key limits
         </span><span class="kw">let </span>count = <span class="prelude-val">None</span>;
 
-        <span class="kw">match </span>context.get_keys(<span class="kw-2">&amp;</span>address, prefix, start_key, end_key, count)<span class="question-mark">? </span>{
+        <span class="kw">match </span>context
+            .get_keys(<span class="kw-2">&amp;</span>address, prefix, start_key, end_key, count)
+            .map_err(|e| e.to_string())<span class="question-mark">?
+        </span>{
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
         }
@@ -3014,7 +3111,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     </span><span class="kw">fn </span>raw_get_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_data_entry(<span class="kw-2">&amp;</span>addr, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"data entry not found"</span>),
@@ -3032,7 +3129,7 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_data_wasmv1`
     </span><span class="kw">fn </span>raw_get_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match </span>context.get_data_entry(addr, key) {
             <span class="prelude-val">Some</span>(value) =&gt; <span class="prelude-val">Ok</span>(value),
@@ -3070,8 +3167,10 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     </span><span class="kw">fn </span>raw_set_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        context
+            .set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3086,9 +3185,11 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_data_wasmv1`
     </span><span class="kw">fn </span>raw_set_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        context.set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context
+            .set_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3096,7 +3197,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
-        context.set_data_entry(<span class="kw-2">&amp;</span>address, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context
+            .set_data_entry(<span class="kw-2">&amp;</span>address, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3110,8 +3213,10 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     </span><span class="kw">fn </span>raw_append_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        context
+            .append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3125,8 +3230,10 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_append_data_wasmv1`
     </span><span class="kw">fn </span>raw_append_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8], value: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        <span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .append_data_entry(<span class="kw-2">&amp;</span>addr, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3146,7 +3253,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
-        context.append_data_entry(<span class="kw-2">&amp;</span>address, key.to_vec(), value.to_vec())<span class="question-mark">?</span>;
+        context
+            .append_data_entry(<span class="kw-2">&amp;</span>address, key.to_vec(), value.to_vec())
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3159,8 +3268,10 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     </span><span class="kw">fn </span>raw_delete_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
-        context.delete_data_entry(<span class="kw-2">&amp;</span>addr, key)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        context
+            .delete_data_entry(<span class="kw-2">&amp;</span>addr, key)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3173,8 +3284,10 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_delete_data_wasmv1`
     </span><span class="kw">fn </span>raw_delete_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).delete_data_entry(addr, key)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = <span class="kw-2">&amp;</span>massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        <span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .delete_data_entry(addr, key)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3188,7 +3301,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>address = get_address_from_opt_or_context(<span class="kw-2">&amp;</span>context, address)<span class="question-mark">?</span>;
 
-        context.delete_data_entry(<span class="kw-2">&amp;</span>address, key)<span class="question-mark">?</span>;
+        context
+            .delete_data_entry(<span class="kw-2">&amp;</span>address, key)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3203,7 +3318,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     </span><span class="kw">fn </span>has_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>addr = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key))
     }
 
@@ -3218,7 +3333,7 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `has_data_wasmv1`
     </span><span class="kw">fn </span>has_data_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
-        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="prelude-val">Ok</span>(context.has_data_entry(<span class="kw-2">&amp;</span>addr, key))
     }
@@ -3252,9 +3367,9 @@
                 last.owned_addresses.clone()
             }
         } <span class="kw">else </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"empty stack"</span>));
+            <span class="macro">bail!</span>(<span class="string">"empty stack"</span>);
         };
-        <span class="kw">let </span>current_address = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>current_address = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(caller_owned_addresses.contains(<span class="kw-2">&amp;</span>current_address))
     }
 
@@ -3263,7 +3378,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     </span><span class="kw">fn </span>raw_get_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>address = context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found"</span>),
@@ -3275,7 +3390,7 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_get_bytecode_wasmv1`
     </span><span class="kw">fn </span>raw_get_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>address = Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>context.get_bytecode(<span class="kw-2">&amp;</span>address) {
             <span class="prelude-val">Some</span>(bytecode) =&gt; <span class="prelude-val">Ok</span>(bytecode.<span class="number">0</span>),
             <span class="kw">_ </span>=&gt; <span class="macro">bail!</span>(<span class="string">"bytecode not found"</span>),
@@ -3308,11 +3423,11 @@
         <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
 
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or(<span class="string">"No stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"No datastore in stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>keys = datastore
             .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
             .map(|(k, _v)| k.clone())
@@ -3330,11 +3445,11 @@
         <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
 
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or(<span class="string">"No stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"No datastore in stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>keys = datastore
             .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
             .map(|(k, _v)| k.clone())
@@ -3352,11 +3467,11 @@
     /// true if the entry is matching the provided key in its operation datastore, otherwise false
     </span><span class="kw">fn </span>op_entry_exists(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or(<span class="string">"No stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"No datastore in stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>has_key = datastore.contains_key(key);
         <span class="prelude-val">Ok</span>(has_key)
     }
@@ -3371,16 +3486,16 @@
     /// The operation datastore value matching the provided key, if found, otherwise an error.
     </span><span class="kw">fn </span>get_op_data(<span class="kw-2">&amp;</span><span class="self">self</span>, key: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>stack = context.stack.last().ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No stack"</span>))<span class="question-mark">?</span>;
+        <span class="kw">let </span>stack = context.stack.last().ok_or(<span class="string">"No stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>datastore = stack
             .operation_datastore
             .as_ref()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"No datastore in stack"</span>))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"No datastore in stack"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>data = datastore
             .get(key)
             .cloned()
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="string">"Unknown key: {:?}"</span>, key));
-        data
+            .ok_or(<span class="macro">format!</span>(<span class="string">"Unknown key: {:?}"</span>, key))<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(data)
     }
 
     <span class="doccomment">/// Hashes arbitrary data
@@ -3402,7 +3517,8 @@
     /// # Returns
     /// The string representation of the resulting address
     </span><span class="kw">fn </span>address_from_public_key(<span class="kw-2">&amp;</span><span class="self">self</span>, public_key: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
-        <span class="kw">let </span>public_key = massa_signature::PublicKey::from_str(public_key)<span class="question-mark">?</span>;
+        <span class="kw">let </span>public_key =
+            massa_signature::PublicKey::from_str(public_key).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>addr = massa_models::address::Address::from_public_key(<span class="kw-2">&amp;</span>public_key);
         <span class="prelude-val">Ok</span>(addr.to_string())
     }
@@ -3451,7 +3567,7 @@
 
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(<span class="string">"invalid signature length in evm_signature_verify"</span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"invalid signature length in evm_signature_verify"</span>.into());
         }
 
         <span class="comment">// parse the public key
@@ -3459,8 +3575,10 @@
             <span class="number">0 </span>=&gt; libsecp256k1::PublicKey::parse_slice(
                 public_key_,
                 <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
-            )<span class="question-mark">?</span>,
-            <span class="kw">_ </span>=&gt; libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>,
+            )
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>,
+            <span class="kw">_ </span>=&gt; libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)
+                .map_err(|e| e.to_string())<span class="question-mark">?</span>,
         };
 
         <span class="comment">// build the message
@@ -3475,10 +3593,13 @@
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
         // see test_evm_verify for an example of its usage
-        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="kw">if </span>execution_component_version != <span class="number">0 </span>{
-            <span class="kw">let </span>recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>.into();
+            <span class="kw">let </span>recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])
+                .map_err(|e| e.to_string())<span class="question-mark">?
+                </span>.into();
             <span class="comment">// Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
             //       restrict to only 27 &amp; 28 (=&gt; 0 &amp; 1)
             </span><span class="kw">if </span>recovery_id != <span class="number">0 </span>&amp;&amp; recovery_id != <span class="number">1 </span>{
@@ -3490,9 +3611,9 @@
                 // Ensuring that v is within the expected range is crucial
                 // for correctly recovering the public key.
                 // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">"invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
-                </span>));
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(
+                    <span class="string">"invalid recovery id value (v = {recovery_id}) in evm_signature_verify"</span>.into(),
+                );
             }
 
             <span class="comment">// Note:
@@ -3501,9 +3622,9 @@
             // If s is in the high-order range, it can be converted to its low-order equivalent,
             // which should be enforced during signature verification.
             </span><span class="kw">if </span>signature.s.is_high() {
-                <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                    <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                </span>));
+                <span class="kw">return </span><span class="prelude-val">Err</span>(
+                    <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"</span>.into(),
+                );
             }
         }
 
@@ -3527,13 +3648,15 @@
                 </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(
                     public_key_,
                     <span class="prelude-val">Some</span>(libsecp256k1::PublicKeyFormat::Raw),
-                )<span class="question-mark">?</span>;
+                )
+                .map_err(|e| e.to_string())<span class="question-mark">?</span>;
                 <span class="comment">// compute the hash of the public key
                 </span>sha3::Keccak256::digest(public_key.serialize())
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// parse the public key
-                </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>public_key = libsecp256k1::PublicKey::parse_slice(public_key_, <span class="prelude-val">None</span>)
+                    .map_err(|e| e.to_string())<span class="question-mark">?</span>;
                 <span class="comment">// compute the hash of the public key
                 </span>sha3::Keccak256::digest(<span class="kw-2">&amp;</span>public_key.serialize()[<span class="number">1</span>..])
             }
@@ -3552,9 +3675,7 @@
 
         <span class="comment">// check the signature length
         </span><span class="kw">if </span>signature_.len() != <span class="number">65 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                <span class="string">"invalid signature length in evm_get_pubkey_from_signature"
-            </span>));
+            <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="string">"invalid signature length in evm_get_pubkey_from_signature"</span>.into());
         }
 
         <span class="kw">match </span>execution_component_version {
@@ -3577,33 +3698,37 @@
             }
             <span class="kw">_ </span>=&gt; {
                 <span class="comment">// parse the message
-                </span><span class="kw">let </span>message = libsecp256k1::Message::parse_slice(hash_)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>message =
+                    libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
                 <span class="comment">// parse the signature as being (r, s, v) use only r and s
-                </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>signature = libsecp256k1::Signature::parse_standard_slice(<span class="kw-2">&amp;</span>signature_[..<span class="number">64</span>])
+                    .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
                 <span class="comment">// Note:
                 // See evm_signature_verify explanation
                 </span><span class="kw">if </span>signature.s.is_high() {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
-                        <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"
-                    </span>));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(
+                        <span class="string">"High-Order s Value are prohibited in evm_get_pubkey_from_signature"</span>.into(),
+                    );
                 }
 
                 <span class="comment">// parse v as a recovery id
-                </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[<span class="number">64</span>])
+                    .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>recovery_id_: u8 = recovery_id.into();
                 <span class="kw">if </span>recovery_id_ != <span class="number">0 </span>&amp;&amp; recovery_id_ != <span class="number">1 </span>{
                     <span class="comment">// Note:
                     // See evm_signature_verify explanation
-                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow!</span>(
+                    </span><span class="kw">return </span><span class="prelude-val">Err</span>(
                         <span class="string">"invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-                    </span>));
+                    </span>.into());
                 }
 
                 <span class="comment">// recover the public key
-                </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id)<span class="question-mark">?</span>;
+                </span><span class="kw">let </span>recovered = libsecp256k1::recover(<span class="kw-2">&amp;</span>message, <span class="kw-2">&amp;</span>signature, <span class="kw-2">&amp;</span>recovery_id)
+                    .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
                 <span class="comment">// return its serialized value
                 </span><span class="prelude-val">Ok</span>(recovered.serialize().to_vec())
@@ -3613,7 +3738,7 @@
 
     <span class="comment">// Return true if the address is a User address, false if it is an SC address.
     </span><span class="kw">fn </span>is_address_eoa(<span class="kw-2">&amp;</span><span class="self">self</span>, address_: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;bool&gt; {
-        <span class="kw">let </span>address = Address::from_str(address_)<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = Address::from_str(address_).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="macro">matches!</span>(address, Address::User(..)))
     }
 
@@ -3625,11 +3750,13 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `transfer_coins_wasmv1`
     </span><span class="kw">fn </span>transfer_coins(<span class="kw-2">&amp;</span><span class="self">self</span>, to_address: <span class="kw-2">&amp;</span>str, raw_amount: u64) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>to_address = Address::from_str(to_address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>to_address = Address::from_str(to_address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = Amount::from_raw(raw_amount);
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>from_address = context.get_current_address()<span class="question-mark">?</span>;
-        context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>from_address = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        context
+            .transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3647,11 +3774,13 @@
         to_address: <span class="kw-2">&amp;</span>str,
         raw_amount: u64,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>from_address = Address::from_str(from_address)<span class="question-mark">?</span>;
-        <span class="kw">let </span>to_address = Address::from_str(to_address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>from_address = Address::from_str(from_address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        <span class="kw">let </span>to_address = Address::from_str(to_address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = Amount::from_raw(raw_amount);
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        context
+            .transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3667,15 +3796,17 @@
         raw_amount: NativeAmount,
         from_address: <span class="prelude-ty">Option</span>&lt;String&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>to_address = Address::from_str(<span class="kw-2">&amp;</span>to_address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>to_address = Address::from_str(<span class="kw-2">&amp;</span>to_address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>amount = amount_from_native_amount(<span class="kw-2">&amp;</span>raw_amount)<span class="question-mark">?</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>from_address = <span class="kw">match </span>from_address {
-            <span class="prelude-val">Some</span>(from_address) =&gt; Address::from_str(<span class="kw-2">&amp;</span>from_address)<span class="question-mark">?</span>,
-            <span class="prelude-val">None </span>=&gt; context.get_current_address()<span class="question-mark">?</span>,
+            <span class="prelude-val">Some</span>(from_address) =&gt; Address::from_str(<span class="kw-2">&amp;</span>from_address).map_err(|e| e.to_string())<span class="question-mark">?</span>,
+            <span class="prelude-val">None </span>=&gt; context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>,
         };
-        context.transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        context
+            .transfer_coins(<span class="prelude-val">Some</span>(from_address), <span class="prelude-val">Some</span>(to_address), amount, <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -3689,7 +3820,8 @@
     /// Note that the ordering of this vector is deterministic and conserved.
     </span><span class="kw">fn </span>get_owned_addresses(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;&gt; {
         <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
-            .get_current_owned_addresses()<span class="question-mark">?
+            .get_current_owned_addresses()
+            .map_err(|e| e.to_string())<span class="question-mark">?
             </span>.into_iter()
             .map(|addr| addr.to_string())
             .collect())
@@ -3715,7 +3847,10 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `get_call_coins_wasmv1`
     </span><span class="kw">fn </span>get_call_coins(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>).get_current_call_coins()<span class="question-mark">?</span>.to_raw())
+        <span class="prelude-val">Ok</span>(<span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .get_current_call_coins()
+            .map_err(|e| e.to_string())<span class="question-mark">?
+            </span>.to_raw())
     }
 
     <span class="doccomment">/// Gets the amount of coins that have been transferred at the beginning of the call.
@@ -3724,7 +3859,9 @@
     /// # Returns
     /// The amount of coins
     </span><span class="kw">fn </span>get_call_coins_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;NativeAmount&gt; {
-        <span class="kw">let </span>amount = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_current_call_coins()<span class="question-mark">?</span>;
+        <span class="kw">let </span>amount = <span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .get_current_call_coins()
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount_to_native_amount(<span class="kw-2">&amp;</span>amount))
     }
 
@@ -3819,7 +3956,8 @@
             <span class="self">self</span>.config.t0,
             <span class="self">self</span>.config.genesis_timestamp,
             slot,
-        )<span class="question-mark">?</span>;
+        )
+        .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(ts.as_millis())
     }
 
@@ -3854,7 +3992,10 @@
     /// it can be both predicted and manipulated before the execution
     </span><span class="kw">fn </span>unsafe_random_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, num_bytes: u64) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>arr = <span class="macro">vec!</span>[<span class="number">0u8</span>; num_bytes <span class="kw">as </span>usize];
-        <span class="macro">context_guard!</span>(<span class="self">self</span>).unsafe_rng.try_fill_bytes(<span class="kw-2">&amp;mut </span>arr)<span class="question-mark">?</span>;
+        <span class="macro">context_guard!</span>(<span class="self">self</span>)
+            .unsafe_rng
+            .try_fill_bytes(<span class="kw-2">&amp;mut </span>arr)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(arr)
     }
 
@@ -3888,7 +4029,7 @@
             <span class="macro">bail!</span>(<span class="string">"validity end thread exceeds the configuration thread count"</span>)
         }
 
-        <span class="kw">let </span>target_addr = Address::from_str(target_address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>target_addr = Address::from_str(target_address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
@@ -3922,11 +4063,17 @@
         }
 
         <span class="kw">let </span>emission_index = execution_context.created_message_index;
-        <span class="kw">let </span>sender = execution_context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>sender = execution_context
+            .get_current_address()
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>coins = Amount::from_raw(raw_coins);
-        execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        execution_context
+            .transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, coins, <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>fee = Amount::from_raw(raw_fee);
-        execution_context.transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, fee, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        execution_context
+            .transfer_coins(<span class="prelude-val">Some</span>(sender), <span class="prelude-val">None</span>, fee, <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         execution_context.push_new_message(AsyncMessage::new(
             emission_slot,
             emission_index,
@@ -3948,7 +4095,7 @@
                         }
                     }
                     <span class="prelude-val">Ok</span>::&lt;AsyncMessageTrigger, <span class="kw">_</span>&gt;(AsyncMessageTrigger {
-                        address: Address::from_str(addr)<span class="question-mark">?</span>,
+                        address: Address::from_str(addr).map_err(|e| e.to_string())<span class="question-mark">?</span>,
                         datastore_key,
                     })
                 })
@@ -3994,7 +4141,9 @@
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     </span><span class="kw">fn </span>raw_set_bytecode(<span class="kw-2">&amp;</span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
-        <span class="kw">let </span>address = execution_context.get_current_address()<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = execution_context
+            .get_current_address()
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="prelude-val">Err</span>(err) =&gt; <span class="macro">bail!</span>(<span class="string">"couldn't set address {} bytecode: {}"</span>, address, err),
@@ -4006,7 +4155,8 @@
     ///
     /// [DeprecatedByNewRuntime] Replaced by `raw_set_bytecode_wasmv1`
     </span><span class="kw">fn </span>raw_set_bytecode_for(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="kw">let </span>address: Address = massa_models::address::Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>address: Address =
+            massa_models::address::Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>execution_context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">match </span>execution_context.set_bytecode(<span class="kw-2">&amp;</span>address, Bytecode(bytecode.to_vec())) {
             <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
@@ -4108,7 +4258,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="comment">// This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
 
-        </span><span class="kw">let </span>target_addr = Address::from_str(target_addr)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>target_addr = Address::from_str(target_addr).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
@@ -4136,11 +4286,13 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         <span class="comment">// get caller address
-        </span><span class="kw">let </span>sender_address = context.get_current_address()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>sender_address = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// make sender pay coins + fee
         // coins + cost for booking the deferred call
-        </span>context.transfer_coins(<span class="prelude-val">Some</span>(sender_address), <span class="prelude-val">None</span>, coins.saturating_add(fee), <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        </span>context
+            .transfer_coins(<span class="prelude-val">Some</span>(sender_address), <span class="prelude-val">None</span>, coins.saturating_add(fee), <span class="bool-val">true</span>)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>call = DeferredCall::new(
             sender_address,
@@ -4154,7 +4306,9 @@
             <span class="bool-val">false</span>,
         );
 
-        <span class="kw">let </span>call_id = context.deferred_call_register(call)<span class="question-mark">?</span>;
+        <span class="kw">let </span>call_id = context
+            .deferred_call_register(call)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(call_id.to_string())
     }
 
@@ -4169,7 +4323,7 @@
         <span class="comment">// write-lock context
         </span><span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
-        <span class="kw">let </span>call_id = DeferredCallId::from_str(id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>call_id = DeferredCallId::from_str(id).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(context.deferred_call_exists(<span class="kw-2">&amp;</span>call_id))
     }
 
@@ -4183,18 +4337,20 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
 
         <span class="comment">// Can only be called by the creator of the deferred call.
-        </span><span class="kw">let </span>caller = context.get_current_address()<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>caller = context.get_current_address().map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>call_id = DeferredCallId::from_str(id)<span class="question-mark">?</span>;
+        <span class="kw">let </span>call_id = DeferredCallId::from_str(id).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
-        context.deferred_call_cancel(<span class="kw-2">&amp;</span>call_id, caller)<span class="question-mark">?</span>;
+        context
+            .deferred_call_cancel(<span class="kw-2">&amp;</span>call_id, caller)
+            .map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="attr">#[allow(unused_variables)]
     </span><span class="kw">fn </span>init_call_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str, raw_coins: NativeAmount) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
         <span class="comment">// get target address
-        </span><span class="kw">let </span>to_address = Address::from_str(address)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>to_address = Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(to_address, Address::SC(..)) {
@@ -4245,14 +4401,14 @@
 
     <span class="doccomment">/// Returns a NativeAmount from a string
     </span><span class="kw">fn </span>native_amount_from_str_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;NativeAmount&gt; {
-        <span class="kw">let </span>amount = Amount::from_str(amount).map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"{}"</span>, err)))<span class="question-mark">?</span>;
+        <span class="kw">let </span>amount = Amount::from_str(amount).map_err(|err| <span class="macro">format!</span>(<span class="string">"{}"</span>, err))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount_to_native_amount(<span class="kw-2">&amp;</span>amount))
     }
 
     <span class="doccomment">/// Returns a string from a NativeAmount
     </span><span class="kw">fn </span>native_amount_to_string_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, amount: <span class="kw-2">&amp;</span>NativeAmount) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="kw">let </span>amount = amount_from_native_amount(amount)
-            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't convert native amount to Amount: {}"</span>, err)))<span class="question-mark">?</span>;
+            .map_err(|err| <span class="macro">format!</span>(<span class="string">"Couldn't convert native amount to Amount: {}"</span>, err))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(amount.to_string())
     }
 
@@ -4306,11 +4462,11 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_u64(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native amount"</span>)))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"Couldn't div_rem native amount"</span>)<span class="question-mark">?</span>;
         <span class="comment">// we can unwrap, we
         </span><span class="kw">let </span>remainder = dividend
             .checked_rem_u64(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem_u64 native amount"</span>)))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"Couldn't checked_rem_u64 native amount"</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             amount_to_native_amount(<span class="kw-2">&amp;</span>quotient),
@@ -4329,21 +4485,21 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div(divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native amount"</span>)))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"Couldn't div_rem native amount"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remainder = dividend
             .checked_rem(<span class="kw-2">&amp;</span>divisor)
-            .ok_or_else(|| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem native amount"</span>)))<span class="question-mark">?</span>;
+            .ok_or(<span class="string">"Couldn't checked_rem native amount"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = amount_to_native_amount(<span class="kw-2">&amp;</span>remainder);
 
         <span class="prelude-val">Ok</span>((quotient, remainder))
     }
 
     <span class="kw">fn </span>base58_check_to_bytes_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;&gt; {
-        bs58::decode(s)
+        <span class="prelude-val">Ok</span>(bs58::decode(s)
             .with_check(<span class="prelude-val">None</span>)
             .into_vec()
-            .map_err(|err| <span class="macro">anyhow!</span>(<span class="macro">format!</span>(<span class="string">"bs58 parsing error: {}"</span>, err)))
+            .map_err(|err| <span class="macro">format!</span>(<span class="string">"bs58 parsing error: {}"</span>, err))<span class="question-mark">?</span>)
     }
 
     <span class="kw">fn </span>bytes_to_base58_check_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, data: <span class="kw-2">&amp;</span>[u8]) -&gt; String {
@@ -4363,7 +4519,7 @@
     }
 
     <span class="kw">fn </span>get_address_category_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, to_check: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;AddressCategory&gt; {
-        <span class="kw">let </span>addr = Address::from_str(to_check)<span class="question-mark">?</span>;
+        <span class="kw">let </span>addr = Address::from_str(to_check).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">let </span>execution_component_version = <span class="macro">context_guard!</span>(<span class="self">self</span>).execution_component_version;
 
         <span class="comment">// Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
@@ -4380,7 +4536,7 @@
     }
 
     <span class="kw">fn </span>get_address_version_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>address = Address::from_str(address)<span class="question-mark">?</span>;
+        <span class="kw">let </span>address = Address::from_str(address).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>address {
             Address::User(UserAddress::UserAddressV0(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="comment">// Address::User(UserAddress::UserAddressV1(_)) =&gt; Ok(1),
@@ -4392,7 +4548,7 @@
     }
 
     <span class="kw">fn </span>get_pubkey_version_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, pubkey: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>pubkey = PublicKey::from_str(pubkey)<span class="question-mark">?</span>;
+        <span class="kw">let </span>pubkey = PublicKey::from_str(pubkey).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>pubkey {
             PublicKey::PublicKeyV0(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="attr">#[allow(unreachable_patterns)]
@@ -4401,7 +4557,7 @@
     }
 
     <span class="kw">fn </span>get_signature_version_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, signature: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;u64&gt; {
-        <span class="kw">let </span>signature = Signature::from_str(signature)<span class="question-mark">?</span>;
+        <span class="kw">let </span>signature = Signature::from_str(signature).map_err(|e| e.to_string())<span class="question-mark">?</span>;
         <span class="kw">match </span>signature {
             Signature::SignatureV0(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
             <span class="attr">#[allow(unreachable_patterns)]
@@ -4416,7 +4572,7 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeTime&gt; {
         <span class="kw">let </span>time1 = massa_time_from_native_time(time1)<span class="question-mark">?</span>;
         <span class="kw">let </span>time2 = massa_time_from_native_time(time2)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sum = time1.checked_add(time2)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sum = time1.checked_add(time2).or_else(|e| <span class="macro">bail!</span>(<span class="string">"{}"</span>, e))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(massa_time_to_native_time(<span class="kw-2">&amp;</span>sum))
     }
 
@@ -4427,13 +4583,13 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;NativeTime&gt; {
         <span class="kw">let </span>time1 = massa_time_from_native_time(time1)<span class="question-mark">?</span>;
         <span class="kw">let </span>time2 = massa_time_from_native_time(time2)<span class="question-mark">?</span>;
-        <span class="kw">let </span>sub = time1.checked_sub(time2)<span class="question-mark">?</span>;
+        <span class="kw">let </span>sub = time1.checked_sub(time2).or_else(|e| <span class="macro">bail!</span>(<span class="string">"{}"</span>, e))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(massa_time_to_native_time(<span class="kw-2">&amp;</span>sub))
     }
 
     <span class="kw">fn </span>checked_mul_native_time_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, time: <span class="kw-2">&amp;</span>NativeTime, factor: u64) -&gt; <span class="prelude-ty">Result</span>&lt;NativeTime&gt; {
         <span class="kw">let </span>time1 = massa_time_from_native_time(time)<span class="question-mark">?</span>;
-        <span class="kw">let </span>mul = time1.checked_mul(factor)<span class="question-mark">?</span>;
+        <span class="kw">let </span>mul = time1.checked_mul(factor).or_else(|e| <span class="macro">bail!</span>(<span class="string">"{}"</span>, e))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(massa_time_to_native_time(<span class="kw-2">&amp;</span>mul))
     }
 
@@ -4446,10 +4602,10 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_u64(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native time"</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="string">"Couldn't div_rem native time"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = dividend
             .checked_rem_u64(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem_u64 native time"</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="string">"Couldn't checked_rem_u64 native time"</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((
             massa_time_to_native_time(<span class="kw-2">&amp;</span>quotient),
@@ -4467,19 +4623,19 @@
 
         <span class="kw">let </span>quotient = dividend
             .checked_div_time(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't div_rem native time"</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="string">"Couldn't div_rem native time"</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>remainder = dividend
             .checked_rem_time(divisor)
-            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="macro">format!</span>(<span class="string">"Couldn't checked_rem native time"</span>)))<span class="question-mark">?</span>;
+            .or_else(|<span class="kw">_</span>| <span class="macro">bail!</span>(<span class="string">"Couldn't checked_rem native time"</span>))<span class="question-mark">?</span>;
         <span class="kw">let </span>remainder = massa_time_to_native_time(<span class="kw-2">&amp;</span>remainder);
 
         <span class="prelude-val">Ok</span>((quotient, remainder))
     }
 
     <span class="kw">fn </span>compare_address_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, left: <span class="kw-2">&amp;</span>str, right: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;ComparisonResult&gt; {
-        <span class="kw">let </span>left = Address::from_str(left)<span class="question-mark">?</span>;
-        <span class="kw">let </span>right = Address::from_str(right)<span class="question-mark">?</span>;
+        <span class="kw">let </span>left = Address::from_str(left).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        <span class="kw">let </span>right = Address::from_str(right).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>res = <span class="kw">match </span>left.cmp(<span class="kw-2">&amp;</span>right) {
             std::cmp::Ordering::Less =&gt; ComparisonResult::Lower,
@@ -4525,8 +4681,8 @@
     }
 
     <span class="kw">fn </span>compare_pub_key_wasmv1(<span class="kw-2">&amp;</span><span class="self">self</span>, left: <span class="kw-2">&amp;</span>str, right: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;ComparisonResult&gt; {
-        <span class="kw">let </span>left = PublicKey::from_str(left)<span class="question-mark">?</span>;
-        <span class="kw">let </span>right = PublicKey::from_str(right)<span class="question-mark">?</span>;
+        <span class="kw">let </span>left = PublicKey::from_str(left).map_err(|e| e.to_string())<span class="question-mark">?</span>;
+        <span class="kw">let </span>right = PublicKey::from_str(right).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="kw">let </span>res = <span class="kw">match </span>left.cmp(<span class="kw-2">&amp;</span>right) {
             std::cmp::Ordering::Less =&gt; ComparisonResult::Lower,
