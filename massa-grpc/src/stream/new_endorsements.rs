@@ -22,6 +22,16 @@ pub type NewEndorsementsStreamType = Pin<
     >,
 >;
 
+/// Type declaration for NewEndorsementsServer
+pub type NewEndorsementsServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::NewEndorsementsServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
+
 /// Creates a new stream of new produced and received endorsements
 pub(crate) async fn new_endorsements(
     grpc: &MassaPublicGrpc,
@@ -38,18 +48,18 @@ pub(crate) async fn new_endorsements(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filter = match NewEndorsementsFilter::build_from_request(request, &grpc_config)
-            {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back NewEndorsements error response: {}", e);
+            let mut filter =
+                match NewEndorsementsFilter::build_from_request(request.filters, &grpc_config) {
+                    Ok(filter) => filter,
+                    Err(err) => {
+                        error!("failed to get filter: {}", err);
+                        // Send the error response back to the client
+                        if let Err(e) = tx.send(Err(err.into())).await {
+                            error!("failed to send back NewEndorsements error response: {}", e);
+                        }
+                        return;
                     }
-                    return;
-                }
-            };
+                };
 
             loop {
                 select! {
@@ -78,7 +88,7 @@ pub(crate) async fn new_endorsements(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filter = match NewEndorsementsFilter::build_from_request(message, &grpc_config) {
+                                        filter = match NewEndorsementsFilter::build_from_request(message.filters, &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -130,8 +140,8 @@ pub(crate) async fn new_endorsements(
 /// Creates a new unidirectional stream of new produced and received endorsements
 pub(crate) async fn new_endorsements_server(
     grpc: &MassaPublicGrpc,
-    request: Request<grpc_api::NewEndorsementsRequest>,
-) -> Result<NewEndorsementsStreamType, GrpcError> {
+    request: Request<grpc_api::NewEndorsementsServerRequest>,
+) -> Result<NewEndorsementsServerStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner request
@@ -142,7 +152,8 @@ pub(crate) async fn new_endorsements_server(
     let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
-        let filter = match NewEndorsementsFilter::build_from_request(request, &grpc_config) {
+        let filter = match NewEndorsementsFilter::build_from_request(request.filters, &grpc_config)
+        {
             Ok(filter) => filter,
             Err(err) => {
                 error!("failed to get filter: {}", err);
@@ -168,7 +179,7 @@ pub(crate) async fn new_endorsements_server(
                             // Check if the endorsement should be sent
                             if let Some(data) = filter.filter_output(massa_endorsement, &grpc_config) {
                                 // Send the new endorsement through the channel
-                                if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsResponse {
+                                if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsServerResponse {
                                     signed_endorsement: Some(data.into())
                                 })).await {
                                     error!("failed to send new endorsement : {}", e);
@@ -193,5 +204,5 @@ pub(crate) async fn new_endorsements_server(
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
     // Return the new stream of endorsements
-    Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
+    Ok(Box::pin(out_stream) as NewEndorsementsServerStreamType)
 }

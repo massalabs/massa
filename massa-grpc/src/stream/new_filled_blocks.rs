@@ -23,6 +23,16 @@ pub type NewFilledBlocksStreamType = Pin<
     >,
 >;
 
+/// Type declaration for NewFilledBlocksServerStream
+pub type NewFilledBlocksServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::NewFilledBlocksServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
+
 /// Creates a new stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks(
     grpc: &MassaPublicGrpc,
@@ -39,18 +49,18 @@ pub(crate) async fn new_filled_blocks(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match FilterNewFilledBlocks::build_from_request(request, &grpc_config)
-            {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back NewFilledBlocks error response: {}", e);
+            let mut filters =
+                match FilterNewFilledBlocks::build_from_request(request.filters, &grpc_config) {
+                    Ok(filter) => filter,
+                    Err(err) => {
+                        error!("failed to get filter: {}", err);
+                        // Send the error response back to the client
+                        if let Err(e) = tx.send(Err(err.into())).await {
+                            error!("failed to send back NewFilledBlocks error response: {}", e);
+                        }
+                        return;
                     }
-                    return;
-                }
-            };
+                };
 
             loop {
                 select! {
@@ -79,7 +89,7 @@ pub(crate) async fn new_filled_blocks(
                             match res {
                                 Ok(message) => {
                                     // Update current filter
-                                    filters = match FilterNewFilledBlocks::build_from_request(message, &grpc_config) {
+                                    filters = match FilterNewFilledBlocks::build_from_request(message.filters, &grpc_config) {
                                         Ok(filter) => filter,
                                         Err(err) => {
                                             error!("failed to get filter: {}", err);
@@ -128,8 +138,8 @@ pub(crate) async fn new_filled_blocks(
 /// Creates a new unidirectional stream of new produced and received filled blocks
 pub(crate) async fn new_filled_blocks_server(
     grpc: &MassaPublicGrpc,
-    request: Request<grpc_api::NewFilledBlocksRequest>,
-) -> Result<NewFilledBlocksStreamType, GrpcError> {
+    request: Request<grpc_api::NewFilledBlocksServerRequest>,
+) -> Result<NewFilledBlocksServerStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner the request
@@ -140,7 +150,8 @@ pub(crate) async fn new_filled_blocks_server(
     let grpc_config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
-        let filter = match FilterNewFilledBlocks::build_from_request(request, &grpc_config) {
+        let filter = match FilterNewFilledBlocks::build_from_request(request.filters, &grpc_config)
+        {
             Ok(filter) => filter,
             Err(err) => {
                 error!("failed to get filter: {}", err);
@@ -167,7 +178,7 @@ pub(crate) async fn new_filled_blocks_server(
                            // Check if the block should be sent
                            if let Some(data) = filter.filter_output(massa_filled_block, &grpc_config) {
                                if let Err(e) = tx
-                                   .send(Ok(grpc_api::NewFilledBlocksResponse {
+                                   .send(Ok(grpc_api::NewFilledBlocksServerResponse {
                                        filled_block: Some(data.into()),
                                    }))
                                    .await
@@ -192,5 +203,5 @@ pub(crate) async fn new_filled_blocks_server(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewFilledBlocksStreamType)
+    Ok(Box::pin(out_stream) as NewFilledBlocksServerStreamType)
 }

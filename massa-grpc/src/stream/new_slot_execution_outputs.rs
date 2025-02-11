@@ -23,6 +23,16 @@ pub type NewSlotExecutionOutputsStreamType = Pin<
     >,
 >;
 
+/// Type declaration for NewSlotExecutionOutputsServer
+pub type NewSlotExecutionOutputsServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::NewSlotExecutionOutputsServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
+
 /// Creates a new stream of new produced and received slot execution outputs
 pub(crate) async fn new_slot_execution_outputs(
     grpc: &MassaPublicGrpc,
@@ -41,18 +51,20 @@ pub(crate) async fn new_slot_execution_outputs(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters: FilterNewSlotExec =
-                match FilterNewSlotExec::build_from_request(request.clone(), &grpc_config) {
-                    Ok(filter) => filter,
-                    Err(err) => {
-                        error!("failed to get filter: {}", err);
-                        // Send the error response back to the client
-                        if let Err(e) = tx.send(Err(err.into())).await {
-                            error!("failed to send back NewBlocks error response: {}", e);
-                        }
-                        return;
+            let mut filters: FilterNewSlotExec = match FilterNewSlotExec::build_from_request(
+                request.clone().filters,
+                &grpc_config,
+            ) {
+                Ok(filter) => filter,
+                Err(err) => {
+                    error!("failed to get filter: {}", err);
+                    // Send the error response back to the client
+                    if let Err(e) = tx.send(Err(err.into())).await {
+                        error!("failed to send back NewBlocks error response: {}", e);
                     }
-                };
+                    return;
+                }
+            };
 
             loop {
                 select! {
@@ -80,7 +92,7 @@ pub(crate) async fn new_slot_execution_outputs(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match FilterNewSlotExec::build_from_request(message.clone(), &grpc_config) {
+                                        filters = match FilterNewSlotExec::build_from_request(message.clone().filters, &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -132,8 +144,8 @@ pub(crate) async fn new_slot_execution_outputs(
 
 pub(crate) async fn new_slot_execution_outputs_server(
     grpc: &MassaPublicGrpc,
-    request: tonic::Request<grpc_api::NewSlotExecutionOutputsRequest>,
-) -> Result<NewSlotExecutionOutputsStreamType, GrpcError> {
+    request: tonic::Request<grpc_api::NewSlotExecutionOutputsServerRequest>,
+) -> Result<NewSlotExecutionOutputsServerStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Subscribe to the new slot execution events channel
@@ -144,18 +156,20 @@ pub(crate) async fn new_slot_execution_outputs_server(
     let grpc = grpc.clone();
     let inner_req = request.into_inner();
     tokio::spawn(async move {
-        let filters: FilterNewSlotExec =
-            match FilterNewSlotExec::build_from_request(inner_req.clone(), &grpc.grpc_config) {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back error response: {}", e);
-                    }
-                    return;
+        let filters: FilterNewSlotExec = match FilterNewSlotExec::build_from_request(
+            inner_req.clone().filters,
+            &grpc.grpc_config,
+        ) {
+            Ok(filter) => filter,
+            Err(err) => {
+                error!("failed to get filter: {}", err);
+                // Send the error response back to the client
+                if let Err(e) = tx.send(Err(err.into())).await {
+                    error!("failed to send back error response: {}", e);
                 }
-            };
+                return;
+            }
+        };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
         let mut interval = time::interval(Duration::from_secs(
@@ -175,7 +189,7 @@ pub(crate) async fn new_slot_execution_outputs_server(
                             {
                                 // Send the new slot execution output through the channel
                                 if let Err(e) = tx
-                                    .send(Ok(grpc_api::NewSlotExecutionOutputsResponse {
+                                    .send(Ok(grpc_api::NewSlotExecutionOutputsServerResponse {
                                         output: Some(slot_execution_output.into()),
                                     }))
                                     .await
@@ -201,5 +215,5 @@ pub(crate) async fn new_slot_execution_outputs_server(
     // Create a new stream from the received channel
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
     // Return the new stream of slot execution output
-    Ok(Box::pin(out_stream) as NewSlotExecutionOutputsStreamType)
+    Ok(Box::pin(out_stream) as NewSlotExecutionOutputsServerStreamType)
 }

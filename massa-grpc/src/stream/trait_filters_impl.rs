@@ -10,10 +10,7 @@ use massa_models::block_id::BlockId;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
 use massa_models::slot::Slot;
-use massa_proto_rs::massa::api::v1::{
-    self as grpc_api, NewBlocksRequest, NewEndorsementsRequest, NewFilledBlocksRequest,
-    NewOperationsRequest, NewSlotExecutionOutputsRequest,
-};
+use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
 /// Trait implementation for filtering the output based on the request
@@ -90,14 +87,15 @@ pub(crate) struct NewEndorsementsFilter {
     block_ids: Option<HashSet<BlockId>>,
 }
 
-impl FilterGrpc<NewSlotExecutionOutputsRequest, FilterNewSlotExec, SlotExecutionOutput>
+impl
+    FilterGrpc<Vec<grpc_api::NewSlotExecutionOutputsFilter>, FilterNewSlotExec, SlotExecutionOutput>
     for FilterNewSlotExec
 {
     fn build_from_request(
-        request: NewSlotExecutionOutputsRequest,
+        filters: Vec<grpc_api::NewSlotExecutionOutputsFilter>,
         grpc_config: &GrpcConfig,
     ) -> Result<FilterNewSlotExec, GrpcError> {
-        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        if filters.len() as u32 > grpc_config.max_filters_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many filters received. Only a maximum of {} filters are accepted per request",
                 grpc_config.max_filters_per_request
@@ -106,7 +104,7 @@ impl FilterGrpc<NewSlotExecutionOutputsRequest, FilterNewSlotExec, SlotExecution
 
         let mut result = FilterNewSlotExec::default();
 
-        for query in request.filters.into_iter() {
+        for query in filters.into_iter() {
             if let Some(filter) = query.filter {
                 match filter {
                     grpc_api::new_slot_execution_outputs_filter::Filter::Status(status) => result.status_filter = Some(status),
@@ -361,12 +359,14 @@ fn filter_map_exec_output_inner(
     Some(exec_output)
 }
 
-impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterNewBlocks {
+impl FilterGrpc<Vec<grpc_api::NewBlocksFilter>, FilterNewBlocks, SecureShareBlock>
+    for FilterNewBlocks
+{
     fn build_from_request(
-        request: NewBlocksRequest,
+        filters: Vec<grpc_api::NewBlocksFilter>,
         grpc_config: &GrpcConfig,
     ) -> Result<FilterNewBlocks, GrpcError> {
-        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        if filters.len() as u32 > grpc_config.max_filters_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many filters received. Only a maximum of {} filters are accepted per request",
                 grpc_config.max_filters_per_request
@@ -378,7 +378,7 @@ impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterN
         let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
 
         // Get params filter from the request.
-        for query in request.filters.into_iter() {
+        for query in filters.into_iter() {
             if let Some(filter) = query.filter {
                 match filter {
                     grpc_api::new_blocks_filter::Filter::BlockIds(ids) => {
@@ -486,14 +486,14 @@ impl FilterGrpc<NewBlocksRequest, FilterNewBlocks, SecureShareBlock> for FilterN
     }
 }
 
-impl FilterGrpc<NewOperationsRequest, FilterNewOperations, SecureShareOperation>
+impl FilterGrpc<Vec<grpc_api::NewOperationsFilter>, FilterNewOperations, SecureShareOperation>
     for FilterNewOperations
 {
     fn build_from_request(
-        request: NewOperationsRequest,
+        filters: Vec<grpc_api::NewOperationsFilter>,
         grpc_config: &GrpcConfig,
     ) -> Result<FilterNewOperations, GrpcError> {
-        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        if filters.len() as u32 > grpc_config.max_filters_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many filters received. Only a maximum of {} filters are accepted per request",
                 grpc_config.max_filters_per_request
@@ -505,7 +505,7 @@ impl FilterGrpc<NewOperationsRequest, FilterNewOperations, SecureShareOperation>
         let mut operation_types_filter: Option<HashSet<i32>> = None;
 
         // Get params filter from the request.
-        for query in request.filters.into_iter() {
+        for query in filters.into_iter() {
             if let Some(filter) = query.filter {
                 match filter {
                     grpc_api::new_operations_filter::Filter::OperationIds(ids) => {
@@ -588,14 +588,14 @@ impl FilterGrpc<NewOperationsRequest, FilterNewOperations, SecureShareOperation>
     }
 }
 
-impl FilterGrpc<NewFilledBlocksRequest, FilterNewFilledBlocks, FilledBlock>
+impl FilterGrpc<Vec<grpc_api::NewBlocksFilter>, FilterNewFilledBlocks, FilledBlock>
     for FilterNewFilledBlocks
 {
     fn build_from_request(
-        request: NewFilledBlocksRequest,
+        filters: Vec<grpc_api::NewBlocksFilter>,
         grpc_config: &GrpcConfig,
     ) -> Result<FilterNewFilledBlocks, GrpcError> {
-        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        if filters.len() as u32 > grpc_config.max_filters_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many filters received. Only a maximum of {} filters are accepted per request",
                 grpc_config.max_filters_per_request
@@ -607,7 +607,7 @@ impl FilterGrpc<NewFilledBlocksRequest, FilterNewFilledBlocks, FilledBlock>
         let mut slot_ranges_filter: Option<HashSet<SlotRange>> = None;
 
         // Get params filter from the request.
-        for query in request.filters.into_iter() {
+        for query in filters.into_iter() {
             if let Some(filter) = query.filter {
                 match filter {
                     grpc_api::new_blocks_filter::Filter::BlockIds(ids) => {
@@ -710,14 +710,14 @@ impl FilterGrpc<NewFilledBlocksRequest, FilterNewFilledBlocks, FilledBlock>
     }
 }
 
-impl FilterGrpc<NewEndorsementsRequest, NewEndorsementsFilter, SecureShareEndorsement>
+impl FilterGrpc<Vec<grpc_api::NewEndorsementsFilter>, NewEndorsementsFilter, SecureShareEndorsement>
     for NewEndorsementsFilter
 {
     fn build_from_request(
-        request: NewEndorsementsRequest,
+        filters: Vec<grpc_api::NewEndorsementsFilter>,
         grpc_config: &GrpcConfig,
     ) -> Result<NewEndorsementsFilter, GrpcError> {
-        if request.filters.len() as u32 > grpc_config.max_filters_per_request {
+        if filters.len() as u32 > grpc_config.max_filters_per_request {
             return Err(GrpcError::InvalidArgument(format!(
                 "too many filters received. Only a maximum of {} filters are accepted per request",
                 grpc_config.max_filters_per_request
@@ -729,7 +729,7 @@ impl FilterGrpc<NewEndorsementsRequest, NewEndorsementsFilter, SecureShareEndors
         let mut block_ids_filter: Option<HashSet<BlockId>> = None;
 
         // Get params filter from the request.
-        for query in request.filters.into_iter() {
+        for query in filters.into_iter() {
             if let Some(filter) = query.filter {
                 match filter {
                     grpc_api::new_endorsements_filter::Filter::EndorsementIds(ids) => {

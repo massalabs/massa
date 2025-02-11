@@ -25,6 +25,16 @@ pub type TransactionsThroughputStreamType = Pin<
     >,
 >;
 
+/// Type declaration for TransactionsThroughput
+pub type TransactionsThroughputServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::TransactionsThroughputServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
+
 /// The function returns a stream of transaction throughput statistics
 pub(crate) async fn transactions_throughput(
     grpc: &MassaPublicGrpc,
@@ -95,8 +105,8 @@ pub(crate) async fn transactions_throughput(
 /// The function returns a stream unidirectional of transaction throughput statistics
 pub(crate) async fn transactions_throughput_server(
     grpc: &MassaPublicGrpc,
-    request: tonic::Request<grpc_api::TransactionsThroughputRequest>,
-) -> Result<TransactionsThroughputStreamType, GrpcError> {
+    request: tonic::Request<grpc_api::TransactionsThroughputServerRequest>,
+) -> Result<TransactionsThroughputServerStreamType, GrpcError> {
     let execution_controller = grpc.execution_controller.clone();
 
     // Create a channel for sending responses to the client
@@ -130,7 +140,9 @@ pub(crate) async fn transactions_throughput_server(
                 .unwrap_or_default() as u32;
             // Send the throughput response back to the client
             if let Err(e) = tx
-                .send(Ok(grpc_api::TransactionsThroughputResponse { throughput }))
+                .send(Ok(grpc_api::TransactionsThroughputServerResponse {
+                    throughput,
+                }))
                 .await
             {
                 // Log an error if sending the response fails
@@ -144,5 +156,5 @@ pub(crate) async fn transactions_throughput_server(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as TransactionsThroughputStreamType)
+    Ok(Box::pin(out_stream) as TransactionsThroughputServerStreamType)
 }

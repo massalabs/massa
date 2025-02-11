@@ -20,6 +20,16 @@ pub type NewOperationsStreamType = Pin<
     >,
 >;
 
+/// Type declaration for NewOperations server
+pub type NewOperationsServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::NewOperationsServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
+
 /// Creates a new stream of new produced and received operations
 pub(crate) async fn new_operations(
     grpc: &MassaPublicGrpc,
@@ -39,17 +49,18 @@ pub(crate) async fn new_operations(
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
             // Spawn a new task for sending new operations
-            let mut filters = match FilterNewOperations::build_from_request(request, &config) {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back NewOperations error response: {}", e);
+            let mut filters =
+                match FilterNewOperations::build_from_request(request.filters, &config) {
+                    Ok(filter) => filter,
+                    Err(err) => {
+                        error!("failed to get filter: {}", err);
+                        // Send the error response back to the client
+                        if let Err(e) = tx.send(Err(err.into())).await {
+                            error!("failed to send back NewOperations error response: {}", e);
+                        }
+                        return;
                     }
-                    return;
-                }
-            };
+                };
 
             loop {
                 select! {
@@ -78,7 +89,7 @@ pub(crate) async fn new_operations(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match FilterNewOperations::build_from_request(message, &config) {
+                                        filters = match FilterNewOperations::build_from_request(message.filters, &config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -117,8 +128,8 @@ pub(crate) async fn new_operations(
 /// unidirectional streaming
 pub(crate) async fn new_operations_server(
     grpc: &MassaPublicGrpc,
-    request: Request<grpc_api::NewOperationsRequest>,
-) -> Result<NewOperationsStreamType, GrpcError> {
+    request: Request<grpc_api::NewOperationsServerRequest>,
+) -> Result<NewOperationsServerStreamType, GrpcError> {
     // Create a channel to handle communication with the client
     let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
     // Get the inner request
@@ -129,7 +140,7 @@ pub(crate) async fn new_operations_server(
     let config = grpc.grpc_config.clone();
 
     tokio::spawn(async move {
-        let filter = match FilterNewOperations::build_from_request(request, &config) {
+        let filter = match FilterNewOperations::build_from_request(request.filters, &config) {
             Ok(filter) => filter,
             Err(err) => {
                 error!("failed to get filter: {}", err);
@@ -157,7 +168,7 @@ pub(crate) async fn new_operations_server(
                             if let Some(data) = filter.filter_output(massa_operation, &config) {
                                 // Send the new operation through the channel
                                 if let Err(e) = tx
-                                    .send(Ok(grpc_api::NewOperationsResponse {
+                                    .send(Ok(grpc_api::NewOperationsServerResponse {
                                         signed_operation: Some(data.into()),
                                     }))
                                     .await
@@ -182,5 +193,5 @@ pub(crate) async fn new_operations_server(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewOperationsStreamType)
+    Ok(Box::pin(out_stream) as NewOperationsServerStreamType)
 }
