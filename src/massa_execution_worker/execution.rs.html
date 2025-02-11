@@ -2729,31 +2729,6 @@
 <a href="#2729" id="2729">2729</a>
 <a href="#2730" id="2730">2730</a>
 <a href="#2731" id="2731">2731</a>
-<a href="#2732" id="2732">2732</a>
-<a href="#2733" id="2733">2733</a>
-<a href="#2734" id="2734">2734</a>
-<a href="#2735" id="2735">2735</a>
-<a href="#2736" id="2736">2736</a>
-<a href="#2737" id="2737">2737</a>
-<a href="#2738" id="2738">2738</a>
-<a href="#2739" id="2739">2739</a>
-<a href="#2740" id="2740">2740</a>
-<a href="#2741" id="2741">2741</a>
-<a href="#2742" id="2742">2742</a>
-<a href="#2743" id="2743">2743</a>
-<a href="#2744" id="2744">2744</a>
-<a href="#2745" id="2745">2745</a>
-<a href="#2746" id="2746">2746</a>
-<a href="#2747" id="2747">2747</a>
-<a href="#2748" id="2748">2748</a>
-<a href="#2749" id="2749">2749</a>
-<a href="#2750" id="2750">2750</a>
-<a href="#2751" id="2751">2751</a>
-<a href="#2752" id="2752">2752</a>
-<a href="#2753" id="2753">2753</a>
-<a href="#2754" id="2754">2754</a>
-<a href="#2755" id="2755">2755</a>
-<a href="#2756" id="2756">2756</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2766,6 +2741,7 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
 <span class="kw">use </span><span class="kw">crate</span>::context::{ExecutionContext, ExecutionContextSnapshot};
+<span class="kw">use </span><span class="kw">crate</span>::datastore_scan::scan_datastore;
 <span class="kw">use </span><span class="kw">crate</span>::interface_impl::InterfaceImpl;
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
@@ -2783,7 +2759,6 @@
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="kw">use </span>massa_models::denunciation::{Denunciation, DenunciationIndex};
 <span class="kw">use </span>massa_models::execution::EventFilter;
@@ -2791,7 +2766,6 @@
 <span class="kw">use </span>massa_models::prehash::PreHashSet;
 <span class="kw">use </span>massa_models::stats::ExecutionStats;
 <span class="kw">use </span>massa_models::timeslots::get_block_slot_timestamp;
-<span class="kw">use </span>massa_models::types::{SetOrDelete, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     address::Address,
     block_id::BlockId,
@@ -2806,6 +2780,7 @@
 <span class="kw">use </span>massa_wallet::Wallet;
 <span class="kw">use </span>parking_lot::{Mutex, RwLock};
 <span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<span class="kw">use </span>std::ops::Bound;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>tracing::{debug, info, trace, warn};
 
@@ -5178,65 +5153,40 @@
         )
     }
 
+    <span class="kw">pub fn </span>get_final_datastore_keys(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="self">self</span>.final_state
+            .read()
+            .get_ledger()
+            .get_datastore_keys(addr, prefix, start_key, end_key, count)
+    }
+
     <span class="doccomment">/// Get every final and active datastore key of the given address
     </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub fn </span>get_final_and_candidate_datastore_keys(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span>Address,
         prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
     ) -&gt; (<span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;, <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;) {
-        <span class="comment">// here, get the final keys from the final ledger, and make a copy of it for the candidate list
-        // let final_keys = final_state.read().ledger.get_datastore_keys(addr);
-        </span><span class="kw">let </span>final_keys = <span class="self">self
-            </span>.final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>candidate_keys = final_keys.clone();
-
-        <span class="comment">// compute prefix range
-        </span><span class="kw">let </span>prefix_range = get_prefix_bounds(prefix);
-        <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
-
-        <span class="comment">// traverse the history from oldest to newest, applying additions and deletions
-        </span><span class="kw">for </span>output <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.active_history.read().<span class="number">0 </span>{
-            <span class="kw">match </span>output.state_changes.ledger_changes.get(addr) {
-                <span class="comment">// address absent from the changes
-                </span><span class="prelude-val">None </span>=&gt; (),
-
-                <span class="comment">// address ledger entry being reset to an absolute new list of keys
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(new_ledger_entry)) =&gt; {
-                    candidate_keys = <span class="prelude-val">Some</span>(
-                        new_ledger_entry
-                            .datastore
-                            .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                <span class="comment">// address ledger entry being updated
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
-                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_with(Default::default);
-                    <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in
-                        </span>entry_updates.datastore.range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                    {
-                        <span class="kw">match </span>ds_update {
-                            SetOrDelete::Set(<span class="kw">_</span>) =&gt; c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete =&gt; c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                <span class="comment">// address ledger entry being deleted
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; {
-                    candidate_keys = <span class="prelude-val">None</span>;
-                }
-            }
-        }
-
-        (final_keys, candidate_keys)
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
+            <span class="prelude-val">None</span>,
+        )
     }
 
     <span class="kw">pub fn </span>get_address_cycle_infos(<span class="kw-2">&amp;</span><span class="self">self</span>, address: <span class="kw-2">&amp;</span>Address) -&gt; Vec&lt;ExecutionAddressCycleInfo&gt; {
