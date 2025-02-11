@@ -604,6 +604,11 @@ async fn launch(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
         )
         .0,
+        #[cfg(feature = "execution-info")]
+        slot_execution_info_sender: broadcast::channel(
+            // FIXME
+            execution_config.broadcast_slot_execution_traces_channel_capacity,
+        ).0,
     };
 
     cfg_if! {

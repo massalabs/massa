@@ -32,6 +32,7 @@ massa_module_cache = { workspace = true }
 massa_versioning = { workspace = true }
 massa-sc-runtime = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }
+schnellru = { workspace = true }
 
 [dev-dependencies]
 mockall = { workspace = true }

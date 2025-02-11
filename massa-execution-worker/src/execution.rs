@@ -53,11 +53,11 @@ use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
-use crate::execution_info::{
-    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
-};
-#[cfg(feature = "execution-info")]
-use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
+// use crate::execution_info::{
+//     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
+// };
+// #[cfg(feature = "execution-info")]
+// use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
@@ -76,6 +76,16 @@ use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
+
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::{
+    DeferredCallExecutionResult,
+    OperationInfo,
+    ExecutionInfoForSlot,
+    AsyncMessageExecutionResult,
+    DenunciationResult,
+    ExecutionInfo
+};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {

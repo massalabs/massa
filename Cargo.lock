@@ -3268,6 +3268,7 @@ dependencies = [
  "massa_versioning",
  "mockall",
  "num",
+ "schnellru",
  "serde",
  "tempfile",
  "thiserror 1.0.69",

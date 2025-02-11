@@ -75,6 +75,9 @@ pub mod test_exports;
 /// types for execution-trace / execution-info
 pub mod types_trace_info;
 
+/// types for execution-info
+pub mod execution_info;
+
 #[cfg(feature = "execution-trace")]
 pub use types_trace_info::{
     AbiTrace, SCRuntimeAbiTraceType, SCRuntimeAbiTraceValue, SlotAbiCallStack, Transfer,

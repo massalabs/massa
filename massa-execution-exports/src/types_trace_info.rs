@@ -148,3 +148,9 @@ impl AbiTrace {
         (t_from, t_to, t_amount)
     }
 }
+
+#[cfg(feature = "execution-trace")]
+/// ABI and execution succeed or not
+pub type ExecutionResult = (Vec<AbiTrace>, bool);
+#[cfg(not(feature = "execution-trace"))]
+pub type ExecutionResult = ();

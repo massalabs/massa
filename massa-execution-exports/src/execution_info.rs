@@ -2,46 +2,60 @@
 
 use std::collections::HashMap;
 
-use massa_deferred_calls::DeferredCall;
 use schnellru::{ByLength, LruMap};
-// use massa_execution_exports::Transfer;
 
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::slot::Slot;
+use massa_deferred_calls::DeferredCall;
 
-use crate::execution::ExecutionResult;
+use crate::types_trace_info::ExecutionResult;
 
+/// Struct for Execution info per slot
 pub struct ExecutionInfo {
     info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
 }
 
 impl ExecutionInfo {
-    pub(crate) fn new(max_slot_size_cache: u32) -> Self {
+    /// Create a new ExecutionInfo
+    pub fn new(max_slot_size_cache: u32) -> Self {
         Self {
             info_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
         }
     }
 
     /// Save transfer for a given slot
-    pub(crate) fn save_for_slot(&mut self, slot: Slot, info: ExecutionInfoForSlot) {
+    pub fn save_for_slot(&mut self, slot: Slot, info: ExecutionInfoForSlot) {
         self.info_per_slot.insert(slot, info);
     }
 }
 
+/// Struct to store Roll related operation
+#[derive(Debug, Clone)]
 pub enum OperationInfo {
+    /// Roll buy amount
     RollBuy(u64),
+    /// Roll sell amount
     RollSell(u64),
 }
 
+/// Struct for execution info
+#[derive(Debug, Clone)]
 pub struct ExecutionInfoForSlot {
-    pub(crate) block_producer_reward: Option<(Address, Amount)>,
-    pub(crate) endorsement_creator_rewards: HashMap<Address, Amount>,
-    pub(crate) endorsement_target_reward: Option<(Address, Amount)>,
-    pub(crate) denunciations: Vec<Result<DenunciationResult, String>>,
-    pub(crate) operations: Vec<OperationInfo>,
-    pub(crate) async_messages: Vec<Result<AsyncMessageExecutionResult, String>>,
-    pub(crate) deferred_calls_messages: Vec<Result<DeferredCallExecutionResult, String>>,
+    /// Reward for block producer
+    pub block_producer_reward: Option<(Address, Amount)>,
+    /// Rewards for endorsmement creators
+    pub endorsement_creator_rewards: HashMap<Address, Amount>,
+    /// Reward for endorsement target
+    pub endorsement_target_reward: Option<(Address, Amount)>,
+    /// Executed denunciation
+    pub denunciations: Vec<Result<DenunciationResult, String>>,
+    /// Executed Roll buy / sell
+    pub operations: Vec<OperationInfo>,
+    /// Executed Async message
+    pub async_messages: Vec<Result<AsyncMessageExecutionResult, String>>,
+    /// Executed Deferred calls
+    pub deferred_calls_messages: Vec<Result<DeferredCallExecutionResult, String>>,
     /// Deferred credits execution (empty if execution-info feature is NOT enabled)
     pub deferred_credits_execution: Vec<(Address, Result<Amount, String>)>,
     /// Cancel async message execution (empty if execution-info feature is NOT enabled)
@@ -51,6 +65,7 @@ pub struct ExecutionInfoForSlot {
 }
 
 impl ExecutionInfoForSlot {
+    /// Create a new ExecutionInfoForSlot structure
     pub fn new() -> Self {
         Self {
             block_producer_reward: None,
@@ -68,7 +83,7 @@ impl ExecutionInfoForSlot {
 }
 
 /// structure describing the output of a denunciation execution
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DenunciationResult {
     /// Target address of the denunciation
     pub address_denounced: Address,
@@ -78,15 +93,23 @@ pub struct DenunciationResult {
     pub slashed: Amount,
 }
 
+/// An async message execution result
+#[derive(Debug, Clone)]
 pub struct AsyncMessageExecutionResult {
-    pub(crate) success: bool,
-    pub(crate) sender: Option<Address>,
-    pub(crate) destination: Option<Address>,
-    pub(crate) coins: Option<Amount>,
-    pub(crate) traces: Option<ExecutionResult>,
+    /// Execution success or not
+    pub success: bool,
+    /// Sender address
+    pub sender: Option<Address>,
+    /// Destination address
+    pub destination: Option<Address>,
+    /// Amount
+    pub coins: Option<Amount>,
+    /// Traces
+    pub traces: Option<ExecutionResult>,
 }
 
 impl AsyncMessageExecutionResult {
+    /// Create a new AsyncMessageExecutionResult structure
     pub fn new() -> Self {
         Self {
             success: false,
@@ -98,16 +121,21 @@ impl AsyncMessageExecutionResult {
     }
 }
 
+/// Deferred call execution result
+#[derive(Debug, Clone)]
 pub struct DeferredCallExecutionResult {
-    pub(crate) success: bool,
+    /// Execution success or not
+    pub success: bool,
     pub(crate) sender: Address,
     pub(crate) target_address: Address,
     pub(crate) target_function: String,
     pub(crate) coins: Amount,
-    pub(crate) traces: Option<ExecutionResult>,
+    /// traces
+    pub traces: Option<ExecutionResult>,
 }
 
 impl DeferredCallExecutionResult {
+    /// Create a new DeferredCallExecutionResult structure
     pub fn new(call: &DeferredCall) -> Self {
         Self {
             success: false,
