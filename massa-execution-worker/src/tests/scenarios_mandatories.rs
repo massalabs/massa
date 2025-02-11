@@ -662,8 +662,7 @@ fn test_nested_call_recursion_limit_reached_10() {
     // println!("events[1].data: {:?}", events[1].data);
     // we match the whole error message (but the operation id)
     // to make sure both the message and its length are correct
-    let regex_str =
-        r#"^\{"massa_execution_error":"Runtime error: runtime error when executing operation O[0-9A-Za-z]*: VM Error in CallSC context: Depth error: recursion depth limit reached"\}$"#;
+    let regex_str = r#"^\{"massa_execution_error":"Runtime error: runtime error when executing operation O[0-9A-Za-z]*: VM Error in CallSC context: Depth error: recursion depth limit reached"\}$"#;
     let regex = Regex::new(regex_str).unwrap();
     let data = &events[1].data;
     // println!("regx: {:?}", regex_str);
