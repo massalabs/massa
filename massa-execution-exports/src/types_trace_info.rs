@@ -153,4 +153,5 @@ impl AbiTrace {
 /// ABI and execution succeed or not
 pub type ExecutionResult = (Vec<AbiTrace>, bool);
 #[cfg(not(feature = "execution-trace"))]
+/// ABI and execution succeed or not
 pub type ExecutionResult = ();

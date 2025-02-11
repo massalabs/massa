@@ -79,12 +79,14 @@ use prost::Message;
 
 #[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::{
-    DeferredCallExecutionResult,
     OperationInfo,
     ExecutionInfoForSlot,
-    AsyncMessageExecutionResult,
-    DenunciationResult,
     ExecutionInfo
+};
+use massa_execution_exports::execution_info::{
+    DenunciationResult,
+    AsyncMessageExecutionResult,
+    DeferredCallExecutionResult,
 };
 
 /// Used to acquire a lock on the execution context
