@@ -120,6 +120,8 @@
         client_private_key_path = "../massa-client/config/tls_public_client.key"
         # max datastore keys query
         max_datastore_keys_query = 500
+        # check interval for unidirectional stream
+        unidirectional_stream_interval_check = 10
     [grpc.private]
         # whether to enable gRPC
         enabled = true

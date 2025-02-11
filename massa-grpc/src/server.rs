@@ -233,6 +233,20 @@ where
         }
     }
 
+    let reflection_service_opt_alpha = if config.enable_reflection {
+        let file_descriptor_set = match config.name {
+            ServiceName::Public => FILE_DESCRIPTOR_SET_PUBLIC,
+            ServiceName::Private => FILE_DESCRIPTOR_SET_PRIVATE,
+        };
+        let reflection_service = tonic_reflection::server::Builder::configure()
+            .register_encoded_file_descriptor_set(file_descriptor_set)
+            .build_v1alpha()?;
+
+        Some(reflection_service)
+    } else {
+        None
+    };
+
     let reflection_service_opt = if config.enable_reflection {
         let file_descriptor_set = match config.name {
             ServiceName::Public => FILE_DESCRIPTOR_SET_PUBLIC,
@@ -240,7 +254,6 @@ where
         };
         let reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(file_descriptor_set)
-            //.build()?;
             .build_v1()?;
 
         Some(reflection_service)
@@ -274,6 +287,7 @@ where
                 .layer(cors)
                 .layer(GrpcWebLayer::new())
                 .add_optional_service(reflection_service_opt)
+                .add_optional_service(reflection_service_opt_alpha)
                 .add_optional_service(health_service_opt)
                 .add_service(service);
 
@@ -285,6 +299,7 @@ where
                 .accept_http1(true)
                 .layer(GrpcWebLayer::new())
                 .add_optional_service(reflection_service_opt)
+                .add_optional_service(reflection_service_opt_alpha)
                 .add_optional_service(health_service_opt)
                 .add_service(service);
 
@@ -295,6 +310,7 @@ where
     } else {
         let router = server_builder
             .add_optional_service(reflection_service_opt)
+            .add_optional_service(reflection_service_opt_alpha)
             .add_optional_service(health_service_opt)
             .add_service(service);
 
