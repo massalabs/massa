@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AddressFilter","AddressInfo","CompactAddressInfo","GetAddressDatastoreKeysRequest","GetAddressDatastoreKeysResponse"]};
+window.SIDEBAR_ITEMS = {"struct":["AddressFilter","AddressInfo","CompactAddressInfo"]};

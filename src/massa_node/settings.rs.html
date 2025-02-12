@@ -401,15 +401,6 @@
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
 <a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -439,6 +430,7 @@
     <span class="kw">pub </span>stats_time_window_duration: MassaTime,
     <span class="kw">pub </span>max_read_only_gas: u64,
     <span class="kw">pub </span>abi_gas_costs_file: PathBuf,
+    <span class="kw">pub </span>wasm_gas_costs_file: PathBuf,
     <span class="kw">pub </span>hd_cache_path: PathBuf,
     <span class="kw">pub </span>lru_cache_size: u32,
     <span class="kw">pub </span>hd_cache_size: usize,
@@ -448,10 +440,6 @@
     <span class="doccomment">/// slot execution traces channel capacity
     </span><span class="kw">pub </span>broadcast_slot_execution_traces_channel_capacity: usize,
     <span class="kw">pub </span>execution_traces_limit: usize,
-    <span class="kw">pub </span>event_cache_path: PathBuf,
-    <span class="kw">pub </span>event_cache_size: usize,
-    <span class="kw">pub </span>event_snip_amount: usize,
-    <span class="kw">pub </span>max_event_per_query: usize,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
@@ -545,8 +533,6 @@
     <span class="comment">// whether to broadcast for blocks, endorsement and operations
     </span><span class="kw">pub </span>enable_broadcast: bool,
     <span class="kw">pub </span>deferred_credits_delta: MassaTime,
-    <span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="kw">pub </span>max_addresses_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
@@ -787,10 +773,6 @@
     </span><span class="kw">pub </span>client_certificate_path: PathBuf,
     <span class="doccomment">/// client private key path
     </span><span class="kw">pub </span>client_private_key_path: PathBuf,
-    <span class="doccomment">/// Max keys returned by a datastore key query
-    </span><span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="doccomment">/// interval for check the connection stream
-    </span><span class="kw">pub </span>unidirectional_stream_interval_check: u64,
 }
 
 <span class="doccomment">/// gRPC API settings.

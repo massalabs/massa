@@ -205,21 +205,80 @@
 <a href="#205" id="205">205</a>
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
+</span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
+<span class="kw">use </span><span class="kw">crate</span>::error::{match_for_io_error, GrpcError};
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
-<span class="kw">use </span><span class="kw">crate</span>::stream::trait_filters_impl::FilterGrpc;
+<span class="kw">use </span><span class="kw">crate</span>::SlotRange;
 <span class="kw">use </span>futures_util::StreamExt;
+<span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>massa_models::block_header::BlockHeader;
+<span class="kw">use </span>massa_models::block_id::BlockId;
+<span class="kw">use </span>massa_models::secure_share::SecureShare;
+<span class="kw">use </span>massa_models::slot::Slot;
 <span class="kw">use </span>massa_proto_rs::massa::api::v1 <span class="kw">as </span>grpc_api;
+<span class="kw">use </span>std::collections::HashSet;
 <span class="kw">use </span>std::io::ErrorKind;
 <span class="kw">use </span>std::pin::Pin;
-<span class="kw">use </span>std::time::Duration;
-<span class="kw">use </span>tokio::{select, time};
+<span class="kw">use </span>std::str::FromStr;
+<span class="kw">use </span>tokio::select;
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::{error, warn};
-
-<span class="kw">use </span><span class="kw">super</span>::trait_filters_impl::FilterNewFilledBlocks;
 
 <span class="doccomment">/// Type declaration for NewFilledBlocks
 </span><span class="kw">pub type </span>NewFilledBlocksStreamType = Pin&lt;
@@ -230,15 +289,16 @@
     &gt;,
 &gt;;
 
-<span class="doccomment">/// Type declaration for NewFilledBlocksServerStream
-</span><span class="kw">pub type </span>NewFilledBlocksServerStreamType = Pin&lt;
-    Box&lt;
-        <span class="kw">dyn </span>futures_util::Stream&lt;
-                Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewFilledBlocksServerResponse, tonic::Status&gt;,
-            &gt; + Send
-            + <span class="lifetime">'static</span>,
-    &gt;,
-&gt;;
+<span class="comment">// Type declaration for NewFilledBlocksFilter
+</span><span class="attr">#[derive(Clone, Debug)]
+</span><span class="kw">struct </span>Filter {
+    <span class="comment">// Block ids to filter
+    </span>block_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;BlockId&gt;&gt;,
+    <span class="comment">// Addresses to filter
+    </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
+    <span class="comment">// Slot range to filter
+    </span>slot_ranges: <span class="prelude-ty">Option</span>&lt;HashSet&lt;SlotRange&gt;&gt;,
+}
 
 <span class="doccomment">/// Creates a new stream of new produced and received filled blocks
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_filled_blocks(
@@ -256,18 +316,17 @@
 
     tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
-            <span class="kw">let </span><span class="kw-2">mut </span>filters =
-                <span class="kw">match </span>FilterNewFilledBlocks::build_from_request(request.filters, <span class="kw-2">&amp;</span>grpc_config) {
-                    <span class="prelude-val">Ok</span>(filter) =&gt; filter,
-                    <span class="prelude-val">Err</span>(err) =&gt; {
-                        <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
-                        <span class="comment">// Send the error response back to the client
-                        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
-                            <span class="macro">error!</span>(<span class="string">"failed to send back NewFilledBlocks error response: {}"</span>, e);
-                        }
-                        <span class="kw">return</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, <span class="kw-2">&amp;</span>grpc_config) {
+                <span class="prelude-val">Ok</span>(filter) =&gt; filter,
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
+                    <span class="comment">// Send the error response back to the client
+                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
+                        <span class="macro">error!</span>(<span class="string">"failed to send back NewFilledBlocks error response: {}"</span>, e);
                     }
-                };
+                    <span class="kw">return</span>;
+                }
+            };
 
             <span class="kw">loop </span>{
                 <span class="macro">select!</span> {
@@ -276,15 +335,16 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_filled_block) =&gt; {
                                 <span class="comment">// Check if the block should be sent
-                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(data) = filters.filter_output(massa_filled_block, <span class="kw-2">&amp;</span>grpc_config) {
-                                    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewFilledBlocksResponse {
-                                        filled_block: <span class="prelude-val">Some</span>(data.into())
-                                    })).<span class="kw">await </span>{
-                                        <span class="macro">error!</span>(<span class="string">"failed to send new filled block : {}"</span>, e);
-                                        <span class="kw">break</span>;
-                                    }
+                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_filled_block.header, <span class="kw-2">&amp;</span>filters, <span class="kw-2">&amp;</span>grpc_config) {
+                                    <span class="kw">continue</span>;
                                 }
-
+                                <span class="comment">// Send the new filled block through the channel
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewFilledBlocksResponse {
+                                        filled_block: <span class="prelude-val">Some</span>(massa_filled_block.into())
+                                })).<span class="kw">await </span>{
+                                    <span class="macro">error!</span>(<span class="string">"failed to send new filled block : {}"</span>, e);
+                                    <span class="kw">break</span>;
+                                }
                             },
                             <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"error on receive new filled block : {}"</span>, e)
                         }
@@ -296,7 +356,7 @@
                             <span class="kw">match </span>res {
                                 <span class="prelude-val">Ok</span>(message) =&gt; {
                                     <span class="comment">// Update current filter
-                                    </span>filters = <span class="kw">match </span>FilterNewFilledBlocks::build_from_request(message.filters, <span class="kw-2">&amp;</span>grpc_config) {
+                                    </span>filters = <span class="kw">match </span>get_filter(message, <span class="kw-2">&amp;</span>grpc_config) {
                                         <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                                         <span class="prelude-val">Err</span>(err) =&gt; {
                                             <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
@@ -342,74 +402,122 @@
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewFilledBlocksStreamType)
 }
 
-<span class="doccomment">/// Creates a new unidirectional stream of new produced and received filled blocks
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_filled_blocks_server(
-    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
-    request: Request&lt;grpc_api::NewFilledBlocksServerRequest&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;NewFilledBlocksServerStreamType, GrpcError&gt; {
-    <span class="comment">// Create a channel to handle communication with the client
-    </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
-    <span class="comment">// Get the inner the request
-    </span><span class="kw">let </span>request = request.into_inner();
-    <span class="comment">// Subscribe to the new filled blocks channel
-    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.consensus_broadcasts.filled_block_sender.subscribe();
-    <span class="comment">// Clone grpc to be able to use it in the spawned task
-    </span><span class="kw">let </span>grpc_config = grpc.grpc_config.clone();
+<span class="comment">// This function returns a filter from the request
+</span><span class="kw">fn </span>get_filter(
+    request: grpc_api::NewFilledBlocksRequest,
+    grpc_config: <span class="kw-2">&amp;</span>GrpcConfig,
+) -&gt; <span class="prelude-ty">Result</span>&lt;Filter, GrpcError&gt; {
+    <span class="kw">if </span>request.filters.len() <span class="kw">as </span>u32 &gt; grpc_config.max_filters_per_request {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+            <span class="string">"too many filters received. Only a maximum of {} filters are accepted per request"</span>,
+            grpc_config.max_filters_per_request
+        )));
+    }
 
-    tokio::spawn(<span class="kw">async move </span>{
-        <span class="kw">let </span>filter = <span class="kw">match </span>FilterNewFilledBlocks::build_from_request(request.filters, <span class="kw-2">&amp;</span>grpc_config)
-        {
-            <span class="prelude-val">Ok</span>(filter) =&gt; filter,
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
-                <span class="comment">// Send the error response back to the client
-                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
-                    <span class="macro">error!</span>(<span class="string">"failed to send back NewBlocks error response: {}"</span>, e);
+    <span class="kw">let </span><span class="kw-2">mut </span>block_ids_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;BlockId&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>addresses_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>slot_ranges_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;SlotRange&gt;&gt; = <span class="prelude-val">None</span>;
+
+    <span class="comment">// Get params filter from the request.
+    </span><span class="kw">for </span>query <span class="kw">in </span>request.filters.into_iter() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
+            <span class="kw">match </span>filter {
+                grpc_api::new_blocks_filter::Filter::BlockIds(ids) =&gt; {
+                    <span class="kw">if </span>ids.block_ids.len() <span class="kw">as </span>u32 &gt; grpc_config.max_block_ids_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">"too many block ids received. Only a maximum of {} block ids are accepted per request"</span>,
+                            grpc_config.max_block_ids_per_request
+                        )));
+                    }
+                    <span class="kw">let </span>block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
+                    <span class="kw">for </span>block_id <span class="kw">in </span>ids.block_ids {
+                        block_ids.insert(BlockId::from_str(<span class="kw-2">&amp;</span>block_id).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid block id: {}"</span>, block_id))
+                        })<span class="question-mark">?</span>);
+                    }
                 }
-                <span class="kw">return</span>;
-            }
-        };
-
-        <span class="comment">// Create a timer that ticks every 10 seconds to check if the client is still connected
-        </span><span class="kw">let </span><span class="kw-2">mut </span>interval = time::interval(Duration::from_secs(
-            grpc_config.unidirectional_stream_interval_check,
-        ));
-
-        <span class="comment">// Continuously loop until the stream ends or an error occurs
-        </span><span class="kw">loop </span>{
-            <span class="macro">select!</span> {
-                <span class="comment">// Receive a new filled block from the subscriber
-                </span>event = subscriber.recv() =&gt; {
-                    <span class="kw">match </span>event {
-                       <span class="prelude-val">Ok</span>(massa_filled_block) =&gt; {
-                           <span class="comment">// Check if the block should be sent
-                           </span><span class="kw">if let </span><span class="prelude-val">Some</span>(data) = filter.filter_output(massa_filled_block, <span class="kw-2">&amp;</span>grpc_config) {
-                               <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
-                                   .send(<span class="prelude-val">Ok</span>(grpc_api::NewFilledBlocksServerResponse {
-                                       filled_block: <span class="prelude-val">Some</span>(data.into()),
-                                   }))
-                                   .<span class="kw">await
-                               </span>{
-                                   <span class="macro">error!</span>(<span class="string">"failed to send new filled block : {}"</span>, e);
-                                   <span class="kw">break</span>;
-                               }
-                           }
-                       }
-                       <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"error on receive new filled block : {}"</span>, e),
+                grpc_api::new_blocks_filter::Filter::Addresses(addrs) =&gt; {
+                    <span class="kw">if </span>addrs.addresses.len() <span class="kw">as </span>u32 &gt; grpc_config.max_addresses_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">"too many addresses received. Only a maximum of {} addresses are accepted per request"</span>,
+                         grpc_config.max_addresses_per_request
+                        )));
                     }
-                },
-                <span class="comment">// Execute the code block whenever the timer ticks
-                </span><span class="kw">_ </span>= interval.tick() =&gt; {
-                    <span class="kw">if </span>tx.is_closed() {
-                        <span class="comment">// Client disconnected
-                        </span><span class="kw">break</span>;
+
+                    <span class="kw">let </span>addresses = addresses_filter.get_or_insert_with(HashSet::new);
+                    <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
+                        addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
+                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid address: {}"</span>, address))
+                        })<span class="question-mark">?</span>);
                     }
+                }
+                grpc_api::new_blocks_filter::Filter::SlotRange(s_range) =&gt; {
+                    <span class="kw">let </span>slot_ranges = slot_ranges_filter.get_or_insert_with(HashSet::new);
+                    <span class="kw">if </span>slot_ranges.len() <span class="kw">as </span>u32 &gt; grpc_config.max_slot_ranges_per_request {
+                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
+                            <span class="string">"too many slot ranges received. Only a maximum of {} slot ranges are accepted per request"</span>,
+                         grpc_config.max_slot_ranges_per_request
+                        )));
+                    }
+
+                    <span class="kw">let </span>start_slot = s_range.start_slot.map(|s| s.into());
+                    <span class="kw">let </span>end_slot = s_range.end_slot.map(|s| s.into());
+
+                    <span class="kw">let </span>slot_range = SlotRange {
+                        start_slot,
+                        end_slot,
+                    };
+                    slot_range.check()<span class="question-mark">?</span>;
+                    slot_ranges.insert(slot_range);
                 }
             }
         }
-    });
+    }
 
-    <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewFilledBlocksServerStreamType)
+    <span class="prelude-val">Ok</span>(Filter {
+        block_ids: block_ids_filter,
+        addresses: addresses_filter,
+        slot_ranges: slot_ranges_filter,
+    })
 }
+
+<span class="comment">// This function checks if the block should be sent
+</span><span class="kw">fn </span>should_send(
+    signed_block_header: <span class="kw-2">&amp;</span>SecureShare&lt;BlockHeader, BlockId&gt;,
+    filters: <span class="kw-2">&amp;</span>Filter,
+    grpc_config: <span class="kw-2">&amp;</span>GrpcConfig,
+) -&gt; bool {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(block_ids) = <span class="kw-2">&amp;</span>filters.block_ids {
+        <span class="kw">if </span>!block_ids.contains(<span class="kw-2">&amp;</span>signed_block_header.id) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>filters.addresses {
+        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_block_header.content_creator_address) {
+            <span class="kw">return </span><span class="bool-val">false</span>;
+        }
+    }
+
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(slot_ranges) = <span class="kw-2">&amp;</span>filters.slot_ranges {
+        <span class="kw">let </span><span class="kw-2">mut </span>start_slot = Slot::new(<span class="number">0</span>, <span class="number">0</span>); <span class="comment">// inclusive
+        </span><span class="kw">let </span><span class="kw-2">mut </span>end_slot = Slot::new(u64::MAX, grpc_config.thread_count - <span class="number">1</span>); <span class="comment">// exclusive
+
+        </span><span class="kw">for </span>slot_range <span class="kw">in </span>slot_ranges {
+            start_slot = start_slot.max(slot_range.start_slot.unwrap_or_else(|| Slot::new(<span class="number">0</span>, <span class="number">0</span>)));
+            end_slot = end_slot.min(
+                slot_range
+                    .end_slot
+                    .unwrap_or_else(|| Slot::new(u64::MAX, grpc_config.thread_count - <span class="number">1</span>)),
+            );
+        }
+        end_slot = end_slot.max(start_slot);
+        <span class="kw">let </span>current_slot = signed_block_header.content.slot;
+
+        <span class="kw">return </span>current_slot &gt;= start_slot <span class="comment">// inclusive
+            </span>&amp;&amp; current_slot &lt; end_slot; <span class="comment">// exclusive
+    </span>}
+
+    <span class="bool-val">true
+</span>}
 </code></pre></div></section></main></body></html>
