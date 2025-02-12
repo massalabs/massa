@@ -183,25 +183,6 @@
 <a href="#183" id="183">183</a>
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This file defines the final ledger associating addresses to their balances, bytecode and data.
@@ -217,11 +198,8 @@
     bytecode::{Bytecode, BytecodeDeserializer},
 };
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer};
+<span class="kw">use </span>std::collections::{BTreeSet, HashMap};
 <span class="kw">use </span>std::ops::Bound::Included;
-<span class="kw">use </span>std::{
-    collections::{BTreeSet, HashMap},
-    ops::Bound,
-};
 
 <span class="doccomment">/// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -345,16 +323,8 @@
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    </span><span class="kw">fn </span>get_datastore_keys(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        addr: <span class="kw-2">&amp;</span>Address,
-        prefix: <span class="kw-2">&amp;</span>[u8],
-        start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
-        end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
-        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="self">self</span>.sorted_ledger
-            .get_datastore_keys(addr, prefix, start_key, end_key, count)
+    </span><span class="kw">fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="self">self</span>.sorted_ledger.get_datastore_keys(addr, prefix)
     }
 
     <span class="doccomment">/// Reset the disk ledger.
@@ -365,17 +335,9 @@
     }
 
     <span class="doccomment">/// Allows applying `LedgerChanges` to the final ledger
-    </span><span class="kw">fn </span>apply_changes_to_batch(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        changes: LedgerChanges,
-        ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch,
-        final_state_component_version: u32,
-    ) {
-        <span class="self">self</span>.sorted_ledger.apply_changes_to_batch(
-            changes,
-            ledger_batch,
-            final_state_component_version,
-        );
+    </span><span class="kw">fn </span>apply_changes_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch) {
+        <span class="self">self</span>.sorted_ledger
+            .apply_changes_to_batch(changes, ledger_batch);
     }
 
     <span class="doccomment">/// Deserializes the key and value, useful after bootstrap

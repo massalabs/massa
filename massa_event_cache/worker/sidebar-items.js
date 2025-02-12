@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["start_event_cache_writer_worker"],"struct":["EventCacheWriterManagerImpl","EventCacheWriterThread"],"trait":["EventCacheManager"]};
