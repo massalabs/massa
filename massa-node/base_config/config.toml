@@ -195,6 +195,8 @@
         client_certificate_path = "../massa-client/config/tls_private_client.pem"
         # client private key path
         client_private_key_path = "../massa-client/config/tls_private_client.key"
+        # check interval for unidirectional stream
+        unidirectional_stream_interval_check = 10
 
 [execution]
     # max number of generated events kept in RAM
