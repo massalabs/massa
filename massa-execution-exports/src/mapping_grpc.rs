@@ -9,6 +9,7 @@ use crate::{
 };
 use grpc_api::execution_query_request_item as exec;
 use massa_models::address::Address;
+use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::error::ModelsError;
 use massa_models::execution::EventFilter;
@@ -22,6 +23,8 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 pub fn to_querystate_filter(
     query: grpc_api::ExecutionQueryRequestItem,
     network_version: u32,
+    max_datastore_query_config: Option<u32>,
+    max_datastore_key_length: u8,
 ) -> Result<ExecutionQueryRequestItem, ModelsError> {
     if let Some(item) = query.request_item {
         match item {
@@ -50,15 +53,65 @@ pub fn to_querystate_filter(
                 ExecutionQueryRequestItem::AddressBytecodeFinal(Address::from_str(&value.address)?),
             ),
             exec::RequestItem::AddressDatastoreKeysCandidate(value) => {
+                let address = Address::from_str(&value.address)?;
+
+                let start_key = match (value.start_key, value.inclusive_start_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+                let end_key = match (value.end_key, value.inclusive_end_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+
+                let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                    &value.prefix,
+                    start_key,
+                    end_key,
+                    value.limit,
+                    max_datastore_key_length,
+                    max_datastore_query_config,
+                )?;
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
-                    addr: Address::from_str(&value.address)?,
-                    prefix: value.prefix,
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count: value.limit,
                 })
             }
             exec::RequestItem::AddressDatastoreKeysFinal(value) => {
+                let address = Address::from_str(&value.address)?;
+
+                let start_key = match (value.start_key, value.inclusive_start_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+                let end_key = match (value.end_key, value.inclusive_end_key.unwrap_or(true)) {
+                    (None, _) => std::ops::Bound::Unbounded,
+                    (Some(k), true) => std::ops::Bound::Included(k),
+                    (Some(k), false) => std::ops::Bound::Excluded(k),
+                };
+
+                let (prefix, start_key, end_key) = cleanup_datastore_key_range_query(
+                    &value.prefix,
+                    start_key,
+                    end_key,
+                    value.limit,
+                    max_datastore_key_length,
+                    max_datastore_query_config,
+                )?;
+
                 Ok(ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
-                    addr: Address::from_str(&value.address)?,
-                    prefix: value.prefix,
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count: value.limit,
                 })
             }
             exec::RequestItem::AddressDatastoreValueCandidate(value) => {
@@ -262,7 +315,7 @@ fn to_execution_query_result(
         ExecutionQueryResponseItem::DatastoreValue(result) => {
             grpc_api::execution_query_response_item::ResponseItem::Bytes(result)
         }
-        ExecutionQueryResponseItem::KeyList(result) => {
+        ExecutionQueryResponseItem::AddressDatastoreKeys(result, _address, _is_final) => {
             grpc_api::execution_query_response_item::ResponseItem::VecBytes(
                 grpc_model::ArrayOfBytesWrapper {
                     items: result.into_iter().collect(),

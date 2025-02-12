@@ -9,7 +9,7 @@ use massa_db_exports::{
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
-use massa_models::datastore::get_prefix_bounds;
+use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
@@ -178,7 +178,14 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+    pub fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
 
         // check if address exists, return None if it does not
@@ -191,30 +198,67 @@ impl LedgerDB {
             db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
-        // collect keys starting with prefix
-        let start_prefix = datastore_prefix_from_address(addr, prefix);
-        let end_prefix = end_prefix(&start_prefix);
-        Some(
-            db.iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| match &end_prefix {
-                Some(end) => key < end,
-                None => true,
-            })
-            .filter_map(|(key, _)| {
-                let (_rest, key) = self
-                    .key_deserializer_db
-                    .deserialize::<DeserializeError>(&key)
-                    .expect("could not deserialize datastore key from state db");
-                match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => Some(datastore_vec),
-                    _ => None,
+        // deduce datastore key iteration range
+        let Some((start_bound, end_bound)) =
+            range_intersection(get_prefix_bounds(prefix), (start_key, end_key))
+        else {
+            // empty range: no keys
+            return Some(Default::default());
+        };
+        // translate the range bounds in terms of database keys
+        let start_key = match start_bound {
+            std::ops::Bound::Unbounded => datastore_prefix_from_address(addr, &[]),
+            std::ops::Bound::Included(k) => datastore_prefix_from_address(addr, &k),
+            std::ops::Bound::Excluded(k) => {
+                let mut v = datastore_prefix_from_address(addr, &k);
+                v.push(0); // get the next key, lexicographically speaking
+                v
+            }
+        };
+        let end_bound = match end_bound {
+            std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+            std::ops::Bound::Excluded(k) => {
+                std::ops::Bound::Excluded(datastore_prefix_from_address(addr, &k))
+            }
+            std::ops::Bound::Included(k) => {
+                std::ops::Bound::Included(datastore_prefix_from_address(addr, &k))
+            }
+        };
+
+        // collect the keys
+        let mut res = BTreeSet::new();
+        for (key, _) in db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&start_key, MassaDirection::Forward),
+        ) {
+            // check count
+            if let Some(cnt) = count.as_ref() {
+                if res.len() >= *cnt as usize {
+                    break;
                 }
-            })
-            .collect(),
-        )
+            }
+
+            // check range
+            let do_continue = match &end_bound {
+                std::ops::Bound::Unbounded => true,
+                std::ops::Bound::Included(ub) => &key <= ub,
+                std::ops::Bound::Excluded(ub) => &key < ub,
+            };
+            if !do_continue {
+                break;
+            }
+
+            // deserialize key and check type
+            let (_rest, key) = self
+                .key_deserializer_db
+                .deserialize::<DeserializeError>(&key)
+                .expect("could not deserialize datastore key from state db");
+            if let KeyType::DATASTORE(key) = key.key_type {
+                res.insert(key);
+            }
+        }
+
+        Some(res)
     }
 
     pub fn reset(&self) {
@@ -640,8 +684,17 @@ mod tests {
         // init data
 
         let mut data = BTreeMap::new();
+        data.insert(b"1".to_vec(), b"a".to_vec());
+        data.insert(b"11".to_vec(), b"a".to_vec());
+        data.insert(b"111".to_vec(), b"a".to_vec());
+        data.insert(b"12".to_vec(), b"a".to_vec());
+        data.insert(b"13".to_vec(), b"a".to_vec());
+
         data.insert(b"2".to_vec(), b"b".to_vec());
+        data.insert(b"21".to_vec(), b"a".to_vec());
+
         data.insert(b"3".to_vec(), b"c".to_vec());
+        data.insert(b"34".to_vec(), b"c".to_vec());
 
         let entry = LedgerEntry {
             balance: Amount::from_str("42").unwrap(),
@@ -795,5 +848,74 @@ mod tests {
         // println!("datastore: {:?}", datastore);
         assert_eq!(datastore.len(), 1);
         assert!(datastore.contains_key(&datastore_key));
+    }
+
+    #[test]
+    fn get_datastore_keys() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        let (ledger_db, batch, _d) = setup_test_ledger(addr);
+
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
+
+        let keys = ledger_db
+            .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, None)
+            .unwrap();
+
+        assert_eq!(keys.len(), 9);
+
+        let keys = ledger_db
+            .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, Some(4))
+            .unwrap();
+
+        assert_eq!(keys.len(), 4);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Unbounded,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"3".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"34".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Excluded(b"3".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Excluded(b"1".to_vec()),
+                Bound::Included(b"12".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"11".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"111".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"12".to_vec());
+        assert_eq!(keys.pop_first(), None);
     }
 }

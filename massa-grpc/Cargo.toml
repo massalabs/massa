@@ -1,6 +1,6 @@
 [package]
 name = "massa_grpc"
-version = "2.5.0"
+version = "2.6.0"
 edition = "2021"
 description = "GRPC API for Massa Blockchain"
 repository = "https://github.com/massalabs/massa/"
@@ -54,5 +54,6 @@ massa_sdk = { workspace = true }
 massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
 massa_protocol_exports = { workspace = true, "features" = ["test-exports"] }
 massa_final_state = { workspace = true }
+massa_ledger_exports = { workspace = true }
 tokio = { workspace = true, "features" = ["test-util", "time"] }
-num = {workspace = true}
+num = { workspace = true }

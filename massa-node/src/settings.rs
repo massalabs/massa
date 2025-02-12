@@ -133,6 +133,8 @@ pub struct APISettings {
     // whether to broadcast for blocks, endorsement and operations
     pub enable_broadcast: bool,
     pub deferred_credits_delta: MassaTime,
+    pub max_datastore_keys_query: Option<u32>,
+    pub max_addresses_datastore_keys_query: Option<u32>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -373,6 +375,10 @@ pub struct GrpcSettings {
     pub client_certificate_path: PathBuf,
     /// client private key path
     pub client_private_key_path: PathBuf,
+    /// Max keys returned by a datastore key query
+    pub max_datastore_keys_query: Option<u32>,
+    /// interval for check the connection stream
+    pub unidirectional_stream_interval_check: u64,
 }
 
 /// gRPC API settings.
