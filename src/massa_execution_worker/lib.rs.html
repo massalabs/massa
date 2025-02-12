@@ -127,7 +127,7 @@
 //! of operations that can contain executable bytecode and managing interactions with the ledger.
 //! When the worker is launched, a `ExecutionManager` and a `ExecutionController` are returned.
 //! `ExecutionManager` allows stopping the worker,
-//! and `ExecutionController` is the clonable structure through which users interact with the worker.
+//! and `ExecutionController` is the cloneable structure through which users interact with the worker.
 //!
 //! The worker is fed through the `ExecutionController` with information about blockclique changes and newly finalized blocks
 //! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.
@@ -137,6 +137,8 @@
 //! and must be the only module with runtime write access to the final ledger.
 //!
 //! # A note on finality
+//!
+//!
 //!
 //! The operations contained in a final slot are ready to be executed as final
 //! only once all the previous slots are final and their operations are executed as final or ready to be so.
@@ -194,10 +196,6 @@
 //!
 //! ## `stats.rs`
 //! Defines a structure that gathers execution statistics.
-//!
-//! ## execution-info
-//!
-//! See documentation in execution_info.rs file.
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -205,11 +203,13 @@
 </span><span class="kw">mod </span>active_history;
 <span class="kw">mod </span>context;
 <span class="kw">mod </span>controller;
+<span class="kw">mod </span>datastore_scan;
 <span class="kw">mod </span>execution;
 <span class="kw">mod </span>interface_impl;
 <span class="kw">mod </span>request_queue;
 <span class="kw">mod </span>slot_sequencer;
 <span class="kw">mod </span>speculative_async_pool;
+<span class="kw">mod </span>speculative_deferred_calls;
 <span class="kw">mod </span>speculative_executed_denunciations;
 <span class="kw">mod </span>speculative_executed_ops;
 <span class="kw">mod </span>speculative_ledger;

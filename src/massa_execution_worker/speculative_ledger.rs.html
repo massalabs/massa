@@ -659,13 +659,6 @@
 <a href="#659" id="659">659</a>
 <a href="#660" id="660">660</a>
 <a href="#661" id="661">661</a>
-<a href="#662" id="662">662</a>
-<a href="#663" id="663">663</a>
-<a href="#664" id="664">664</a>
-<a href="#665" id="665">665</a>
-<a href="#666" id="666">666</a>
-<a href="#667" id="667">667</a>
-<a href="#668" id="668">668</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -674,12 +667,13 @@
 //! but keeps track of the changes that were applied to it since its creation.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
+<span class="kw">use </span><span class="kw">crate</span>::datastore_scan::scan_datastore;
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
 <span class="kw">use </span>massa_final_state::FinalStateController;
-<span class="kw">use </span>massa_ledger_exports::{Applicable, LedgerChanges, SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
+<span class="kw">use </span>massa_models::types::Applicable;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::cmp::Ordering;
@@ -702,19 +696,6 @@
     </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
 
     <span class="doccomment">/// list of ledger changes that were applied to this `SpeculativeLedger` since its creation
-    </span><span class="attr">#[cfg(all(
-        not(feature = <span class="string">"gas_calibration"</span>),
-        not(feature = <span class="string">"benchmarking"</span>),
-        not(feature = <span class="string">"test-exports"</span>),
-        not(test)
-    ))]
-    </span>added_changes: LedgerChanges,
-    <span class="attr">#[cfg(any(
-        feature = <span class="string">"gas_calibration"</span>,
-        feature = <span class="string">"benchmarking"</span>,
-        feature = <span class="string">"test-exports"</span>,
-        test
-    ))]
     </span><span class="kw">pub </span>added_changes: LedgerChanges,
 
     <span class="doccomment">/// max datastore key length
@@ -824,6 +805,7 @@
         from_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         to_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         amount: Amount,
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// init empty ledger changes
         </span><span class="kw">let </span><span class="kw-2">mut </span>changes = LedgerChanges::default();
@@ -857,6 +839,11 @@
                     ))
                 })<span class="question-mark">?</span>;
                 changes.set_balance(to_addr, new_balance);
+            } <span class="kw">else if </span>execution_component_version &gt; <span class="number">0 </span>&amp;&amp; <span class="macro">matches!</span>(to_addr, Address::SC(..)) {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
+                    <span class="string">"cannot transfer coins to non-existing smart contract address {}"</span>,
+                    to_addr
+                )));
             } <span class="kw">else if let </span><span class="prelude-val">Some</span>(remaining_coins) =
                 amount.checked_sub(<span class="self">self</span>.storage_costs_constants.ledger_entry_base_cost)
             {
@@ -911,6 +898,7 @@
         creator_address: Address,
         addr: Address,
         bytecode: Bytecode,
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(<span class="kw-2">&amp;</span>creator_address) {
@@ -958,7 +946,12 @@
                 ExecutionError::RuntimeError(<span class="string">"overflow in ledger cost for bytecode"</span>.to_string())
             })<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.transfer_coins(<span class="prelude-val">Some</span>(creator_address), <span class="prelude-val">None</span>, address_storage_cost)<span class="question-mark">?</span>;
+        <span class="self">self</span>.transfer_coins(
+            <span class="prelude-val">Some</span>(creator_address),
+            <span class="prelude-val">None</span>,
+            address_storage_cost,
+            execution_component_version,
+        )<span class="question-mark">?</span>;
         <span class="self">self</span>.added_changes.create_address(<span class="kw-2">&amp;</span>addr);
         <span class="self">self</span>.added_changes.set_bytecode(addr, bytecode);
         <span class="prelude-val">Ok</span>(())
@@ -976,6 +969,7 @@
         caller_addr: <span class="kw-2">&amp;</span>Address,
         addr: <span class="kw-2">&amp;</span>Address,
         bytecode: Bytecode,
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(addr) {
@@ -1005,8 +999,18 @@
                 })<span class="question-mark">?</span>;
 
             <span class="kw">match </span>diff_size_storage.signum() {
-                <span class="number">1 </span>=&gt; <span class="self">self</span>.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr), <span class="prelude-val">None</span>, storage_cost_bytecode)<span class="question-mark">?</span>,
-                -<span class="number">1 </span>=&gt; <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr), storage_cost_bytecode)<span class="question-mark">?</span>,
+                <span class="number">1 </span>=&gt; <span class="self">self</span>.transfer_coins(
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
+                    <span class="prelude-val">None</span>,
+                    storage_cost_bytecode,
+                    execution_component_version,
+                )<span class="question-mark">?</span>,
+                -<span class="number">1 </span>=&gt; <span class="self">self</span>.transfer_coins(
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
+                    storage_cost_bytecode,
+                    execution_component_version,
+                )<span class="question-mark">?</span>,
                 <span class="kw">_ </span>=&gt; {}
             };
         } <span class="kw">else </span>{
@@ -1019,7 +1023,12 @@
                         <span class="string">"overflow when calculating storage cost of bytecode"</span>.to_string(),
                     )
                 })<span class="question-mark">?</span>;
-            <span class="self">self</span>.transfer_coins(<span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr), <span class="prelude-val">None</span>, bytecode_storage_cost)<span class="question-mark">?</span>;
+            <span class="self">self</span>.transfer_coins(
+                <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
+                <span class="prelude-val">None</span>,
+                bytecode_storage_cost,
+                execution_component_version,
+            )<span class="question-mark">?</span>;
         }
         <span class="comment">// set the bytecode of that address
         </span><span class="self">self</span>.added_changes.set_bytecode(<span class="kw-2">*</span>addr, bytecode);
@@ -1031,67 +1040,33 @@
     ///
     /// # Arguments
     /// * `addr`: address to query
-    /// * `prefix`: prefix to filter the keys
+    /// * `prefix`: prefix to filter keys
+    /// * `start_key`: start key of the range
+    /// * `end_key`: end key of the range
+    /// * `count`: maximum number of keys to return
     ///
     /// # Returns
     /// `Some(Vec&lt;Vec&lt;u8&gt;&gt;)` for found keys, `None` if the address does not exist.
-    </span><span class="kw">pub fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="comment">// compute prefix range
-        </span><span class="kw">let </span>prefix_range = get_prefix_bounds(prefix);
-        <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
-
-        <span class="comment">// init keys with final state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>candidate_keys: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; = <span class="self">self
-            </span>.final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix);
-
-        <span class="comment">// here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
-        </span><span class="kw">let </span>active_history = <span class="self">self</span>.active_history.read();
-        <span class="kw">let </span>changes_iterator = active_history
-            .<span class="number">0
-            </span>.iter()
-            .map(|item| <span class="kw-2">&amp;</span>item.state_changes.ledger_changes)
-            .chain(std::iter::once(<span class="kw-2">&amp;</span><span class="self">self</span>.added_changes));
-        <span class="kw">for </span>ledger_changes <span class="kw">in </span>changes_iterator {
-            <span class="kw">match </span>ledger_changes.get(addr) {
-                <span class="comment">// address absent from the changes
-                </span><span class="prelude-val">None </span>=&gt; (),
-
-                <span class="comment">// address ledger entry being reset to an absolute new list of keys
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(new_ledger_entry)) =&gt; {
-                    candidate_keys = <span class="prelude-val">Some</span>(
-                        new_ledger_entry
-                            .datastore
-                            .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                <span class="comment">// address ledger entry being updated
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
-                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_with(Default::default);
-                    <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in
-                        </span>entry_updates.datastore.range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                    {
-                        <span class="kw">match </span>ds_update {
-                            SetOrDelete::Set(<span class="kw">_</span>) =&gt; c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete =&gt; c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                <span class="comment">// address ledger entry being deleted
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; {
-                    candidate_keys = <span class="prelude-val">None</span>;
-                }
-            }
-        }
-
-        candidate_keys
-    }
+    </span><span class="kw">pub fn </span>get_keys(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.added_changes),
+        )
+        .<span class="number">1
+    </span>}
 
     <span class="doccomment">/// Gets a copy of a datastore value for a given address and datastore key
     ///
@@ -1203,6 +1178,7 @@
         caller_addr: <span class="kw-2">&amp;</span>Address,
         old_key_value: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>[u8], <span class="kw-2">&amp;</span>[u8])&gt;,
         new_key_value: <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>[u8], <span class="kw-2">&amp;</span>[u8])&gt;,
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// compute the old storage cost of the entry
         </span><span class="kw">let </span>old_storage_cost = old_key_value.map_or_else(
@@ -1224,6 +1200,7 @@
                     <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
                     <span class="prelude-val">None</span>,
                     new_storage_cost.saturating_sub(old_storage_cost),
+                    execution_component_version,
                 )
             }
             Ordering::Less =&gt; {
@@ -1232,6 +1209,7 @@
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
                     old_storage_cost.saturating_sub(new_storage_cost),
+                    execution_component_version,
                 )
             }
             Ordering::Equal =&gt; {
@@ -1262,6 +1240,7 @@
         addr: <span class="kw-2">&amp;</span>Address,
         key: Vec&lt;u8&gt;,
         value: Vec&lt;u8&gt;,
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check for address existence
         </span><span class="kw">if </span>!<span class="self">self</span>.entry_exists(addr) {
@@ -1295,6 +1274,7 @@
                 caller_addr,
                 prev_value.as_ref().map(|v| (<span class="kw-2">&amp;</span>key[..], <span class="kw-2">&amp;</span>v[..])),
                 <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>key, <span class="kw-2">&amp;</span>value)),
+                execution_component_version,
             )<span class="question-mark">?</span>;
         }
 
@@ -1316,11 +1296,17 @@
         caller_addr: <span class="kw-2">&amp;</span>Address,
         addr: <span class="kw-2">&amp;</span>Address,
         key: <span class="kw-2">&amp;</span>[u8],
+        execution_component_version: u32,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// check if the entry exists
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(value) = <span class="self">self</span>.get_data_entry(addr, key) {
             <span class="comment">// reimburse the storage costs of the entry
-            </span><span class="self">self</span>.charge_datastore_entry_change_storage(caller_addr, <span class="prelude-val">Some</span>((key, <span class="kw-2">&amp;</span>value)), <span class="prelude-val">None</span>)<span class="question-mark">?</span>;
+            </span><span class="self">self</span>.charge_datastore_entry_change_storage(
+                caller_addr,
+                <span class="prelude-val">Some</span>((key, <span class="kw-2">&amp;</span>value)),
+                <span class="prelude-val">None</span>,
+                execution_component_version,
+            )<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::RuntimeError(<span class="macro">format!</span>(
                 <span class="string">"could not delete data entry {:?} for address {}: entry or address does not exist"</span>,

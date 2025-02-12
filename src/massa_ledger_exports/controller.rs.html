@@ -74,8 +74,20 @@
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::{address::Address, amount::Amount, bytecode::Bytecode};
-<span class="kw">use </span>std::collections::BTreeSet;
+<span class="kw">use </span>std::{collections::BTreeSet, ops::Bound};
 
 <span class="kw">use crate</span>::{LedgerChanges, LedgerError};
 <span class="kw">use </span>massa_db_exports::DBBatch;
@@ -120,14 +132,26 @@
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    </span><span class="kw">fn </span>get_datastore_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;;
+    </span><span class="kw">fn </span>get_datastore_keys(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt;;
 
     <span class="doccomment">/// Reset the ledger
     ///
     /// USED FOR BOOTSTRAP ONLY
     </span><span class="kw">fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>);
 
-    <span class="kw">fn </span>apply_changes_to_batch(<span class="kw-2">&amp;mut </span><span class="self">self</span>, changes: LedgerChanges, ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch);
+    <span class="kw">fn </span>apply_changes_to_batch(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        changes: LedgerChanges,
+        ledger_batch: <span class="kw-2">&amp;mut </span>DBBatch,
+        final_state_component_version: u32,
+    );
 
     <span class="doccomment">/// Deserializes the key and value, useful after bootstrap
     </span><span class="kw">fn </span>is_key_value_valid(<span class="kw-2">&amp;</span><span class="self">self</span>, serialized_key: <span class="kw-2">&amp;</span>[u8], serialized_value: <span class="kw-2">&amp;</span>[u8]) -&gt; bool;
