@@ -4,11 +4,13 @@
 
 use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
+use massa_deferred_calls::DeferredCall;
 use massa_final_state::StateChanges;
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::Datastore;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::execution::EventFilter;
 use massa_models::operation::OperationId;
@@ -99,6 +101,21 @@ pub enum ExecutionQueryRequestItem {
     OpExecutionStatusCandidate(OperationId),
     /// gets the execution status (final) for an operation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     OpExecutionStatusFinal(OperationId),
+
+    /// gets the deferred call quote (candidate) for a slot, returns ExecutionQueryResponseItem::DeferredCallQuote(available, price)
+    DeferredCallQuote {
+        /// slot to query
+        target_slot: Slot,
+        /// gas request
+        max_gas_request: u64,
+        /// params size
+        params_size: u64,
+    },
+    /// get info of deferred calls
+    DeferredCallInfo(DeferredCallId),
+    /// retrieves the deferred call for given slot
+    DeferredCallsBySlot(Slot),
+
     /// gets the execution status (candidate) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
     DenunciationExecutionStatusCandidate(DenunciationIndex),
     /// gets the execution status (final) for an denunciation, returns ExecutionQueryResponseItem::ExecutionStatus(status)
@@ -139,6 +156,12 @@ pub enum ExecutionQueryResponseItem {
     DatastoreValue(Vec<u8>),
     /// list of keys
     KeyList(BTreeSet<Vec<u8>>),
+    /// deferred call quote (target_slot, gas_request, available, price)
+    DeferredCallQuote(Slot, u64, bool, Amount),
+    /// deferred call info value
+    DeferredCallInfo(DeferredCallId, DeferredCall),
+    /// deferred call slot calls value
+    DeferredCallsBySlot(Slot, Vec<DeferredCallId>),
     /// deferred credits value
     DeferredCredits(BTreeMap<Slot, Amount>),
     /// execution status value

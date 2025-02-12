@@ -1,7 +1,7 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::{AsyncMessage, AsyncMessageTrigger, AsyncMessageUpdate};
-use massa_ledger_exports::SetOrKeep;
+use massa_models::types::SetOrKeep;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 
 impl From<AsyncMessage> for grpc_model::AsyncMessage {

@@ -13,22 +13,15 @@ use massa_db_exports::{
 use massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 use massa_models::amount::Amount;
 use massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
-use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
+use massa_serialization::{
+    buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
+};
 use nom::AsBytes;
 use std::collections::VecDeque;
 use std::ops::Bound::{Excluded, Included, Unbounded};
 use std::ops::RangeBounds;
 use std::{collections::BTreeMap, path::PathBuf};
 use tracing::debug;
-
-// Helper function to convert a slice to an array of a given size, if possible,
-// and then returning it with the rest of the slice.
-fn buf_to_array_ctr<F: Fn(&[u8; N]) -> V, V, const N: usize>(
-    buf: &[u8],
-    ctr: F,
-) -> Option<(&[u8], V)> {
-    Some((&buf[N..], ctr(&buf.get(..N)?.try_into().ok()?)))
-}
 
 // General cycle info idents
 const COMPLETE_IDENT: u8 = 0u8;

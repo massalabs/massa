@@ -334,7 +334,7 @@ impl ConsensusState {
         &self,
         end_slot: Option<Slot>,
     ) -> Result<PreHashSet<BlockId>, ConsensusError> {
-        // if an end_slot is provided compute the lastest final block for that given slot
+        // if an end_slot is provided compute the latest final block for that given slot
         // if not use the latest_final_blocks_periods
         let effective_latest_finals: Vec<(BlockId, u64)> = if let Some(slot) = end_slot {
             self.list_latest_final_blocks_at(slot)?

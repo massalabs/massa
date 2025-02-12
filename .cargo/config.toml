@@ -1,2 +1,2 @@
 [alias]
-xtask = "run --package massa_xtask --"
+xtask = "run --features gas_calibration --package massa_xtask --"

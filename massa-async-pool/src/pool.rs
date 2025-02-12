@@ -13,8 +13,8 @@ use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_models::address::Address;
+use massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -1284,7 +1284,7 @@ mod tests {
             .write_batch(batch, versioning_batch, Some(slot_1));
 
         let content = dump_column(pool.db.clone(), "state");
-        assert_eq!(content.len(), 26); // 2 entries added, splitted in 13 prefix
+        assert_eq!(content.len(), 26); // 2 entries added, split in 13 prefix
 
         let mut batch2 = DBBatch::new();
         pool.delete_entry(&message_id, &mut batch2);
