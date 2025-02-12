@@ -198,44 +198,6 @@ impl PartialEq for Advance {
 
 impl Eq for Advance {}
 
-// A Lightweight version of 'Advance' (used in MipState history)
-#[derive(Clone, Debug)]
-pub struct AdvanceLW {
-    /// % of past blocks with this version
-    pub threshold: Ratio<u64>,
-    /// Current time (timestamp)
-    pub now: MassaTime,
-}
-
-impl From<&Advance> for AdvanceLW {
-    fn from(value: &Advance) -> Self {
-        Self {
-            threshold: value.threshold,
-            now: value.now,
-        }
-    }
-}
-
-impl Ord for AdvanceLW {
-    fn cmp(&self, other: &Self) -> Ordering {
-        (self.now, self.threshold).cmp(&(other.now, other.threshold))
-    }
-}
-
-impl PartialOrd for AdvanceLW {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for AdvanceLW {
-    fn eq(&self, other: &Self) -> bool {
-        self.threshold == other.threshold && self.now == other.now
-    }
-}
-
-impl Eq for AdvanceLW {}
-
 transitions!(ComponentState,
     [
         (Defined, Advance) => [Defined, Started, Failed],
@@ -298,6 +260,44 @@ impl Failed {
         Failed {}
     }
 }
+
+// A Lightweight version of 'Advance' (used in MipState history)
+#[derive(Clone, Debug)]
+pub struct AdvanceLW {
+    /// % of past blocks with this version
+    pub threshold: Ratio<u64>,
+    /// Current time (timestamp)
+    pub now: MassaTime,
+}
+
+impl From<&Advance> for AdvanceLW {
+    fn from(value: &Advance) -> Self {
+        Self {
+            threshold: value.threshold,
+            now: value.now,
+        }
+    }
+}
+
+impl Ord for AdvanceLW {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.now, self.threshold).cmp(&(other.now, other.threshold))
+    }
+}
+
+impl PartialOrd for AdvanceLW {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for AdvanceLW {
+    fn eq(&self, other: &Self) -> bool {
+        self.threshold == other.threshold && self.now == other.now
+    }
+}
+
+impl Eq for AdvanceLW {}
 
 /// Error returned by `MipState::is_consistent_with`
 #[derive(Error, Debug, PartialEq)]
@@ -1170,7 +1170,7 @@ impl MipStoreRaw {
     // Network restart
 
     /// Check if store is consistent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
+    /// On a network shutdown, the MIP infos will be edited, but we still need to check if this is consistent
     fn is_consistent_with_shutdown_period(
         &self,
         shutdown_start: Slot,
