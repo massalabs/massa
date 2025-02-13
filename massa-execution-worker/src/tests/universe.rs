@@ -188,10 +188,14 @@ impl TestUniverse for ExecutionTestUniverse {
         let (tx, rx) = broadcast::channel(16);
         #[cfg(feature = "execution-trace")]
         let (tx_traces, rx_traces) = broadcast::channel(16);
+        #[cfg(feature = "execution-info")]
+        let (tx_exec_info, rw_exec_info) = broadcast::channel(16);
         let exec_channels = ExecutionChannels {
             slot_execution_output_sender: tx,
             #[cfg(feature = "execution-trace")]
             slot_execution_traces_sender: tx_traces,
+            #[cfg(feature = "execution-info")]
+            slot_execution_info_sender: tx_exec_info,
         };
 
         cfg_if! {

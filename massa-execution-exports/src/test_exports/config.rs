@@ -110,6 +110,8 @@ impl Default for ExecutionConfig {
             event_cache_path,
             event_cache_size: 100,
             event_snip_amount: 10,
+            broadcast_slot_execution_info_channel_capacity: 0,
+            broadcast_execution_info_enabled: true,
         }
     }
 }
