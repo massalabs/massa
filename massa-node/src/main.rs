@@ -595,10 +595,6 @@ async fn launch(
         broadcast_slot_execution_info_channel_capacity: SETTINGS
             .execution
             .broadcast_slot_execution_info_channel_capacity,
-        #[cfg(feature = "execution-info")]
-        broadcast_execution_info_enabled: true,
-        #[cfg(not(feature = "execution-info"))]
-        broadcast_execution_info_enabled: false,
     };
 
     let execution_channels = ExecutionChannels {

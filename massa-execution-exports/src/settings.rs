@@ -122,6 +122,4 @@ pub struct ExecutionConfig {
     pub event_snip_amount: usize,
     /// slot execution info channel capacity
     pub broadcast_slot_execution_info_channel_capacity: usize,
-    /// whether slot execution traces broadcast is enabled
-    pub broadcast_execution_info_enabled: bool,
 }

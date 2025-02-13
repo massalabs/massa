@@ -396,7 +396,7 @@ impl ExecutionState {
 
         #[cfg(feature = "execution-info")]
         {
-            if self.config.broadcast_execution_info_enabled {
+            if self.config.broadcast_enabled {
                 let guard = self.execution_info.read();
                 let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
 
