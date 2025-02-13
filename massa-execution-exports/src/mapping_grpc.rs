@@ -532,15 +532,17 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                 .operations
                 .into_iter()
                 .map(|op| match op {
-                    crate::execution_info::OperationInfo::RollBuy(_address, amount) => {
+                    crate::execution_info::OperationInfo::RollBuy(addr, amount) => {
                         grpc_model::OperationTypeRoll {
+                            address: addr.to_string(),
                             r#type: Some(grpc_model::operation_type_roll::Type::RollBuy(
                                 grpc_model::RollBuy { roll_count: amount },
                             )),
                         }
                     }
-                    crate::execution_info::OperationInfo::RollSell(_address, amount) => {
+                    crate::execution_info::OperationInfo::RollSell(addr, amount) => {
                         grpc_model::OperationTypeRoll {
+                            address: addr.to_string(),
                             r#type: Some(grpc_model::operation_type_roll::Type::RollSell(
                                 grpc_model::RollSell { roll_count: amount },
                             )),
