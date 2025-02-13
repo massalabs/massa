@@ -82,7 +82,7 @@ impl ExecutionInfoForSlot {
         }
     }
 
-    /// Check if the ExecutionInfoForSlot is empty
+    /// Check if the ExecutionInfoForSlot is empty (grpc api use it to return struct or None)
     pub fn is_empty(&self) -> bool {
         self.block_producer_reward.is_none()
             && self.endorsement_creator_rewards.is_empty()
