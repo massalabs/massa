@@ -82,6 +82,7 @@ impl ExecutionInfoForSlot {
         }
     }
 
+    /// Check if the ExecutionInfoForSlot is empty
     pub fn is_empty(&self) -> bool {
         self.block_producer_reward.is_none()
             && self.endorsement_creator_rewards.is_empty()
