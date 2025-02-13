@@ -394,6 +394,32 @@ impl ExecutionState {
             }
         }
 
+        #[cfg(feature = "execution-info")]
+        {
+            if self.config.broadcast_execution_info_enabled {
+                let guard = self.execution_info.read();
+                let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
+
+                if let Some(execution_info_for_slot) = execution_info_for_slot {
+                    if let Err(err) = self
+                        .channels
+                        .slot_execution_info_sender
+                        .send(execution_info_for_slot.clone())
+                    {
+                        trace!(
+                            "error, failed to broadcast execution info for slot {} due to: {}",
+                            exec_out.slot.clone(),
+                            err
+                        );
+                    }
+                } else {
+                    // Note: should never happen as we have just executed this slot and it should be
+                    //       stored in execution_info struct
+                    trace!("Unable to get execution info for slot {}", exec_out.slot);
+                }
+            }
+        }
+
         #[cfg(feature = "dump-block")]
         {
             let mut block_ser = vec![];

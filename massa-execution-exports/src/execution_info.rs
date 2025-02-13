@@ -13,7 +13,8 @@ use crate::types_trace_info::ExecutionResult;
 
 /// Struct for Execution info per slot
 pub struct ExecutionInfo {
-    info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
+    /// Map of execution info
+    pub info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
 }
 
 impl ExecutionInfo {
