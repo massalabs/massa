@@ -610,7 +610,8 @@ async fn launch(
         #[cfg(feature = "execution-info")]
         slot_execution_info_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_info_channel_capacity,
-        ).0,
+        )
+        .0,
     };
 
     cfg_if! {

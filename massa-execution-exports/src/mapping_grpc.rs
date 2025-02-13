@@ -2,6 +2,7 @@
 
 use std::str::FromStr;
 
+use crate::execution_info::ExecutionInfoForSlot;
 use crate::{
     ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
@@ -475,6 +476,122 @@ impl From<ExecutionQueryError> for grpc_model::Error {
                 code: 404,
                 message: error,
             },
+        }
+    }
+}
+
+impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
+    fn from(value: ExecutionInfoForSlot) -> Self {
+        grpc_api::NewExecutionInfoServerResponse {
+            block_producer_reward: value.block_producer_reward.map(|(address, amount)| {
+                grpc_model::TargetAmount {
+                    address: address.to_string(),
+                    amount: Some(amount.into()),
+                }
+            }),
+            endorsement_creator_rewards: value
+                .endorsement_creator_rewards
+                .into_iter()
+                .map(|(address, amount)| grpc_model::TargetAmount {
+                    address: address.to_string(),
+                    amount: Some(amount.into()),
+                })
+                .collect(),
+            endorsement_target_reward: value.endorsement_target_reward.map(|(address, amount)| {
+                grpc_model::TargetAmount {
+                    address: address.to_string(),
+                    amount: Some(amount.into()),
+                }
+            }),
+            denunciations: value
+                .denunciations
+                .into_iter()
+                .filter_map(|result| match result {
+                    Ok(den) => Some(grpc_model::DenunciationAddress {
+                        address_denounced: den.address_denounced.to_string(),
+                        slot: Some(den.slot.into()),
+                        slashed: Some(den.slashed.into()),
+                    }),
+                    Err(_) => None,
+                })
+                .collect(),
+            async_messages: value
+                .async_messages
+                .iter()
+                .filter_map(|r| match r {
+                    Ok(msg) => Some(grpc_model::AsyncMessageExecution {
+                        success: msg.success,
+                        sender: msg.sender.unwrap().to_string(),
+                        destination: msg.destination.unwrap().to_string(),
+                        coins: msg.coins.map(|a| a.into()),
+                    }),
+                    Err(_) => None,
+                })
+                .collect(),
+            operations: value
+                .operations
+                .into_iter()
+                .map(|op| match op {
+                    crate::execution_info::OperationInfo::RollBuy(_address, amount) => {
+                        grpc_model::OperationTypeRoll {
+                            r#type: Some(grpc_model::operation_type_roll::Type::RollBuy(
+                                grpc_model::RollBuy { roll_count: amount },
+                            )),
+                        }
+                    }
+                    crate::execution_info::OperationInfo::RollSell(_address, amount) => {
+                        grpc_model::OperationTypeRoll {
+                            r#type: Some(grpc_model::operation_type_roll::Type::RollSell(
+                                grpc_model::RollSell { roll_count: amount },
+                            )),
+                        }
+                    }
+                })
+                .collect(),
+            deferred_calls_messages: value
+                .deferred_calls_messages
+                .iter()
+                .filter_map(|res| match res {
+                    Ok(def_call) => Some(grpc_model::DeferredCallExecution {
+                        success: def_call.success,
+                        sender: def_call.sender.to_string(),
+                        target_address: def_call.target_address.to_string(),
+                        target_function: def_call.target_function.to_string(),
+                        coins: Some(def_call.coins.into()),
+                    }),
+                    Err(_) => None,
+                })
+                .collect(),
+            deferred_credits_execution: value
+                .deferred_credits_execution
+                .into_iter()
+                .filter_map(|(addr, res)| match res {
+                    Ok(amount) => Some(grpc_model::TargetAmount {
+                        address: addr.to_string(),
+                        amount: Some(amount.into()),
+                    }),
+                    Err(_) => None,
+                })
+                .collect(),
+            cancel_async_message_execution: value
+                .cancel_async_message_execution
+                .into_iter()
+                .filter_map(|(addr, res)| match res {
+                    Ok(amount) => Some(grpc_model::TargetAmount {
+                        address: addr.to_string(),
+                        amount: Some(amount.into()),
+                    }),
+                    Err(_) => None,
+                })
+                .collect(),
+            auto_sell_execution: value
+                .auto_sell_execution
+                .into_iter()
+                .map(|(addr, amount)| grpc_model::TargetAmount {
+                    address: addr.to_string(),
+                    amount: Some(amount.into()),
+                })
+                .collect(),
         }
     }
 }

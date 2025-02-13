@@ -4,6 +4,8 @@
 pub mod new_blocks;
 /// stream new endorsements
 pub mod new_endorsements;
+/// subscribe new execution info (feature execution-trace)
+pub mod new_execution_info;
 /// stream new blocks headers
 pub mod new_filled_blocks;
 /// subscribe new operations

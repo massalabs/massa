@@ -72,17 +72,11 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
 
+use massa_execution_exports::execution_info::{
+    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
+};
 #[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::{
-    OperationInfo,
-    ExecutionInfoForSlot,
-    ExecutionInfo
-};
-use massa_execution_exports::execution_info::{
-    DenunciationResult,
-    AsyncMessageExecutionResult,
-    DeferredCallExecutionResult,
-};
+use massa_execution_exports::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1728,12 +1722,18 @@ impl ExecutionState {
                         #[cfg(feature = "execution-info")]
                         {
                             match &operation.content.op {
-                                OperationType::RollBuy { roll_count } => exec_info
-                                    .operations
-                                    .push(OperationInfo::RollBuy(operation.content_creator_address, *roll_count)),
-                                OperationType::RollSell { roll_count } => exec_info
-                                    .operations
-                                    .push(OperationInfo::RollSell(operation.content_creator_address, *roll_count)),
+                                OperationType::RollBuy { roll_count } => {
+                                    exec_info.operations.push(OperationInfo::RollBuy(
+                                        operation.content_creator_address,
+                                        *roll_count,
+                                    ))
+                                }
+                                OperationType::RollSell { roll_count } => {
+                                    exec_info.operations.push(OperationInfo::RollSell(
+                                        operation.content_creator_address,
+                                        *roll_count,
+                                    ))
+                                }
                                 _ => {}
                             }
                         }

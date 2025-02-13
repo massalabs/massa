@@ -21,6 +21,9 @@ use crate::public::{
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
 use crate::stream::new_blocks::{new_blocks_server, NewBlocksServerStreamType};
 use crate::stream::new_endorsements::{new_endorsements_server, NewEndorsementsServerStreamType};
+#[cfg(feature = "execution-info")]
+use crate::stream::new_execution_info::new_execution_info_server;
+use crate::stream::new_execution_info::NewExecutionInfoServerStreamType;
 use crate::stream::new_filled_blocks::{new_filled_blocks_server, NewFilledBlocksServerStreamType};
 use crate::stream::new_operations::{new_operations_server, NewOperationsServerStreamType};
 use crate::stream::new_slot_execution_outputs::{
@@ -375,6 +378,28 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         _request: tonic::Request<tonic::Streaming<grpc_api::NewSlotTransfersRequest>>,
     ) -> Result<tonic::Response<Self::NewSlotTransfersStream>, tonic::Status> {
         Err(tonic::Status::unimplemented("feature not enabled"))
+    }
+
+    type NewExecutionInfoServerStream = NewExecutionInfoServerStreamType;
+
+    #[cfg(not(feature = "execution-info"))]
+    async fn new_execution_info_server(
+        &self,
+        _request: tonic::Request<grpc_api::NewExecutionInfoServerRequest>,
+    ) -> std::result::Result<tonic::Response<Self::NewExecutionInfoServerStream>, tonic::Status>
+    {
+        Err(tonic::Status::unimplemented("feature not enabled"))
+    }
+
+    #[cfg(feature = "execution-info")]
+    async fn new_execution_info_server(
+        &self,
+        request: tonic::Request<grpc_api::NewExecutionInfoServerRequest>,
+    ) -> std::result::Result<tonic::Response<Self::NewExecutionInfoServerStream>, tonic::Status>
+    {
+        Ok(tonic::Response::new(
+            new_execution_info_server(self, request).await?,
+        ))
     }
 
     type NewSlotABICallStacksStream = NewSlotABICallStacksStreamType;

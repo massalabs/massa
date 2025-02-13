@@ -4,10 +4,10 @@ use std::collections::HashMap;
 
 use schnellru::{ByLength, LruMap};
 
+use massa_deferred_calls::DeferredCall;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::slot::Slot;
-use massa_deferred_calls::DeferredCall;
 
 use crate::types_trace_info::ExecutionResult;
 
@@ -126,8 +126,10 @@ impl AsyncMessageExecutionResult {
 pub struct DeferredCallExecutionResult {
     /// Execution success or not
     pub success: bool,
-    pub(crate) sender: Address,
-    pub(crate) target_address: Address,
+    /// sender address
+    pub sender: Address,
+    /// target address
+    pub target_address: Address,
     pub(crate) target_function: String,
     pub(crate) coins: Amount,
     /// traces

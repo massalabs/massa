@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use crate::SlotRange;
 use crate::{config::GrpcConfig, error::GrpcError};
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
 use massa_models::block::{FilledBlock, SecureShareBlock};
@@ -85,6 +86,10 @@ pub(crate) struct NewEndorsementsFilter {
     addresses: Option<HashSet<Address>>,
     // Block ids to filter
     block_ids: Option<HashSet<BlockId>>,
+}
+
+pub(crate) struct NewExecutionInfoFilter {
+    address: Option<Address>,
 }
 
 impl
@@ -815,6 +820,81 @@ impl FilterGrpc<Vec<grpc_api::NewEndorsementsFilter>, NewEndorsementsFilter, Sec
             if !block_ids.contains(&content.content.endorsed_block) {
                 return None;
             }
+        }
+
+        Some(content)
+    }
+}
+
+impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
+    for NewExecutionInfoFilter
+{
+    fn build_from_request(
+        filter: Option<String>,
+        _grpc_config: &GrpcConfig,
+    ) -> Result<NewExecutionInfoFilter, GrpcError> {
+        let address = filter
+            .map(|addr| {
+                Address::from_str(&addr)
+                    .map_err(|_| GrpcError::InvalidArgument(format!("invalid address: {}", addr)))
+            })
+            .transpose()?;
+        Ok(NewExecutionInfoFilter { address })
+    }
+
+    fn filter_output(
+        &self,
+        mut content: ExecutionInfoForSlot,
+        _grpc_config: &GrpcConfig,
+    ) -> Option<ExecutionInfoForSlot> {
+        if let Some(address_filter) = &self.address {
+            content.async_messages.retain(|res| match res {
+                Ok(msg) => {
+                    msg.destination.unwrap().eq(address_filter)
+                        || msg.sender.unwrap().eq(address_filter)
+                }
+                Err(_) => false,
+            });
+
+            content
+                .auto_sell_execution
+                .retain(|(addr, _)| addr.eq(address_filter));
+            content.block_producer_reward = content
+                .block_producer_reward
+                .filter(|(addr, _)| addr.eq(address_filter));
+            content
+                .cancel_async_message_execution
+                .retain(|(addr, _)| addr.eq(address_filter));
+            content.deferred_calls_messages.retain(|res| match res {
+                Ok(msg) => msg.target_address.eq(address_filter) || msg.sender.eq(address_filter),
+                Err(_) => false,
+            });
+
+            content
+                .deferred_credits_execution
+                .retain(|(addr, _)| addr.eq(address_filter));
+            content
+                .denunciations
+                .retain(|denunciation| match denunciation {
+                    Ok(den) => den.address_denounced.eq(address_filter),
+                    Err(_) => false,
+                });
+            content
+                .endorsement_creator_rewards
+                .retain(|addr, _| addr.eq(address_filter));
+
+            content.endorsement_target_reward = content
+                .endorsement_target_reward
+                .filter(|(addr, _)| addr.eq(address_filter));
+
+            content.operations.retain(|res| match res {
+                massa_execution_exports::execution_info::OperationInfo::RollBuy(addr, _) => {
+                    addr.eq(address_filter)
+                }
+                massa_execution_exports::execution_info::OperationInfo::RollSell(addr, _) => {
+                    addr.eq(address_filter)
+                }
+            });
         }
 
         Some(content)
