@@ -401,11 +401,10 @@ impl ExecutionState {
                 let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
 
                 if let Some(execution_info_for_slot) = execution_info_for_slot {
-                    if let Err(err) = self
-                        .channels
-                        .slot_execution_info_sender
-                        .send(execution_info_for_slot.clone())
-                    {
+                    let mut cloned = execution_info_for_slot.clone();
+                    cloned.transfers = exec_out.slot_trace.map(|(_, transfers)| transfers);
+
+                    if let Err(err) = self.channels.slot_execution_info_sender.send(cloned) {
                         trace!(
                             "error, failed to broadcast execution info for slot {} due to: {}",
                             exec_out.slot.clone(),

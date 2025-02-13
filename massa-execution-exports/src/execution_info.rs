@@ -10,6 +10,8 @@ use massa_models::amount::Amount;
 use massa_models::slot::Slot;
 
 use crate::types_trace_info::ExecutionResult;
+#[cfg(feature = "execution-trace")]
+use crate::Transfer;
 
 /// Struct for Execution info per slot
 pub struct ExecutionInfo {
@@ -63,6 +65,9 @@ pub struct ExecutionInfoForSlot {
     pub cancel_async_message_execution: Vec<(Address, Result<Amount, String>)>,
     /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
     pub auto_sell_execution: Vec<(Address, Amount)>,
+
+    #[cfg(feature = "execution-trace")]
+    pub transfers: Option<Vec<Transfer>>,
 }
 
 impl ExecutionInfoForSlot {
@@ -79,21 +84,32 @@ impl ExecutionInfoForSlot {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            #[cfg(feature = "execution-trace")]
+            transfers: None,
         }
     }
 
     /// Check if the ExecutionInfoForSlot is empty (grpc api use it to return struct or None)
     pub fn is_empty(&self) -> bool {
-        self.block_producer_reward.is_none()
-            && self.endorsement_creator_rewards.is_empty()
-            && self.endorsement_target_reward.is_none()
-            && self.denunciations.is_empty()
+        let empty = self.denunciations.is_empty()
             && self.operations.is_empty()
             && self.async_messages.is_empty()
             && self.deferred_calls_messages.is_empty()
             && self.deferred_credits_execution.is_empty()
             && self.cancel_async_message_execution.is_empty()
             && self.auto_sell_execution.is_empty()
+            && self.endorsement_creator_rewards.is_empty()
+            && self.block_producer_reward.is_none()
+            && self.endorsement_target_reward.is_none();
+
+        #[cfg(feature = "execution-trace")]
+        {
+            if let Some(transfers) = &self.transfers {
+                return empty && transfers.is_empty();
+            }
+        }
+
+        empty
     }
 }
 
@@ -146,7 +162,10 @@ pub struct DeferredCallExecutionResult {
     /// target address
     pub target_address: Address,
     pub(crate) target_function: String,
-    pub(crate) coins: Amount,
+    /// coins
+    pub coins: Amount,
+    /// fee
+    pub fee: Amount,
     /// traces
     pub traces: Option<ExecutionResult>,
 }
@@ -160,6 +179,7 @@ impl DeferredCallExecutionResult {
             target_address: call.target_address,
             target_function: call.target_function.clone(),
             coins: call.coins,
+            fee: call.fee,
             traces: None,
         }
     }
