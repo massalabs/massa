@@ -897,6 +897,10 @@ impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
             });
         }
 
-        Some(content)
+        if content.is_empty() {
+            None
+        } else {
+            Some(content)
+        }
     }
 }

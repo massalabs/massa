@@ -81,6 +81,19 @@ impl ExecutionInfoForSlot {
             auto_sell_execution: vec![],
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.block_producer_reward.is_none()
+            && self.endorsement_creator_rewards.is_empty()
+            && self.endorsement_target_reward.is_none()
+            && self.denunciations.is_empty()
+            && self.operations.is_empty()
+            && self.async_messages.is_empty()
+            && self.deferred_calls_messages.is_empty()
+            && self.deferred_credits_execution.is_empty()
+            && self.cancel_async_message_execution.is_empty()
+            && self.auto_sell_execution.is_empty()
+    }
 }
 
 /// structure describing the output of a denunciation execution
