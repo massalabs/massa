@@ -113,11 +113,11 @@ pub struct ExecutionContextSnapshot {
     pub user_event_count_in_current_exec: u16,
 
     /// Transfer coins history
-    pub transfer_history: Vec<TransferCoinsHistory>,
+    pub transfer_history: Vec<TransferHistory>,
 }
 
 #[derive(Clone, Debug)]
-pub struct TransferCoinsHistory {
+pub struct TransferHistory {
     pub from: Option<Address>,
     pub to: Option<Address>,
     pub amount: Option<Amount>,
@@ -226,7 +226,7 @@ pub struct ExecutionContext {
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
 
-    pub transfer_history: Vec<TransferCoinsHistory>,
+    pub transfer_history: Vec<TransferHistory>,
 }
 
 impl ExecutionContext {
@@ -877,7 +877,7 @@ impl ExecutionContext {
         #[cfg(feature = "execution-info")]
         {
             if transfert_result.is_ok() {
-                self.transfer_history.push(TransferCoinsHistory {
+                self.transfer_history.push(TransferHistory {
                     from: from_addr,
                     to: to_addr,
                     amount: Some(amount),
@@ -965,7 +965,7 @@ impl ExecutionContext {
 
         #[cfg(feature = "execution-info")]
         {
-            self.transfer_history.push(TransferCoinsHistory {
+            self.transfer_history.push(TransferHistory {
                 from: Some(seller_addr.clone()),
                 to: None,
                 amount: None,
@@ -973,7 +973,7 @@ impl ExecutionContext {
                 context: TransferContext::RollSell,
                 t_type: TransferType::Roll,
             });
-            self.transfer_history.push(TransferCoinsHistory {
+            self.transfer_history.push(TransferHistory {
                 from: None,
                 to: Some(seller_addr.clone()),
                 amount: Some(_deferred_credit),
