@@ -499,6 +499,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                 .into_iter()
                 .enumerate()
                 .map(|(index, transfer)| {
+                    // TODO id should be set before filtering
                     let id = format!("{}:{}", value.execution_trail_hash, index);
 
                     match transfer.context {
