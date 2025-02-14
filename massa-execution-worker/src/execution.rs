@@ -1511,7 +1511,7 @@ impl ExecutionState {
         let mut transfers = vec![];
 
         #[cfg(feature = "execution-info")]
-        let mut exec_info = ExecutionInfoForSlot::new();
+        let mut exec_info = ExecutionInfoForSlot::new(slot.clone());
 
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(

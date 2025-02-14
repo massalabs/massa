@@ -504,8 +504,8 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                                 prev_amount: todo!(),
                                 amount: Some(amount.into()),
                                 post_amount: todo!(),
-                                timestamp: todo!(),
-                                slot: todo!(),
+                                timestamp: value.timestamp.into(),
+                                slot: Some(value.slot.into()),
                                 origin: orig as i32,
                             }
                         };
@@ -547,7 +547,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                 amount: Some(amount.into()),
                 post_amount: todo!(),
                 timestamp: todo!(),
-                slot: todo!(),
+                slot: Some(value.slot.into()),
                 origin: grpc_model::CoinOrigin::BlockReward as i32,
             });
         }
@@ -565,7 +565,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                     amount: Some(amount.into()),
                     post_amount: todo!(),
                     timestamp: todo!(),
-                    slot: todo!(),
+                    slot: Some(value.slot.into()),
                     origin: grpc_model::CoinOrigin::EndorsementReward as i32,
                 }),
         );
@@ -580,7 +580,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                 amount: Some(amount.into()),
                 post_amount: todo!(),
                 timestamp: todo!(),
-                slot: todo!(),
+                slot: Some(value.slot.into()),
                 origin: grpc_model::CoinOrigin::EndorsedReward as i32,
             });
         }
@@ -598,7 +598,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                     amount: Some(den.slashed.into()),
                     post_amount: todo!(),
                     timestamp: todo!(),
-                    slot: todo!(),
+                    slot: Some(value.slot.into()),
                     origin: todo!(),
                 }),
                 Err(_) => None,
@@ -621,7 +621,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                         amount: Some(Amount::from_raw(amount).into()),
                         post_amount: todo!(),
                         timestamp: todo!(),
-                        slot: todo!(),
+                        slot: Some(value.slot.into()),
                         origin: grpc_model::CoinOrigin::OpRollBuyRolls as i32,
                     }
                 }
@@ -635,7 +635,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                         amount: Some(Amount::from_raw(amount).into()),
                         post_amount: todo!(),
                         timestamp: todo!(),
-                        slot: todo!(),
+                        slot: Some(value.slot.into()),
                         origin: grpc_model::CoinOrigin::OpRollSellRolls as i32,
                     }
                 }
@@ -664,7 +664,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                                 amount: coins,
                                 post_amount: todo!(),
                                 timestamp: todo!(),
-                                slot: todo!(),
+                                slot: Some(value.slot.into()),
                                 origin: grpc_model::CoinOrigin::AsyncMsg as i32,
                             }
                         };
@@ -704,7 +704,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                                 amount: Some(amount.into()),
                                 post_amount: todo!(),
                                 timestamp: todo!(),
-                                slot: todo!(),
+                                slot: Some(value.slot.into()),
                                 origin: grpc_model::CoinOrigin::DeferredCall as i32,
                             }
                         };
@@ -746,7 +746,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                     amount: Some(amount.into()),
                     post_amount: todo!(),
                     timestamp: todo!(),
-                    slot: todo!(),
+                    slot: Some(value.slot.into()),
                     origin: grpc_model::CoinOrigin::DeferredCredit as i32,
                 }),
         );
