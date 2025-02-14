@@ -10,6 +10,7 @@ use massa_deferred_calls::DeferredCall;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::slot::Slot;
+use serde::Serialize;
 
 use crate::types_trace_info::ExecutionResult;
 #[cfg(feature = "execution-trace")]
@@ -44,14 +45,26 @@ pub enum OperationInfo {
     RollSell(Address, u64),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Serialize)]
+pub struct TransferHistory {
+    pub from: Option<Address>,
+    pub to: Option<Address>,
+    pub amount: Option<Amount>,
+    pub roll_count: Option<u64>,
+    pub context: TransferContext,
+    pub t_type: TransferType,
+}
+
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Serialize)]
 pub enum TransferType {
     Mas,
     Roll,
     DeferredCredits,
 }
 
-#[derive(Debug, Clone)]
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Serialize)]
 pub enum TransferContext {
     TransactionCoins,
     TransactionFee,
@@ -65,6 +78,9 @@ pub enum TransferContext {
     OperationFee,
     RollBuy,
     RollSell,
+    RollSlash,
+    CreateSCStorage,
+    DatastoreStorage,
     CallSCCoins,
     AsyncMsgCoins,
     EndorsementCreator,
@@ -73,6 +89,7 @@ pub enum TransferContext {
     ReadOnlyBytecodeExecutionFee,
     ReadOnlyFunctionCallFee,
     ReadOnlyFunctionCallCoins,
+    SetBytecodeStorage,
     AbiCallCoins,
     AbiTransferCoins,
     AbiTransferForCoins,
@@ -108,8 +125,8 @@ pub struct ExecutionInfoForSlot {
     /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
     pub auto_sell_execution: Vec<(Address, Amount)>,
 
-    #[cfg(feature = "execution-trace")]
-    pub transfers: Option<Vec<Transfer>>,
+    #[cfg(feature = "execution-info")]
+    pub transfers: Vec<TransferHistory>,
 }
 
 impl ExecutionInfoForSlot {
@@ -136,7 +153,7 @@ impl ExecutionInfoForSlot {
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
             #[cfg(feature = "execution-trace")]
-            transfers: None,
+            transfers: vec![],
         }
     }
 
@@ -153,14 +170,15 @@ impl ExecutionInfoForSlot {
             && self.block_producer_reward.is_none()
             && self.endorsement_target_reward.is_none();
 
-        #[cfg(feature = "execution-trace")]
+        #[cfg(feature = "execution-info")]
         {
-            if let Some(transfers) = &self.transfers {
-                return empty && transfers.is_empty();
-            }
+            return empty && self.transfers.is_empty();
         }
 
-        empty
+        #[cfg(not(feature = "execution-info"))]
+        {
+            return empty;
+        }
     }
 }
 

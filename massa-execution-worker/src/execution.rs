@@ -402,7 +402,8 @@ impl ExecutionState {
 
                 if let Some(execution_info_for_slot) = execution_info_for_slot {
                     let mut cloned = execution_info_for_slot.clone();
-                    cloned.transfers = exec_out.slot_trace.map(|(_, transfers)| transfers);
+                    cloned.transfers = exec_out.transfers_history;
+                    // cloned.transfers = exec_out.slot_trace.map(|(_, transfers)| transfers);
 
                     if let Err(err) = self.channels.slot_execution_info_sender.send(cloned) {
                         trace!(

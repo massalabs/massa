@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::active_history::ActiveHistory;
+use massa_execution_exports::execution_info::{TransferContext, TransferHistory, TransferType};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -26,6 +27,8 @@ pub(crate) struct SpeculativeRollState {
 
     /// List of changes to the state after settling roll sell/buy
     pub(crate) added_changes: PoSChanges,
+
+    transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
 }
 
 impl SpeculativeRollState {
@@ -36,11 +39,13 @@ impl SpeculativeRollState {
     pub fn new(
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
     ) -> Self {
         SpeculativeRollState {
             final_state,
             active_history,
             added_changes: PoSChanges::default(),
+            transfers_history,
         }
     }
 
@@ -115,7 +120,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
-    ) -> Result<Amount, ExecutionError> {
+    ) -> Result<(), ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
         let owned_count = self.get_rolls(seller_addr);
 
@@ -154,7 +159,29 @@ impl SpeculativeRollState {
             .deferred_credits
             .insert(target_slot, *seller_addr, new_deferred_credits);
 
-        Ok(new_deferred_credits)
+        #[cfg(feature = "execution-info")]
+        {
+            let mut lock = self.transfers_history.write();
+            lock.push(TransferHistory {
+                from: Some(seller_addr.clone()),
+                to: None,
+                amount: None,
+                roll_count: Some(roll_count),
+                context: TransferContext::RollSell,
+                t_type: TransferType::Roll,
+            });
+
+            lock.push(TransferHistory {
+                from: None,
+                to: Some(seller_addr.clone()),
+                amount: Some(new_deferred_credits),
+                roll_count: None,
+                context: TransferContext::RollSell,
+                t_type: TransferType::DeferredCredits,
+            });
+        }
+
+        Ok(())
     }
 
     /// Try to slash `roll_count` rolls from the given address. If not enough roll, slash
@@ -172,20 +199,34 @@ impl SpeculativeRollState {
         let owned_count = self.get_rolls(addr);
         let roll_to_slash = min(roll_count, owned_count);
 
-        match self.added_changes.roll_changes.get_mut(addr) {
+        let roll_slash = match self.added_changes.roll_changes.get_mut(addr) {
             None => {
                 // Rolls are in history or final state
                 self.added_changes
                     .roll_changes
                     .insert(*addr, owned_count.saturating_sub(roll_to_slash));
-                Ok(roll_to_slash)
+                roll_to_slash
             }
             Some(current_rolls) => {
                 // Rolls are in added_changes
                 *current_rolls = current_rolls.saturating_sub(roll_to_slash);
-                Ok(roll_to_slash)
+                roll_to_slash
             }
+        };
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferHistory {
+                from: Some(addr.clone()),
+                to: None,
+                amount: None,
+                roll_count: Some(roll_slash),
+                context: TransferContext::RollSlash,
+                t_type: TransferType::Roll,
+            });
         }
+
+        Ok(roll_slash)
     }
 
     /// Try to slash `amount` credits from the given address. If not enough credits, slash

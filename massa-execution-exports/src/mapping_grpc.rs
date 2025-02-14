@@ -486,417 +486,276 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
     fn from(value: ExecutionInfoForSlot) -> Self {
         let mut result: Vec<grpc_model::ExecutionInfo> = Vec::new();
 
-        #[cfg(feature = "execution-trace")]
-        {
-            if let Some(vec_transfer) = value.transfers {
-                result.extend(vec_transfer.into_iter().flat_map(|transfer| {
-                    let common_fields =
-                        |id: String,
-                         address: String,
-                         amount: Amount,
-                         orig: grpc_model::CoinOrigin,
-                         direction: grpc_model::CoinDirection| {
-                            grpc_model::ExecutionInfo {
-                                id,
-                                address,
-                                direction: direction as i32,
-                                item: grpc_model::Item::Mas as i32,
-                                prev_amount: todo!(),
-                                amount: Some(amount.into()),
-                                post_amount: todo!(),
-                                timestamp: todo!(),
-                                slot: Some(value.slot.into()),
-                                origin: orig as i32,
-                            }
-                        };
+        dbg!(&value.transfers.len());
 
-                    vec![
-                        common_fields(
-                            todo!(),
-                            transfer.from.to_string(),
-                            transfer.amount,
-                            grpc_model::CoinOrigin::OpTransactionCoins,
-                            grpc_model::CoinDirection::Debit,
-                        ),
-                        common_fields(
-                            todo!(),
-                            transfer.from.to_string(),
-                            transfer.fee,
-                            grpc_model::CoinOrigin::OpTransactionFees,
-                            grpc_model::CoinDirection::Debit,
-                        ),
-                        common_fields(
-                            todo!(),
-                            transfer.to.to_string(),
-                            transfer.amount,
-                            grpc_model::CoinOrigin::OpTransactionCoins,
-                            grpc_model::CoinDirection::Credit,
-                        ),
-                    ]
-                }));
-            }
+        if &value.transfers.len() > &33 {
+            dbg!(&value.transfers);
         }
 
-        if let Some((addr, amount)) = value.block_producer_reward {
-            result.push(grpc_model::ExecutionInfo {
-                id: todo!(),
-                address: addr.to_string(),
-                direction: grpc_model::CoinDirection::Credit as i32,
-                item: grpc_model::Item::Mas as i32,
-                prev_amount: todo!(),
-                amount: Some(amount.into()),
-                post_amount: todo!(),
-                timestamp: todo!(),
-                slot: Some(value.slot.into()),
-                origin: grpc_model::CoinOrigin::BlockReward as i32,
-            });
-        }
+        // #[cfg(feature = "execution-info")]
+        // {
+        //     result.extend(value.transfers.into_iter().flat_map(|transfer| {
+        //         let common_fields =
+        //             |id: String,
+        //              address: String,
+        //              amount: Amount,
+        //              orig: grpc_model::CoinOrigin,
+        //              direction: grpc_model::CoinDirection| {
+        //                 grpc_model::ExecutionInfo {
+        //                     id,
+        //                     address,
+        //                     direction: direction as i32,
+        //                     item: grpc_model::Item::Mas as i32,
+        //                     prev_amount: todo!(),
+        //                     amount: Some(amount.into()),
+        //                     post_amount: todo!(),
+        //                     timestamp: todo!(),
+        //                     slot: Some(value.slot.into()),
+        //                     origin: orig as i32,
+        //                 }
+        //             };
 
-        result.extend(
-            value
-                .endorsement_creator_rewards
-                .into_iter()
-                .map(|(addr, amount)| grpc_model::ExecutionInfo {
-                    id: todo!(),
-                    address: addr.to_string(),
-                    direction: grpc_model::CoinDirection::Credit as i32,
-                    item: grpc_model::Item::Mas as i32,
-                    prev_amount: todo!(),
-                    amount: Some(amount.into()),
-                    post_amount: todo!(),
-                    timestamp: todo!(),
-                    slot: Some(value.slot.into()),
-                    origin: grpc_model::CoinOrigin::EndorsementReward as i32,
-                }),
-        );
+        //         vec![
+        //             common_fields(
+        //                 todo!(),
+        //                 transfer.from.to_string(),
+        //                 transfer.amount,
+        //                 grpc_model::CoinOrigin::OpTransactionCoins,
+        //                 grpc_model::CoinDirection::Debit,
+        //             ),
+        //             common_fields(
+        //                 todo!(),
+        //                 transfer.from.to_string(),
+        //                 transfer.fee,
+        //                 grpc_model::CoinOrigin::OpTransactionFees,
+        //                 grpc_model::CoinDirection::Debit,
+        //             ),
+        //             common_fields(
+        //                 todo!(),
+        //                 transfer.to.to_string(),
+        //                 transfer.amount,
+        //                 grpc_model::CoinOrigin::OpTransactionCoins,
+        //                 grpc_model::CoinDirection::Credit,
+        //             ),
+        //         ]
+        //     }));
+        // }
 
-        if let Some((addr, amount)) = value.endorsement_target_reward {
-            result.push(grpc_model::ExecutionInfo {
-                id: todo!(),
-                address: addr.to_string(),
-                direction: grpc_model::CoinDirection::Credit as i32,
-                item: grpc_model::Item::Mas as i32,
-                prev_amount: todo!(),
-                amount: Some(amount.into()),
-                post_amount: todo!(),
-                timestamp: todo!(),
-                slot: Some(value.slot.into()),
-                origin: grpc_model::CoinOrigin::EndorsedReward as i32,
-            });
-        }
+        // if let Some((addr, amount)) = value.block_producer_reward {
+        //     result.push(grpc_model::ExecutionInfo {
+        //         id: todo!(),
+        //         address: addr.to_string(),
+        //         direction: grpc_model::CoinDirection::Credit as i32,
+        //         item: grpc_model::Item::Mas as i32,
+        //         prev_amount: todo!(),
+        //         amount: Some(amount.into()),
+        //         post_amount: todo!(),
+        //         timestamp: todo!(),
+        //         slot: Some(value.slot.into()),
+        //         origin: grpc_model::CoinOrigin::BlockReward as i32,
+        //     });
+        // }
 
-        let denunciations: Vec<grpc_model::ExecutionInfo> = value
-            .denunciations
-            .into_iter()
-            .filter_map(|result| match result {
-                Ok(den) => Some(grpc_model::ExecutionInfo {
-                    id: todo!(),
-                    address: den.address_denounced.to_string(),
-                    direction: todo!(),
-                    item: grpc_model::Item::Mas as i32,
-                    prev_amount: todo!(),
-                    amount: Some(den.slashed.into()),
-                    post_amount: todo!(),
-                    timestamp: todo!(),
-                    slot: Some(value.slot.into()),
-                    origin: todo!(),
-                }),
-                Err(_) => None,
-            })
-            .collect();
+        // result.extend(
+        //     value
+        //         .endorsement_creator_rewards
+        //         .into_iter()
+        //         .map(|(addr, amount)| grpc_model::ExecutionInfo {
+        //             id: todo!(),
+        //             address: addr.to_string(),
+        //             direction: grpc_model::CoinDirection::Credit as i32,
+        //             item: grpc_model::Item::Mas as i32,
+        //             prev_amount: todo!(),
+        //             amount: Some(amount.into()),
+        //             post_amount: todo!(),
+        //             timestamp: todo!(),
+        //             slot: Some(value.slot.into()),
+        //             origin: grpc_model::CoinOrigin::EndorsementReward as i32,
+        //         }),
+        // );
 
-        result.extend(denunciations);
+        // if let Some((addr, amount)) = value.endorsement_target_reward {
+        //     result.push(grpc_model::ExecutionInfo {
+        //         id: todo!(),
+        //         address: addr.to_string(),
+        //         direction: grpc_model::CoinDirection::Credit as i32,
+        //         item: grpc_model::Item::Mas as i32,
+        //         prev_amount: todo!(),
+        //         amount: Some(amount.into()),
+        //         post_amount: todo!(),
+        //         timestamp: todo!(),
+        //         slot: Some(value.slot.into()),
+        //         origin: grpc_model::CoinOrigin::EndorsedReward as i32,
+        //     });
+        // }
 
-        let operations: Vec<grpc_model::ExecutionInfo> = value
-            .operations
-            .into_iter()
-            .map(|op| match op {
-                crate::execution_info::OperationInfo::RollBuy(addr, amount) => {
-                    grpc_model::ExecutionInfo {
-                        id: todo!(),
-                        address: addr.to_string(),
-                        direction: grpc_model::CoinDirection::Debit as i32,
-                        item: grpc_model::Item::Mas as i32,
-                        prev_amount: todo!(),
-                        amount: Some(Amount::from_raw(amount).into()),
-                        post_amount: todo!(),
-                        timestamp: todo!(),
-                        slot: Some(value.slot.into()),
-                        origin: grpc_model::CoinOrigin::OpRollBuyRolls as i32,
-                    }
-                }
-                crate::execution_info::OperationInfo::RollSell(addr, amount) => {
-                    grpc_model::ExecutionInfo {
-                        id: todo!(),
-                        address: addr.to_string(),
-                        direction: grpc_model::CoinDirection::Credit as i32,
-                        item: grpc_model::Item::Mas as i32,
-                        prev_amount: todo!(),
-                        amount: Some(Amount::from_raw(amount).into()),
-                        post_amount: todo!(),
-                        timestamp: todo!(),
-                        slot: Some(value.slot.into()),
-                        origin: grpc_model::CoinOrigin::OpRollSellRolls as i32,
-                    }
-                }
-            })
-            .collect();
+        // let denunciations: Vec<grpc_model::ExecutionInfo> = value
+        //     .denunciations
+        //     .into_iter()
+        //     .filter_map(|result| match result {
+        //         Ok(den) => Some(grpc_model::ExecutionInfo {
+        //             id: todo!(),
+        //             address: den.address_denounced.to_string(),
+        //             direction: todo!(),
+        //             item: grpc_model::Item::Mas as i32,
+        //             prev_amount: todo!(),
+        //             amount: Some(den.slashed.into()),
+        //             post_amount: todo!(),
+        //             timestamp: todo!(),
+        //             slot: Some(value.slot.into()),
+        //             origin: todo!(),
+        //         }),
+        //         Err(_) => None,
+        //     })
+        //     .collect();
 
-        result.extend(operations);
+        // result.extend(denunciations);
 
-        result.extend(
-            value
-                .async_messages
-                .into_iter()
-                .filter_map(|msg| msg.ok())
-                .flat_map(|msg| {
-                    // TODO add fee debit for sender
-
-                    let coins = msg.coins.map(|a| a.into());
-                    let common_fields =
-                        |id: String, address: String, direction: grpc_model::CoinDirection| {
-                            grpc_model::ExecutionInfo {
-                                id,
-                                address,
-                                direction: direction as i32,
-                                item: grpc_model::Item::Mas as i32,
-                                prev_amount: todo!(),
-                                amount: coins,
-                                post_amount: todo!(),
-                                timestamp: todo!(),
-                                slot: Some(value.slot.into()),
-                                origin: grpc_model::CoinOrigin::AsyncMsg as i32,
-                            }
-                        };
-
-                    vec![
-                        common_fields(
-                            todo!(),
-                            msg.sender.unwrap().to_string(),
-                            grpc_model::CoinDirection::Debit,
-                        ),
-                        common_fields(
-                            todo!(),
-                            msg.destination.unwrap().to_string(),
-                            grpc_model::CoinDirection::Credit,
-                        ),
-                    ]
-                }),
-        );
-
-        result.extend(
-            value
-                .deferred_calls_messages
-                .into_iter()
-                .filter_map(|res| res.ok())
-                .flat_map(|def_call| {
-                    let common_fields =
-                        |id: String,
-                         address: String,
-                         amount: Amount,
-                         direction: grpc_model::CoinDirection| {
-                            grpc_model::ExecutionInfo {
-                                id,
-                                address,
-                                direction: direction as i32,
-                                item: grpc_model::Item::Mas as i32,
-                                prev_amount: todo!(),
-                                amount: Some(amount.into()),
-                                post_amount: todo!(),
-                                timestamp: todo!(),
-                                slot: Some(value.slot.into()),
-                                origin: grpc_model::CoinOrigin::DeferredCall as i32,
-                            }
-                        };
-
-                    vec![
-                        common_fields(
-                            todo!(),
-                            def_call.sender.to_string(),
-                            def_call.coins,
-                            grpc_model::CoinDirection::Debit,
-                        ),
-                        common_fields(
-                            todo!(),
-                            def_call.sender.to_string(),
-                            def_call.fee,
-                            grpc_model::CoinDirection::Debit,
-                        ),
-                        common_fields(
-                            todo!(),
-                            def_call.target_address.to_string(),
-                            def_call.coins,
-                            grpc_model::CoinDirection::Credit,
-                        ),
-                    ]
-                }),
-        );
-
-        result.extend(
-            value
-                .deferred_credits_execution
-                .into_iter()
-                .filter_map(|(addr, res)| res.ok().map(|amount| (addr, amount)))
-                .map(|(addr, amount)| grpc_model::ExecutionInfo {
-                    id: todo!(),
-                    address: addr.to_string(),
-                    direction: grpc_model::CoinDirection::Credit as i32,
-                    item: grpc_model::Item::Mas as i32,
-                    prev_amount: todo!(),
-                    amount: Some(amount.into()),
-                    post_amount: todo!(),
-                    timestamp: todo!(),
-                    slot: Some(value.slot.into()),
-                    origin: grpc_model::CoinOrigin::DeferredCredit as i32,
-                }),
-        );
-
-        // TODO cancel_async_message_execution and auto_sell_execution
-
-        // for msg in value.async_messages.into_iter() {
-        //     match msg {
-        //         Ok(msg) => {
-        //             result.push(grpc_model::ExecutionInfo {
+        // let operations: Vec<grpc_model::ExecutionInfo> = value
+        //     .operations
+        //     .into_iter()
+        //     .map(|op| match op {
+        //         crate::execution_info::OperationInfo::RollBuy(addr, amount) => {
+        //             grpc_model::ExecutionInfo {
         //                 id: todo!(),
-        //                 address: msg.sender.unwrap().to_string(),
+        //                 address: addr.to_string(),
         //                 direction: grpc_model::CoinDirection::Debit as i32,
         //                 item: grpc_model::Item::Mas as i32,
         //                 prev_amount: todo!(),
-        //                 amount: Some(msg.coins.map(|a| a.into()).unwrap()),
+        //                 amount: Some(Amount::from_raw(amount).into()),
         //                 post_amount: todo!(),
         //                 timestamp: todo!(),
-        //                 slot: todo!(),
-        //                 origin: grpc_model::CoinOrigin::AsyncMsg as i32,
-        //             });
-        //             result.push(grpc_model::ExecutionInfo {
+        //                 slot: Some(value.slot.into()),
+        //                 origin: grpc_model::CoinOrigin::OpRollBuyRolls as i32,
+        //             }
+        //         }
+        //         crate::execution_info::OperationInfo::RollSell(addr, amount) => {
+        //             grpc_model::ExecutionInfo {
         //                 id: todo!(),
-        //                 address: msg.destination.unwrap().to_string(),
+        //                 address: addr.to_string(),
         //                 direction: grpc_model::CoinDirection::Credit as i32,
         //                 item: grpc_model::Item::Mas as i32,
         //                 prev_amount: todo!(),
-        //                 amount: Some(msg.coins.map(|a| a.into()).unwrap()),
+        //                 amount: Some(Amount::from_raw(amount).into()),
         //                 post_amount: todo!(),
         //                 timestamp: todo!(),
-        //                 slot: todo!(),
-        //                 origin: grpc_model::CoinOrigin::AsyncMsg as i32,
-        //             });
+        //                 slot: Some(value.slot.into()),
+        //                 origin: grpc_model::CoinOrigin::OpRollSellRolls as i32,
+        //             }
         //         }
-        //         Err(_) => {}
-        //     }
-        // }
-        // grpc_api::NewExecutionInfoServerResponse {
-        //     block_producer_reward: value.block_producer_reward.map(|(address, amount)| {
-        //         grpc_model::TargetAmount {
-        //             address: address.to_string(),
-        //             amount: Some(amount.into()),
-        //         }
-        //     }),
-        //     endorsement_creator_rewards: value
-        //         .endorsement_creator_rewards
-        //         .into_iter()
-        //         .map(|(address, amount)| grpc_model::TargetAmount {
-        //             address: address.to_string(),
-        //             amount: Some(amount.into()),
-        //         })
-        //         .collect(),
-        //     endorsement_target_reward: value.endorsement_target_reward.map(|(address, amount)| {
-        //         grpc_model::TargetAmount {
-        //             address: address.to_string(),
-        //             amount: Some(amount.into()),
-        //         }
-        //     }),
-        //     denunciations: value
-        //         .denunciations
-        //         .into_iter()
-        //         .filter_map(|result| match result {
-        //             Ok(den) => Some(grpc_model::DenunciationAddress {
-        //                 address_denounced: den.address_denounced.to_string(),
-        //                 slot: Some(den.slot.into()),
-        //                 slashed: Some(den.slashed.into()),
-        //             }),
-        //             Err(_) => None,
-        //         })
-        //         .collect(),
-        //     async_messages: value
+        //     })
+        //     .collect();
+
+        // result.extend(operations);
+
+        // result.extend(
+        //     value
         //         .async_messages
-        //         .iter()
-        //         .filter_map(|r| match r {
-        //             Ok(msg) => Some(grpc_model::AsyncMessageExecution {
-        //                 success: msg.success,
-        //                 sender: msg.sender.unwrap().to_string(),
-        //                 destination: msg.destination.unwrap().to_string(),
-        //                 coins: msg.coins.map(|a| a.into()),
-        //             }),
-        //             Err(_) => None,
-        //         })
-        //         .collect(),
-        //     operations: value
-        //         .operations
         //         .into_iter()
-        //         .map(|op| match op {
-        //             crate::execution_info::OperationInfo::RollBuy(addr, amount) => {
-        //                 grpc_model::OperationTypeRoll {
-        //                     address: addr.to_string(),
-        //                     r#type: Some(grpc_model::operation_type_roll::Type::RollBuy(
-        //                         grpc_model::RollBuy { roll_count: amount },
-        //                     )),
-        //                 }
-        //             }
-        //             crate::execution_info::OperationInfo::RollSell(addr, amount) => {
-        //                 grpc_model::OperationTypeRoll {
-        //                     address: addr.to_string(),
-        //                     r#type: Some(grpc_model::operation_type_roll::Type::RollSell(
-        //                         grpc_model::RollSell { roll_count: amount },
-        //                     )),
-        //                 }
-        //             }
-        //         })
-        //         .collect(),
-        //     deferred_calls_messages: value
+        //         .filter_map(|msg| msg.ok())
+        //         .flat_map(|msg| {
+        //             // TODO add fee debit for sender
+
+        //             let coins = msg.coins.map(|a| a.into());
+        //             let common_fields =
+        //                 |id: String, address: String, direction: grpc_model::CoinDirection| {
+        //                     grpc_model::ExecutionInfo {
+        //                         id,
+        //                         address,
+        //                         direction: direction as i32,
+        //                         item: grpc_model::Item::Mas as i32,
+        //                         prev_amount: todo!(),
+        //                         amount: coins,
+        //                         post_amount: todo!(),
+        //                         timestamp: todo!(),
+        //                         slot: Some(value.slot.into()),
+        //                         origin: grpc_model::CoinOrigin::AsyncMsg as i32,
+        //                     }
+        //                 };
+
+        //             vec![
+        //                 common_fields(
+        //                     todo!(),
+        //                     msg.sender.unwrap().to_string(),
+        //                     grpc_model::CoinDirection::Debit,
+        //                 ),
+        //                 common_fields(
+        //                     todo!(),
+        //                     msg.destination.unwrap().to_string(),
+        //                     grpc_model::CoinDirection::Credit,
+        //                 ),
+        //             ]
+        //         }),
+        // );
+
+        // result.extend(
+        //     value
         //         .deferred_calls_messages
-        //         .iter()
-        //         .filter_map(|res| match res {
-        //             Ok(def_call) => Some(grpc_model::DeferredCallExecution {
-        //                 success: def_call.success,
-        //                 sender: def_call.sender.to_string(),
-        //                 target_address: def_call.target_address.to_string(),
-        //                 target_function: def_call.target_function.to_string(),
-        //                 coins: Some(def_call.coins.into()),
-        //             }),
-        //             Err(_) => None,
-        //         })
-        //         .collect(),
-        //     deferred_credits_execution: value
+        //         .into_iter()
+        //         .filter_map(|res| res.ok())
+        //         .flat_map(|def_call| {
+        //             let common_fields =
+        //                 |id: String,
+        //                  address: String,
+        //                  amount: Amount,
+        //                  direction: grpc_model::CoinDirection| {
+        //                     grpc_model::ExecutionInfo {
+        //                         id,
+        //                         address,
+        //                         direction: direction as i32,
+        //                         item: grpc_model::Item::Mas as i32,
+        //                         prev_amount: todo!(),
+        //                         amount: Some(amount.into()),
+        //                         post_amount: todo!(),
+        //                         timestamp: todo!(),
+        //                         slot: Some(value.slot.into()),
+        //                         origin: grpc_model::CoinOrigin::DeferredCall as i32,
+        //                     }
+        //                 };
+
+        //             vec![
+        //                 common_fields(
+        //                     todo!(),
+        //                     def_call.sender.to_string(),
+        //                     def_call.coins,
+        //                     grpc_model::CoinDirection::Debit,
+        //                 ),
+        //                 common_fields(
+        //                     todo!(),
+        //                     def_call.sender.to_string(),
+        //                     def_call.fee,
+        //                     grpc_model::CoinDirection::Debit,
+        //                 ),
+        //                 common_fields(
+        //                     todo!(),
+        //                     def_call.target_address.to_string(),
+        //                     def_call.coins,
+        //                     grpc_model::CoinDirection::Credit,
+        //                 ),
+        //             ]
+        //         }),
+        // );
+
+        // result.extend(
+        //     value
         //         .deferred_credits_execution
         //         .into_iter()
-        //         .filter_map(|(addr, res)| match res {
-        //             Ok(amount) => Some(grpc_model::TargetAmount {
-        //                 address: addr.to_string(),
-        //                 amount: Some(amount.into()),
-        //             }),
-        //             Err(_) => None,
-        //         })
-        //         .collect(),
-        //     cancel_async_message_execution: value
-        //         .cancel_async_message_execution
-        //         .into_iter()
-        //         .filter_map(|(addr, res)| match res {
-        //             Ok(amount) => Some(grpc_model::TargetAmount {
-        //                 address: addr.to_string(),
-        //                 amount: Some(amount.into()),
-        //             }),
-        //             Err(_) => None,
-        //         })
-        //         .collect(),
-        //     auto_sell_execution: value
-        //         .auto_sell_execution
-        //         .into_iter()
-        //         .map(|(addr, amount)| grpc_model::TargetAmount {
+        //         .filter_map(|(addr, res)| res.ok().map(|amount| (addr, amount)))
+        //         .map(|(addr, amount)| grpc_model::ExecutionInfo {
+        //             id: todo!(),
         //             address: addr.to_string(),
+        //             direction: grpc_model::CoinDirection::Credit as i32,
+        //             item: grpc_model::Item::Mas as i32,
+        //             prev_amount: todo!(),
         //             amount: Some(amount.into()),
-        //         })
-        //         .collect(),
-        // }
+        //             post_amount: todo!(),
+        //             timestamp: todo!(),
+        //             slot: Some(value.slot.into()),
+        //             origin: grpc_model::CoinOrigin::DeferredCredit as i32,
+        //         }),
+        // );
+
+        // TODO cancel_async_message_execution and auto_sell_execution
 
         grpc_api::NewExecutionInfoServerResponse {
             execution_infos: result,

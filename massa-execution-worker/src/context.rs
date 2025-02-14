@@ -19,7 +19,7 @@ use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
-use massa_execution_exports::execution_info::{TransferContext, TransferType};
+use massa_execution_exports::execution_info::{TransferContext, TransferHistory};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -114,16 +114,6 @@ pub struct ExecutionContextSnapshot {
 
     /// Transfer coins history
     pub transfer_history: Vec<TransferHistory>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TransferHistory {
-    pub from: Option<Address>,
-    pub to: Option<Address>,
-    pub amount: Option<Amount>,
-    pub roll_count: Option<u64>,
-    pub context: TransferContext,
-    pub t_type: TransferType,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -225,8 +215,7 @@ pub struct ExecutionContext {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
-
-    pub transfer_history: Vec<TransferHistory>,
+    transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
 }
 
 impl ExecutionContext {
@@ -259,6 +248,8 @@ impl ExecutionContext {
         )
         .expect("Time overflow when getting block slot timestamp for MIP");
 
+        let transfers_history = Arc::new(RwLock::new(Vec::new()));
+
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
@@ -267,6 +258,7 @@ impl ExecutionContext {
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
                 config.storage_costs_constants,
+                transfers_history.clone(),
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -280,6 +272,7 @@ impl ExecutionContext {
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
                 active_history.clone(),
+                transfers_history.clone(),
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(
                 final_state.clone(),
@@ -287,7 +280,7 @@ impl ExecutionContext {
             ),
             speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
-                active_history,
+                active_history.clone(),
             ),
             creator_min_balance: Default::default(),
             slot,
@@ -312,7 +305,7 @@ impl ExecutionContext {
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
-            transfer_history: vec![],
+            transfers_history,
         }
     }
 
@@ -337,7 +330,7 @@ impl ExecutionContext {
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
-            transfer_history: self.transfer_history.clone(),
+            transfer_history: self.transfers_history.read().clone(),
         }
     }
 
@@ -385,6 +378,7 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
+        self.transfers_history = Arc::new(RwLock::new(snapshot.transfer_history));
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
@@ -867,28 +861,13 @@ impl ExecutionContext {
         }
 
         // do the transfer
-        let transfert_result = self.speculative_ledger.transfer_coins(
+        self.speculative_ledger.transfer_coins(
             from_addr,
             to_addr,
             amount,
             execution_component_version,
-        );
-
-        #[cfg(feature = "execution-info")]
-        {
-            if transfert_result.is_ok() {
-                self.transfer_history.push(TransferHistory {
-                    from: from_addr,
-                    to: to_addr,
-                    amount: Some(amount),
-                    roll_count: None,
-                    context: transfer_context,
-                    t_type: TransferType::Mas,
-                });
-            }
-        }
-
-        transfert_result
+            transfer_context,
+        )
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -954,35 +933,14 @@ impl ExecutionContext {
         seller_addr: &Address,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
-        let _deferred_credit = self.speculative_roll_state.try_sell_rolls(
+        self.speculative_roll_state.try_sell_rolls(
             seller_addr,
             self.slot,
             roll_count,
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
-        )?;
-
-        #[cfg(feature = "execution-info")]
-        {
-            self.transfer_history.push(TransferHistory {
-                from: Some(seller_addr.clone()),
-                to: None,
-                amount: None,
-                roll_count: Some(roll_count),
-                context: TransferContext::RollSell,
-                t_type: TransferType::Roll,
-            });
-            self.transfer_history.push(TransferHistory {
-                from: None,
-                to: Some(seller_addr.clone()),
-                amount: Some(_deferred_credit),
-                roll_count: None,
-                context: TransferContext::RollSell,
-                t_type: TransferType::DeferredCredits,
-            });
-        }
-        Ok(())
+        )
     }
 
     /// Try to slash `roll_count` rolls from the denounced address. If not enough rolls,
@@ -1238,6 +1196,9 @@ impl ExecutionContext {
             deferred_call_changes: self.speculative_deferred_calls.take(),
         };
         std::mem::take(&mut self.opt_block_id);
+
+        // TODO should take ?
+        let transfers_history = self.transfers_history.read().clone();
         ExecutionOutput {
             slot,
             block_info,
@@ -1250,6 +1211,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
+            transfers_history,
         }
     }
 
@@ -1312,6 +1274,9 @@ impl ExecutionContext {
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
 
+        // TODO should take ?
+        let transfer = self.transfers_history.read().clone();
+
         std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
@@ -1325,6 +1290,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
+            transfers_history: transfer,
         }
     }
 
