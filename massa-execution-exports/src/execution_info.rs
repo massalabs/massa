@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use massa_hash::Hash;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
 use massa_time::MassaTime;
 use schnellru::{ByLength, LruMap};
@@ -125,13 +126,15 @@ pub struct ExecutionInfoForSlot {
     /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
     pub auto_sell_execution: Vec<(Address, Amount)>,
 
+    pub execution_trail_hash: Hash,
+
     #[cfg(feature = "execution-info")]
     pub transfers: Vec<TransferHistory>,
 }
 
 impl ExecutionInfoForSlot {
     /// Create a new ExecutionInfoForSlot structure
-    pub fn new(slot: Slot) -> Self {
+    pub fn new(slot: Slot, execution_trail_hash: Hash) -> Self {
         let timestamp = massa_models::timeslots::get_block_slot_timestamp(
             THREAD_COUNT,
             T0,
@@ -154,6 +157,7 @@ impl ExecutionInfoForSlot {
             auto_sell_execution: vec![],
             #[cfg(feature = "execution-trace")]
             transfers: vec![],
+            execution_trail_hash,
         }
     }
 

@@ -1543,9 +1543,6 @@ impl ExecutionState {
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
 
-        #[cfg(feature = "execution-info")]
-        let mut exec_info = ExecutionInfoForSlot::new(slot.clone());
-
         // Create a new execution context for the whole active slot
         let mut execution_context = ExecutionContext::active_slot(
             self.config.clone(),
@@ -1556,6 +1553,10 @@ impl ExecutionState {
             self.module_cache.clone(),
             self.mip_store.clone(),
         );
+
+        #[cfg(feature = "execution-info")]
+        let mut exec_info =
+            ExecutionInfoForSlot::new(slot.clone(), execution_context.execution_trail_hash.clone());
 
         let execution_version = execution_context.execution_component_version;
         if self.cur_execution_version != execution_version {
