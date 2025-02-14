@@ -3,31 +3,21 @@ history_file_path = "config/.massa_history"
 timeout = 1000
 
 [default_node]
-# The IP of your node. Works both with IPv4 (like 127.0.0.1) and IPv6 (like ::1) addresses, if the node is bound to the correct protocol.
 ip = "127.0.0.1"
 private_port = 33034
 public_port = 33035
 grpc_public_port = 33037
 grpc_private_port = 33038
-# Chain id for MainNet, please update to match the target node chain id
-chain_id = 77658377
+chain_id = "77658376"
 
 [client]
-    # maximum size in bytes of a request. Defaults to 50MB
-    max_request_body_size = 52428800
-    # request timeout
-    request_timeout = 60000
-    # maximum number of outcoming connections allowed
-    max_concurrent_requests = 100
-    # certificate_store, `Native` or `WebPki`
-    certificate_store = "Native"
-    # JSON-RPC request object id data type, `String` or `Number`
-    id_kind = "Number"
-    # max length for logging for requests and responses. Logs bigger than this limit will be truncated
-    max_log_length = 4096
-    # custom headers passed to the server with every request (default is empty).
-    headers = []
+max_request_body_size = 52428800
+request_timeout = 60000
+max_concurrent_requests = 100
+certificate_store = "Native"
+id_kind = "Number"
+max_log_length = 4096
+headers = []
 
-    [client.http]
-        # whether to enable HTTP.
-        enabled = true
+[client.http]
+enabled = true

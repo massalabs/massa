@@ -1,39 +1,14 @@
 {
-    "P16noomm9akwBSTkvhs4KX6kjbhVhYkLqrzneCwBdo2SUE8axHx": {
-        "listeners": {
-            "149.202.86.103:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-
+  "P1kKfgrCveVnosUkxTzaBw5cf9f2cbTvK3R5Ssb2Pf76au8xwmH": {
+    "listeners": {
+      "145.239.66.206:31244": "Tcp"
     },
-    "P12bYghvuhCuQ38iSAGQvKTb1iXtwzPZhNJLhWQPYcmgz8PDPAGo": {
-        "listeners": {
-            "149.202.89.125:31244": "Tcp"
-        },
-        "category": "Bootstrap"
+    "category": "Bootstrap"
+  },
+  "P12sNdL7YwSawpnJrk9XCWDjKbgfNamAobp62AX5qfkgpBkGh2wC": {
+    "listeners": {
+      "51.75.131.129:31244": "Tcp"
     },
-    "P1jRVjMZK8ZEmUGxDbLgHv3BTeQy8wHnazKCdcpQy4sFxu9d8GW": {
-        "listeners": {
-            "158.69.120.215:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P12B7LqdyVVBXr8TMygU28R7JYxUR2dsLLp63YXtH9XAR1R2NUrY": {
-        "listeners": {
-            "158.69.23.120:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1FoYxXoSC39ZamAvwi7srz3oRrJ8JC3EvRhcqXPCD7vaQZTHKV": {
-        "listeners": {
-            "198.27.74.5:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    },
-    "P1nRDdGq7DFD7AvSz5pgAsXCvkcqoL5Xf3kHr8Yd3TTUgtBcBun": {
-        "listeners": {
-            "51.75.60.228:31244": "Tcp"
-        },
-        "category": "Bootstrap"
-    }
+    "category": "Bootstrap"
+  }
 }
