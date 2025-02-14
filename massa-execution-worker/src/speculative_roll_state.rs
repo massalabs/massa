@@ -104,6 +104,9 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `seller_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to sell
+    ///
+    /// # Returns
+    /// * Ok(new_deferred_credits): the amount of deferred credits
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
@@ -112,7 +115,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<Amount, ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
         let owned_count = self.get_rolls(seller_addr);
 
@@ -151,7 +154,7 @@ impl SpeculativeRollState {
             .deferred_credits
             .insert(target_slot, *seller_addr, new_deferred_credits);
 
-        Ok(())
+        Ok(new_deferred_credits)
     }
 
     /// Try to slash `roll_count` rolls from the given address. If not enough roll, slash

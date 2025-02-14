@@ -73,7 +73,7 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 use prost::Message;
 
 use massa_execution_exports::execution_info::{
-    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
+    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult, TransferContext,
 };
 #[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
@@ -525,9 +525,13 @@ impl ExecutionState {
         context.origin_operation_id = Some(operation_id);
 
         // debit the fee from the operation sender
-        if let Err(err) =
-            context.transfer_coins(Some(sender_addr), None, operation.content.fee, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(sender_addr),
+            None,
+            operation.content.fee,
+            false,
+            TransferContext::OperationFee,
+        ) {
             let mut error = format!("could not spend fees: {}", err);
             let max_event_size = match execution_component_version {
                 0 => self.config.max_event_size_v0,
@@ -934,7 +938,13 @@ impl ExecutionState {
         };
 
         // spend `roll_price` * `roll_count` coins from the buyer
-        if let Err(err) = context.transfer_coins(Some(buyer_addr), None, spend_coins, false) {
+        if let Err(err) = context.transfer_coins(
+            Some(buyer_addr),
+            None,
+            spend_coins,
+            false,
+            TransferContext::RollBuy,
+        ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
                 buyer_addr, roll_count, err
@@ -981,9 +991,13 @@ impl ExecutionState {
         }];
 
         // transfer coins from sender to destination
-        if let Err(err) =
-            context.transfer_coins(Some(sender_addr), Some(*recipient_address), *amount, true)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(sender_addr),
+            Some(*recipient_address),
+            *amount,
+            true,
+            TransferContext::TransactionCoins,
+        ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
                 amount, sender_addr, recipient_address, err
@@ -1119,9 +1133,13 @@ impl ExecutionState {
             context.check_target_sc_address(target_addr)?;
 
             // Transfer coins from the sender to the target
-            if let Err(err) =
-                context.transfer_coins(Some(sender_addr), Some(target_addr), coins, false)
-            {
+            if let Err(err) = context.transfer_coins(
+                Some(sender_addr),
+                Some(target_addr),
+                coins,
+                false,
+                TransferContext::CallSCCoins,
+            ) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to transfer {} operation coins from {} to {}: {}",
                     coins, sender_addr, target_addr, err
@@ -1246,9 +1264,13 @@ impl ExecutionState {
             };
 
             // credit coins to the target address
-            if let Err(err) =
-                context.transfer_coins(None, Some(message.destination), message.coins, false)
-            {
+            if let Err(err) = context.transfer_coins(
+                None,
+                Some(message.destination),
+                message.coins,
+                false,
+                TransferContext::AsyncMsgCoins,
+            ) {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
                     "could not credit coins to target of async execution: {}",
@@ -1353,7 +1375,13 @@ impl ExecutionState {
                 call.parameters.len() as u64,
                 self.config.max_function_length,
             );
-            if let Err(e) = context.transfer_coins(None, Some(call.sender_address), amount, false) {
+            if let Err(e) = context.transfer_coins(
+                None,
+                Some(call.sender_address),
+                amount,
+                false,
+                TransferContext::DeferredCallStorageRefund,
+            ) {
                 warn!(
                     "could not refund storage costs to sender: {} - amount: {} - e:{}",
                     call.sender_address,
@@ -1399,9 +1427,13 @@ impl ExecutionState {
                     context.check_target_sc_address(call.target_address)?;
 
                     // credit coins to the target address
-                    if let Err(err) =
-                        context.transfer_coins(None, Some(call.target_address), call.coins, false)
-                    {
+                    if let Err(err) = context.transfer_coins(
+                        None,
+                        Some(call.target_address),
+                        call.coins,
+                        false,
+                        TransferContext::DeferredCallCoins,
+                    ) {
                         // coin crediting failed: reset context to snapshot and reimburse sender
                         return Err(ExecutionError::DeferredCallsError(format!(
                             "could not credit coins to target of deferred call execution: {}",
@@ -1819,6 +1851,7 @@ impl ExecutionState {
                             Some(endorsement_creator),
                             block_credit_part,
                             false,
+                            TransferContext::EndorsementCreator,
                         ) {
                             Ok(_) => {
                                 remaining_credit =
@@ -1843,6 +1876,7 @@ impl ExecutionState {
                             Some(endorsement_target_creator),
                             block_credit_part,
                             false,
+                            TransferContext::EndorsementTarget,
                         ) {
                             Ok(_) => {
                                 remaining_credit =
@@ -1868,6 +1902,7 @@ impl ExecutionState {
                         Some(block_creator_addr),
                         remaining_credit,
                         false,
+                        TransferContext::BlockCreatorReward,
                     ) {
                         debug!(
                             "failed to credit {} coins to block creator {} on block execution: {}",
@@ -1911,6 +1946,7 @@ impl ExecutionState {
                             Some(endorsement_creator),
                             block_credit_part,
                             false,
+                            TransferContext::EndorsementCreator,
                         ) {
                             Ok(_) => {
                                 #[cfg(feature = "execution-info")]
@@ -1934,6 +1970,7 @@ impl ExecutionState {
                             Some(endorsement_target_creator),
                             block_credit_part,
                             false,
+                            TransferContext::EndorsementTarget,
                         ) {
                             Ok(_) => {
                                 #[cfg(feature = "execution-info")]
@@ -1957,6 +1994,7 @@ impl ExecutionState {
                         Some(block_creator_addr),
                         block_producer_credit,
                         false,
+                        TransferContext::BlockCreatorReward,
                     ) {
                         debug!(
                             "failed to credit {} coins to block creator {} on block execution: {}",
@@ -2257,7 +2295,13 @@ impl ExecutionState {
 
                     // transfer fee
                     if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
-                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                        context.transfer_coins(
+                            Some(*addr),
+                            None,
+                            fee,
+                            false,
+                            TransferContext::ReadOnlyBytecodeExecutionFee,
+                        )?;
                     }
                 }
 
@@ -2305,14 +2349,26 @@ impl ExecutionState {
 
                     // transfer fee
                     if let (Some(fee), Some(addr)) = (req.fee, call_stack_addr.first()) {
-                        context.transfer_coins(Some(*addr), None, fee, false)?;
+                        context.transfer_coins(
+                            Some(*addr),
+                            None,
+                            fee,
+                            false,
+                            TransferContext::ReadOnlyFunctionCallFee,
+                        )?;
                     }
 
                     // transfer coins
                     if let (Some(coins), Some(from), Some(to)) =
                         (req.coins, call_stack_addr.first(), call_stack_addr.get(1))
                     {
-                        context.transfer_coins(Some(*from), Some(*to), coins, false)?;
+                        context.transfer_coins(
+                            Some(*from),
+                            Some(*to),
+                            coins,
+                            false,
+                            TransferContext::ReadOnlyFunctionCallCoins,
+                        )?;
                     }
                 }
 

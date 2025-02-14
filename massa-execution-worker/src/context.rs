@@ -19,6 +19,7 @@ use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
+use massa_execution_exports::execution_info::{TransferContext, TransferType};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -110,6 +111,19 @@ pub struct ExecutionContextSnapshot {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    /// Transfer coins history
+    pub transfer_history: Vec<TransferCoinsHistory>,
+}
+
+#[derive(Clone, Debug)]
+pub struct TransferCoinsHistory {
+    pub from: Option<Address>,
+    pub to: Option<Address>,
+    pub amount: Option<Amount>,
+    pub roll_count: Option<u64>,
+    pub context: TransferContext,
+    pub t_type: TransferType,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -211,6 +225,8 @@ pub struct ExecutionContext {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    pub transfer_history: Vec<TransferCoinsHistory>,
 }
 
 impl ExecutionContext {
@@ -296,6 +312,7 @@ impl ExecutionContext {
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
+            transfer_history: vec![],
         }
     }
 
@@ -320,6 +337,7 @@ impl ExecutionContext {
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
+            transfer_history: self.transfer_history.clone(),
         }
     }
 
@@ -805,6 +823,7 @@ impl ExecutionContext {
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
+        transfer_context: TransferContext,
     ) -> Result<(), ExecutionError> {
         let execution_component_version = self.execution_component_version;
 
@@ -848,12 +867,28 @@ impl ExecutionContext {
         }
 
         // do the transfer
-        self.speculative_ledger.transfer_coins(
+        let transfert_result = self.speculative_ledger.transfer_coins(
             from_addr,
             to_addr,
             amount,
             execution_component_version,
-        )
+        );
+
+        #[cfg(feature = "execution-info")]
+        {
+            if transfert_result.is_ok() {
+                self.transfer_history.push(TransferCoinsHistory {
+                    from: from_addr,
+                    to: to_addr,
+                    amount: Some(amount),
+                    roll_count: None,
+                    context: transfer_context,
+                    t_type: TransferType::Mas,
+                });
+            }
+        }
+
+        transfert_result
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -874,7 +909,13 @@ impl ExecutionContext {
     ) -> Option<(Address, Result<Amount, String>)> {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
-        let transfer_result = self.transfer_coins(None, Some(msg.sender), msg.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(msg.sender),
+            msg.coins,
+            false,
+            TransferContext::AyncMsgCancel,
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
@@ -913,14 +954,35 @@ impl ExecutionContext {
         seller_addr: &Address,
         roll_count: u64,
     ) -> Result<(), ExecutionError> {
-        self.speculative_roll_state.try_sell_rolls(
+        let _deferred_credit = self.speculative_roll_state.try_sell_rolls(
             seller_addr,
             self.slot,
             roll_count,
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
-        )
+        )?;
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfer_history.push(TransferCoinsHistory {
+                from: Some(seller_addr.clone()),
+                to: None,
+                amount: None,
+                roll_count: Some(roll_count),
+                context: TransferContext::RollSell,
+                t_type: TransferType::Roll,
+            });
+            self.transfer_history.push(TransferCoinsHistory {
+                from: None,
+                to: Some(seller_addr.clone()),
+                amount: Some(_deferred_credit),
+                roll_count: None,
+                context: TransferContext::RollSell,
+                t_type: TransferType::DeferredCredits,
+            });
+        }
+        Ok(())
     }
 
     /// Try to slash `roll_count` rolls from the denounced address. If not enough rolls,
@@ -1093,7 +1155,13 @@ impl ExecutionContext {
             .credits
         {
             for (address, amount) in map {
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCredits,
+                );
 
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
@@ -1488,8 +1556,13 @@ impl ExecutionContext {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
 
-        let transfer_result =
-            self.transfer_coins(None, Some(call.sender_address), call.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(call.sender_address),
+            call.coins,
+            false,
+            TransferContext::DeferredCallFail,
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
                 "deferred call cancel: reimbursement of {} failed: {}",
@@ -1537,7 +1610,13 @@ impl ExecutionContext {
                 let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
 
                 // refund the coins to the caller
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCallCancel,
+                );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
                         "deferred call cancel: reimbursement of {} failed: {}",

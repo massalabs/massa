@@ -504,7 +504,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                                 prev_amount: todo!(),
                                 amount: Some(amount.into()),
                                 post_amount: todo!(),
-                                timestamp: value.timestamp.into(),
+                                timestamp: todo!(),
                                 slot: Some(value.slot.into()),
                                 origin: orig as i32,
                             }

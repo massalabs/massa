@@ -2,6 +2,8 @@
 
 use std::collections::HashMap;
 
+use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
+use massa_time::MassaTime;
 use schnellru::{ByLength, LruMap};
 
 use massa_deferred_calls::DeferredCall;
@@ -42,9 +44,49 @@ pub enum OperationInfo {
     RollSell(Address, u64),
 }
 
+#[derive(Debug, Clone)]
+pub enum TransferType {
+    Mas,
+    Roll,
+    DeferredCredits,
+}
+
+#[derive(Debug, Clone)]
+pub enum TransferContext {
+    TransactionCoins,
+    TransactionFee,
+    AyncMsgCancel,
+    DeferredCredits,
+    DeferredCallFail,
+    DeferredCallCancel,
+    DeferredCallCoins,
+    DeferredCallRegister,
+    DeferredCallStorageRefund,
+    OperationFee,
+    RollBuy,
+    RollSell,
+    CallSCCoins,
+    AsyncMsgCoins,
+    EndorsementCreator,
+    EndorsementTarget,
+    BlockCreatorReward,
+    ReadOnlyBytecodeExecutionFee,
+    ReadOnlyFunctionCallFee,
+    ReadOnlyFunctionCallCoins,
+    AbiCallCoins,
+    AbiTransferCoins,
+    AbiTransferForCoins,
+    AbiSendMsgCoins,
+    AbiSendMsgFee,
+}
+
 /// Struct for execution info
 #[derive(Debug, Clone)]
 pub struct ExecutionInfoForSlot {
+    /// Slot
+    pub slot: Slot,
+    /// Timestamp
+    pub timestamp: MassaTime,
     /// Reward for block producer
     pub block_producer_reward: Option<(Address, Amount)>,
     /// Rewards for endorsmement creators
@@ -72,8 +114,17 @@ pub struct ExecutionInfoForSlot {
 
 impl ExecutionInfoForSlot {
     /// Create a new ExecutionInfoForSlot structure
-    pub fn new() -> Self {
+    pub fn new(slot: Slot) -> Self {
+        let timestamp = massa_models::timeslots::get_block_slot_timestamp(
+            THREAD_COUNT,
+            T0,
+            *GENESIS_TIMESTAMP,
+            slot.clone(),
+        )
+        .expect("Error getting timestamp for slot in ExecutionInfoForSlot");
         Self {
+            slot,
+            timestamp,
             block_producer_reward: None,
             endorsement_creator_rewards: Default::default(),
             endorsement_target_reward: None,

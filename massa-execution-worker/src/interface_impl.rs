@@ -8,7 +8,9 @@
 use crate::context::ExecutionContext;
 use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_deferred_calls::DeferredCall;
-use massa_execution_exports::{ExecutionConfig, ExecutionStackElement};
+use massa_execution_exports::{
+    execution_info::TransferContext, ExecutionConfig, ExecutionStackElement,
+};
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -326,8 +328,13 @@ impl Interface for InterfaceImpl {
         let coins = Amount::from_raw(raw_coins);
         // note: rights are not checked here we checked that to_address is an SC address above
         // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
@@ -1206,7 +1213,13 @@ impl Interface for InterfaceImpl {
         let mut context = context_guard!(self);
         let from_address = context.get_current_address().map_err(|e| e.to_string())?;
         context
-            .transfer_coins(Some(from_address), Some(to_address), amount, true)
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferCoins,
+            )
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -1230,7 +1243,13 @@ impl Interface for InterfaceImpl {
         let amount = Amount::from_raw(raw_amount);
         let mut context = context_guard!(self);
         context
-            .transfer_coins(Some(from_address), Some(to_address), amount, true)
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferForCoins,
+            )
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -1256,7 +1275,13 @@ impl Interface for InterfaceImpl {
             None => context.get_current_address().map_err(|e| e.to_string())?,
         };
         context
-            .transfer_coins(Some(from_address), Some(to_address), amount, true)
+            .transfer_coins(
+                Some(from_address),
+                Some(to_address),
+                amount,
+                true,
+                TransferContext::AbiTransferCoins,
+            )
             .map_err(|e| e.to_string())?;
         Ok(())
     }
@@ -1519,11 +1544,23 @@ impl Interface for InterfaceImpl {
             .map_err(|e| e.to_string())?;
         let coins = Amount::from_raw(raw_coins);
         execution_context
-            .transfer_coins(Some(sender), None, coins, true)
+            .transfer_coins(
+                Some(sender),
+                None,
+                coins,
+                true,
+                TransferContext::AbiSendMsgCoins,
+            )
             .map_err(|e| e.to_string())?;
         let fee = Amount::from_raw(raw_fee);
         execution_context
-            .transfer_coins(Some(sender), None, fee, true)
+            .transfer_coins(
+                Some(sender),
+                None,
+                fee,
+                true,
+                TransferContext::AbiSendMsgFee,
+            )
             .map_err(|e| e.to_string())?;
         execution_context.push_new_message(AsyncMessage::new(
             emission_slot,
@@ -1742,7 +1779,13 @@ impl Interface for InterfaceImpl {
         // make sender pay coins + fee
         // coins + cost for booking the deferred call
         context
-            .transfer_coins(Some(sender_address), None, coins.saturating_add(fee), true)
+            .transfer_coins(
+                Some(sender_address),
+                None,
+                coins.saturating_add(fee),
+                true,
+                TransferContext::DeferredCallRegister,
+            )
             .map_err(|e| e.to_string())?;
 
         let call = DeferredCall::new(
@@ -1827,8 +1870,13 @@ impl Interface for InterfaceImpl {
         let coins = amount_from_native_amount(&raw_coins)?;
         // note: rights are not checked here we checked that to_address is an SC address above
         // and we know that the sender is at the top of the call stack
-        if let Err(err) = context.transfer_coins(Some(from_address), Some(to_address), coins, false)
-        {
+        if let Err(err) = context.transfer_coins(
+            Some(from_address),
+            Some(to_address),
+            coins,
+            false,
+            TransferContext::AbiCallCoins,
+        ) {
             bail!(
                 "error transferring {} coins from {} to {}: {}",
                 coins,
