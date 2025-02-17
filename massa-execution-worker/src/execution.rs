@@ -403,7 +403,7 @@ impl ExecutionState {
                 if let Some(execution_info_for_slot) = execution_info_for_slot {
                     let mut cloned = execution_info_for_slot.clone();
                     cloned.transfers = exec_out.transfers_history;
-                    // cloned.transfers = exec_out.slot_trace.map(|(_, transfers)| transfers);
+                    cloned.build_transfer_ids();
 
                     if let Err(err) = self.channels.slot_execution_info_sender.send(cloned) {
                         trace!(
@@ -531,7 +531,7 @@ impl ExecutionState {
             None,
             operation.content.fee,
             false,
-            TransferContext::OperationFee,
+            TransferContext::OperationFee(operation_id.to_string()),
         ) {
             let mut error = format!("could not spend fees: {}", err);
             let max_event_size = match execution_component_version {
@@ -633,16 +633,16 @@ impl ExecutionState {
                 self.execute_executesc_op(&operation.content.op, sender_addr)
             }
             OperationType::CallSC { .. } => {
-                self.execute_callsc_op(&operation.content.op, sender_addr)
+                self.execute_callsc_op(&operation.content.op, sender_addr, operation_id)
             }
             OperationType::RollBuy { .. } => self
-                .execute_roll_buy_op(&operation.content.op, sender_addr)
+                .execute_roll_buy_op(&operation.content.op, sender_addr, operation_id)
                 .map(|_| res),
             OperationType::RollSell { .. } => self
-                .execute_roll_sell_op(&operation.content.op, sender_addr)
+                .execute_roll_sell_op(&operation.content.op, sender_addr, operation_id)
                 .map(|_| res),
             OperationType::Transaction { .. } => self
-                .execute_transaction_op(&operation.content.op, sender_addr)
+                .execute_transaction_op(&operation.content.op, sender_addr, operation_id)
                 .map(|_| res),
         };
 
@@ -869,6 +869,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         seller_addr: Address,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         // process roll sell operations only
         let roll_count = match operation {
@@ -889,7 +890,7 @@ impl ExecutionState {
         }];
 
         // try to sell the rolls
-        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count) {
+        if let Err(err) = context.try_sell_rolls(&seller_addr, *roll_count, operation_id) {
             return Err(ExecutionError::RollSellError(format!(
                 "{} failed to sell {} rolls: {}",
                 seller_addr, roll_count, err
@@ -908,6 +909,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         buyer_addr: Address,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         // process roll buy operations only
         let roll_count = match operation {
@@ -944,7 +946,7 @@ impl ExecutionState {
             None,
             spend_coins,
             false,
-            TransferContext::RollBuy,
+            TransferContext::RollBuy(operation_id.to_string()),
         ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
@@ -953,7 +955,7 @@ impl ExecutionState {
         }
 
         // add rolls to the buyer within the context
-        context.add_rolls(&buyer_addr, *roll_count);
+        context.add_rolls(&buyer_addr, *roll_count, operation_id);
 
         Ok(())
     }
@@ -969,6 +971,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         // process transaction operations only
         let (recipient_address, amount) = match operation {
@@ -997,7 +1000,7 @@ impl ExecutionState {
             Some(*recipient_address),
             *amount,
             true,
-            TransferContext::TransactionCoins,
+            TransferContext::TransactionCoins(operation_id.to_string()),
         ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -1089,6 +1092,7 @@ impl ExecutionState {
         &self,
         operation: &OperationType,
         sender_addr: Address,
+        operation_id: OperationId,
     ) -> Result<ExecutionResultInner, ExecutionError> {
         // process CallSC operations only
         let (max_gas, target_addr, target_func, param, coins) = match &operation {
@@ -1139,7 +1143,7 @@ impl ExecutionState {
                 Some(target_addr),
                 coins,
                 false,
-                TransferContext::CallSCCoins,
+                TransferContext::CallSCCoins(operation_id.to_string()),
             ) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to transfer {} operation coins from {} to {}: {}",
@@ -1555,8 +1559,11 @@ impl ExecutionState {
         );
 
         #[cfg(feature = "execution-info")]
-        let mut exec_info =
-            ExecutionInfoForSlot::new(slot.clone(), execution_context.execution_trail_hash.clone());
+        let mut exec_info = ExecutionInfoForSlot::new(
+            slot.clone(),
+            execution_context.execution_trail_hash.clone(),
+            exec_target.as_ref().map(|(b_id, _)| *b_id),
+        );
 
         let execution_version = execution_context.execution_component_version;
         if self.cur_execution_version != execution_version {

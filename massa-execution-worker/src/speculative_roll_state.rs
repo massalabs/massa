@@ -1,10 +1,13 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::active_history::ActiveHistory;
-use massa_execution_exports::execution_info::{TransferContext, TransferHistory, TransferType};
+use massa_execution_exports::execution_info::TransferHistory;
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::{TransferContext, TransferType};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::operation::OperationId;
 use massa_models::{
     address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
 };
@@ -85,7 +88,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64, _operation_id: OperationId) {
         let count = self
             .added_changes
             .roll_changes
@@ -102,6 +105,19 @@ impl SpeculativeRollState {
                     })
             });
         *count = count.saturating_add(roll_count);
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferHistory {
+                id: None,
+                from: None,
+                to: Some(buyer_addr.clone()),
+                amount: None,
+                roll_count: Some(roll_count),
+                context: TransferContext::RollBuy(_operation_id.to_string()),
+                t_type: TransferType::Roll,
+            });
+        }
     }
 
     /// Try to sell `roll_count` rolls from the seller address.
@@ -112,6 +128,7 @@ impl SpeculativeRollState {
     ///
     /// # Returns
     /// * Ok(new_deferred_credits): the amount of deferred credits
+    #[allow(clippy::too_many_arguments)]
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
@@ -120,6 +137,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
+        _operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
         let owned_count = self.get_rolls(seller_addr);
@@ -161,22 +179,25 @@ impl SpeculativeRollState {
 
         #[cfg(feature = "execution-info")]
         {
+            let string_ope = _operation_id.to_string();
             let mut lock = self.transfers_history.write();
             lock.push(TransferHistory {
+                id: None,
                 from: Some(seller_addr.clone()),
                 to: None,
                 amount: None,
                 roll_count: Some(roll_count),
-                context: TransferContext::RollSell,
+                context: TransferContext::RollSell(string_ope.clone()),
                 t_type: TransferType::Roll,
             });
 
             lock.push(TransferHistory {
+                id: None,
                 from: None,
                 to: Some(seller_addr.clone()),
                 amount: Some(new_deferred_credits),
                 roll_count: None,
-                context: TransferContext::RollSell,
+                context: TransferContext::RollSell(string_ope),
                 t_type: TransferType::DeferredCredits,
             });
         }
@@ -217,6 +238,7 @@ impl SpeculativeRollState {
         #[cfg(feature = "execution-info")]
         {
             self.transfers_history.write().push(TransferHistory {
+                id: None,
                 from: Some(addr.clone()),
                 to: None,
                 amount: None,
@@ -254,7 +276,22 @@ impl SpeculativeRollState {
                 .insert(*credit_slot, *addr, new_deferred_credits);
         }
 
-        amount.saturating_sub(remaining_to_slash)
+        let slashed = amount.saturating_sub(remaining_to_slash);
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferHistory {
+                id: None,
+                from: Some(addr.clone()),
+                to: None,
+                amount: Some(slashed),
+                roll_count: None,
+                context: TransferContext::DeferredCredits,
+                t_type: TransferType::Mas,
+            });
+        }
+
+        slashed
     }
 
     /// Update production statistics of an address.

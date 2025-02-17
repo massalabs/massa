@@ -2,8 +2,10 @@
 
 use std::str::FromStr;
 
-use crate::execution_info::{ExecutionInfoForSlot, TransferContext};
+use crate::execution_info::ExecutionInfoForSlot;
 
+#[cfg(feature = "execution-info")]
+use crate::execution_info::{TransferContext, TransferType};
 use crate::{
     ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
@@ -11,7 +13,6 @@ use crate::{
 };
 use grpc_api::execution_query_request_item as exec;
 use massa_models::address::Address;
-use massa_models::amount::{self, Amount};
 use massa_models::datastore::cleanup_datastore_key_range_query;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::error::ModelsError;
@@ -20,7 +21,9 @@ use massa_models::mapping_grpc::to_denunciation_index;
 use massa_models::operation::OperationId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1::{self as grpc_model, CoinOrigin};
+#[cfg(feature = "execution-info")]
+use massa_proto_rs::massa::model::v1::CoinOrigin;
+use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
 /// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
 pub fn to_querystate_filter(
@@ -484,6 +487,7 @@ impl From<ExecutionQueryError> for grpc_model::Error {
 
 impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
     fn from(value: ExecutionInfoForSlot) -> Self {
+        #[allow(unused_mut)]
         let mut result: Vec<grpc_model::ExecutionInfo> = Vec::new();
 
         #[cfg(feature = "execution-info")]
@@ -497,67 +501,55 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
             let v: Vec<grpc_model::ExecutionInfo> = value
                 .transfers
                 .into_iter()
-                .enumerate()
-                .map(|(index, transfer)| {
-                    // TODO id should be set before filtering
-                    let id = format!("{}:{}", value.execution_trail_hash, index);
+                .map(|transfer| {
+                    let id = transfer.id.unwrap_or("Unknown id".to_string());
 
-                    match transfer.context {
-                        TransferContext::TransactionCoins => grpc_model::ExecutionInfo {
-                            id,
-                            item: grpc_model::Item::Mas as i32,
-                            amount: transfer.amount.map(|a| a.to_raw()).unwrap_or(0),
-                            origin: CoinOrigin::OpTransactionCoins as i32,
-                            from_address: transfer.from.map(|a| a.to_string()),
-                            to_address: transfer.to.map(|a| a.to_string()),
-                        },
-                        TransferContext::TransactionFee => grpc_model::ExecutionInfo {
-                            id,
-                            item: grpc_model::Item::Mas as i32,
-                            amount: transfer.amount.map(|a| a.to_raw()).unwrap_or(0),
-                            origin: CoinOrigin::OpTransactionFees as i32,
-                            from_address: transfer.from.map(|a| a.to_string()),
-                            to_address: transfer.to.map(|a| a.to_string()),
-                        },
+                    let item = match transfer.t_type {
+                        TransferType::Mas => grpc_model::Item::Mas as i32,
+                        TransferType::Roll => grpc_model::Item::Roll as i32,
+                        TransferType::DeferredCredits => grpc_model::Item::DeferredMas as i32,
+                    };
+
+                    let from_address = transfer.from.map(|a| a.to_string());
+                    let to_address = transfer.to.map(|a| a.to_string());
+                    let amount = transfer.amount.map(|a| a.to_raw()).unwrap_or(0);
+
+                    let (origin, ope_id) = match transfer.context {
+                        TransferContext::TransactionCoins(ope_id) => {
+                            (CoinOrigin::OpTransactionCoins as i32, Some(ope_id))
+                        }
                         TransferContext::AyncMsgCancel => todo!(),
                         TransferContext::DeferredCredits => todo!(),
                         TransferContext::DeferredCallFail => todo!(),
                         TransferContext::DeferredCallCancel => todo!(),
                         TransferContext::DeferredCallCoins => todo!(),
-                        TransferContext::DeferredCallRegister => todo!(),
+                        TransferContext::DeferredCallRegister => {
+                            (CoinOrigin::DeferredCall as i32, None)
+                        }
                         TransferContext::DeferredCallStorageRefund => todo!(),
-                        TransferContext::OperationFee => todo!(),
-                        TransferContext::RollBuy => todo!(),
-                        TransferContext::RollSell => todo!(),
+                        TransferContext::OperationFee(ope_id) => {
+                            (CoinOrigin::OpTransactionFees as i32, Some(ope_id))
+                        }
+                        TransferContext::RollBuy(ope_id) => {
+                            (CoinOrigin::OpRollBuyRolls as i32, Some(ope_id))
+                        }
+                        TransferContext::RollSell(ope_id) => {
+                            (CoinOrigin::OpRollSellRolls as i32, Some(ope_id))
+                        }
                         TransferContext::RollSlash => todo!(),
                         TransferContext::CreateSCStorage => todo!(),
                         TransferContext::DatastoreStorage => todo!(),
-                        TransferContext::CallSCCoins => todo!(),
+                        TransferContext::CallSCCoins(_ope_id) => todo!(),
                         TransferContext::AsyncMsgCoins => todo!(),
-                        TransferContext::EndorsementCreator => grpc_model::ExecutionInfo {
-                            id,
-                            from_address: transfer.from.map(|a| a.to_string()),
-                            to_address: transfer.to.map(|a| a.to_string()),
-                            item: grpc_model::Item::Mas as i32,
-                            amount: transfer.amount.map(|a| a.to_raw()).unwrap_or(0),
-                            origin: CoinOrigin::EndorsementReward as i32,
-                        },
-                        TransferContext::EndorsementTarget => grpc_model::ExecutionInfo {
-                            id,
-                            from_address: transfer.from.map(|a| a.to_string()),
-                            to_address: transfer.to.map(|a| a.to_string()),
-                            item: grpc_model::Item::Mas as i32,
-                            amount: transfer.amount.map(|a| a.to_raw()).unwrap_or(0),
-                            origin: CoinOrigin::EndorsedReward as i32,
-                        },
-                        TransferContext::BlockCreatorReward => grpc_model::ExecutionInfo {
-                            id,
-                            from_address: transfer.from.map(|a| a.to_string()),
-                            to_address: transfer.to.map(|a| a.to_string()),
-                            item: grpc_model::Item::Mas as i32,
-                            amount: transfer.amount.map(|a| a.to_raw()).unwrap_or(0),
-                            origin: CoinOrigin::BlockReward as i32,
-                        },
+                        TransferContext::EndorsementCreator => {
+                            (CoinOrigin::EndorsementReward as i32, None)
+                        }
+                        TransferContext::EndorsementTarget => {
+                            (CoinOrigin::EndorsedReward as i32, None)
+                        }
+                        TransferContext::BlockCreatorReward => {
+                            (CoinOrigin::BlockReward as i32, None)
+                        }
                         TransferContext::ReadOnlyBytecodeExecutionFee => todo!(),
                         TransferContext::ReadOnlyFunctionCallFee => todo!(),
                         TransferContext::ReadOnlyFunctionCallCoins => todo!(),
@@ -567,6 +559,15 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                         TransferContext::AbiTransferForCoins => todo!(),
                         TransferContext::AbiSendMsgCoins => todo!(),
                         TransferContext::AbiSendMsgFee => todo!(),
+                    };
+
+                    grpc_model::ExecutionInfo {
+                        id,
+                        from_address,
+                        to_address,
+                        item,
+                        amount,
+                        origin,
                     }
                 })
                 .collect();

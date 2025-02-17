@@ -215,6 +215,7 @@ pub struct ExecutionContext {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
     transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
 }
 
@@ -918,9 +919,9 @@ impl ExecutionContext {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64, operation_id: OperationId) {
         self.speculative_roll_state
-            .add_rolls(buyer_addr, roll_count);
+            .add_rolls(buyer_addr, roll_count, operation_id);
     }
 
     /// Try to sell `roll_count` rolls from the seller address.
@@ -932,6 +933,7 @@ impl ExecutionContext {
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state.try_sell_rolls(
             seller_addr,
@@ -940,6 +942,7 @@ impl ExecutionContext {
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
+            operation_id,
         )
     }
 

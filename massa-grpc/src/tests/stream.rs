@@ -1087,6 +1087,7 @@ async fn new_slot_execution_outputs() {
         deferred_credits_execution: vec![],
         cancel_async_message_execution: vec![],
         auto_sell_execution: vec![],
+        transfers_history: vec![],
     };
 
     let keypair = KeyPair::generate(0).unwrap();

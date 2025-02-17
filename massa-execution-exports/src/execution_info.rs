@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use massa_hash::Hash;
+use massa_models::block_id::BlockId;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
 use massa_time::MassaTime;
 use schnellru::{ByLength, LruMap};
@@ -14,8 +15,8 @@ use massa_models::slot::Slot;
 use serde::Serialize;
 
 use crate::types_trace_info::ExecutionResult;
-#[cfg(feature = "execution-trace")]
-use crate::Transfer;
+// #[cfg(feature = "execution-trace")]
+// use crate::Transfer;
 
 /// Struct for Execution info per slot
 pub struct ExecutionInfo {
@@ -46,14 +47,23 @@ pub enum OperationInfo {
     RollSell(Address, u64),
 }
 
+/// representation of a transfer
 #[derive(Clone, Debug, Serialize)]
 pub struct TransferHistory {
+    /// sender address
     pub from: Option<Address>,
+    /// destination address
     pub to: Option<Address>,
+    /// amount of mas
     pub amount: Option<Amount>,
+    /// amount of rolls
     pub roll_count: Option<u64>,
+    /// Transfer context
     pub context: TransferContext,
+    /// Transfer type (mas, roll, deferred-credits)
     pub t_type: TransferType,
+    /// Transfer id
+    pub id: Option<String>,
 }
 
 #[allow(missing_docs)]
@@ -67,8 +77,7 @@ pub enum TransferType {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize)]
 pub enum TransferContext {
-    TransactionCoins,
-    TransactionFee,
+    TransactionCoins(String),
     AyncMsgCancel,
     DeferredCredits,
     DeferredCallFail,
@@ -76,13 +85,13 @@ pub enum TransferContext {
     DeferredCallCoins,
     DeferredCallRegister,
     DeferredCallStorageRefund,
-    OperationFee,
-    RollBuy,
-    RollSell,
+    OperationFee(String),
+    RollBuy(String),
+    RollSell(String),
     RollSlash,
     CreateSCStorage,
     DatastoreStorage,
-    CallSCCoins,
+    CallSCCoins(String),
     AsyncMsgCoins,
     EndorsementCreator,
     EndorsementTarget,
@@ -125,21 +134,23 @@ pub struct ExecutionInfoForSlot {
     pub cancel_async_message_execution: Vec<(Address, Result<Amount, String>)>,
     /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
     pub auto_sell_execution: Vec<(Address, Amount)>,
-
+    /// execution trail hash
     pub execution_trail_hash: Hash,
-
+    /// block id (empty if no block)
+    pub opt_block_id: Option<String>,
+    /// Transfers (empty if execution-info feature is NOT enabled)
     #[cfg(feature = "execution-info")]
     pub transfers: Vec<TransferHistory>,
 }
 
 impl ExecutionInfoForSlot {
     /// Create a new ExecutionInfoForSlot structure
-    pub fn new(slot: Slot, execution_trail_hash: Hash) -> Self {
+    pub fn new(slot: Slot, execution_trail_hash: Hash, block_id: Option<BlockId>) -> Self {
         let timestamp = massa_models::timeslots::get_block_slot_timestamp(
             THREAD_COUNT,
             T0,
             *GENESIS_TIMESTAMP,
-            slot.clone(),
+            slot,
         )
         .expect("Error getting timestamp for slot in ExecutionInfoForSlot");
         Self {
@@ -155,9 +166,24 @@ impl ExecutionInfoForSlot {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            opt_block_id: block_id.map(|b| b.to_string()),
             #[cfg(feature = "execution-trace")]
             transfers: vec![],
             execution_trail_hash,
+        }
+    }
+
+    /// When the slot is finalized, we can build the transfer ids
+    pub fn build_transfer_ids(&mut self) {
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers
+                .iter_mut()
+                .enumerate()
+                .for_each(|(index, transfer)| {
+                    let id = format!("{}:{}", self.execution_trail_hash, index);
+                    transfer.id = Some(id);
+                });
         }
     }
 
@@ -181,7 +207,7 @@ impl ExecutionInfoForSlot {
 
         #[cfg(not(feature = "execution-info"))]
         {
-            return empty;
+            empty
         }
     }
 }
@@ -222,6 +248,12 @@ impl AsyncMessageExecutionResult {
             coins: None,
             traces: None,
         }
+    }
+}
+
+impl Default for AsyncMessageExecutionResult {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
