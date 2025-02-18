@@ -6,6 +6,7 @@ use massa_async_pool::AsyncMessageId;
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
+use massa_models::denunciation::DenunciationIndex;
 use massa_time::MassaTime;
 use schnellru::{ByLength, LruMap};
 
@@ -65,6 +66,23 @@ pub struct TransferHistory {
     pub t_type: TransferType,
     /// Transfer id
     pub id: Option<String>,
+    /// denunciation index
+    pub denunciation_index: Option<DenunciationIndex>,
+}
+
+impl Default for TransferHistory {
+    fn default() -> Self {
+        Self {
+            from: None,
+            to: None,
+            amount: None,
+            roll_count: None,
+            context: TransferContext::DeferredCredits,
+            t_type: TransferType::Mas,
+            id: None,
+            denunciation_index: None,
+        }
+    }
 }
 
 #[allow(missing_docs)]
@@ -180,6 +198,7 @@ impl ExecutionInfoForSlot {
         {
             use massa_async_pool::AsyncMessageIdSerializer;
             use massa_serialization::Serializer;
+            use tracing::error;
             let msg_id_serializer = AsyncMessageIdSerializer::new();
             self.transfers
                 .iter_mut()
@@ -190,24 +209,28 @@ impl ExecutionInfoForSlot {
 
                     // serialize the msg_id if it exists
                     match &transfer.context {
-                        TransferContext::AsyncMsgCoins(msg_id, _msg_id_str) => {
+                        TransferContext::AsyncMsgCoins(msg_id, _msg_id_str)
+                        | TransferContext::AyncMsgCancel(msg_id, _msg_id_str) => {
                             if let Some(id) = msg_id {
                                 let mut buf = Vec::new();
-                                msg_id_serializer.serialize(&id, &mut buf).unwrap();
-                                transfer.context = TransferContext::AsyncMsgCoins(
-                                    None,
-                                    Some(String::from_utf8(buf).unwrap()),
-                                );
-                            }
-                        }
-                        TransferContext::AyncMsgCancel(msg_id, _msg_id_str) => {
-                            if let Some(id) = msg_id {
-                                let mut buf = Vec::new();
-                                msg_id_serializer.serialize(&id, &mut buf).unwrap();
-                                transfer.context = TransferContext::AyncMsgCancel(
-                                    None,
-                                    Some(String::from_utf8(buf).unwrap()),
-                                );
+                                let str_opt: Option<String> =
+                                    match msg_id_serializer.serialize(&id, &mut buf) {
+                                        Ok(_) => String::from_utf8(buf).ok(),
+                                        Err(er) => {
+                                            error!("Error serializing async_msg_id: {:?}", er);
+                                            None
+                                        }
+                                    };
+                                transfer.context = match transfer.context {
+                                    TransferContext::AsyncMsgCoins(_, _) => {
+                                        TransferContext::AsyncMsgCoins(None, str_opt)
+                                    }
+                                    TransferContext::AyncMsgCancel(_, _) => {
+                                        TransferContext::AyncMsgCancel(None, str_opt)
+                                    }
+                                    // not reachable
+                                    _ => transfer.context.clone(),
+                                };
                             }
                         }
                         _ => {}

@@ -7,9 +7,8 @@
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::datastore_scan::scan_datastore;
-#[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::TransferType;
-use massa_execution_exports::execution_info::{TransferContext, TransferHistory};
+use massa_execution_exports::execution_info::TransferContext;
+use massa_execution_exports::execution_info::TransferHistory;
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
@@ -215,13 +214,11 @@ impl SpeculativeLedger {
         #[cfg(feature = "execution-info")]
         {
             self.transfers_history.write().push(TransferHistory {
-                id: None,
                 from: from_addr,
                 to: to_addr,
                 amount: Some(amount),
-                roll_count: None,
                 context: _context,
-                t_type: TransferType::Mas,
+                ..Default::default()
             });
         }
 

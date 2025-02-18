@@ -956,12 +956,13 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         let execution_component_version = self.execution_component_version;
 
         match execution_component_version {
-            0 => self.try_slash_rolls_v0(denounced_addr, roll_count),
-            _ => self.try_slash_rolls_v1(denounced_addr, roll_count),
+            0 => self.try_slash_rolls_v0(denounced_addr, roll_count, denunciation_idx),
+            _ => self.try_slash_rolls_v1(denounced_addr, roll_count, denunciation_idx),
         }
     }
 
@@ -969,6 +970,7 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         // try to slash as many roll as available
         let slashed_rolls = self
@@ -1002,9 +1004,13 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+            let slashed_coins_in_deferred_credits =
+                self.speculative_roll_state.try_slash_deferred_credits(
+                    &self.slot,
+                    denounced_addr,
+                    &amount_remaining_to_slash,
+                    denunciation_idx,
+                );
 
             slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
 
@@ -1026,6 +1032,7 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         // try to slash as many roll as available
         let slashed_rolls = self
@@ -1062,9 +1069,13 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+            let slashed_coins_in_deferred_credits =
+                self.speculative_roll_state.try_slash_deferred_credits(
+                    &self.slot,
+                    denounced_addr,
+                    &amount_remaining_to_slash,
+                    denunciation_idx,
+                );
 
             total_slashed_coins =
                 total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);

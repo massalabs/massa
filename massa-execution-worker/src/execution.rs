@@ -822,6 +822,7 @@ impl ExecutionState {
         let slashed = context.try_slash_rolls(
             &addr_denounced,
             self.config.roll_count_to_slash_on_denunciation,
+            &de_idx,
         );
 
         match slashed.as_ref() {

@@ -7,6 +7,7 @@ use massa_execution_exports::execution_info::{TransferContext, TransferType};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::denunciation::DenunciationIndex;
 use massa_models::operation::OperationId;
 use massa_models::{
     address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
@@ -109,13 +110,11 @@ impl SpeculativeRollState {
         #[cfg(feature = "execution-info")]
         {
             self.transfers_history.write().push(TransferHistory {
-                id: None,
-                from: None,
                 to: Some(buyer_addr.clone()),
-                amount: None,
                 roll_count: Some(roll_count),
                 context: TransferContext::RollBuy(_operation_id.to_string()),
                 t_type: TransferType::Roll,
+                ..Default::default()
             });
         }
     }
@@ -182,23 +181,19 @@ impl SpeculativeRollState {
             let string_ope = _operation_id.to_string();
             let mut lock = self.transfers_history.write();
             lock.push(TransferHistory {
-                id: None,
                 from: Some(seller_addr.clone()),
-                to: None,
-                amount: None,
                 roll_count: Some(roll_count),
                 context: TransferContext::RollSell(string_ope.clone()),
                 t_type: TransferType::Roll,
+                ..Default::default()
             });
 
             lock.push(TransferHistory {
-                id: None,
-                from: None,
                 to: Some(seller_addr.clone()),
                 amount: Some(new_deferred_credits),
-                roll_count: None,
                 context: TransferContext::RollSell(string_ope),
                 t_type: TransferType::DeferredCredits,
+                ..Default::default()
             });
         }
 
@@ -238,13 +233,11 @@ impl SpeculativeRollState {
         #[cfg(feature = "execution-info")]
         {
             self.transfers_history.write().push(TransferHistory {
-                id: None,
                 from: Some(addr.clone()),
-                to: None,
-                amount: None,
                 roll_count: Some(roll_slash),
                 context: TransferContext::RollSlash,
                 t_type: TransferType::Roll,
+                ..Default::default()
             });
         }
 
@@ -262,6 +255,7 @@ impl SpeculativeRollState {
         slot: &Slot,
         addr: &Address,
         amount: &Amount,
+        _denunciation_idx: &DenunciationIndex,
     ) -> Amount {
         let credits = self.get_address_deferred_credits(addr, slot..);
 
@@ -288,6 +282,7 @@ impl SpeculativeRollState {
                 roll_count: None,
                 context: TransferContext::DeferredCredits,
                 t_type: TransferType::Mas,
+                denunciation_index: Some(_denunciation_idx.clone()),
             });
         }
 
