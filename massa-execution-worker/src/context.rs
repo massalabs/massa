@@ -894,7 +894,7 @@ impl ExecutionContext {
             Some(msg.sender),
             msg.coins,
             false,
-            TransferContext::AyncMsgCancel,
+            TransferContext::AyncMsgCancel(Some(msg.compute_id()), None),
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
@@ -1530,7 +1530,7 @@ impl ExecutionContext {
             Some(call.sender_address),
             call.coins,
             false,
-            TransferContext::DeferredCallFail,
+            TransferContext::DeferredCallFail(id.to_string()),
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
@@ -1584,7 +1584,7 @@ impl ExecutionContext {
                     Some(address),
                     amount,
                     false,
-                    TransferContext::DeferredCallCancel,
+                    TransferContext::DeferredCallCancel(call_id.to_string()),
                 );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(

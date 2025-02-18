@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use massa_async_pool::AsyncMessageId;
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
@@ -78,13 +79,13 @@ pub enum TransferType {
 #[derive(Debug, Clone, Serialize)]
 pub enum TransferContext {
     TransactionCoins(String),
-    AyncMsgCancel,
+    AyncMsgCancel(Option<AsyncMessageId>, Option<String>),
     DeferredCredits,
-    DeferredCallFail,
-    DeferredCallCancel,
-    DeferredCallCoins,
+    DeferredCallFail(String),
+    DeferredCallCancel(String),
+    DeferredCallCoins(String),
     DeferredCallRegister,
-    DeferredCallStorageRefund,
+    DeferredCallStorageRefund(String),
     OperationFee(String),
     RollBuy(String),
     RollSell(String),
@@ -92,7 +93,7 @@ pub enum TransferContext {
     CreateSCStorage,
     DatastoreStorage,
     CallSCCoins(String),
-    AsyncMsgCoins,
+    AsyncMsgCoins(Option<AsyncMessageId>, Option<String>),
     EndorsementCreator,
     EndorsementTarget,
     BlockCreatorReward,
@@ -174,15 +175,43 @@ impl ExecutionInfoForSlot {
     }
 
     /// When the slot is finalized, we can build the transfer ids
-    pub fn build_transfer_ids(&mut self) {
+    pub fn build_transfer_list(&mut self) {
         #[cfg(feature = "execution-info")]
         {
+            use massa_async_pool::AsyncMessageIdSerializer;
+            use massa_serialization::Serializer;
+            let msg_id_serializer = AsyncMessageIdSerializer::new();
             self.transfers
                 .iter_mut()
                 .enumerate()
                 .for_each(|(index, transfer)| {
                     let id = format!("{}:{}", self.execution_trail_hash, index);
                     transfer.id = Some(id);
+
+                    // serialize the msg_id if it exists
+                    match &transfer.context {
+                        TransferContext::AsyncMsgCoins(msg_id, _msg_id_str) => {
+                            if let Some(id) = msg_id {
+                                let mut buf = Vec::new();
+                                msg_id_serializer.serialize(&id, &mut buf).unwrap();
+                                transfer.context = TransferContext::AsyncMsgCoins(
+                                    None,
+                                    Some(String::from_utf8(buf).unwrap()),
+                                );
+                            }
+                        }
+                        TransferContext::AyncMsgCancel(msg_id, _msg_id_str) => {
+                            if let Some(id) = msg_id {
+                                let mut buf = Vec::new();
+                                msg_id_serializer.serialize(&id, &mut buf).unwrap();
+                                transfer.context = TransferContext::AyncMsgCancel(
+                                    None,
+                                    Some(String::from_utf8(buf).unwrap()),
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
                 });
         }
     }

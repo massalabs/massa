@@ -29,6 +29,8 @@ massa_storage = { workspace = true }
 massa_final_state = { workspace = true }
 massa_pos_exports = { workspace = true }
 massa_module_cache = { workspace = true }
+massa_serialization = { workspace = true }
+massa_async_pool = { workspace = true }
 massa_versioning = { workspace = true }
 massa-sc-runtime = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }

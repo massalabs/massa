@@ -403,7 +403,7 @@ impl ExecutionState {
                 if let Some(execution_info_for_slot) = execution_info_for_slot {
                     let mut cloned = execution_info_for_slot.clone();
                     cloned.transfers = exec_out.transfers_history;
-                    cloned.build_transfer_ids();
+                    cloned.build_transfer_list();
 
                     if let Err(err) = self.channels.slot_execution_info_sender.send(cloned) {
                         trace!(
@@ -1274,7 +1274,7 @@ impl ExecutionState {
                 Some(message.destination),
                 message.coins,
                 false,
-                TransferContext::AsyncMsgCoins,
+                TransferContext::AsyncMsgCoins(Some(message.compute_id()), None),
             ) {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
@@ -1385,7 +1385,7 @@ impl ExecutionState {
                 Some(call.sender_address),
                 amount,
                 false,
-                TransferContext::DeferredCallStorageRefund,
+                TransferContext::DeferredCallStorageRefund(id.to_string()),
             ) {
                 warn!(
                     "could not refund storage costs to sender: {} - amount: {} - e:{}",
@@ -1437,7 +1437,7 @@ impl ExecutionState {
                         Some(call.target_address),
                         call.coins,
                         false,
-                        TransferContext::DeferredCallCoins,
+                        TransferContext::DeferredCallCoins(id.to_string()),
                     ) {
                         // coin crediting failed: reset context to snapshot and reimburse sender
                         return Err(ExecutionError::DeferredCallsError(format!(
