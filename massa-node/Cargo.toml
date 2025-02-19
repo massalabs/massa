@@ -28,6 +28,12 @@ execution-trace = [
     "massa_execution_worker/execution-trace",
     "massa_execution_exports/execution-trace",
 ]
+execution-info = [
+    "execution-trace",
+    "massa_execution_worker/execution-info",
+    "massa_execution_exports/execution-info",
+    "massa_grpc/execution-info",
+]
 dump-block = [
     "massa_execution_worker/dump-block",
     "massa_execution_exports/dump-block",
@@ -35,7 +41,6 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-execution-info = ["execution-trace"]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem

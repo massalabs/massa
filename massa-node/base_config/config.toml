@@ -239,6 +239,8 @@
     event_snip_amount = 10
     # maximum number of events return by a query
     max_event_per_query = 7000
+    # slot execution info channel capacity
+    broadcast_slot_execution_info_channel_capacity = 5000
 
 [ledger]
     # path to the initial ledger
