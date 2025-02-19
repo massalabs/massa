@@ -158,7 +158,6 @@ pub struct ExecutionInfoForSlot {
     /// block id (empty if no block)
     pub opt_block_id: Option<String>,
     /// Transfers (empty if execution-info feature is NOT enabled)
-    #[cfg(feature = "execution-info")]
     pub transfers: Vec<TransferHistory>,
 }
 
@@ -186,7 +185,6 @@ impl ExecutionInfoForSlot {
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
             opt_block_id: block_id.map(|b| b.to_string()),
-            #[cfg(feature = "execution-trace")]
             transfers: vec![],
             execution_trail_hash,
         }
@@ -236,30 +234,6 @@ impl ExecutionInfoForSlot {
                         _ => {}
                     }
                 });
-        }
-    }
-
-    /// Check if the ExecutionInfoForSlot is empty (grpc api use it to return struct or None)
-    pub fn is_empty(&self) -> bool {
-        let empty = self.denunciations.is_empty()
-            && self.operations.is_empty()
-            && self.async_messages.is_empty()
-            && self.deferred_calls_messages.is_empty()
-            && self.deferred_credits_execution.is_empty()
-            && self.cancel_async_message_execution.is_empty()
-            && self.auto_sell_execution.is_empty()
-            && self.endorsement_creator_rewards.is_empty()
-            && self.block_producer_reward.is_none()
-            && self.endorsement_target_reward.is_none();
-
-        #[cfg(feature = "execution-info")]
-        {
-            return empty && self.transfers.is_empty();
-        }
-
-        #[cfg(not(feature = "execution-info"))]
-        {
-            empty
         }
     }
 }

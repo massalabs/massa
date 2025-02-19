@@ -4,8 +4,6 @@
 pub mod new_blocks;
 /// stream new endorsements
 pub mod new_endorsements;
-/// subscribe new execution info (feature execution-trace)
-pub mod new_execution_info;
 /// stream new blocks headers
 pub mod new_filled_blocks;
 /// subscribe new operations
@@ -16,6 +14,8 @@ pub mod new_slot_abi_call_stacks;
 pub mod new_slot_execution_outputs;
 /// subscribe new slot transfers
 pub mod new_slot_transfers;
+/// subscribe new execution info (feature execution-trace)
+pub mod new_transfers_info;
 /// send_blocks streaming
 pub mod send_blocks;
 /// send endorsements

@@ -21,9 +21,6 @@ use crate::public::{
 use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get_slot_transfers};
 use crate::stream::new_blocks::{new_blocks_server, NewBlocksServerStreamType};
 use crate::stream::new_endorsements::{new_endorsements_server, NewEndorsementsServerStreamType};
-#[cfg(feature = "execution-info")]
-use crate::stream::new_execution_info::new_transfer_info_server;
-use crate::stream::new_execution_info::NewTransferInfoServerStreamType;
 use crate::stream::new_filled_blocks::{new_filled_blocks_server, NewFilledBlocksServerStreamType};
 use crate::stream::new_operations::{new_operations_server, NewOperationsServerStreamType};
 use crate::stream::new_slot_execution_outputs::{
@@ -31,6 +28,9 @@ use crate::stream::new_slot_execution_outputs::{
 };
 #[cfg(feature = "execution-trace")]
 use crate::stream::new_slot_transfers::new_slot_transfers;
+#[cfg(feature = "execution-info")]
+use crate::stream::new_transfers_info::new_transfer_info_server;
+use crate::stream::new_transfers_info::NewTransferInfoServerStreamType;
 
 use crate::server::{MassaPrivateGrpc, MassaPublicGrpc};
 use crate::stream::tx_throughput::{
