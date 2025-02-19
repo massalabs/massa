@@ -857,54 +857,6 @@ impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
                     transfer.from.map_or(false, |from| from.eq(address_filter))
                         || transfer.to.map_or(false, |to| to.eq(address_filter))
                 });
-
-                // content.async_messages.retain(|res| match res {
-                //     Ok(msg) => {
-                //         msg.destination.unwrap().eq(address_filter)
-                //             || msg.sender.unwrap().eq(address_filter)
-                //     }
-                //     Err(_) => false,
-                // });
-
-                // content
-                //     .auto_sell_execution
-                //     .retain(|(addr, _)| addr.eq(address_filter));
-                // content.block_producer_reward = content
-                //     .block_producer_reward
-                //     .filter(|(addr, _)| addr.eq(address_filter));
-                // content
-                //     .cancel_async_message_execution
-                //     .retain(|(addr, _)| addr.eq(address_filter));
-                // content.deferred_calls_messages.retain(|res| match res {
-                //     Ok(msg) => msg.target_address.eq(address_filter) || msg.sender.eq(address_filter),
-                //     Err(_) => false,
-                // });
-
-                // content
-                //     .deferred_credits_execution
-                //     .retain(|(addr, _)| addr.eq(address_filter));
-                // content
-                //     .denunciations
-                //     .retain(|denunciation| match denunciation {
-                //         Ok(den) => den.address_denounced.eq(address_filter),
-                //         Err(_) => false,
-                //     });
-                // content
-                //     .endorsement_creator_rewards
-                //     .retain(|addr, _| addr.eq(address_filter));
-
-                // content.endorsement_target_reward = content
-                //     .endorsement_target_reward
-                //     .filter(|(addr, _)| addr.eq(address_filter));
-
-                // content.operations.retain(|res| match res {
-                //     massa_execution_exports::execution_info::OperationInfo::RollBuy(addr, _) => {
-                //         addr.eq(address_filter)
-                //     }
-                //     massa_execution_exports::execution_info::OperationInfo::RollSell(addr, _) => {
-                //         addr.eq(address_filter)
-                //     }
-                // });
             }
 
             if _content.transfers.is_empty() {

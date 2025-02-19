@@ -11,20 +11,20 @@ use crate::{error::GrpcError, server::MassaPublicGrpc};
 use super::trait_filters_impl::{FilterGrpc, NewExecutionInfoFilter};
 
 /// Type declaration for New execution Info server
-pub type NewExecutionInfoServerStreamType = Pin<
+pub type NewTransferInfoServerStreamType = Pin<
     Box<
         dyn futures_util::Stream<
-                Item = Result<grpc_api::NewExecutionInfoServerResponse, tonic::Status>,
+                Item = Result<grpc_api::NewTransfersInfoServerResponse, tonic::Status>,
             > + Send
             + 'static,
     >,
 >;
 
 #[cfg(feature = "execution-info")]
-pub(crate) async fn new_execution_info_server(
+pub(crate) async fn new_transfer_info_server(
     grpc: &MassaPublicGrpc,
-    request: Request<grpc_api::NewExecutionInfoServerRequest>,
-) -> Result<NewExecutionInfoServerStreamType, GrpcError> {
+    request: Request<grpc_api::NewTransfersInfoServerRequest>,
+) -> Result<NewTransferInfoServerStreamType, GrpcError> {
     use std::time::Duration;
     use tokio::{select, time};
     use tracing::error;
@@ -55,6 +55,7 @@ pub(crate) async fn new_execution_info_server(
         };
 
         // Create a timer that ticks every 10 seconds to check if the client is still connected
+        // otherwise the server has no way to check if client has disconnected (and can help to save some resources)
         let mut interval = time::interval(Duration::from_secs(
             config.unidirectional_stream_interval_check,
         ));
@@ -70,7 +71,7 @@ pub(crate) async fn new_execution_info_server(
                             if let Some(data) = filter.filter_output(massa_operation, &config) {
                                 // Send the new operation through the channel
                                 if let Err(e) = tx
-                                    .send(Ok(grpc_api::NewExecutionInfoServerResponse::from(data)))
+                                    .send(Ok(grpc_api::NewTransfersInfoServerResponse::from(data)))
                                     .await
                                 {
                                     error!("failed to send operation : {}", e);
@@ -93,5 +94,5 @@ pub(crate) async fn new_execution_info_server(
     });
 
     let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
-    Ok(Box::pin(out_stream) as NewExecutionInfoServerStreamType)
+    Ok(Box::pin(out_stream) as NewTransferInfoServerStreamType)
 }

@@ -22,8 +22,8 @@ use crate::public::{get_operation_abi_call_stacks, get_slot_abi_call_stacks, get
 use crate::stream::new_blocks::{new_blocks_server, NewBlocksServerStreamType};
 use crate::stream::new_endorsements::{new_endorsements_server, NewEndorsementsServerStreamType};
 #[cfg(feature = "execution-info")]
-use crate::stream::new_execution_info::new_execution_info_server;
-use crate::stream::new_execution_info::NewExecutionInfoServerStreamType;
+use crate::stream::new_execution_info::new_transfer_info_server;
+use crate::stream::new_execution_info::NewTransferInfoServerStreamType;
 use crate::stream::new_filled_blocks::{new_filled_blocks_server, NewFilledBlocksServerStreamType};
 use crate::stream::new_operations::{new_operations_server, NewOperationsServerStreamType};
 use crate::stream::new_slot_execution_outputs::{
@@ -380,25 +380,25 @@ impl grpc_api::public_service_server::PublicService for MassaPublicGrpc {
         Err(tonic::Status::unimplemented("feature not enabled"))
     }
 
-    type NewExecutionInfoServerStream = NewExecutionInfoServerStreamType;
+    type NewTransfersInfoServerStream = NewTransferInfoServerStreamType;
 
     #[cfg(not(feature = "execution-info"))]
-    async fn new_execution_info_server(
+    async fn new_transfers_info_server(
         &self,
-        _request: tonic::Request<grpc_api::NewExecutionInfoServerRequest>,
-    ) -> std::result::Result<tonic::Response<Self::NewExecutionInfoServerStream>, tonic::Status>
+        _request: tonic::Request<grpc_api::NewTransfersInfoServerRequest>,
+    ) -> std::result::Result<tonic::Response<Self::NewTransfersInfoServerStream>, tonic::Status>
     {
         Err(tonic::Status::unimplemented("feature not enabled"))
     }
 
     #[cfg(feature = "execution-info")]
-    async fn new_execution_info_server(
+    async fn new_transfers_info_server(
         &self,
-        request: tonic::Request<grpc_api::NewExecutionInfoServerRequest>,
-    ) -> std::result::Result<tonic::Response<Self::NewExecutionInfoServerStream>, tonic::Status>
+        request: tonic::Request<grpc_api::NewTransfersInfoServerRequest>,
+    ) -> std::result::Result<tonic::Response<Self::NewTransfersInfoServerStream>, tonic::Status>
     {
         Ok(tonic::Response::new(
-            new_execution_info_server(self, request).await?,
+            new_transfer_info_server(self, request).await?,
         ))
     }
 

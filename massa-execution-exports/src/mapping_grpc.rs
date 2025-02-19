@@ -485,7 +485,7 @@ impl From<ExecutionQueryError> for grpc_model::Error {
     }
 }
 
-impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
+impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
     fn from(value: ExecutionInfoForSlot) -> Self {
         #[cfg(feature = "execution-info")]
         let transfers_info: Vec<grpc_model::TransferInfo> = value
@@ -572,10 +572,10 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
                     TransferContext::AsyncMsgCoins(_msg_id, msg_id_str) => {
                         (CoinOrigin::AsyncMsgCoins as i32, None, msg_id_str, None)
                     }
-                    TransferContext::EndorsementCreator => {
+                    TransferContext::EndorsementCreatorReward => {
                         (CoinOrigin::EndorsementReward as i32, None, None, None)
                     }
-                    TransferContext::EndorsementTarget => {
+                    TransferContext::EndorsementTargetReward => {
                         (CoinOrigin::EndorsedReward as i32, None, None, None)
                     }
                     TransferContext::BlockCreatorReward => {
@@ -629,7 +629,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewExecutionInfoServerResponse {
             })
             .collect();
 
-        grpc_api::NewExecutionInfoServerResponse {
+        grpc_api::NewTransfersInfoServerResponse {
             slot: Some(value.slot.into()),
             timestamp: value.timestamp.as_millis() as i64,
             block_id: value.opt_block_id.map(|b| b.to_string()),

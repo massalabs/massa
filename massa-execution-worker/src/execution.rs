@@ -1861,7 +1861,7 @@ impl ExecutionState {
                             Some(endorsement_creator),
                             block_credit_part,
                             false,
-                            TransferContext::EndorsementCreator,
+                            TransferContext::EndorsementCreatorReward,
                         ) {
                             Ok(_) => {
                                 remaining_credit =
@@ -1886,7 +1886,7 @@ impl ExecutionState {
                             Some(endorsement_target_creator),
                             block_credit_part,
                             false,
-                            TransferContext::EndorsementTarget,
+                            TransferContext::EndorsementTargetReward,
                         ) {
                             Ok(_) => {
                                 remaining_credit =
@@ -1956,7 +1956,7 @@ impl ExecutionState {
                             Some(endorsement_creator),
                             block_credit_part,
                             false,
-                            TransferContext::EndorsementCreator,
+                            TransferContext::EndorsementCreatorReward,
                         ) {
                             Ok(_) => {
                                 #[cfg(feature = "execution-info")]
@@ -1980,7 +1980,7 @@ impl ExecutionState {
                             Some(endorsement_target_creator),
                             block_credit_part,
                             false,
-                            TransferContext::EndorsementTarget,
+                            TransferContext::EndorsementTargetReward,
                         ) {
                             Ok(_) => {
                                 #[cfg(feature = "execution-info")]
