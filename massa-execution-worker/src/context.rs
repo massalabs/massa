@@ -1541,7 +1541,7 @@ impl ExecutionContext {
             Some(call.sender_address),
             call.coins,
             false,
-            TransferContext::DeferredCallFail(id.to_string()),
+            TransferContext::DeferredCallFail(id.clone()),
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
@@ -1595,7 +1595,7 @@ impl ExecutionContext {
                     Some(address),
                     amount,
                     false,
-                    TransferContext::DeferredCallCancel(call_id.to_string()),
+                    TransferContext::DeferredCallCancel(call_id.clone()),
                 );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(

@@ -531,7 +531,7 @@ impl ExecutionState {
             None,
             operation.content.fee,
             false,
-            TransferContext::OperationFee(operation_id.to_string()),
+            TransferContext::OperationFee(operation_id),
         ) {
             let mut error = format!("could not spend fees: {}", err);
             let max_event_size = match execution_component_version {
@@ -947,7 +947,7 @@ impl ExecutionState {
             None,
             spend_coins,
             false,
-            TransferContext::RollBuy(operation_id.to_string()),
+            TransferContext::RollBuy(operation_id.clone()),
         ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
@@ -1001,7 +1001,7 @@ impl ExecutionState {
             Some(*recipient_address),
             *amount,
             true,
-            TransferContext::TransactionCoins(operation_id.to_string()),
+            TransferContext::TransactionCoins(operation_id),
         ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -1144,7 +1144,7 @@ impl ExecutionState {
                 Some(target_addr),
                 coins,
                 false,
-                TransferContext::CallSCCoins(operation_id.to_string()),
+                TransferContext::CallSCCoins(operation_id),
             ) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to transfer {} operation coins from {} to {}: {}",
@@ -1386,7 +1386,7 @@ impl ExecutionState {
                 Some(call.sender_address),
                 amount,
                 false,
-                TransferContext::DeferredCallStorageRefund(id.to_string()),
+                TransferContext::DeferredCallStorageRefund(id.clone()),
             ) {
                 warn!(
                     "could not refund storage costs to sender: {} - amount: {} - e:{}",
@@ -1438,7 +1438,7 @@ impl ExecutionState {
                         Some(call.target_address),
                         call.coins,
                         false,
-                        TransferContext::DeferredCallCoins(id.to_string()),
+                        TransferContext::DeferredCallCoins(id.clone()),
                     ) {
                         // coin crediting failed: reset context to snapshot and reimburse sender
                         return Err(ExecutionError::DeferredCallsError(format!(

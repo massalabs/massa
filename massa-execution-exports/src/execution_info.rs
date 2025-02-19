@@ -6,7 +6,9 @@ use massa_async_pool::AsyncMessageId;
 use massa_hash::Hash;
 use massa_models::block_id::BlockId;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
+use massa_models::operation::OperationId;
 use massa_time::MassaTime;
 use schnellru::{ByLength, LruMap};
 
@@ -96,21 +98,23 @@ pub enum TransferType {
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize)]
 pub enum TransferContext {
-    TransactionCoins(String),
+    TransactionCoins(OperationId),
+    /// (AsyncMessageId, serialized AsyncMessageId)
     AyncMsgCancel(Option<AsyncMessageId>, Option<String>),
     DeferredCredits,
-    DeferredCallFail(String),
-    DeferredCallCancel(String),
-    DeferredCallCoins(String),
+    DeferredCallFail(DeferredCallId),
+    DeferredCallCancel(DeferredCallId),
+    DeferredCallCoins(DeferredCallId),
     DeferredCallRegister,
-    DeferredCallStorageRefund(String),
-    OperationFee(String),
-    RollBuy(String),
-    RollSell(String),
+    DeferredCallStorageRefund(DeferredCallId),
+    OperationFee(OperationId),
+    RollBuy(OperationId),
+    RollSell(OperationId),
     RollSlash,
     CreateSCStorage,
     DatastoreStorage,
-    CallSCCoins(String),
+    CallSCCoins(OperationId),
+    /// (AsyncMessageId, serialized AsyncMessageId)
     AsyncMsgCoins(Option<AsyncMessageId>, Option<String>),
     EndorsementCreatorReward,
     EndorsementTargetReward,

@@ -510,7 +510,7 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                 {
                     TransferContext::TransactionCoins(ope_id) => (
                         CoinOrigin::OpTransactionCoins as i32,
-                        Some(ope_id),
+                        Some(ope_id.to_string()),
                         None,
                         None,
                     ),
@@ -524,19 +524,19 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                         CoinOrigin::DeferredCallFail as i32,
                         None,
                         None,
-                        Some(call_id),
+                        Some(call_id.to_string()),
                     ),
                     TransferContext::DeferredCallCancel(call_id) => (
                         CoinOrigin::DeferredCallCancel as i32,
                         None,
                         None,
-                        Some(call_id),
+                        Some(call_id.to_string()),
                     ),
                     TransferContext::DeferredCallCoins(call_id) => (
                         CoinOrigin::DeferredCallCoins as i32,
                         None,
                         None,
-                        Some(call_id),
+                        Some(call_id.to_string()),
                     ),
                     TransferContext::DeferredCallRegister => {
                         (CoinOrigin::DeferredCallRegister as i32, None, None, None)
@@ -545,20 +545,26 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                         CoinOrigin::DeferredCallStorageRefund as i32,
                         None,
                         None,
-                        Some(call_id),
+                        Some(call_id.to_string()),
                     ),
                     TransferContext::OperationFee(ope_id) => (
                         CoinOrigin::OpTransactionFees as i32,
-                        Some(ope_id),
+                        Some(ope_id.to_string()),
                         None,
                         None,
                     ),
-                    TransferContext::RollBuy(ope_id) => {
-                        (CoinOrigin::OpRollBuy as i32, Some(ope_id), None, None)
-                    }
-                    TransferContext::RollSell(ope_id) => {
-                        (CoinOrigin::OpRollSell as i32, Some(ope_id), None, None)
-                    }
+                    TransferContext::RollBuy(ope_id) => (
+                        CoinOrigin::OpRollBuy as i32,
+                        Some(ope_id.to_string()),
+                        None,
+                        None,
+                    ),
+                    TransferContext::RollSell(ope_id) => (
+                        CoinOrigin::OpRollSell as i32,
+                        Some(ope_id.to_string()),
+                        None,
+                        None,
+                    ),
                     TransferContext::RollSlash => (CoinOrigin::Slash as i32, None, None, None),
                     TransferContext::CreateSCStorage => {
                         (CoinOrigin::CreateScStorage as i32, None, None, None)
@@ -566,9 +572,12 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                     TransferContext::DatastoreStorage => {
                         (CoinOrigin::DatastoreStorage as i32, None, None, None)
                     }
-                    TransferContext::CallSCCoins(ope_id) => {
-                        (CoinOrigin::OpCallscCoins as i32, Some(ope_id), None, None)
-                    }
+                    TransferContext::CallSCCoins(ope_id) => (
+                        CoinOrigin::OpCallscCoins as i32,
+                        Some(ope_id.to_string()),
+                        None,
+                        None,
+                    ),
                     TransferContext::AsyncMsgCoins(_msg_id, msg_id_str) => {
                         (CoinOrigin::AsyncMsgCoins as i32, None, msg_id_str, None)
                     }

@@ -112,7 +112,7 @@ impl SpeculativeRollState {
             self.transfers_history.write().push(TransferHistory {
                 to: Some(buyer_addr.clone()),
                 roll_count: Some(roll_count),
-                context: TransferContext::RollBuy(_operation_id.to_string()),
+                context: TransferContext::RollBuy(_operation_id),
                 t_type: TransferType::Roll,
                 ..Default::default()
             });
@@ -178,12 +178,11 @@ impl SpeculativeRollState {
 
         #[cfg(feature = "execution-info")]
         {
-            let string_ope = _operation_id.to_string();
             let mut lock = self.transfers_history.write();
             lock.push(TransferHistory {
                 from: Some(seller_addr.clone()),
                 roll_count: Some(roll_count),
-                context: TransferContext::RollSell(string_ope.clone()),
+                context: TransferContext::RollSell(_operation_id.clone()),
                 t_type: TransferType::Roll,
                 ..Default::default()
             });
@@ -191,7 +190,7 @@ impl SpeculativeRollState {
             lock.push(TransferHistory {
                 to: Some(seller_addr.clone()),
                 amount: Some(new_deferred_credits),
-                context: TransferContext::RollSell(string_ope),
+                context: TransferContext::RollSell(_operation_id),
                 t_type: TransferType::DeferredCredits,
                 ..Default::default()
             });
