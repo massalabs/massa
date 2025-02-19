@@ -19,7 +19,7 @@ use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
-use massa_execution_exports::execution_info::{TransferContext, TransferHistory};
+use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -113,7 +113,7 @@ pub struct ExecutionContextSnapshot {
     pub user_event_count_in_current_exec: u16,
 
     /// Transfer coins history
-    pub transfer_history: Vec<TransferHistory>,
+    pub transfer_history: Vec<TransferInfo>,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -216,7 +216,7 @@ pub struct ExecutionContext {
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
 
-    transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 }
 
 impl ExecutionContext {
@@ -1132,7 +1132,7 @@ impl ExecutionContext {
                     Some(address),
                     amount,
                     false,
-                    TransferContext::DeferredCredits,
+                    TransferContext::DeferredCredits(None),
                 );
 
                 if let Err(e) = transfer_result.as_ref() {

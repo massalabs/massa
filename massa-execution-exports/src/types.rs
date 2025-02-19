@@ -4,7 +4,7 @@
 
 use crate::error::ExecutionQueryError;
 use crate::event_store::EventStore;
-use crate::execution_info::TransferHistory;
+use crate::execution_info::TransferInfo;
 use massa_deferred_calls::DeferredCall;
 use massa_final_state::StateChanges;
 use massa_hash::Hash;
@@ -290,7 +290,7 @@ pub struct ExecutionOutput {
     /// Auto sell roll execution (empty if execution-info feature is NOT enabled)
     pub auto_sell_execution: Vec<(Address, Amount)>,
     /// history of transfers (empty if execution-info feature is NOT enabled)
-    pub transfers_history: Vec<TransferHistory>,
+    pub transfers_history: Vec<TransferInfo>,
 }
 
 /// structure describing the output of a read only execution

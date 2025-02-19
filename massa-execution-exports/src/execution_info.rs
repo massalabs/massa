@@ -44,55 +44,55 @@ impl ExecutionInfo {
 
 /// Struct to store Roll related operation
 #[derive(Debug, Clone)]
-pub enum OperationInfo {
+pub enum RollOperationInfo {
     /// Roll buy amount
     RollBuy(Address, u64),
     /// Roll sell amount
     RollSell(Address, u64),
 }
 
+#[derive(Debug, Clone, Serialize)]
+/// Transfer value struct
+pub enum TransferValue {
+    /// rolls
+    Rolls(u64),
+    /// amount of deferred credits
+    DeferredCredits(Amount),
+    /// amount of coins
+    Coins(Amount),
+}
+
 /// representation of a transfer
 #[derive(Clone, Debug, Serialize)]
-pub struct TransferHistory {
+pub struct TransferInfo {
     /// sender address
     pub from: Option<Address>,
     /// destination address
     pub to: Option<Address>,
-    /// amount of mas
-    pub amount: Option<Amount>,
-    /// amount of rolls
-    pub roll_count: Option<u64>,
     /// Transfer context
     pub context: TransferContext,
-    /// Transfer type (mas, roll, deferred-credits)
-    pub t_type: TransferType,
     /// Transfer id
     pub id: Option<String>,
-    /// denunciation index
-    pub denunciation_index: Option<DenunciationIndex>,
+    /// Transfer value
+    pub value: TransferValue,
 }
 
-impl Default for TransferHistory {
-    fn default() -> Self {
+impl TransferInfo {
+    /// Create a new TransferHistory structure
+    pub fn new(
+        value: TransferValue,
+        context: TransferContext,
+        from: Option<Address>,
+        to: Option<Address>,
+    ) -> Self {
         Self {
-            from: None,
-            to: None,
-            amount: None,
-            roll_count: None,
-            context: TransferContext::DeferredCredits,
-            t_type: TransferType::Mas,
+            from,
+            to,
+            context,
+            value,
             id: None,
-            denunciation_index: None,
         }
     }
-}
-
-#[allow(missing_docs)]
-#[derive(Debug, Clone, Serialize)]
-pub enum TransferType {
-    Mas,
-    Roll,
-    DeferredCredits,
 }
 
 #[allow(missing_docs)]
@@ -101,7 +101,7 @@ pub enum TransferContext {
     TransactionCoins(OperationId),
     /// (AsyncMessageId, serialized AsyncMessageId)
     AyncMsgCancel(Option<AsyncMessageId>, Option<String>),
-    DeferredCredits,
+    DeferredCredits(Option<DenunciationIndex>),
     DeferredCallFail(DeferredCallId),
     DeferredCallCancel(DeferredCallId),
     DeferredCallCoins(DeferredCallId),
@@ -146,7 +146,7 @@ pub struct ExecutionInfoForSlot {
     /// Executed denunciation
     pub denunciations: Vec<Result<DenunciationResult, String>>,
     /// Executed Roll buy / sell
-    pub operations: Vec<OperationInfo>,
+    pub roll_operations: Vec<RollOperationInfo>,
     /// Executed Async message
     pub async_messages: Vec<Result<AsyncMessageExecutionResult, String>>,
     /// Executed Deferred calls
@@ -162,7 +162,7 @@ pub struct ExecutionInfoForSlot {
     /// block id (empty if no block)
     pub opt_block_id: Option<String>,
     /// Transfers (empty if execution-info feature is NOT enabled)
-    pub transfers: Vec<TransferHistory>,
+    pub transfers: Vec<TransferInfo>,
 }
 
 impl ExecutionInfoForSlot {
@@ -182,7 +182,7 @@ impl ExecutionInfoForSlot {
             endorsement_creator_rewards: Default::default(),
             endorsement_target_reward: None,
             denunciations: Default::default(),
-            operations: Default::default(),
+            roll_operations: Default::default(),
             async_messages: Default::default(),
             deferred_calls_messages: Default::default(),
             deferred_credits_execution: vec![],

@@ -1,9 +1,9 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::active_history::ActiveHistory;
-use massa_execution_exports::execution_info::TransferHistory;
+use massa_execution_exports::execution_info::TransferInfo;
 #[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::{TransferContext, TransferType};
+use massa_execution_exports::execution_info::{TransferContext, TransferValue};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -32,7 +32,7 @@ pub(crate) struct SpeculativeRollState {
     /// List of changes to the state after settling roll sell/buy
     pub(crate) added_changes: PoSChanges,
 
-    transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 }
 
 impl SpeculativeRollState {
@@ -43,7 +43,7 @@ impl SpeculativeRollState {
     pub fn new(
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
-        transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
+        transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
     ) -> Self {
         SpeculativeRollState {
             final_state,
@@ -109,13 +109,12 @@ impl SpeculativeRollState {
 
         #[cfg(feature = "execution-info")]
         {
-            self.transfers_history.write().push(TransferHistory {
-                to: Some(buyer_addr.clone()),
-                roll_count: Some(roll_count),
-                context: TransferContext::RollBuy(_operation_id),
-                t_type: TransferType::Roll,
-                ..Default::default()
-            });
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Rolls(roll_count),
+                TransferContext::RollBuy(_operation_id),
+                None,
+                Some(buyer_addr.clone()),
+            ));
         }
     }
 
@@ -179,21 +178,19 @@ impl SpeculativeRollState {
         #[cfg(feature = "execution-info")]
         {
             let mut lock = self.transfers_history.write();
-            lock.push(TransferHistory {
-                from: Some(seller_addr.clone()),
-                roll_count: Some(roll_count),
-                context: TransferContext::RollSell(_operation_id.clone()),
-                t_type: TransferType::Roll,
-                ..Default::default()
-            });
+            lock.push(TransferInfo::new(
+                TransferValue::Rolls(roll_count),
+                TransferContext::RollSell(_operation_id.clone()),
+                Some(seller_addr.clone()),
+                None,
+            ));
 
-            lock.push(TransferHistory {
-                to: Some(seller_addr.clone()),
-                amount: Some(new_deferred_credits),
-                context: TransferContext::RollSell(_operation_id),
-                t_type: TransferType::DeferredCredits,
-                ..Default::default()
-            });
+            lock.push(TransferInfo::new(
+                TransferValue::DeferredCredits(new_deferred_credits),
+                TransferContext::RollSell(_operation_id.clone()),
+                Some(seller_addr.clone()),
+                None,
+            ));
         }
 
         Ok(())
@@ -231,13 +228,12 @@ impl SpeculativeRollState {
 
         #[cfg(feature = "execution-info")]
         {
-            self.transfers_history.write().push(TransferHistory {
-                from: Some(addr.clone()),
-                roll_count: Some(roll_slash),
-                context: TransferContext::RollSlash,
-                t_type: TransferType::Roll,
-                ..Default::default()
-            });
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Rolls(roll_slash),
+                TransferContext::RollSlash,
+                Some(addr.clone()),
+                None,
+            ));
         }
 
         Ok(roll_slash)
@@ -273,16 +269,12 @@ impl SpeculativeRollState {
 
         #[cfg(feature = "execution-info")]
         {
-            self.transfers_history.write().push(TransferHistory {
-                id: None,
-                from: Some(addr.clone()),
-                to: None,
-                amount: Some(slashed),
-                roll_count: None,
-                context: TransferContext::DeferredCredits,
-                t_type: TransferType::Mas,
-                denunciation_index: Some(_denunciation_idx.clone()),
-            });
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Coins(slashed),
+                TransferContext::DeferredCredits(Some(_denunciation_idx.clone())),
+                Some(addr.clone()),
+                None,
+            ));
         }
 
         slashed

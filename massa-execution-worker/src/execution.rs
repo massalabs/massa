@@ -76,7 +76,9 @@ use massa_execution_exports::execution_info::{
     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult, TransferContext,
 };
 #[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
+use massa_execution_exports::execution_info::{
+    ExecutionInfo, ExecutionInfoForSlot, RollOperationInfo,
+};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1790,13 +1792,13 @@ impl ExecutionState {
                         {
                             match &operation.content.op {
                                 OperationType::RollBuy { roll_count } => {
-                                    exec_info.operations.push(OperationInfo::RollBuy(
+                                    exec_info.roll_operations.push(RollOperationInfo::RollBuy(
                                         operation.content_creator_address,
                                         *roll_count,
                                     ))
                                 }
                                 OperationType::RollSell { roll_count } => {
-                                    exec_info.operations.push(OperationInfo::RollSell(
+                                    exec_info.roll_operations.push(RollOperationInfo::RollSell(
                                         operation.content_creator_address,
                                         *roll_count,
                                     ))

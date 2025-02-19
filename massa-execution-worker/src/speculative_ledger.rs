@@ -7,8 +7,9 @@
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
 use crate::datastore_scan::scan_datastore;
-use massa_execution_exports::execution_info::TransferContext;
-use massa_execution_exports::execution_info::TransferHistory;
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::TransferValue;
+use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
@@ -52,7 +53,7 @@ pub(crate) struct SpeculativeLedger {
     storage_costs_constants: StorageCostsConstants,
 
     #[allow(dead_code)]
-    transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 }
 
 impl SpeculativeLedger {
@@ -68,7 +69,7 @@ impl SpeculativeLedger {
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
         storage_costs_constants: StorageCostsConstants,
-        transfers_history: Arc<RwLock<Vec<TransferHistory>>>,
+        transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
     ) -> Self {
         SpeculativeLedger {
             final_state,
@@ -213,13 +214,12 @@ impl SpeculativeLedger {
 
         #[cfg(feature = "execution-info")]
         {
-            self.transfers_history.write().push(TransferHistory {
-                from: from_addr,
-                to: to_addr,
-                amount: Some(amount),
-                context: _context,
-                ..Default::default()
-            });
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Coins(amount),
+                _context,
+                from_addr,
+                to_addr,
+            ));
         }
 
         Ok(())
