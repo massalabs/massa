@@ -46,10 +46,17 @@ lazy_static! {
         static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
             "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
 
+        static ref EVENT_CACHE_VEC: IntGauge = register_int_gauge!(
+            "event_cache_vec_len", "vector len for events" ).unwrap();
+
 }
 
 pub fn inc_deferred_calls_registered() {
     DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_event_cache_vec_len(val: usize) {
+    EVENT_CACHE_VEC.set(val as i64);
 }
 
 pub fn set_deferred_calls_total_gas(val: u128) {
