@@ -112,8 +112,8 @@ pub struct ExecutionContextSnapshot {
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
 
-    /// Transfer coins history
-    pub transfer_history: Vec<TransferInfo>,
+    /// Transfer history count
+    pub transfer_history_len: usize,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -331,7 +331,7 @@ impl ExecutionContext {
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
-            transfer_history: self.transfers_history.read().clone(),
+            transfer_history_len: self.transfers_history.read().len(),
         }
     }
 
@@ -379,7 +379,11 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
-        self.transfers_history = Arc::new(RwLock::new(snapshot.transfer_history));
+
+        {
+            let mut transfers_history = self.transfers_history.write();
+            transfers_history.truncate(snapshot.transfer_history_len);
+        }
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
