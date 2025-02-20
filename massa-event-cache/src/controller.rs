@@ -59,6 +59,7 @@ impl EventCacheController for EventCacheControllerImpl {
         // lock input data
         let mut input_data = self.input_data.1.lock();
         input_data.events.extend(events);
+        massa_metrics::set_event_cache_vec_len(input_data.events.len());
         // Wake up the condvar in EventCacheWriterThread waiting for events
         self.input_data.0.notify_all();
     }
