@@ -120,4 +120,6 @@ pub struct ExecutionConfig {
     pub event_cache_size: usize,
     /// Amount of entries removed when `event_cache_size` is reached
     pub event_snip_amount: usize,
+    /// slot execution info channel capacity
+    pub broadcast_slot_execution_info_channel_capacity: usize,
 }

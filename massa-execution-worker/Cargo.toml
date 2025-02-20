@@ -41,7 +41,10 @@ benchmarking = [
     "tempfile",
 ]
 metrics = []
-execution-trace = ["massa_execution_exports/execution-trace"]
+execution-trace = [
+    "massa_execution_exports/execution-trace",
+    "schnellru"
+]
 dump-block = [
     "prost",
     "massa_execution_exports/dump-block",
@@ -49,7 +52,9 @@ dump-block = [
 ]
 db_storage_backend = []
 file_storage_backend = []
-execution-info = ["execution-trace"]
+execution-info = [
+    "execution-trace",
+]
 slot-replayer = []
 
 [dependencies]
@@ -91,7 +96,7 @@ massa_event_cache = { workspace = true }
 tempfile = { workspace = true, optional = true }
 massa_wallet = { workspace = true }
 massa-proto-rs = { workspace = true }
-schnellru = { workspace = true }
+schnellru = { workspace = true, optional = true }
 prost = { workspace = true, optional = true }
 cfg-if = { workspace = true }
 rocksdb = { workspace = true }

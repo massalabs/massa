@@ -2,6 +2,10 @@
 
 use std::str::FromStr;
 
+use crate::execution_info::ExecutionInfoForSlot;
+
+#[cfg(feature = "execution-info")]
+use crate::execution_info::TransferContext;
 use crate::{
     ExecutionOutput, ExecutionQueryCycleInfos, ExecutionQueryError, ExecutionQueryExecutionStatus,
     ExecutionQueryRequestItem, ExecutionQueryResponseItem, ExecutionQueryStakerInfo,
@@ -17,7 +21,9 @@ use massa_models::mapping_grpc::to_denunciation_index;
 use massa_models::operation::OperationId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_proto_rs::massa::api::v1 as grpc_api;
-use massa_proto_rs::massa::model::v1 as grpc_model;
+#[cfg(feature = "execution-info")]
+use massa_proto_rs::massa::model::v1::CoinOrigin;
+use massa_proto_rs::massa::model::v1::{self as grpc_model};
 
 /// Convert a `grpc_api::ScExecutionEventsRequest` to a `ScExecutionEventsRequest`
 pub fn to_querystate_filter(
@@ -475,6 +481,226 @@ impl From<ExecutionQueryError> for grpc_model::Error {
                 code: 404,
                 message: error,
             },
+        }
+    }
+}
+
+impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
+    fn from(value: ExecutionInfoForSlot) -> Self {
+        #[cfg(feature = "execution-info")]
+        let transfers_info: Vec<grpc_model::ExecTransferInfo> = value
+            .transfers
+            .into_iter()
+            .map(|transfer| {
+                let id = transfer.id.unwrap_or("Unknown id".to_string());
+
+                let from_address = transfer.from.map(|a| a.to_string());
+                let to_address = transfer.to.map(|a| a.to_string());
+
+                let value = match transfer.value {
+                    crate::execution_info::TransferValue::Rolls(roll_count) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::Rolls(
+                                roll_count.into(),
+                            )),
+                        }
+                    }
+                    crate::execution_info::TransferValue::DeferredCredits(amount) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::DeferredCredits(
+                                amount.into(),
+                            )),
+                        }
+                    }
+                    crate::execution_info::TransferValue::Coins(amount) => {
+                        grpc_model::TransferValue {
+                            value: Some(grpc_model::transfer_value::Value::Coins(amount.into())),
+                        }
+                    }
+                };
+
+                let (origin, operation_id, async_msg_id, deferred_call_id, denunciation_index) =
+                    match transfer.context {
+                        TransferContext::TransactionCoins(ope_id) => (
+                            CoinOrigin::OpTransactionCoins as i32,
+                            Some(ope_id.to_string()),
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::AyncMsgCancel(_msg_id, msg_id_str) => (
+                            CoinOrigin::AsyncMsgCancel as i32,
+                            None,
+                            msg_id_str,
+                            None,
+                            None,
+                        ),
+                        TransferContext::DeferredCredits(denunciation) => (
+                            CoinOrigin::DeferredCredit as i32,
+                            None,
+                            None,
+                            None,
+                            denunciation.map(|d| d.into()),
+                        ),
+                        TransferContext::DeferredCallFail(call_id) => (
+                            CoinOrigin::DeferredCallFail as i32,
+                            None,
+                            None,
+                            Some(call_id.to_string()),
+                            None,
+                        ),
+                        TransferContext::DeferredCallCancel(call_id) => (
+                            CoinOrigin::DeferredCallCancel as i32,
+                            None,
+                            None,
+                            Some(call_id.to_string()),
+                            None,
+                        ),
+                        TransferContext::DeferredCallCoins(call_id) => (
+                            CoinOrigin::DeferredCallCoins as i32,
+                            None,
+                            None,
+                            Some(call_id.to_string()),
+                            None,
+                        ),
+                        TransferContext::DeferredCallRegister => (
+                            CoinOrigin::DeferredCallRegister as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::DeferredCallStorageRefund(call_id) => (
+                            CoinOrigin::DeferredCallStorageRefund as i32,
+                            None,
+                            None,
+                            Some(call_id.to_string()),
+                            None,
+                        ),
+                        TransferContext::OperationFee(ope_id) => (
+                            CoinOrigin::OpTransactionFees as i32,
+                            Some(ope_id.to_string()),
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::RollBuy(ope_id) => (
+                            CoinOrigin::OpRollBuy as i32,
+                            Some(ope_id.to_string()),
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::RollSell(ope_id) => (
+                            CoinOrigin::OpRollSell as i32,
+                            Some(ope_id.to_string()),
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::RollSlash => {
+                            (CoinOrigin::Slash as i32, None, None, None, None)
+                        }
+                        TransferContext::CreateSCStorage => {
+                            (CoinOrigin::CreateScStorage as i32, None, None, None, None)
+                        }
+                        TransferContext::DatastoreStorage => {
+                            (CoinOrigin::DatastoreStorage as i32, None, None, None, None)
+                        }
+                        TransferContext::CallSCCoins(ope_id) => (
+                            CoinOrigin::OpCallscCoins as i32,
+                            Some(ope_id.to_string()),
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::AsyncMsgCoins(_msg_id, msg_id_str) => (
+                            CoinOrigin::AsyncMsgCoins as i32,
+                            None,
+                            msg_id_str,
+                            None,
+                            None,
+                        ),
+                        TransferContext::EndorsementCreatorReward => {
+                            (CoinOrigin::EndorsementReward as i32, None, None, None, None)
+                        }
+                        TransferContext::EndorsementTargetReward => {
+                            (CoinOrigin::EndorsedReward as i32, None, None, None, None)
+                        }
+                        TransferContext::BlockCreatorReward => {
+                            (CoinOrigin::BlockReward as i32, None, None, None, None)
+                        }
+                        TransferContext::ReadOnlyBytecodeExecutionFee => (
+                            CoinOrigin::ReadOnlyBytecodeExecFees as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::ReadOnlyFunctionCallFee => (
+                            CoinOrigin::ReadOnlyFnCallFees as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::ReadOnlyFunctionCallCoins => (
+                            CoinOrigin::ReadOnlyFnCallCoins as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::SetBytecodeStorage => (
+                            CoinOrigin::SetBytecodeStorage as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::AbiCallCoins => {
+                            (CoinOrigin::AbiCallCoins as i32, None, None, None, None)
+                        }
+                        TransferContext::AbiTransferCoins => {
+                            (CoinOrigin::AbiTransferCoins as i32, None, None, None, None)
+                        }
+                        TransferContext::AbiTransferForCoins => (
+                            CoinOrigin::AbiTransferForCoins as i32,
+                            None,
+                            None,
+                            None,
+                            None,
+                        ),
+                        TransferContext::AbiSendMsgCoins => {
+                            (CoinOrigin::AbiSendMsgCoins as i32, None, None, None, None)
+                        }
+                        TransferContext::AbiSendMsgFee => {
+                            (CoinOrigin::AbiSendMsgFees as i32, None, None, None, None)
+                        }
+                    };
+
+                grpc_model::ExecTransferInfo {
+                    id,
+                    from_address,
+                    to_address,
+                    origin,
+                    value: Some(value),
+                    operation_id,
+                    async_msg_id,
+                    deferred_call_id,
+                    denunciation_index,
+                }
+            })
+            .collect();
+
+        grpc_api::NewTransfersInfoServerResponse {
+            slot: Some(value.slot.into()),
+            timestamp: value.timestamp.as_millis() as i64,
+            block_id: value.opt_block_id.map(|b| b.to_string()),
+            #[cfg(feature = "execution-info")]
+            transfers_info,
+            #[cfg(not(feature = "execution-info"))]
+            transfers_info: vec![],
         }
     }
 }

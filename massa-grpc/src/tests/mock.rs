@@ -135,6 +135,8 @@ pub(crate) fn grpc_public_service(addr: &SocketAddr) -> MassaPublicGrpc {
             slot_execution_output_sender,
             #[cfg(feature = "execution-trace")]
             slot_execution_traces_sender: tokio::sync::broadcast::channel(5000).0,
+            #[cfg(feature = "execution-info")]
+            slot_execution_info_sender: tokio::sync::broadcast::channel(5000).0,
         },
         pool_broadcasts: PoolBroadcasts {
             endorsement_sender,
