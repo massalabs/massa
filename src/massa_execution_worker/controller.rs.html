@@ -549,6 +549,37 @@
 <a href="#549" id="549">549</a>
 <a href="#550" id="550">550</a>
 <a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -649,7 +680,7 @@
 <span class="attr">#[derive(Clone)]
 </span><span class="doccomment">/// implementation of the execution controller
 </span><span class="kw">pub struct </span>ExecutionControllerImpl {
-    <span class="doccomment">/// input data to process in the VM loop
+    <span class="doccomment">/// input data to process in the Execution controller loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
     <span class="doccomment">/// current execution state (see execution.rs for details)
@@ -683,7 +714,7 @@
             input_data.new_blockclique = new_blockclique;
         }
 
-        <span class="comment">// wake up VM loop
+        <span class="comment">// wake up execution controller loop
         </span><span class="self">self</span>.input_data.<span class="number">0</span>.notify_one();
     }
 
@@ -882,6 +913,35 @@
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
+                ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot,
+                    max_gas_request,
+                    params_size,
+                } =&gt; {
+                    <span class="kw">let </span>result = execution_lock.deferred_call_quote(
+                        target_slot,
+                        max_gas_request,
+                        params_size,
+                    );
+                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallQuote(
+                        result.<span class="number">0</span>, result.<span class="number">1</span>, result.<span class="number">2</span>, result.<span class="number">3</span>,
+                    ))
+                }
+                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) =&gt; execution_lock
+                    .deferred_call_info(<span class="kw-2">&amp;</span>deferred_call_id)
+                    .ok_or_else(|| {
+                        ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                            <span class="string">"Deferred call id {}"</span>,
+                            deferred_call_id
+                        ))
+                    })
+                    .map(|call| {
+                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
+                    }),
+                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) =&gt; {
+                    <span class="kw">let </span>res = execution_lock.get_deferred_calls_by_slot(slot);
+                    <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+                }
             };
             resp.responses.push(resp_item);
         }
@@ -1076,7 +1136,7 @@
 <span class="doccomment">/// Execution manager
 /// Allows stopping the execution worker
 </span><span class="kw">pub struct </span>ExecutionManagerImpl {
-    <span class="doccomment">/// input data to process in the VM loop
+    <span class="doccomment">/// input data to process in the Execution manager loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) input_data: Arc&lt;(Condvar, Mutex&lt;ExecutionInputData&gt;)&gt;,
     <span class="doccomment">/// handle used to join the worker thread
@@ -1086,7 +1146,7 @@
 <span class="kw">impl </span>ExecutionManager <span class="kw">for </span>ExecutionManagerImpl {
     <span class="doccomment">/// stops the worker
     </span><span class="kw">fn </span>stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="macro">info!</span>(<span class="string">"stopping Execution controller..."</span>);
+        <span class="macro">info!</span>(<span class="string">"Stopping Execution manager..."</span>);
         <span class="comment">// notify the worker thread to stop
         </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>input_wlock = <span class="self">self</span>.input_data.<span class="number">1</span>.lock();
@@ -1095,9 +1155,11 @@
         }
         <span class="comment">// join the execution thread
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(join_handle) = <span class="self">self</span>.thread_handle.take() {
-            join_handle.join().expect(<span class="string">"VM controller thread panicked"</span>);
+            join_handle
+                .join()
+                .expect(<span class="string">"Execution manager thread panicked"</span>);
         }
-        <span class="macro">info!</span>(<span class="string">"execution controller stopped"</span>);
+        <span class="macro">info!</span>(<span class="string">"Execution manager stopped"</span>);
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_FactoryError"],"enum":["FactoryError"],"type":["FactoryResult"]};
+window.SIDEBAR_ITEMS = {"enum":["FactoryError"],"type":["FactoryResult"]};

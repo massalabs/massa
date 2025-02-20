@@ -1435,8 +1435,8 @@
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-<span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -2706,7 +2706,7 @@
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
 
         <span class="kw">let </span>content = dump_column(pool.db.clone(), <span class="string">"state"</span>);
-        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, splitted in 13 prefix
+        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, split in 13 prefix
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch2 = DBBatch::new();
         pool.delete_entry(<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;mut </span>batch2);
