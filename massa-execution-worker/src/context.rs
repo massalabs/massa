@@ -1215,8 +1215,7 @@ impl ExecutionContext {
         };
         std::mem::take(&mut self.opt_block_id);
 
-        // TODO should take ?
-        let transfers_history = self.transfers_history.read().clone();
+        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
         ExecutionOutput {
             slot,
             block_info,
@@ -1292,8 +1291,7 @@ impl ExecutionContext {
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
 
-        // TODO should take ?
-        let transfer = self.transfers_history.read().clone();
+        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
 
         std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
@@ -1308,7 +1306,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
-            transfers_history: transfer,
+            transfers_history,
         }
     }
 
