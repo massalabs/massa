@@ -72,11 +72,21 @@ pub fn inc_deferred_calls_failed_by(val: u64) {
 }
 
 pub fn dec_deferred_calls_cancelled_by(val: u64) {
-    DEFERRED_CALL_CANCELLED.set(DEFERRED_CALL_CANCELLED.get().saturating_sub(val as i64));
+    DEFERRED_CALL_CANCELLED.set(
+        DEFERRED_CALL_CANCELLED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
 }
 
 pub fn dec_deferred_calls_registered_by(val: u64) {
-    DEFERRED_CALL_REGISTERED.set(DEFERRED_CALL_REGISTERED.get().saturating_sub(val as i64));
+    DEFERRED_CALL_REGISTERED.set(
+        DEFERRED_CALL_REGISTERED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
 }
 
 pub fn inc_deferred_calls_cancelled() {
