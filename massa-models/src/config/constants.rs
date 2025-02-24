@@ -86,7 +86,7 @@ lazy_static::lazy_static! {
     /// Chain id idea and implementation come from Ethereum EIPs:
     /// * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
     /// * https://eips.ethereum.org/EIPS/eip-1344
-    /// Chain id can be queried in Smart contracts (AssemblyScript: chain_id call) and in the 
+    /// Chain id can be queried in Smart contracts (AssemblyScript: chain_id call) and in the
     /// jsonrpc get_status call
     pub static ref CHAINID: u64 = {
         // MASM (MainNet):           77658377
