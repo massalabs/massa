@@ -118,7 +118,6 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # General description
@@ -127,7 +126,7 @@
 //! of operations that can contain executable bytecode and managing interactions with the ledger.
 //! When the worker is launched, a `ExecutionManager` and a `ExecutionController` are returned.
 //! `ExecutionManager` allows stopping the worker,
-//! and `ExecutionController` is the clonable structure through which users interact with the worker.
+//! and `ExecutionController` is the cloneable structure through which users interact with the worker.
 //!
 //! The worker is fed through the `ExecutionController` with information about blockclique changes and newly finalized blocks
 //! and will execute the operations in those blocks, as well as pending asynchronous operations on empty slots.
@@ -137,6 +136,8 @@
 //! and must be the only module with runtime write access to the final ledger.
 //!
 //! # A note on finality
+//!
+//!
 //!
 //! The operations contained in a final slot are ready to be executed as final
 //! only once all the previous slots are final and their operations are executed as final or ready to be so.
@@ -194,10 +195,6 @@
 //!
 //! ## `stats.rs`
 //! Defines a structure that gathers execution statistics.
-//!
-//! ## execution-info
-//!
-//! See documentation in execution_info.rs file.
 
 </span><span class="attr">#![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
@@ -210,6 +207,7 @@
 <span class="kw">mod </span>request_queue;
 <span class="kw">mod </span>slot_sequencer;
 <span class="kw">mod </span>speculative_async_pool;
+<span class="kw">mod </span>speculative_deferred_calls;
 <span class="kw">mod </span>speculative_executed_denunciations;
 <span class="kw">mod </span>speculative_executed_ops;
 <span class="kw">mod </span>speculative_ledger;
