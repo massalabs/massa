@@ -346,22 +346,6 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_bootstrap::white_black_list::SharedWhiteBlackList;
@@ -376,7 +360,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::config::{GrpcConfig, ServiceName};
 <span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span>futures_util::FutureExt;
-<span class="kw">use </span>hyper::{Method, Request, Response};
+<span class="kw">use </span>hyper::service::Service;
+<span class="kw">use </span>hyper::{Body, Method, Request, Response};
 <span class="kw">use </span>massa_consensus_exports::{ConsensusBroadcasts, ConsensusController};
 <span class="kw">use </span>massa_execution_exports::{ExecutionChannels, ExecutionController};
 <span class="kw">use </span>massa_pool_exports::{PoolBroadcasts, PoolController};
@@ -394,7 +379,7 @@
 <span class="kw">use </span>tokio::sync::oneshot;
 <span class="kw">use </span>tonic::body::BoxBody;
 <span class="kw">use </span>tonic::codegen::CompressionEncoding;
-<span class="kw">use </span>tonic::server::NamedService;
+<span class="kw">use </span>tonic::transport::NamedService;
 <span class="kw">use </span>tonic::transport::{Certificate, Identity, ServerTlsConfig};
 <span class="kw">use </span>tonic_health::server::HealthReporter;
 <span class="kw">use </span>tonic_web::GrpcWebLayer;
@@ -536,7 +521,7 @@
 <span class="comment">// Configure and start the gRPC API with the given service
 </span><span class="kw">async fn </span>serve&lt;S&gt;(service: S, config: <span class="kw-2">&amp;</span>GrpcConfig) -&gt; <span class="prelude-ty">Result</span>&lt;StopHandle, GrpcError&gt;
 <span class="kw">where
-    </span>S: tower_service::Service&lt;Request&lt;BoxBody&gt;, Response = Response&lt;BoxBody&gt;, Error = Infallible&gt;
+    </span>S: Service&lt;Request&lt;Body&gt;, Response = Response&lt;BoxBody&gt;, Error = Infallible&gt;
         + NamedService
         + Clone
         + Send
@@ -569,7 +554,7 @@
         }
 
         <span class="kw">let </span>cert = std::fs::read_to_string(config.server_certificate_path.clone())
-            .expect(<span class="string">"error, failed to read server certificate"</span>);
+            .expect(<span class="string">"error, failed to read server certificat"</span>);
         <span class="kw">let </span>key = std::fs::read_to_string(config.server_private_key_path.clone())
             .expect(<span class="string">"error, failed to read server private key"</span>);
 
@@ -597,20 +582,6 @@
         }
     }
 
-    <span class="kw">let </span>reflection_service_opt_alpha = <span class="kw">if </span>config.enable_reflection {
-        <span class="kw">let </span>file_descriptor_set = <span class="kw">match </span>config.name {
-            ServiceName::Public =&gt; FILE_DESCRIPTOR_SET_PUBLIC,
-            ServiceName::Private =&gt; FILE_DESCRIPTOR_SET_PRIVATE,
-        };
-        <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
-            .register_encoded_file_descriptor_set(file_descriptor_set)
-            .build_v1alpha()<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Some</span>(reflection_service)
-    } <span class="kw">else </span>{
-        <span class="prelude-val">None
-    </span>};
-
     <span class="kw">let </span>reflection_service_opt = <span class="kw">if </span>config.enable_reflection {
         <span class="kw">let </span>file_descriptor_set = <span class="kw">match </span>config.name {
             ServiceName::Public =&gt; FILE_DESCRIPTOR_SET_PUBLIC,
@@ -618,7 +589,7 @@
         };
         <span class="kw">let </span>reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(file_descriptor_set)
-            .build_v1()<span class="question-mark">?</span>;
+            .build()<span class="question-mark">?</span>;
 
         <span class="prelude-val">Some</span>(reflection_service)
     } <span class="kw">else </span>{
@@ -651,7 +622,6 @@
                 .layer(cors)
                 .layer(GrpcWebLayer::new())
                 .add_optional_service(reflection_service_opt)
-                .add_optional_service(reflection_service_opt_alpha)
                 .add_optional_service(health_service_opt)
                 .add_service(service);
 
@@ -663,7 +633,6 @@
                 .accept_http1(<span class="bool-val">true</span>)
                 .layer(GrpcWebLayer::new())
                 .add_optional_service(reflection_service_opt)
-                .add_optional_service(reflection_service_opt_alpha)
                 .add_optional_service(health_service_opt)
                 .add_service(service);
 
@@ -674,7 +643,6 @@
     } <span class="kw">else </span>{
         <span class="kw">let </span>router = server_builder
             .add_optional_service(reflection_service_opt)
-            .add_optional_service(reflection_service_opt_alpha)
             .add_optional_service(health_service_opt)
             .add_service(service);
 
@@ -704,7 +672,7 @@
             gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
                 .expect(<span class="string">"error, failed to generate cert"</span>);
         std::fs::write(config.client_certificate_path.clone(), client_cert_pem)
-            .expect(<span class="string">"error, failed to write client certificate"</span>);
+            .expect(<span class="string">"error, failed to write client certificat"</span>);
         std::fs::write(
             config.client_private_key_path.clone(),
             client_private_key_pem,
@@ -713,13 +681,13 @@
     }
 
     std::fs::write(config.certificate_authority_root_path.clone(), ca_cert_pem)
-        .expect(<span class="string">"error, failed to write certificate authority root"</span>);
+        .expect(<span class="string">"error, failed to write certificat authority root"</span>);
 
     <span class="kw">let </span>(cert_pem, server_private_key_pem) =
         gen_signed_cert(<span class="kw-2">&amp;</span>ca_cert, config.subject_alt_names.clone())
-            .expect(<span class="string">"error, failed to generate server certificate"</span>);
+            .expect(<span class="string">"error, failed to generate server certificat"</span>);
     std::fs::write(config.server_certificate_path.clone(), cert_pem)
-        .expect(<span class="string">"error, failed to write server certificate"</span>);
+        .expect(<span class="string">"error, failed to write server certificat"</span>);
     std::fs::write(
         config.server_private_key_path.clone(),
         server_private_key_pem,

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["BootstrapError"]};
+window.SIDEBAR_ITEMS = {"constant":["_DERIVE_Display_FOR_BootstrapError"],"enum":["BootstrapError"]};

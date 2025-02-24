@@ -591,7 +591,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_block_id_errors() {
-        <span class="kw">let </span>actual_error = BlockId::from_str(<span class="string">"SomeInvalidBlockId"</span>)
+        <span class="kw">let </span>actual_error = BlockId::from_str(<span class="string">"SomeUnvalidBlockId"</span>)
             .unwrap_err()
             .to_string();
         <span class="kw">let </span>expected_error = <span class="string">"block id parsing error"</span>.to_string();

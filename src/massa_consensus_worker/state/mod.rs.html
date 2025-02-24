@@ -882,7 +882,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         end_slot: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;PreHashSet&lt;BlockId&gt;, ConsensusError&gt; {
-        <span class="comment">// if an end_slot is provided compute the latest final block for that given slot
+        <span class="comment">// if an end_slot is provided compute the lastest final block for that given slot
         // if not use the latest_final_blocks_periods
         </span><span class="kw">let </span>effective_latest_finals: Vec&lt;(BlockId, u64)&gt; = <span class="kw">if let </span><span class="prelude-val">Some</span>(slot) = end_slot {
             <span class="self">self</span>.list_latest_final_blocks_at(slot)<span class="question-mark">?
