@@ -356,71 +356,6 @@
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
 <a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -493,14 +428,24 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"sandbox"</span>) {
-            <span class="string">"SAND.2.5"
+            <span class="string">"SAND.2.4"
         </span>} <span class="kw">else </span>{
-            <span class="string">"MAIN.2.5"
+            <span class="string">"MAIN.2.4"
         </span>}
         .parse()
         .unwrap()
     };
     <span class="doccomment">/// node chain id (to avoid replay attacks)
+    ///
+    /// By signing an operation with an ID of the target chain
+    /// (e.g. whether the operation targets LABNET, BUILDNET or MAINNET), the user is protected from
+    /// a malicious actor that could steal operations created on BUILDNET / LABNET and try to replay
+    /// them on the Massa MAINNET (and potentially stealing real coins)
+    /// Chain id idea and implementation come from Ethereum EIPs:
+    /// * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+    /// * https://eips.ethereum.org/EIPS/eip-1344
+    /// Chain id can be queried in Smart contracts (AssemblyScript: chain_id call) and in the
+    /// jsonrpc get_status call
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>CHAINID: u64 = {
         <span class="comment">// MASM (MainNet):           77658377
         // MASS (SecureNet):         77658383
@@ -619,60 +564,11 @@
 <span class="doccomment">/// Maximum number of key/values in the datastore of a `ExecuteSC` operation
 </span><span class="kw">pub const </span>MAX_OPERATION_DATASTORE_ENTRY_COUNT: u64 = <span class="number">128</span>;
 <span class="doccomment">/// Maximum length function name in call SC
-</span><span class="kw">pub const </span>MAX_FUNCTION_NAME_LENGTH: u16 = <span class="number">255</span>;
+</span><span class="kw">pub const </span>MAX_FUNCTION_NAME_LENGTH: u16 = u16::MAX;
 <span class="doccomment">/// Maximum size of parameters in call SC
 </span><span class="kw">pub const </span>MAX_PARAMETERS_SIZE: u32 = <span class="number">10_000_000</span>;
 <span class="doccomment">/// Maximum length of `rng_seed` in thread cycle
 </span><span class="kw">pub const </span>MAX_RNG_SEED_LENGTH: u32 = PERIODS_PER_CYCLE.saturating_mul(THREAD_COUNT <span class="kw">as </span>u64) <span class="kw">as </span>u32;
-
-<span class="doccomment">/// CondomMiddleware limits
-/// see test_condom_middleware_calibrate in massa-sc-runtime for origin of
-/// values.
-/// Maximum number of function defined in a smart contract
-</span><span class="kw">const </span>MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS: usize = <span class="number">512</span>;
-<span class="doccomment">/// Maximum number of function used by a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTIONS: usize =
-    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_FUNCTION_IMPORTS;
-<span class="doccomment">/// Maximum number of arguments to a function
-</span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_ARGS: usize = <span class="number">64</span>;
-<span class="doccomment">/// Maximum number of value a function can return
-</span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES: usize = <span class="number">8</span>;
-<span class="doccomment">/// Maximum signature length (total number of arguments and return values) for a
-/// function of a smart contract module
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_SIGNATURE_LEN: usize =
-    MAX_RUNTIME_MODULE_FUNCTION_ARGS + MAX_RUNTIME_MODULE_FUNCTION_RETURN_VALUES;
-<span class="doccomment">/// Maximum length for the name of a function defined in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN: usize = <span class="number">256</span>;
-<span class="doccomment">/// Maximum length for the name of a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_NAME_LEN: usize = <span class="number">256</span>;
-<span class="doccomment">/// Maximum number of custom section data
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN: usize = <span class="number">1</span>;
-<span class="doccomment">/// Maximum length for the custom section data
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN: usize = <span class="number">1_000_000</span>;
-<span class="doccomment">/// Maximum number of functions a module can import
-</span><span class="kw">const </span>MAX_RUNTIME_MODULE_FUNCTION_IMPORTS: usize = <span class="number">256</span>;
-<span class="doccomment">/// Maximum number of memory a module can import
-</span><span class="kw">const </span>MAX_RUNTIME_MODULE_MEMORY_IMPORTS: usize = <span class="number">1</span>;
-<span class="doccomment">/// Maximum number of elements a module can import
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_IMPORTS: usize =
-    MAX_RUNTIME_MODULE_FUNCTION_IMPORTS + MAX_RUNTIME_MODULE_MEMORY_IMPORTS;
-<span class="doccomment">/// Maximum number of table initializer in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE_INITIALIZER: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
-<span class="doccomment">/// Maximum number of passive element in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_ELEMENT: usize = MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS;
-<span class="doccomment">/// Maximum number of passive data in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_PASSIVE_DATA: usize = <span class="number">512</span>;
-<span class="doccomment">/// Maximum number of global initializer in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER: usize = <span class="number">512</span>;
-<span class="doccomment">/// Maximum number of table in a smart contract
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_TABLE: usize = <span class="number">16</span>;
-<span class="doccomment">/// Maximum number of memories in a smart contract
-/// - only 1 supported so far (cf specification)
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_MEMORIES: usize = <span class="number">1</span>;
-<span class="doccomment">/// Maximum number of exports for a smart contract module (function and globals)
-</span><span class="kw">pub const </span>MAX_RUNTIME_MODULE_EXPORTS: usize =
-    MAX_RUNTIME_MODULE_DEFINED_FUNCTIONS + MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER;
-
 <span class="comment">// ***********************
 // Bootstrap constants
 //
@@ -732,13 +628,7 @@
 <span class="doccomment">/// Gas used by a base operation (transaction, roll buy, roll sell)
 </span><span class="kw">pub const </span>BASE_OPERATION_GAS_COST: u64 = <span class="number">800_000</span>; <span class="comment">// approx MAX_GAS_PER_BLOCK / MAX_OPERATIONS_PER_BLOCK
 </span><span class="doccomment">/// Maximum event size in bytes
-</span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE_V0: usize = <span class="number">50_000</span>;
-<span class="doccomment">/// Maximum event size in bytes
-</span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE_V1: usize = <span class="number">1024</span>;
-<span class="doccomment">/// Maximum event number that can be emitted for an operation
-</span><span class="kw">pub const </span>MAX_EVENT_PER_OPERATION: usize = <span class="number">25</span>;
-<span class="doccomment">/// Maximum number of recursion for calls
-</span><span class="kw">pub const </span>MAX_RECURSIVE_CALLS_DEPTH: u16 = <span class="number">25</span>;
+</span><span class="kw">pub const </span>MAX_EVENT_DATA_SIZE: usize = <span class="number">50_000</span>;
 
 <span class="comment">//
 // Constants used in network
@@ -816,26 +706,6 @@
 </span><span class="kw">pub const </span>ROLL_COUNT_TO_SLASH_ON_DENUNCIATION: u64 = <span class="number">1</span>;
 <span class="doccomment">/// Maximum size of executed denunciations
 </span><span class="kw">pub const </span>MAX_DENUNCIATION_CHANGES_LENGTH: u64 = <span class="number">1_000</span>;
-<span class="doccomment">/// Maximum size of deferred call pool changes
-</span><span class="comment">// TODO define this value
-// TODO: set to a reasonable value max pool changes
-</span><span class="kw">pub const </span>DEFERRED_CALL_MAX_POOL_CHANGES: u64 = <span class="number">100_000</span>;
-<span class="doccomment">/// Maximum size of deferred call future slots (1 week)
-</span><span class="kw">pub const </span>DEFERRED_CALL_MAX_FUTURE_SLOTS: u64 = <span class="number">1209600</span>;
-<span class="doccomment">/// maximum gas for deferred call
-</span><span class="kw">pub const </span>DEFERRED_CALL_MAX_ASYNC_GAS: u64 = MAX_ASYNC_GAS;
-<span class="doccomment">/// max change denominator  
-</span><span class="kw">pub const </span>DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR: usize = <span class="number">1250</span>;
-<span class="doccomment">/// deferred call min gas increment (1 nanomassa)
-</span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_INCREMENT: u64 = <span class="number">1</span>;
-<span class="doccomment">/// deferred call min gas cost (10 nanomassa)
-</span><span class="kw">pub const </span>DEFERRED_CALL_MIN_GAS_COST: u64 = <span class="number">10</span>;
-<span class="doccomment">/// deferred call global overbooking penalty
-</span><span class="kw">pub const </span>DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000</span>);
-<span class="doccomment">/// deferred call slot overbooking penalty
-</span><span class="kw">pub const </span>DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY: Amount = Amount::from_raw(<span class="number">1_000_000_000 </span>/ <span class="number">10_000</span>);
-<span class="doccomment">/// deferred call call gas cost
-</span><span class="kw">pub const </span>DEFERRED_CALL_CST_GAS_COST: u64 = <span class="number">750_000</span>;
 
 <span class="comment">// Some checks at compile time that should not be ignored!
 </span><span class="attr">#[allow(clippy::assertions_on_constants)]

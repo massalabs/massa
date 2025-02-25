@@ -460,7 +460,7 @@
             </span>.channels
             .pool
             .get_block_endorsements(<span class="kw-2">&amp;</span>same_thread_parent_id, <span class="kw-2">&amp;</span>slot);
-        <span class="comment">//TODO: Do we want to populate only with endorsement id in the future ?
+        <span class="comment">//TODO: Do we want ot populate only with endorsement id in the future ?
         </span><span class="kw">let </span>endorsements: Vec&lt;SecureShareEndorsement&gt; = {
             <span class="kw">let </span>endo_read = endo_storage.read_endorsements();
             endorsements_ids
