@@ -302,6 +302,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: true,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>
@@ -362,6 +363,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count,
             max_ledger_backups: 10,
+            enable_metrics: true,
         };
         let db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
@@ -370,6 +372,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count,
             max_ledger_backups: 10,
+            enable_metrics: true,
         };
 
         let db_a = Arc::new(RwLock::new(
