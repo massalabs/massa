@@ -1420,6 +1420,12 @@
 <a href="#1420" id="1420">1420</a>
 <a href="#1421" id="1421">1421</a>
 <a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1435,8 +1441,8 @@
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-<span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::address::Address;
+<span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -2522,6 +2528,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2564,6 +2571,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2626,6 +2634,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2683,6 +2692,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2706,7 +2716,7 @@
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
 
         <span class="kw">let </span>content = dump_column(pool.db.clone(), <span class="string">"state"</span>);
-        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, splitted in 13 prefix
+        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, split in 13 prefix
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch2 = DBBatch::new();
         pool.delete_entry(<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;mut </span>batch2);
@@ -2740,6 +2750,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2790,6 +2801,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),

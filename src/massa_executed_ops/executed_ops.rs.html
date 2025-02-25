@@ -454,6 +454,9 @@
 <a href="#454" id="454">454</a>
 <a href="#455" id="455">455</a>
 <a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a structure to list and prune previously executed operations.
@@ -758,6 +761,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config.clone())) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -818,6 +822,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
         <span class="kw">let </span>db_c_config = MassaDBConfig {
             path: tempdir_c.path().to_path_buf(),
@@ -826,6 +831,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">true</span>,
         };
 
         <span class="kw">let </span>db_a = Arc::new(RwLock::new(

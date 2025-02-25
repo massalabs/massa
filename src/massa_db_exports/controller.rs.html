@@ -105,6 +105,9 @@
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
 <a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{DBBatch, Key, MassaDBError, StreamBatch, Value};
 <span class="kw">use </span>massa_hash::{HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::{error::ModelsError, slot::Slot, streaming_step::StreamingStep};
@@ -194,6 +197,9 @@
         last_versioning_step: <span class="kw-2">&amp;</span>StreamingStep&lt;Vec&lt;u8&gt;&gt;,
         last_change_id: <span class="prelude-ty">Option</span>&lt;Slot&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;StreamBatch&lt;Slot&gt;, MassaDBError&gt;;
+
+    <span class="doccomment">/// Get the total size of the change history and the change versioning history respectively
+    </span><span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize);
 
     <span class="doccomment">/// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
     </span><span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
