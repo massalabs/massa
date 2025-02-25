@@ -1933,7 +1933,7 @@
     </span><span class="kw">pub </span>change_id_deserializer: ChangeIDDeserializer,
     <span class="doccomment">/// The current RocksDB batch of the database, in a Mutex to share it
     </span><span class="kw">pub </span>current_batch: Arc&lt;Mutex&lt;WriteBatch&gt;&gt;,
-    <span class="doccomment">///
+    <span class="doccomment">/// If metrics are enabled, we keep track of the size of the changes associated to each change_id
     </span><span class="kw">pub </span>change_history_sizes: BTreeMap&lt;ChangeID, (usize, usize)&gt;,
 }
 
