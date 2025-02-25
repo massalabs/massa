@@ -237,6 +237,10 @@ pub struct MassaMetrics {
     network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
     network_current_version: IntGauge,
 
+    // massa-db
+    db_change_history_size: IntGauge,
+    db_change_versioning_history_size: IntGauge,
+
     pub tick_delay: Duration,
 }
 
@@ -474,6 +478,18 @@ impl MassaMetrics {
         let network_current_version =
             IntGauge::new("network_current_version", "current version of network").unwrap();
 
+        let db_change_history_size = IntGauge::new(
+            "db_change_history_size",
+            "total size of change history in DB",
+        )
+        .unwrap();
+
+        let db_change_versioning_history_size = IntGauge::new(
+            "db_change_versioning_history_size",
+            "total size of change versioning history in DB",
+        )
+        .unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -527,6 +543,8 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
                 let _ = prometheus::register(Box::new(network_current_version.clone()));
+                let _ = prometheus::register(Box::new(db_change_history_size.clone()));
+                let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -584,6 +602,8 @@ impl MassaMetrics {
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
                 network_current_version,
+                db_change_history_size,
+                db_change_versioning_history_size,
                 tick_delay,
             },
             stopper,
@@ -775,6 +795,14 @@ impl MassaMetrics {
 
     pub fn set_network_current_version(&self, version: u32) {
         self.network_current_version.set(version as i64);
+    }
+
+    pub fn set_db_change_history_size(&self, size: usize) {
+        self.db_change_history_size.set(size as i64);
+    }
+
+    pub fn set_db_change_versioning_history_size(&self, size: usize) {
+        self.db_change_versioning_history_size.set(size as i64);
     }
 
     // Update the network version vote metrics
