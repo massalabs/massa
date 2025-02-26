@@ -107,7 +107,7 @@ pub(crate) struct ExecutionState {
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
     // It has atomic R/W access.
-    active_history: Arc<RwLock<ActiveHistory>>,
+    pub active_history: Arc<RwLock<ActiveHistory>>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
