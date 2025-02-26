@@ -930,6 +930,21 @@
 <a href="#930" id="930">930</a>
 <a href="#931" id="931">931</a>
 <a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -1175,6 +1190,9 @@
 
     <span class="comment">// module cache
     </span>module_lru_cache_memory_usage: IntGauge,
+
+    <span class="comment">// active history
+    </span>active_history_total_event_len: IntGauge,
 
     <span class="kw">pub </span>tick_delay: Duration,
 }
@@ -1431,6 +1449,12 @@
         )
         .unwrap();
 
+        <span class="kw">let </span>active_history_total_event_len = IntGauge::new(
+            <span class="string">"active_history_total_event_len"</span>,
+            <span class="string">"total events len currently in the active history (1 event: max 1kB)"</span>,
+        )
+        .unwrap();
+
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
@@ -1487,6 +1511,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(db_change_history_size.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(db_change_versioning_history_size.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(active_history_total_event_len.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1547,6 +1572,7 @@
                 db_change_history_size,
                 db_change_versioning_history_size,
                 module_lru_cache_memory_usage,
+                active_history_total_event_len,
                 tick_delay,
             },
             stopper,
@@ -1750,6 +1776,10 @@
 
     <span class="kw">pub fn </span>set_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) {
         <span class="self">self</span>.module_lru_cache_memory_usage.set(size <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>set_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) {
+        <span class="self">self</span>.active_history_total_event_len.set(size <span class="kw">as </span>i64);
     }
 
     <span class="comment">// Update the network version vote metrics

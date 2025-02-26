@@ -2863,7 +2863,7 @@
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
     // It has atomic R/W access.
-    </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
+    </span><span class="kw">pub </span>active_history: Arc&lt;RwLock&lt;ActiveHistory&gt;&gt;,
     <span class="comment">// a cursor pointing to the highest executed slot
     </span><span class="kw">pub </span>active_cursor: Slot,
     <span class="comment">// a cursor pointing to the highest executed final slot

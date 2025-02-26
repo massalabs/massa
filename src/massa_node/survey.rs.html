@@ -176,6 +176,11 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
@@ -327,6 +332,11 @@
                                 {
                                     <span class="kw">let </span>module_lru_cache_memory_usage = execution_controller.get_module_lru_cache_memory_usage();
                                     massa_metrics.set_module_lru_cache_memory_usage(module_lru_cache_memory_usage);
+                                }
+
+                                {
+                                    <span class="kw">let </span>active_history_total_event_len = execution_controller.get_active_history_total_event_len();
+                                    massa_metrics.set_active_history_total_event_len(active_history_total_event_len);
                                 }
                             }
                         }
