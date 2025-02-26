@@ -250,7 +250,7 @@ mod test {
             max_versioning_elements_size: 100,
             max_ledger_backups: 10,
             thread_count: THREAD_COUNT,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config.clone())) as Box<(dyn MassaDBController + 'static)>

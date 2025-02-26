@@ -978,7 +978,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1009,7 +1009,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1094,7 +1094,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1180,7 +1180,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1230,7 +1230,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
-                enable_metrics: true,
+                enable_metrics: false,
             };
             let mut db_backup_1_opts = MassaDB::default_db_opts();
             db_backup_1_opts.create_if_missing(false);
@@ -1255,7 +1255,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
-                enable_metrics: true,
+                enable_metrics: false,
             };
             let mut db_backup_2_opts = MassaDB::default_db_opts();
             db_backup_2_opts.create_if_missing(false);
@@ -1289,7 +1289,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1337,7 +1337,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
-                enable_metrics: true,
+                enable_metrics: false,
             };
             // let db_backup_2_opts = MassaDB::default_db_opts();
 
@@ -1387,7 +1387,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1481,7 +1481,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1570,7 +1570,7 @@ mod test {
             max_versioning_elements_size: 10,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1656,7 +1656,7 @@ mod test {
             max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1769,7 +1769,7 @@ mod test {
             max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
-            enable_metrics: true,
+            enable_metrics: false,
         };
 
         let slot_1 = Slot::new(1, 0);
