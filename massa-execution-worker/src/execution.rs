@@ -123,7 +123,7 @@ pub(crate) struct ExecutionState {
     // execution statistics
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
-    module_cache: Arc<RwLock<ModuleCache>>,
+    pub module_cache: Arc<RwLock<ModuleCache>>,
     // MipStore (Versioning)
     mip_store: MipStore,
     // wallet used to verify double staking on local addresses

@@ -212,4 +212,9 @@ impl ModuleCache {
         )?;
         Ok(module)
     }
+
+    /// Returns the memory usage of the LRU cache
+    pub fn get_module_lru_cache_memory_usage(&self) -> usize {
+        self.lru_cache.cache.memory_usage()
+    }
 }

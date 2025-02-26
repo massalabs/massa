@@ -111,6 +111,9 @@ pub trait ExecutionController: Send + Sync {
     /// Get execution statistics
     fn get_stats(&self) -> ExecutionStats;
 
+    /// Get the current module LRU cache size
+    fn get_module_lru_cache_memory_usage(&self) -> usize;
+
     #[cfg(feature = "execution-trace")]
     /// Get the abi call stack for a given operation id
     fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>>;

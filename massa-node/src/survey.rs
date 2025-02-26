@@ -11,7 +11,6 @@ use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use tracing::info;
-// use std::time::Duration;
 use tracing::warn;
 
 pub struct MassaSurvey {}
@@ -145,6 +144,11 @@ impl MassaSurvey {
                                     let change_history_sizes = db.read().get_change_history_sizes();
                                     massa_metrics.set_db_change_history_size(change_history_sizes.0);
                                     massa_metrics.set_db_change_versioning_history_size(change_history_sizes.1);
+                                }
+
+                                {
+                                    let module_lru_cache_memory_usage = execution_controller.get_module_lru_cache_memory_usage();
+                                    massa_metrics.set_module_lru_cache_memory_usage(module_lru_cache_memory_usage);
                                 }
                             }
                         }
