@@ -76,9 +76,7 @@ use massa_execution_exports::execution_info::{
     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult, TransferContext,
 };
 #[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::{
-    ExecutionInfo, ExecutionInfoForSlot, RollOperationInfo,
-};
+use massa_execution_exports::execution_info::{ExecutionInfoForSlot, RollOperationInfo};
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -139,8 +137,8 @@ pub(crate) struct ExecutionState {
     massa_metrics: MassaMetrics,
     #[cfg(feature = "execution-trace")]
     pub(crate) trace_history: Arc<RwLock<TraceHistory>>,
-    #[cfg(feature = "execution-info")]
-    pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
+    // #[cfg(feature = "execution-info")]
+    // pub(crate) execution_info: Arc<RwLock<ExecutionInfo>>,
     #[cfg(feature = "dump-block")]
     block_storage_backend: Arc<RwLock<dyn StorageBackend>>,
     cur_execution_version: u32,
@@ -237,10 +235,10 @@ impl ExecutionState {
                     (MAX_GAS_PER_BLOCK / BASE_OPERATION_GAS_COST) as u32,
                 ),
             ))),
-            #[cfg(feature = "execution-info")]
-            execution_info: Arc::new(RwLock::new(ExecutionInfo::new(
-                config.max_execution_traces_slot_limit as u32,
-            ))),
+            // #[cfg(feature = "execution-info")]
+            // execution_info: Arc::new(RwLock::new(ExecutionInfo::new(
+            //     config.max_execution_traces_slot_limit as u32,
+            // ))),
             config,
             #[cfg(feature = "dump-block")]
             block_storage_backend,
@@ -399,25 +397,24 @@ impl ExecutionState {
         #[cfg(feature = "execution-info")]
         {
             if self.config.broadcast_enabled {
-                let guard = self.execution_info.read();
-                let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
+                // let guard = self.execution_info.read();
+                // let execution_info_for_slot = guard.info_per_slot.peek(&exec_out.slot);
+                let guard = self.execution_context.lock();
+                let mut exec_info_for_slot = guard.execution_info.clone();
 
-                if let Some(execution_info_for_slot) = execution_info_for_slot {
-                    let mut cloned = execution_info_for_slot.clone();
-                    cloned.transfers = exec_out.transfers_history;
-                    cloned.build_transfer_list();
+                exec_info_for_slot.transfers = exec_out.transfers_history;
+                exec_info_for_slot.build_transfer_list();
 
-                    if let Err(err) = self.channels.slot_execution_info_sender.send(cloned) {
-                        trace!(
-                            "error, failed to broadcast execution info for slot {} due to: {}",
-                            exec_out.slot.clone(),
-                            err
-                        );
-                    }
-                } else {
-                    // Note: should never happen as we have just executed this slot and it should be
-                    //       stored in execution_info struct
-                    trace!("Unable to get execution info for slot {}", exec_out.slot);
+                if let Err(err) = self
+                    .channels
+                    .slot_execution_info_sender
+                    .send(exec_info_for_slot)
+                {
+                    trace!(
+                        "error, failed to broadcast execution info for slot {} due to: {}",
+                        exec_out.slot.clone(),
+                        err
+                    );
                 }
             }
         }
@@ -949,7 +946,7 @@ impl ExecutionState {
             None,
             spend_coins,
             false,
-            TransferContext::RollBuy(operation_id.clone()),
+            TransferContext::RollBuy(operation_id),
         ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
@@ -2106,7 +2103,8 @@ impl ExecutionState {
                 std::mem::replace(&mut exec_out.cancel_async_message_execution, vec![]);
             exec_info.auto_sell_execution =
                 std::mem::replace(&mut exec_out.auto_sell_execution, vec![]);
-            self.execution_info.write().save_for_slot(*slot, exec_info);
+            // self.execution_info.write().save_for_slot(*slot, exec_info);
+            context_guard!(self).execution_info = exec_info;
         }
 
         // Broadcast a slot execution output to active channel subscribers.

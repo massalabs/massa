@@ -19,6 +19,8 @@ use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
@@ -217,6 +219,10 @@ pub struct ExecutionContext {
     pub user_event_count_in_current_exec: u16,
 
     transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
+
+    /// Execution info
+    #[cfg(feature = "execution-info")]
+    pub execution_info: ExecutionInfoForSlot,
 }
 
 impl ExecutionContext {
@@ -307,6 +313,8 @@ impl ExecutionContext {
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
+            #[cfg(feature = "execution-info")]
+            execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, None),
         }
     }
 
