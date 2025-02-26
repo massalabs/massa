@@ -1882,7 +1882,6 @@
 <a href="#1882" id="1882">1882</a>
 <a href="#1883" id="1883">1883</a>
 <a href="#1884" id="1884">1884</a>
-<a href="#1885" id="1885">1885</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2778,13 +2777,12 @@
     }
 
     <span class="kw">fn </span>get_change_history_sizes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, usize) {
-        <span class="kw">let </span><span class="kw-2">mut </span>change_history_size = <span class="number">0</span>;
-        <span class="kw">let </span><span class="kw-2">mut </span>change_history_versioning_size = <span class="number">0</span>;
-        <span class="kw">for </span>(state_size, versioning_size) <span class="kw">in </span><span class="self">self</span>.change_history_sizes.values() {
-            change_history_size += state_size;
-            change_history_versioning_size += versioning_size;
-        }
-        (change_history_size, change_history_versioning_size)
+        <span class="self">self</span>.change_history_sizes.values().fold(
+            (<span class="number">0</span>, <span class="number">0</span>),
+            |(acc_state, acc_version), <span class="kw-2">&amp;</span>(state, version)| {
+                (acc_state + state, acc_version + version)
+            },
+        )
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"test-exports"</span>)]
