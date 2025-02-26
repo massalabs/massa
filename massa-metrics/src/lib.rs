@@ -244,6 +244,9 @@ pub struct MassaMetrics {
     // module cache
     module_lru_cache_memory_usage: IntGauge,
 
+    // active history
+    active_history_total_event_len: IntGauge,
+
     pub tick_delay: Duration,
 }
 
@@ -499,6 +502,12 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let active_history_total_event_len = IntGauge::new(
+            "active_history_total_event_len",
+            "total events len currently in the active history (1 event: max 1kB)",
+        )
+        .unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -555,6 +564,7 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(db_change_history_size.clone()));
                 let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
                 let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
+                let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -615,6 +625,7 @@ impl MassaMetrics {
                 db_change_history_size,
                 db_change_versioning_history_size,
                 module_lru_cache_memory_usage,
+                active_history_total_event_len,
                 tick_delay,
             },
             stopper,
@@ -818,6 +829,10 @@ impl MassaMetrics {
 
     pub fn set_module_lru_cache_memory_usage(&self, size: usize) {
         self.module_lru_cache_memory_usage.set(size as i64);
+    }
+
+    pub fn set_active_history_total_event_len(&self, size: usize) {
+        self.active_history_total_event_len.set(size as i64);
     }
 
     // Update the network version vote metrics

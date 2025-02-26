@@ -150,6 +150,11 @@ impl MassaSurvey {
                                     let module_lru_cache_memory_usage = execution_controller.get_module_lru_cache_memory_usage();
                                     massa_metrics.set_module_lru_cache_memory_usage(module_lru_cache_memory_usage);
                                 }
+
+                                {
+                                    let active_history_total_event_len = execution_controller.get_active_history_total_event_len();
+                                    massa_metrics.set_active_history_total_event_len(active_history_total_event_len);
+                                }
                             }
                         }
                     }) {
