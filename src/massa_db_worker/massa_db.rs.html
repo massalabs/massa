@@ -1877,6 +1877,12 @@
 <a href="#1877" id="1877">1877</a>
 <a href="#1878" id="1878">1878</a>
 <a href="#1879" id="1879">1879</a>
+<a href="#1880" id="1880">1880</a>
+<a href="#1881" id="1881">1881</a>
+<a href="#1882" id="1882">1882</a>
+<a href="#1883" id="1883">1883</a>
+<a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -2270,34 +2276,29 @@
             }
         }
 
-        <span class="kw">let </span>changes_size = <span class="kw">if </span><span class="self">self</span>.config.enable_metrics {
-            <span class="self">self</span>.current_batch.lock().size_in_bytes()
-        } <span class="kw">else </span>{
-            <span class="number">0
-        </span>};
+        <span class="comment">// If metrics are enabled, we keep track of the size of the changes (for state changes, and then for versioning changes)
+        </span><span class="kw">if </span><span class="self">self</span>.config.enable_metrics {
+            <span class="kw">let </span>changes_size;
+            <span class="kw">let </span>changes_versioning_size;
+            {
+                <span class="kw">let </span><span class="kw-2">mut </span>current_batch_guard = <span class="self">self</span>.current_batch.lock();
+                changes_size = current_batch_guard.size_in_bytes();
 
-        <span class="comment">// in versioning_changes, we have the data that we do not want to include in hash
-        // e.g everything that is not in 'Active' state (so hashes remain compatibles)
-        </span><span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_changes.iter() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
-                <span class="self">self</span>.current_batch
-                    .lock()
-                    .put_cf(handle_versioning, key, value);
-            } <span class="kw">else </span>{
-                <span class="self">self</span>.current_batch.lock().delete_cf(handle_versioning, key);
+                <span class="comment">// in versioning_changes, we have the data that we do not want to include in hash
+                // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+                </span><span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_changes.iter() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
+                        current_batch_guard.put_cf(handle_versioning, key, value);
+                    } <span class="kw">else </span>{
+                        current_batch_guard.delete_cf(handle_versioning, key);
+                    }
+                }
+
+                changes_versioning_size = current_batch_guard
+                    .size_in_bytes()
+                    .saturating_sub(changes_size);
             }
-        }
 
-        <span class="kw">let </span>changes_versioning_size = <span class="kw">if </span><span class="self">self</span>.config.enable_metrics {
-            <span class="self">self</span>.current_batch
-                .lock()
-                .size_in_bytes()
-                .saturating_sub(changes_size)
-        } <span class="kw">else </span>{
-            <span class="number">0
-        </span>};
-
-        <span class="kw">if </span><span class="self">self</span>.config.enable_metrics {
             <span class="kw">match </span><span class="self">self
                 </span>.change_history_sizes
                 .entry(<span class="self">self</span>.get_change_id().expect(CHANGE_ID_DESER_ERROR))
@@ -2308,6 +2309,17 @@
                 std::collections::btree_map::Entry::Occupied(<span class="kw-2">mut </span>entry) =&gt; {
                     entry.get_mut().<span class="number">0 </span>+= changes_size;
                     entry.get_mut().<span class="number">1 </span>+= changes_versioning_size;
+                }
+            }
+        } <span class="kw">else </span>{
+            <span class="kw">let </span><span class="kw-2">mut </span>current_batch_guard = <span class="self">self</span>.current_batch.lock();
+            <span class="comment">// in versioning_changes, we have the data that we do not want to include in hash
+            // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+            </span><span class="kw">for </span>(key, value) <span class="kw">in </span>versioning_changes.iter() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(value) = value {
+                    current_batch_guard.put_cf(handle_versioning, key, value);
+                } <span class="kw">else </span>{
+                    current_batch_guard.delete_cf(handle_versioning, key);
                 }
             }
         }
@@ -2857,7 +2869,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2888,7 +2900,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -2973,7 +2985,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3059,7 +3071,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3109,7 +3121,7 @@
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
-                enable_metrics: <span class="bool-val">true</span>,
+                enable_metrics: <span class="bool-val">false</span>,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_1_opts = MassaDB::default_db_opts();
             db_backup_1_opts.create_if_missing(<span class="bool-val">false</span>);
@@ -3134,7 +3146,7 @@
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
-                enable_metrics: <span class="bool-val">true</span>,
+                enable_metrics: <span class="bool-val">false</span>,
             };
             <span class="kw">let </span><span class="kw-2">mut </span>db_backup_2_opts = MassaDB::default_db_opts();
             db_backup_2_opts.create_if_missing(<span class="bool-val">false</span>);
@@ -3168,7 +3180,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3216,7 +3228,7 @@
                 max_versioning_elements_size: <span class="number">100</span>,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: <span class="number">10</span>,
-                enable_metrics: <span class="bool-val">true</span>,
+                enable_metrics: <span class="bool-val">false</span>,
             };
             <span class="comment">// let db_backup_2_opts = MassaDB::default_db_opts();
 
@@ -3266,7 +3278,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3360,7 +3372,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3449,7 +3461,7 @@
             max_versioning_elements_size: <span class="number">10</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3535,7 +3547,7 @@
             max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span><span class="kw-2">mut </span>db_opts = MassaDB::default_db_opts();
         <span class="comment">// Additional checks (only for testing)
@@ -3648,7 +3660,7 @@
             max_versioning_elements_size: <span class="number">20</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
 
         <span class="kw">let </span>slot_1 = Slot::new(<span class="number">1</span>, <span class="number">0</span>);

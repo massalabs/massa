@@ -5346,7 +5346,7 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">true</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
