@@ -2879,7 +2879,7 @@
     <span class="comment">// execution statistics
     </span>stats_counter: ExecutionStatsCounter,
     <span class="comment">// cache of pre compiled sc modules
-    </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
+    </span><span class="kw">pub </span>module_cache: Arc&lt;RwLock&lt;ModuleCache&gt;&gt;,
     <span class="comment">// MipStore (Versioning)
     </span>mip_store: MipStore,
     <span class="comment">// wallet used to verify double staking on local addresses

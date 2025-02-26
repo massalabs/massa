@@ -915,6 +915,21 @@
 <a href="#915" id="915">915</a>
 <a href="#916" id="916">916</a>
 <a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! this library is used to collect metrics from the node and expose them to the prometheus server
 //!
 //! the metrics are collected from the node and from the survey
@@ -1157,6 +1172,9 @@
     <span class="comment">// massa-db
     </span>db_change_history_size: IntGauge,
     db_change_versioning_history_size: IntGauge,
+
+    <span class="comment">// module cache
+    </span>module_lru_cache_memory_usage: IntGauge,
 
     <span class="kw">pub </span>tick_delay: Duration,
 }
@@ -1407,6 +1425,12 @@
         )
         .unwrap();
 
+        <span class="kw">let </span>module_lru_cache_memory_usage = IntGauge::new(
+            <span class="string">"module_lru_cache_memory_usage"</span>,
+            <span class="string">"total size of the lru module cache in bytes"</span>,
+        )
+        .unwrap();
+
         <span class="kw">let </span><span class="kw-2">mut </span>stopper = MetricsStopper::default();
 
         <span class="kw">if </span>enabled {
@@ -1462,6 +1486,7 @@
                 <span class="kw">let _ </span>= prometheus::register(Box::new(network_current_version.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(db_change_history_size.clone()));
                 <span class="kw">let _ </span>= prometheus::register(Box::new(db_change_versioning_history_size.clone()));
+                <span class="kw">let _ </span>= prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -1521,6 +1546,7 @@
                 network_current_version,
                 db_change_history_size,
                 db_change_versioning_history_size,
+                module_lru_cache_memory_usage,
                 tick_delay,
             },
             stopper,
@@ -1720,6 +1746,10 @@
 
     <span class="kw">pub fn </span>set_db_change_versioning_history_size(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) {
         <span class="self">self</span>.db_change_versioning_history_size.set(size <span class="kw">as </span>i64);
+    }
+
+    <span class="kw">pub fn </span>set_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) {
+        <span class="self">self</span>.module_lru_cache_memory_usage.set(size <span class="kw">as </span>i64);
     }
 
     <span class="comment">// Update the network version vote metrics
