@@ -391,34 +391,29 @@ where
             }
         }
 
-        let changes_size = if self.config.enable_metrics {
-            self.current_batch.lock().size_in_bytes()
-        } else {
-            0
-        };
-
-        // in versioning_changes, we have the data that we do not want to include in hash
-        // e.g everything that is not in 'Active' state (so hashes remain compatibles)
-        for (key, value) in versioning_changes.iter() {
-            if let Some(value) = value {
-                self.current_batch
-                    .lock()
-                    .put_cf(handle_versioning, key, value);
-            } else {
-                self.current_batch.lock().delete_cf(handle_versioning, key);
-            }
-        }
-
-        let changes_versioning_size = if self.config.enable_metrics {
-            self.current_batch
-                .lock()
-                .size_in_bytes()
-                .saturating_sub(changes_size)
-        } else {
-            0
-        };
-
+        // If metrics are enabled, we keep track of the size of the changes (for state changes, and then for versioning changes)
         if self.config.enable_metrics {
+            let changes_size;
+            let changes_versioning_size;
+            {
+                let mut current_batch_guard = self.current_batch.lock();
+                changes_size = current_batch_guard.size_in_bytes();
+
+                // in versioning_changes, we have the data that we do not want to include in hash
+                // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+                for (key, value) in versioning_changes.iter() {
+                    if let Some(value) = value {
+                        current_batch_guard.put_cf(handle_versioning, key, value);
+                    } else {
+                        current_batch_guard.delete_cf(handle_versioning, key);
+                    }
+                }
+
+                changes_versioning_size = current_batch_guard
+                    .size_in_bytes()
+                    .saturating_sub(changes_size);
+            }
+
             match self
                 .change_history_sizes
                 .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
@@ -429,6 +424,17 @@ where
                 std::collections::btree_map::Entry::Occupied(mut entry) => {
                     entry.get_mut().0 += changes_size;
                     entry.get_mut().1 += changes_versioning_size;
+                }
+            }
+        } else {
+            let mut current_batch_guard = self.current_batch.lock();
+            // in versioning_changes, we have the data that we do not want to include in hash
+            // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+            for (key, value) in versioning_changes.iter() {
+                if let Some(value) = value {
+                    current_batch_guard.put_cf(handle_versioning, key, value);
+                } else {
+                    current_batch_guard.delete_cf(handle_versioning, key);
                 }
             }
         }
