@@ -893,13 +893,12 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     fn get_change_history_sizes(&self) -> (usize, usize) {
-        let mut change_history_size = 0;
-        let mut change_history_versioning_size = 0;
-        for (state_size, versioning_size) in self.change_history_sizes.values() {
-            change_history_size += state_size;
-            change_history_versioning_size += versioning_size;
-        }
-        (change_history_size, change_history_versioning_size)
+        self.change_history_sizes.values().fold(
+            (0, 0),
+            |(acc_state, acc_version), &(state, version)| {
+                (acc_state + state, acc_version + version)
+            },
+        )
     }
 
     #[cfg(feature = "test-exports")]
