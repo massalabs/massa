@@ -658,7 +658,6 @@
 <a href="#658" id="658">658</a>
 <a href="#659" id="659">659</a>
 <a href="#660" id="660">660</a>
-<a href="#661" id="661">661</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Speculative async call registry.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::ActiveHistory;
@@ -1193,7 +1192,6 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
 
         <span class="kw">let </span>db = Arc::new(RwLock::new(

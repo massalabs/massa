@@ -580,27 +580,6 @@
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
-<a href="#590" id="590">590</a>
-<a href="#591" id="591">591</a>
-<a href="#592" id="592">592</a>
-<a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -1103,27 +1082,6 @@
     <span class="doccomment">/// Get execution statistics
     </span><span class="kw">fn </span>get_stats(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ExecutionStats {
         <span class="self">self</span>.execution_state.read().get_stats()
-    }
-
-    <span class="doccomment">/// Get the memory usage of the module LRU cache
-    </span><span class="kw">fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.execution_state
-            .read()
-            .module_cache
-            .read()
-            .get_module_lru_cache_memory_usage()
-    }
-
-    <span class="doccomment">/// Get the number of events currently in the active history
-    </span><span class="kw">fn </span>get_active_history_total_event_len(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.execution_state
-            .read()
-            .active_history
-            .read()
-            .<span class="number">0
-            </span>.iter()
-            .map(|exec_out| exec_out.events.<span class="number">0</span>.len())
-            .sum()
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]

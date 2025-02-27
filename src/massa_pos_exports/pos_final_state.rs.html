@@ -2398,12 +2398,6 @@
 <a href="#2398" id="2398">2398</a>
 <a href="#2399" id="2399">2399</a>
 <a href="#2400" id="2400">2400</a>
-<a href="#2401" id="2401">2401</a>
-<a href="#2402" id="2402">2402</a>
-<a href="#2403" id="2403">2403</a>
-<a href="#2404" id="2404">2404</a>
-<a href="#2405" id="2405">2405</a>
-<a href="#2406" id="2406">2406</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -4026,7 +4020,6 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4161,7 +4154,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4356,7 +4348,6 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4457,7 +4448,6 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4633,7 +4623,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4739,7 +4728,6 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             max_ledger_backups: <span class="number">10</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
