@@ -13,8 +13,7 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
-    DB,
+    checkpoint::Checkpoint, properties::STATS, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch, DB
 };
 use std::path::PathBuf;
 use std::{
@@ -202,6 +201,19 @@ where
                 } else {
                     break;
                 }
+            }
+        }
+
+        let stats= self.db.property_value(STATS);
+        match stats {
+            Ok(Some(stats)) => {
+                println!("GET BATCH TO STREAM - ROCKS_DB: Stats: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("GET BATCH TO STREAM - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("GET BATCH TO STREAM - ROCKS_DB: Error getting stats");
             }
         }
 
@@ -497,6 +509,19 @@ where
             self.change_history_versioning.pop_first();
         }
 
+        let stats= self.db.property_value(STATS);
+        match stats {
+            Ok(Some(stats)) => {
+                println!("WRITE CHANGES - ROCKS_DB: Stats: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("WRITE CHANGES - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("WRITE CHANGES - ROCKS_DB: Error getting stats");
+            }
+        }
+
         Ok(())
     }
 
@@ -626,6 +651,10 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+        db_opts.set_allow_mmap_reads(true);
+        db_opts.set_use_direct_reads(true);
+        db_opts.set_memtable_huge_page_size(0);
+        db_opts.enable_statistics();
         db_opts
     }
 
