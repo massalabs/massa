@@ -1819,6 +1819,12 @@
 <a href="#1819" id="1819">1819</a>
 <a href="#1820" id="1820">1820</a>
 <a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+<a href="#1823" id="1823">1823</a>
+<a href="#1824" id="1824">1824</a>
+<a href="#1825" id="1825">1825</a>
+<a href="#1826" id="1826">1826</a>
+<a href="#1827" id="1827">1827</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1834,8 +1840,8 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
-    DB,
+    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::{
@@ -1985,17 +1991,23 @@
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
+            <span class="kw">let </span><span class="kw-2">mut </span>read_opt = ReadOptions::default();
+            read_opt.fill_cache(<span class="bool-val">false</span>);
 
             <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
                 StreamingStep::Ongoing(max_key) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
-                        </span>.db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
+                        handle,
+                        read_opt,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
+                <span class="kw">_ </span>=&gt; <span class="self">self
+                    </span>.db
+                    .iterator_cf_opt(handle, read_opt, IteratorMode::Start),
             };
 
             <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
