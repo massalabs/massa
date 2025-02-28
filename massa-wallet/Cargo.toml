@@ -1,6 +1,6 @@
 [package]
 name = "massa_wallet"
-version = "28.10.0"
+version = "28.11.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
