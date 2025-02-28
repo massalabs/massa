@@ -60,6 +60,7 @@ impl TestUniverse for BootstrapClientTestUniverse {
             max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         }))
             as Box<(dyn MassaDBController + 'static)>));
         controllers
