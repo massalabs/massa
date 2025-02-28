@@ -13,8 +13,8 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
-    DB,
+    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -166,17 +166,23 @@ where
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+            let mut read_opt = ReadOptions::default();
+            read_opt.fill_cache(false);
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_state_step {
                 StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self
-                        .db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    let mut iter = self.db.iterator_cf_opt(
+                        handle,
+                        read_opt,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+                _ => self
+                    .db
+                    .iterator_cf_opt(handle, read_opt, IteratorMode::Start),
             };
 
             let u64_ser = U64VarIntSerializer::new();
