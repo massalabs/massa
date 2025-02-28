@@ -13,7 +13,7 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, properties::STATS, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch, DB
+    checkpoint::Checkpoint, properties::{BLOCK_CACHE_USAGE, DBSTATS, SIZE_ALL_MEM_TABLES, STATS}, BlockBasedOptions, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch, DB
 };
 use std::path::PathBuf;
 use std::{
@@ -40,7 +40,7 @@ pub struct RawMassaDB<
     ChangeIDDeserializer: Deserializer<ChangeID>,
 > {
     /// The rocksdb instance
-    pub db: Arc<DB>,
+    pub db: DB,
     /// configuration for the `RawMassaDB`
     pub config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
@@ -204,16 +204,41 @@ where
             }
         }
 
-        let stats= self.db.property_value(STATS);
-        match stats {
+        let dbstats= self.db.property_value(DBSTATS);
+        let all_mem_table_sizes = self.db.property_value(SIZE_ALL_MEM_TABLES);
+        let block_cache_usage = self.db.property_value(BLOCK_CACHE_USAGE);
+        
+        match dbstats {
             Ok(Some(stats)) => {
-                println!("GET BATCH TO STREAM - ROCKS_DB: Stats: {:?}", stats);
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: Stats: {:?}", stats);
             }
             Ok(None) => {
-                println!("GET BATCH TO STREAM - ROCKS_DB: No stats");
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: No stats");
             }
             _ => {
-                println!("GET BATCH TO STREAM - ROCKS_DB: Error getting stats");
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: Error getting stats");
+            }
+        }
+        match all_mem_table_sizes {
+            Ok(Some(stats)) => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: all_mem_table_sizes: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: Error getting stats");
+            }
+        }
+        match block_cache_usage {
+            Ok(Some(stats)) => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: block_cache_usage: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("LEO - GET BATCH TO STREAM - ROCKS_DB: Error getting stats");
             }
         }
 
@@ -522,6 +547,44 @@ where
             }
         }
 
+        let dbstats= self.db.property_value(DBSTATS);
+        let all_mem_table_sizes = self.db.property_value(SIZE_ALL_MEM_TABLES);
+        let block_cache_usage = self.db.property_value(BLOCK_CACHE_USAGE);
+        
+        match dbstats {
+            Ok(Some(stats)) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: Stats: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: Error getting stats");
+            }
+        }
+        match all_mem_table_sizes {
+            Ok(Some(stats)) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: all_mem_table_sizes: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: Error getting stats");
+            }
+        }
+        match block_cache_usage {
+            Ok(Some(stats)) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: block_cache_usage: {:?}", stats);
+            }
+            Ok(None) => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: No stats");
+            }
+            _ => {
+                println!("LEO - WRITE CHANGES - ROCKS_DB: Error getting stats");
+            }
+        }
+
         Ok(())
     }
 
@@ -648,13 +711,18 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
 
     pub fn default_db_opts() -> Options {
         let mut db_opts = Options::default();
+        
         db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
-        db_opts.set_allow_mmap_reads(true);
+       /*db_opts.set_allow_mmap_reads(true);
         db_opts.set_use_direct_reads(true);
-        db_opts.set_memtable_huge_page_size(0);
+        db_opts.set_memtable_huge_page_size(0);*/
         db_opts.enable_statistics();
+
+        let mut block_opts = BlockBasedOptions::default();
+        block_opts.disable_cache();
+        db_opts.set_block_based_table_factory(&block_opts);
         db_opts
     }
 
@@ -670,7 +738,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             ],
         )?;
 
-        let db = Arc::new(db);
+        let db = db;
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
 
         let change_id_deserializer = SlotDeserializer::new(

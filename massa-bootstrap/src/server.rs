@@ -186,6 +186,7 @@ pub fn start_bootstrap_server(
                 ip_hist_map: HashMap::with_capacity(config.ip_list_max_size),
                 bootstrap_config: config,
                 massa_metrics,
+                all_session_handles: Vec::new(),
             }
             .event_loop(max_bootstraps)
         })
@@ -212,6 +213,7 @@ struct BootstrapServer<'a> {
     version: Version,
     ip_hist_map: HashMap<IpAddr, Instant>,
     massa_metrics: MassaMetrics,
+    all_session_handles: Vec<(thread::JoinHandle<()>, SocketAddr)>,
 }
 
 impl BootstrapServer<'_> {
@@ -242,6 +244,18 @@ impl BootstrapServer<'_> {
         // TODO: Work out how to integration-test this
         let limit = self.bootstrap_config.rate_limit;
         loop {
+
+            println!("LEO - all_session_handles : {:?}", self.all_session_handles);
+            self.all_session_handles.retain_mut(|(handle, addr)| {
+                if handle.is_finished() {
+                    println!("LEO - all_session_handles - bootstrap session for peer {} finished, removing handle", addr);
+                    false
+                } else {
+                    println!("LEO - all_session_handles - bootstrap session for peer {} NOT finished, keeping handle", addr);
+                    true
+                }
+            });
+
             // block until we have a connection to work with, or break out of main-loop
             let connections = match self.ev_poller.poll() {
                 Ok(PollEvent::Stop) => return Ok(()),
@@ -333,7 +347,7 @@ impl BootstrapServer<'_> {
 
                     let massa_metrics = self.massa_metrics.clone();
 
-                    let _ = thread::Builder::new()
+                    let handle = thread::Builder::new()
                         .name(format!("bootstrap thread, peer: {}", remote_addr))
                         .spawn(move || {
                             run_bootstrap_session(
@@ -348,6 +362,14 @@ impl BootstrapServer<'_> {
                                 massa_metrics,
                             )
                         });
+                    match handle {
+                        Ok(handle) => {
+                            self.all_session_handles.push((handle, remote_addr));
+                        }
+                        Err(_) => {
+                            println!("LEO - Failed to spawn bootstrap thread for peer {}", remote_addr);
+                        }
+                    }
 
                     massa_trace!("bootstrap.session.started", {
                         "active_count": Arc::strong_count(&bootstrap_sessions_counter) - 1
@@ -413,6 +435,8 @@ fn run_bootstrap_session(
     massa_metrics: MassaMetrics,
 ) {
     debug!("running bootstrap for peer {}", remote_addr);
+    println!("LEO - STARTING Bootstrap session for peer {}", remote_addr);
+
     let deadline = Instant::now() + config.bootstrap_timeout.to_duration();
     // TODO: reinstate prevention of bootstrap slot camping. Deadline cancellation is one option
     let res = manage_bootstrap(
@@ -424,6 +448,8 @@ fn run_bootstrap_session(
         protocol_controller,
         deadline,
     );
+
+    println!("LEO - Bootstrap session finished for peer {}", remote_addr);
 
     // This drop allows the server to accept new connections before having to complete the error notifications
     // account for this session being finished, as well as the root-instance
@@ -461,6 +487,8 @@ fn run_bootstrap_session(
             massa_metrics.inc_bootstrap_peers_success();
         }
     }
+    
+    println!("LEO - run_bootstrap_session finished");
 }
 
 #[allow(clippy::too_many_arguments)]
