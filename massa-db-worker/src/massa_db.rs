@@ -13,8 +13,7 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
-    WriteBatch, DB,
+    checkpoint::Checkpoint, BlockBasedOptions, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB
 };
 use std::path::PathBuf;
 use std::{
@@ -41,7 +40,7 @@ pub struct RawMassaDB<
     ChangeIDDeserializer: Deserializer<ChangeID>,
 > {
     /// The rocksdb instance
-    pub db: Arc<DB>,
+    pub db: DB,
     /// configuration for the `RawMassaDB`
     pub config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
@@ -632,6 +631,9 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+        let mut block_opts = BlockBasedOptions::default();
+        block_opts.disable_cache();
+        db_opts.set_block_based_table_factory(&block_opts);
         db_opts
     }
 
@@ -647,7 +649,6 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             ],
         )?;
 
-        let db = Arc::new(db);
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
 
         let change_id_deserializer = SlotDeserializer::new(
@@ -821,9 +822,11 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 IteratorMode::From(key, Direction::Reverse)
             }
         };
+        let mut read_opts = ReadOptions::default();
+        read_opts.fill_cache(false);
 
         Box::new(
-            db.iterator_cf(handle, rocksdb_mode)
+            db.iterator_cf_opt(handle, read_opts, rocksdb_mode)
                 .flatten()
                 .map(|(k, v)| (k.to_vec(), v.to_vec())),
         )
