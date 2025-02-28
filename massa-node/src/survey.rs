@@ -3,6 +3,7 @@ use std::thread::JoinHandle;
 
 use crossbeam_channel::{select, tick};
 use massa_channel::{sender::MassaSender, MassaChannel};
+use massa_db_exports::ShareableMassaDBController;
 use massa_execution_exports::ExecutionController;
 use massa_metrics::MassaMetrics;
 use massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
@@ -10,7 +11,6 @@ use massa_pool_exports::PoolController;
 use massa_time::MassaTime;
 use massa_versioning::versioning::MipStore;
 use tracing::info;
-// use std::time::Duration;
 use tracing::warn;
 
 pub struct MassaSurvey {}
@@ -44,6 +44,7 @@ impl MassaSurvey {
         tick_delay: std::time::Duration,
         execution_controller: Box<dyn ExecutionController>,
         pool_controller: Box<dyn PoolController>,
+        db: ShareableMassaDBController,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
         mip_store: MipStore,
@@ -137,6 +138,22 @@ impl MassaSurvey {
                                     massa_metrics.set_network_current_version(mip_store.get_network_version_current());
                                     let network_stats= mip_store.0.read().get_network_versions_stats();
                                     massa_metrics.update_network_version_vote(network_stats);
+                                }
+
+                                {
+                                    let change_history_sizes = db.read().get_change_history_sizes();
+                                    massa_metrics.set_db_change_history_size(change_history_sizes.0);
+                                    massa_metrics.set_db_change_versioning_history_size(change_history_sizes.1);
+                                }
+
+                                {
+                                    let module_lru_cache_memory_usage = execution_controller.get_module_lru_cache_memory_usage();
+                                    massa_metrics.set_module_lru_cache_memory_usage(module_lru_cache_memory_usage);
+                                }
+
+                                {
+                                    let active_history_total_event_len = execution_controller.get_active_history_total_event_len();
+                                    massa_metrics.set_active_history_total_event_len(active_history_total_event_len);
                                 }
                             }
                         }

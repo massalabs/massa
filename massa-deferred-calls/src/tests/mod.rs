@@ -23,6 +23,7 @@ fn call_registry_apply_changes() {
         max_versioning_elements_size: 100,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 100,
+        enable_metrics: false,
     };
     let call_id_serializer = DeferredCallIdSerializer::new();
     let db: ShareableMassaDBController = Arc::new(RwLock::new(
@@ -75,6 +76,7 @@ fn call_registry_get_slot_calls() {
         max_versioning_elements_size: 100,
         thread_count: THREAD_COUNT,
         max_ledger_backups: 100,
+        enable_metrics: false,
     };
     let call_id_serializer = DeferredCallIdSerializer::new();
     let db: ShareableMassaDBController = Arc::new(RwLock::new(

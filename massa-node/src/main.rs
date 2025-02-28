@@ -270,6 +270,7 @@ async fn launch(
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
         max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
+        enable_metrics: SETTINGS.metrics.enabled,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -1118,6 +1119,7 @@ async fn launch(
         SETTINGS.metrics.tick_delay.to_duration(),
         execution_controller,
         pool_controller,
+        db.clone(),
         massa_metrics,
         (
             api_config.thread_count,
