@@ -1420,6 +1420,12 @@
 <a href="#1420" id="1420">1420</a>
 <a href="#1421" id="1421">1421</a>
 <a href="#1422" id="1422">1422</a>
+<a href="#1423" id="1423">1423</a>
+<a href="#1424" id="1424">1424</a>
+<a href="#1425" id="1425">1425</a>
+<a href="#1426" id="1426">1426</a>
+<a href="#1427" id="1427">1427</a>
+<a href="#1428" id="1428">1428</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -2522,6 +2528,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2564,6 +2571,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2626,6 +2634,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2683,6 +2692,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2740,6 +2750,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2790,6 +2801,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),
