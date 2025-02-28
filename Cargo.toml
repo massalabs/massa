@@ -176,7 +176,7 @@ rand_distr = "=0.4"
 rand_xoshiro = "0.6"
 rayon = "1.7"
 rcgen = "0.11"
-rocksdb = "0.21"
+rocksdb = "0.23"
 rust_decimal = { version = "1.32", default-features = false }
 rustyline = "12.0"
 rustyline-derive = "0.9"
