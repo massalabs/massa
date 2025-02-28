@@ -3216,6 +3216,7 @@ dependencies = [
 name = "massa_event_cache"
 version = "28.10.0"
 dependencies = [
+ "massa_metrics",
  "massa_models",
  "massa_serialization",
  "massa_time",

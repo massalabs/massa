@@ -496,6 +496,27 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state.read().get_stats()
     }
 
+    /// Get the memory usage of the module LRU cache
+    fn get_module_lru_cache_memory_usage(&self) -> usize {
+        self.execution_state
+            .read()
+            .module_cache
+            .read()
+            .get_module_lru_cache_memory_usage()
+    }
+
+    /// Get the number of events currently in the active history
+    fn get_active_history_total_event_len(&self) -> usize {
+        self.execution_state
+            .read()
+            .active_history
+            .read()
+            .0
+            .iter()
+            .map(|exec_out| exec_out.events.0.len())
+            .sum()
+    }
+
     #[cfg(feature = "execution-trace")]
     fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>> {
         self.execution_state
