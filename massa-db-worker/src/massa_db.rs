@@ -14,7 +14,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntS
 use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, BlockBasedOptions, Cache, ColumnFamilyDescriptor, Direction,
-    IteratorMode, Options, ReadOptions, WriteBatch, DB,
+    IteratorMode, Options, ReadOptions, WriteBatch, WriteBufferManager, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -627,27 +627,38 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
+    /// Sets various db options for RocksDB, e.g. to minimize memory usage
     pub fn default_db_opts() -> Options {
+        // 1. Basic options
         let mut db_opts = Options::default();
-        db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+
+        // 2. Limit the max number of open files (which decreases memory requirements)
+        db_opts.set_max_open_files(820);
+
+        // 3. Set block (read cache) related options
         let mut block_opts = BlockBasedOptions::default();
 
-        // 1. Either disable cache
-        // Or set a set cache size
-        //block_opts.disable_cache();
-
-        let cache = Cache::new_lru_cache(64 * 1024 * 1024); // 64 Mio
+        // Default block cache is 8 Mb, but here we will also include filters and indexes
+        let cache = Cache::new_lru_cache(256 * 1024 * 1024); // 256 Mio
         block_opts.set_block_cache(&cache);
 
-        // 2. Store the index and filter blocks in the cache
+        // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, optimized it for memory, and add to cache
+        block_opts.set_hybrid_ribbon_filter(10.0, 2);
+        block_opts.set_optimize_filters_for_memory(true);
         block_opts.set_cache_index_and_filter_blocks(true);
 
-        block_opts.set_bloom_filter(10.0, true);
-        block_opts.set_optimize_filters_for_memory(true);
-
         db_opts.set_block_based_table_factory(&block_opts);
+
+        // 4. Set memtables (write cache) options
+        // Use a global memtable budget of 128 MB for the DB
+        let wbm = WriteBufferManager::new_write_buffer_manager(128 * 1024 * 1024, true);
+        db_opts.set_write_buffer_manager(&wbm);
+
+        // Also, for safety, limit each memtable to 32 MB and at most 4 of them
+        db_opts.set_write_buffer_size(32 * 1024 * 1024);
+        db_opts.set_max_write_buffer_number(4);
         db_opts
     }
 
