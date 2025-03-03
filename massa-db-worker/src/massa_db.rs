@@ -13,8 +13,8 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, BlockBasedOptions, ColumnFamilyDescriptor, Direction, IteratorMode,
-    Options, ReadOptions, WriteBatch, DB,
+    checkpoint::Checkpoint, BlockBasedOptions, Cache, ColumnFamilyDescriptor, Direction,
+    IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -593,7 +593,20 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
         let mut block_opts = BlockBasedOptions::default();
-        block_opts.disable_cache();
+
+        // 1. Either disable cache
+        // Or set a set cache size
+        //block_opts.disable_cache();
+
+        let cache = Cache::new_lru_cache(64 * 1024 * 1024); // 64 Mio
+        block_opts.set_block_cache(&cache);
+
+        // 2. Store the index and filter blocks in the cache
+        block_opts.set_cache_index_and_filter_blocks(true);
+
+        block_opts.set_bloom_filter(10.0, true);
+        block_opts.set_optimize_filters_for_memory(true);
+
         db_opts.set_block_based_table_factory(&block_opts);
         db_opts
     }
