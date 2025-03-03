@@ -1565,6 +1565,10 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let current_slot = context.slot;
 
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
+
         let target_slot = Slot::new(target_slot.0, target_slot.1);
 
         let gas_request =
@@ -1603,6 +1607,10 @@ impl Interface for InterfaceImpl {
         coins: u64,
     ) -> Result<String> {
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
+
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
 
         let target_addr = Address::from_str(target_addr)?;
 
