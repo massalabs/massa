@@ -1891,6 +1891,7 @@
 <a href="#1891" id="1891">1891</a>
 <a href="#1892" id="1892">1892</a>
 <a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1906,7 +1907,8 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rocksdb::{
-    checkpoint::Checkpoint, BlockBasedOptions, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions, WriteBatch, DB
+    checkpoint::Checkpoint, BlockBasedOptions, ColumnFamilyDescriptor, Direction, IteratorMode,
+    Options, ReadOptions, WriteBatch, DB,
 };
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::{
