@@ -2436,6 +2436,14 @@
 <a href="#2436" id="2436">2436</a>
 <a href="#2437" id="2437">2437</a>
 <a href="#2438" id="2438">2438</a>
+<a href="#2439" id="2439">2439</a>
+<a href="#2440" id="2440">2440</a>
+<a href="#2441" id="2441">2441</a>
+<a href="#2442" id="2442">2442</a>
+<a href="#2443" id="2443">2443</a>
+<a href="#2444" id="2444">2444</a>
+<a href="#2445" id="2445">2445</a>
+<a href="#2446" id="2446">2446</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Implementation of the interface between massa-execution-worker and massa-sc-runtime.
@@ -4003,6 +4011,10 @@
         </span><span class="kw">let </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
         <span class="kw">let </span>current_slot = context.slot;
 
+        <span class="kw">if </span>target_slot.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
+            <span class="macro">bail!</span>(<span class="string">"target slot thread exceeds the configuration thread count"</span>)
+        }
+
         <span class="kw">let </span>target_slot = Slot::new(target_slot.<span class="number">0</span>, target_slot.<span class="number">1</span>);
 
         <span class="kw">let </span>gas_request =
@@ -4042,7 +4054,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="comment">// This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
 
-        </span><span class="kw">let </span>target_addr = Address::from_str(target_addr)<span class="question-mark">?</span>;
+        </span><span class="kw">if </span>target_slot.<span class="number">1 </span>&gt;= <span class="self">self</span>.config.thread_count {
+            <span class="macro">bail!</span>(<span class="string">"target slot thread exceeds the configuration thread count"</span>)
+        }
+
+        <span class="kw">let </span>target_addr = Address::from_str(target_addr)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the target address is an SC address
         </span><span class="kw">if </span>!<span class="macro">matches!</span>(target_addr, Address::SC(..)) {
