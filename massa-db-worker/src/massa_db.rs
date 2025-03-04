@@ -697,12 +697,12 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     /// Returns a new `MassaDB` instance given a config and RocksDB options
     fn new_with_options(config: MassaDBConfig, db_opts: Options) -> Result<Self, rocksdb::Error> {
         let db = DB::open_cf_descriptors(
-            &db_opts,
+            &db_opts.clone(),
             &config.path,
             vec![
-                ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ColumnFamilyDescriptor::new(STATE_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(METADATA_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(VERSIONING_CF, db_opts),
             ],
         )?;
 
