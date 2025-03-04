@@ -346,30 +346,6 @@ where
         })
     }
 
-    fn print_db_stats(&self) {
-        let block_cache_usage = match self.db.property_value("rocksdb.block-cache-usage") {
-            Ok(Some(value)) => value,
-            _ => String::from("N/A"),
-        };
-        let cur_filter_total_sizes =
-            match self.db.property_value("rocksdb.estimate-table-readers-mem") {
-                Ok(Some(value)) => value,
-                _ => String::from("N/A"),
-            };
-        let cur_memtable_total_sizes =
-            match self.db.property_value("rocksdb.cur-size-all-mem-tables") {
-                Ok(Some(value)) => value,
-                _ => String::from("N/A"),
-            };
-        let cur_block_cache_pinned_usage =
-            match self.db.property_value("rocksdb.block-cache-pinned-usage") {
-                Ok(Some(value)) => value,
-                _ => String::from("N/A"),
-            };
-        
-        println!("LEO - db stats:\n  block_cache_usage: {}\n  cur_filter_total_sizes: {}\n  cur_memtable_total_sizes: {}\n  cur_block_cache_pinned_usage: {}\n", block_cache_usage, cur_filter_total_sizes, cur_memtable_total_sizes, cur_block_cache_pinned_usage);
-    }
-
     /// Used for:
     /// - Bootstrap clients, to write on disk a new received Stream (reset_history: true)
     /// - Normal operations, to write changes associated to a given change_id (reset_history: false)
@@ -387,7 +363,6 @@ where
                     "change_id should monotonically increase after every write",
                 )));
             }
-            self.print_db_stats();
         }
 
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
