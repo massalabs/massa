@@ -666,11 +666,11 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let mut block_opts = BlockBasedOptions::default();
 
         // Default block cache is 8 Mb, but here we will also include filters and indexes
-        let cache = Cache::new_lru_cache(256 * 1024 * 1024); // 256 Mio
+        let cache = Cache::new_lru_cache(2 * 1024 * 1024 * 1024); // 256 Mio
         block_opts.set_block_cache(&cache);
 
         // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, optimized it for memory, and add to cache
-        block_opts.set_hybrid_ribbon_filter(10.0, 2);
+        block_opts.set_hybrid_ribbon_filter(2.0, 2);
         block_opts.set_optimize_filters_for_memory(true);
         block_opts.set_cache_index_and_filter_blocks(true);
 
@@ -684,6 +684,13 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         // Also, for safety, limit each memtable to 32 MB and at most 4 of them
         db_opts.set_write_buffer_size(32 * 1024 * 1024);
         db_opts.set_max_write_buffer_number(4);
+
+        // 5. Aggressive options
+        db_opts.set_optimize_filters_for_hits(true);
+        // Use direct I/O to avoid OS cache (if desired)
+        db_opts.set_use_direct_reads(true);
+        db_opts.set_use_direct_io_for_flush_and_compaction(true);
+
         db_opts
     }
 
