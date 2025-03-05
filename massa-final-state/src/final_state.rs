@@ -826,9 +826,6 @@ impl FinalState {
 }
 
 impl FinalStateController for FinalState {
-    fn spawn_thread(&self) {
-        self.spawn_thread();
-    }
     
     fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
         self.pos_state

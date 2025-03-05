@@ -724,7 +724,8 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let path = self.config.path.clone();
         let secondary_path = path.join(format!("secondary_{}", i));
 
-        let db_opts = Self::default_db_opts();
+        let mut db_opts = Self::default_db_opts();
+        db_opts.set_max_open_files(-1);
         let db = DB::open_cf_descriptors_as_secondary(
             &db_opts.clone(),
             &self.config.path,

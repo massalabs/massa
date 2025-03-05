@@ -95,5 +95,4 @@ pub trait FinalStateController: Send + Sync {
     /// Get deferred call registry
     fn get_deferred_call_registry(&self) -> &DeferredCallRegistry;
 
-    fn spawn_thread(&self);
 }
