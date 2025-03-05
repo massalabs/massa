@@ -740,10 +740,11 @@ pub(crate) fn manage_bootstrap(
     )?;
 
     let i = rand::random::<usize>();
-    let final_state_read = final_state.read();
-    final_state_read
+    final_state
+        .read()
         .get_database()
-        .write().new_secondary(i);
+        .write()
+        .new_secondary(i);
 
     let res = loop {
         let Some(read_timeout) =
@@ -803,7 +804,8 @@ pub(crate) fn manage_bootstrap(
         };
     };
 
-    final_state_read
+    final_state
+        .read()
         .get_database()
         .write().remove_secondary(i);
     res
