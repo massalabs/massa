@@ -476,6 +476,9 @@ async fn launch(
             );
         }
     }
+    
+    println!("final_state hash: SPAWNING INFINITE DB ITER THREAD");
+    final_state.read().spawn_thread();
 
     // Event cache thread
     let event_cache_config = EventCacheConfig {

@@ -158,11 +158,10 @@ fn stream_final_state_and_consensus(
                     let db = guard.get_database().clone();
                     let (updated, added) = guard
                         .get_mip_store_mut()
-                        .extend_from_db(db)
+                        .extend_from_db(db.clone())
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
-
                     warn_user_about_versioning_updates(updated, added);
-
+                    db.write().flush();
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {

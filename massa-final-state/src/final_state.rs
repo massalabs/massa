@@ -26,6 +26,7 @@ use massa_models::slot::Slot;
 use massa_models::timeslots::get_block_slot_timestamp;
 use massa_models::types::SetOrKeep;
 use massa_pos_exports::{PoSFinalState, SelectorController};
+use massa_serialization::U64VarIntSerializer;
 use massa_versioning::versioning::{MipComponent, MipStore};
 use tracing::{debug, info, warn};
 
@@ -62,6 +63,82 @@ pub struct FinalState {
 }
 
 impl FinalState {
+
+    fn iter_from_key(db: &ShareableMassaDBController, key: Option<Vec<u8>>) -> (Option<Vec<u8>>, usize) {
+        use std::collections::BTreeMap;
+        use massa_serialization::Serializer;
+
+        {
+            let db = db.read();
+
+            let mut new_elements = BTreeMap::new();
+            let mut new_elements_size = 0;
+            let mut last_new_elements_size = 0;
+    
+            let db_iterator = match key {
+                None => db.iterator_cf(STATE_CF, MassaIteratorMode::Start),
+                Some(key) => 
+                    {
+                        let mut iter = db.iterator_cf(STATE_CF, MassaIteratorMode::From(&key, massa_db_exports::MassaDirection::Forward));
+                        iter.next();
+                        iter
+                    }
+            };
+    
+            let u64_ser = U64VarIntSerializer::new();
+            for (serialized_key, serialized_value) in db_iterator {
+                let key_len = serialized_key.len();
+                let value_len = serialized_value.len();
+                let mut buffer = Vec::new();
+                u64_ser.serialize(&(key_len as u64), &mut buffer).unwrap();
+                u64_ser.serialize(&(value_len as u64), &mut buffer).unwrap();
+
+                // We consider the total byte size of the serialized elements (with VecU8Serializer) to fill the StreamBatch,
+                // in order to make deserialization easier
+                new_elements_size += key_len + value_len + buffer.len();
+                if new_elements_size <= 100_000_000 {
+                    last_new_elements_size = new_elements_size;
+                    new_elements.insert(serialized_key.to_vec(), serialized_value.to_vec());
+                } else {
+                    break;
+                }
+            }
+            let last_key = new_elements.keys().last().cloned();
+            (last_key, last_new_elements_size)
+        }
+
+    }
+
+    fn iter_whole_db(db: &ShareableMassaDBController) {
+        let mut key = None;
+
+        loop {
+            let (last_key, new_elements_size) = Self::iter_from_key(db, key.clone());
+            if new_elements_size == 0 {
+                break;
+            }
+            key = last_key;
+            println!("  Whole DB iteration - new_elements_size: {}, last_key len: {}", new_elements_size, key.clone().unwrap_or_default().len());
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+    }
+
+    fn infinite_iter(db: &ShareableMassaDBController) {
+        loop {
+            Self::iter_whole_db(db);
+            println!("Whole DB iteration done!");
+        }
+    }
+
+    pub fn spawn_thread(&self) {
+
+        let db = self.db.clone();
+        std::thread::spawn(move || {
+            Self::infinite_iter(&db);
+        });
+    }
+
+
     /// Initializes a new `FinalState`
     ///
     /// # Arguments
@@ -824,6 +901,10 @@ impl FinalState {
 }
 
 impl FinalStateController for FinalState {
+    fn spawn_thread(&self) {
+        self.spawn_thread();
+    }
+    
     fn compute_initial_draws(&mut self) -> Result<(), FinalStateError> {
         self.pos_state
             .compute_initial_draws()
