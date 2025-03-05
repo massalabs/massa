@@ -34,7 +34,6 @@ massa_async_pool = { workspace = true }
 massa_versioning = { workspace = true }
 massa-sc-runtime = { workspace = true }
 serde = { workspace = true, "features" = ["derive"] }
-schnellru = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]

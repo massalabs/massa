@@ -10,7 +10,6 @@ use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::operation::OperationId;
 use massa_time::MassaTime;
-use schnellru::{ByLength, LruMap};
 
 use massa_deferred_calls::DeferredCall;
 use massa_models::address::Address;
@@ -19,28 +18,6 @@ use massa_models::slot::Slot;
 use serde::Serialize;
 
 use crate::types_trace_info::ExecutionResult;
-// #[cfg(feature = "execution-trace")]
-// use crate::Transfer;
-
-/// Struct for Execution info per slot
-pub struct ExecutionInfo {
-    /// Map of execution info
-    pub info_per_slot: LruMap<Slot, ExecutionInfoForSlot>,
-}
-
-impl ExecutionInfo {
-    /// Create a new ExecutionInfo
-    pub fn new(max_slot_size_cache: u32) -> Self {
-        Self {
-            info_per_slot: LruMap::new(ByLength::new(max_slot_size_cache)),
-        }
-    }
-
-    /// Save transfer for a given slot
-    pub fn save_for_slot(&mut self, slot: Slot, info: ExecutionInfoForSlot) {
-        self.info_per_slot.insert(slot, info);
-    }
-}
 
 /// Struct to store Roll related operation
 #[derive(Debug, Clone)]
