@@ -110,16 +110,29 @@ impl FinalState {
     }
 
     fn iter_whole_db(db: &ShareableMassaDBController) {
-        let mut key = None;
-
+        let mut last_state_step = massa_models::streaming_step::StreamingStep::Started;
         loop {
-            let (last_key, new_elements_size) = Self::iter_from_key(db, key.clone());
-            if new_elements_size == 0 {
+            let state_part_res;
+            {
+                let db = db.read();
+                let last_slot = db.get_change_id().unwrap();
+                state_part_res = db.get_batch_to_stream(&last_state_step, Some(last_slot));
+            }
+
+            let state_part = state_part_res.unwrap();
+            let new_elements = state_part.new_elements;
+            if new_elements.is_empty() {
                 break;
             }
-            key = last_key;
-            println!("  Whole DB iteration - new_elements_size: {}, last_key len: {}", new_elements_size, key.clone().unwrap_or_default().len());
-            std::thread::sleep(std::time::Duration::from_millis(10));
+            last_state_step = massa_models::streaming_step::StreamingStep::Ongoing(new_elements.keys().last().cloned().unwrap());
+            println!("  Whole DB iteration - new_elements_size: {}, last_key len: {}", new_elements.len(), new_elements.keys().last().cloned().unwrap().len());
+            let cloned_new_elements = new_elements.clone();
+            let mut sum = 0;
+            for (key, value) in cloned_new_elements {
+                sum += key.len() + value.len();
+            }
+            println!("    Total size: {}", sum);
+            std::thread::sleep(std::time::Duration::from_millis(50));
         }
     }
 
