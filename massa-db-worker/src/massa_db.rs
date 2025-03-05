@@ -641,23 +641,27 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let mut block_opts = BlockBasedOptions::default();
 
         // Default block cache is 8 Mb, but here we will also include filters and indexes
-        let cache = Cache::new_lru_cache(256 * 1024 * 1024); // 256 Mio
+        let cache = Cache::new_lru_cache(1 * 1024 * 1024 * 1024); // 1 GB
         block_opts.set_block_cache(&cache);
 
+        block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
+
         // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, optimized it for memory, and add to cache
-        block_opts.set_hybrid_ribbon_filter(10.0, 2);
+        block_opts.set_hybrid_ribbon_filter(5.0, 2);
         block_opts.set_optimize_filters_for_memory(true);
         block_opts.set_cache_index_and_filter_blocks(true);
+        block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+        block_opts.set_pin_top_level_index_and_filter(true);
 
         db_opts.set_block_based_table_factory(&block_opts);
 
         // 4. Set memtables (write cache) options
-        // Use a global memtable budget of 128 MB for the DB
-        let wbm = WriteBufferManager::new_write_buffer_manager(128 * 1024 * 1024, true);
+        // Use a global memtable budget of 512 MB for the DB
+        let wbm = WriteBufferManager::new_write_buffer_manager(512 * 1024 * 1024, true);
         db_opts.set_write_buffer_manager(&wbm);
 
-        // Also, for safety, limit each memtable to 32 MB and at most 4 of them
-        db_opts.set_write_buffer_size(32 * 1024 * 1024);
+        // Also, for safety, limit each memtable to 128 MB and at most 4 of them
+        db_opts.set_write_buffer_size(128 * 1024 * 1024);
         db_opts.set_max_write_buffer_number(4);
         db_opts
     }
