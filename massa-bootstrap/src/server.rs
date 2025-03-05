@@ -475,6 +475,7 @@ pub fn stream_bootstrap_information(
     mut send_last_start_period: bool,
     bs_deadline: &Instant,
     write_timeout: Duration,
+    i: usize,
 ) -> Result<(), BootstrapError> {
     loop {
         let current_slot;
@@ -485,6 +486,7 @@ pub fn stream_bootstrap_information(
 
         // Scope of the final state read
         {
+            
             let final_state_read = final_state.read();
 
             last_start_period = if send_last_start_period {
@@ -498,10 +500,7 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            let state_part_res = final_state_read
-                .get_database()
-                .read()
-                .get_batch_to_stream(&last_state_step, last_slot);
+            let state_part_res = final_state_read.get_database().read().get_batch_to_stream(&last_state_step, last_slot, i);
 
             match state_part_res {
                     Ok(part) => state_part = part,
@@ -544,10 +543,7 @@ pub fn stream_bootstrap_information(
                 },
             };
 
-            let versioning_part_res = final_state_read
-                .get_database()
-                .read()
-                .get_versioning_batch_to_stream(&last_versioning_step, last_slot);
+            let versioning_part_res = final_state_read.get_database().read().get_versioning_batch_to_stream(&last_state_step, last_slot, i);
 
             match versioning_part_res {
                Ok(part) => versioning_part = part,
@@ -743,7 +739,13 @@ pub(crate) fn manage_bootstrap(
         },
     )?;
 
-    loop {
+    let i = rand::random::<usize>();
+    let final_state_read = final_state.read();
+    final_state_read
+        .get_database()
+        .write().new_secondary(i);
+
+    let res = loop {
         let Some(read_timeout) =
             step_timeout_duration(&deadline, &bootstrap_config.read_timeout.to_duration())
         else {
@@ -790,6 +792,7 @@ pub(crate) fn manage_bootstrap(
                         send_last_start_period,
                         &deadline,
                         bootstrap_config.write_timeout.to_duration(),
+                        i
                     )?;
                 }
                 BootstrapClientMessage::BootstrapSuccess => break Ok(()),
@@ -798,5 +801,10 @@ pub(crate) fn manage_bootstrap(
                 }
             },
         };
-    }
+    };
+
+    final_state_read
+        .get_database()
+        .write().remove_secondary(i);
+    res
 }

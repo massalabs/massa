@@ -161,7 +161,7 @@ fn stream_final_state_and_consensus(
                         .extend_from_db(db.clone())
                         .map_err(|e| BootstrapError::from(FinalStateError::from(e)))?;
                     warn_user_about_versioning_updates(updated, added);
-                    db.write().flush();
+                    let _ = db.write().flush();
                     return Ok(());
                 }
                 BootstrapServerMessage::SlotTooOld => {

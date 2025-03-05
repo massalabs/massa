@@ -77,6 +77,7 @@ pub trait MassaDBController: Send + Sync + Debug {
         &self,
         last_state_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
+        i: usize
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 
     /// Used for bootstrap servers (get a new batch of data from VERSIONING_CF to stream to the client)
@@ -86,7 +87,12 @@ pub trait MassaDBController: Send + Sync + Debug {
         &self,
         last_versioning_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
+        i: usize
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
+
+    fn new_secondary(&mut self, i: usize);
+
+    fn remove_secondary(&mut self, i: usize);
 
     /// Get the total size of the change history and the change versioning history respectively
     fn get_change_history_sizes(&self) -> (usize, usize);
