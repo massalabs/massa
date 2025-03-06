@@ -26,4 +26,3 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     #[allow(clippy::let_and_return)]
     mip_list
 }
-}
