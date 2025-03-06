@@ -2666,23 +2666,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "librocksdb-sys"
-version = "0.16.0+8.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce3d60bc059831dc1c83903fb45c103f75db65c5a7bf22272764d9cc683e348c"
-dependencies = [
- "bindgen",
- "bzip2-sys",
- "cc",
- "glob",
- "libc",
- "libz-sys",
- "lz4-sys",
- "tikv-jemalloc-sys",
- "zstd-sys",
-]
-
-[[package]]
 name = "libsecp256k1"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3189,7 +3172,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "parking_lot",
- "rocksdb",
+ "rust-rocksdb",
  "tempfile",
 ]
 
@@ -3227,7 +3210,7 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "rand",
- "rocksdb",
+ "rust-rocksdb",
  "serial_test",
  "tempfile",
  "tracing",
@@ -3314,7 +3297,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
- "rocksdb",
+ "rust-rocksdb",
  "schnellru",
  "serde_json",
  "sha2 0.10.8",
@@ -3553,7 +3536,7 @@ dependencies = [
  "nom",
  "num_enum",
  "rand",
- "rocksdb",
+ "rust-rocksdb",
  "schnellru",
  "serial_test",
  "tempfile",
@@ -4996,16 +4979,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rocksdb"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6bd13e55d6d7b8cd0ea569161127567cd587676c99f4472f779a0279aa60a7a7"
-dependencies = [
- "libc",
- "librocksdb-sys",
-]
-
-[[package]]
 name = "ron"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5030,6 +5003,33 @@ checksum = "f6d5f2436026b4f6e79dc829837d467cc7e9a55ee40e750d716713540715a2df"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
+]
+
+[[package]]
+name = "rust-librocksdb-sys"
+version = "0.32.0+9.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50146b7fadd68926e9dcb902bf0515783aaaf5f73af26949f188aead5ede8cd0"
+dependencies = [
+ "bindgen",
+ "bzip2-sys",
+ "cc",
+ "glob",
+ "libc",
+ "libz-sys",
+ "lz4-sys",
+ "tikv-jemalloc-sys",
+ "zstd-sys",
+]
+
+[[package]]
+name = "rust-rocksdb"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf088a714aa3fad699f7dbe06047ca732c09629a2f9b28aa16ca6d3897a4c2f"
+dependencies = [
+ "libc",
+ "rust-librocksdb-sys",
 ]
 
 [[package]]
@@ -5888,9 +5888,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.5.4+5.3.0-patched"
+version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9402443cb8fd499b6f327e40565234ff34dbda27460c5b47db0db77443dd85d1"
+checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
 dependencies = [
  "cc",
  "libc",
