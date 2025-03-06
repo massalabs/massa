@@ -2667,16 +2667,18 @@ dependencies = [
 
 [[package]]
 name = "librocksdb-sys"
-version = "0.17.1+9.9.3"
+version = "0.16.0+8.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b7869a512ae9982f4d46ba482c2a304f1efd80c6412a3d4bf57bb79a619679f"
+checksum = "ce3d60bc059831dc1c83903fb45c103f75db65c5a7bf22272764d9cc683e348c"
 dependencies = [
  "bindgen",
  "bzip2-sys",
  "cc",
+ "glob",
  "libc",
  "libz-sys",
  "lz4-sys",
+ "tikv-jemalloc-sys",
  "zstd-sys",
 ]
 
@@ -4995,9 +4997,9 @@ dependencies = [
 
 [[package]]
 name = "rocksdb"
-version = "0.23.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26ec73b20525cb235bad420f911473b69f9fe27cc856c5461bccd7e4af037f43"
+checksum = "6bd13e55d6d7b8cd0ea569161127567cd587676c99f4472f779a0279aa60a7a7"
 dependencies = [
  "libc",
  "librocksdb-sys",
@@ -5882,6 +5884,16 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.5.4+5.3.0-patched"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9402443cb8fd499b6f327e40565234ff34dbda27460c5b47db0db77443dd85d1"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
