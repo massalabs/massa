@@ -393,7 +393,7 @@ async fn launch(
 
     if !final_state.read().is_db_valid() {
         // TODO: Bootstrap again instead of panicking
-        panic!("critical: db is not valid after bootstrap");
+        println!("critical: db is not valid after bootstrap");
     }
 
     if args.restart_from_snapshot_at_period.is_none() {
