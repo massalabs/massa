@@ -1460,6 +1460,7 @@ impl ExecutionContext {
         &mut self,
         id: &DeferredCallId,
         call: &DeferredCall,
+        error: &ExecutionError,
     ) -> Option<(Address, Result<Amount, String>)> {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
@@ -1473,8 +1474,15 @@ impl ExecutionContext {
             );
         }
 
-        let mut event =
-            self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
+        let mut event = self.event_create(
+            format!(
+                "DeferredCall execution fail call_id: {}  |  Error: {} \r\n {:?}",
+                id,
+                error.to_string(),
+                call
+            ),
+            true,
+        );
         let max_event_size = match self.execution_component_version {
             0 => self.config.max_event_size_v0,
             _ => self.config.max_event_size_v1,

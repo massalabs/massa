@@ -1453,7 +1453,7 @@ impl ExecutionState {
             if let Err(err) = &execution_result {
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call);
+                context.deferred_call_fail_exec(id, &call, err);
             }
             execution_result
         }
