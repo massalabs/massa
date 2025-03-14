@@ -1589,6 +1589,14 @@
 <a href="#1589" id="1589">1589</a>
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -3051,6 +3059,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         id: <span class="kw-2">&amp;</span>DeferredCallId,
         call: <span class="kw-2">&amp;</span>DeferredCall,
+        error: <span class="kw-2">&amp;</span>ExecutionError,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;(Address, <span class="prelude-ty">Result</span>&lt;Amount, String&gt;)&gt; {
         <span class="attr">#[allow(unused_assignments, unused_mut)]
         </span><span class="kw">let </span><span class="kw-2">mut </span>result = <span class="prelude-val">None</span>;
@@ -3064,8 +3073,15 @@
             );
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>event =
-            <span class="self">self</span>.event_create(<span class="macro">format!</span>(<span class="string">"DeferredCall execution fail call_id:{}"</span>, id), <span class="bool-val">true</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>event = <span class="self">self</span>.event_create(
+            <span class="macro">format!</span>(
+                <span class="string">"DeferredCall execution fail call_id: {}  |  Error: {} \r\n {:?}"</span>,
+                id,
+                error.to_string(),
+                call
+            ),
+            <span class="bool-val">true</span>,
+        );
         <span class="kw">let </span>max_event_size = <span class="kw">match </span><span class="self">self</span>.execution_component_version {
             <span class="number">0 </span>=&gt; <span class="self">self</span>.config.max_event_size_v0,
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
