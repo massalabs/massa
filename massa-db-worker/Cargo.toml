@@ -17,3 +17,6 @@ massa_db_exports = {workspace = true}
 [dev-dependencies]
 tempfile = {workspace = true}
 assert_matches = {workspace = true}
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rocksdb = {workspace = true, features = ["jemalloc"]}

@@ -116,3 +116,6 @@ hex-literal = { workspace = true }
 mockall = { workspace = true }
 assert_matches = { workspace = true }
 massa_event_cache = { workspace = true, features = ["test-exports"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rocksdb = {workspace = true, features = ["jemalloc"]}

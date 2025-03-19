@@ -14,7 +14,7 @@ use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntS
 use parking_lot::Mutex;
 use rocksdb::{
     checkpoint::Checkpoint, BlockBasedOptions, Cache, ColumnFamilyDescriptor, Direction,
-    IteratorMode, Options, ReadOptions, WriteBatch, WriteBufferManager, DB,
+    IteratorMode, Options, ReadOptions, WriteBatch, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -79,6 +79,13 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
+    /// If we read the db with these options, cache will be disabled (useful for scanning the whole db)
+    pub fn default_read_opts() -> ReadOptions {
+        let mut read_opts = ReadOptions::default();
+        read_opts.fill_cache(false);
+        read_opts
+    }
+
     /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
@@ -164,15 +171,14 @@ where
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-            let mut read_opt = ReadOptions::default();
-            read_opt.fill_cache(false);
+            let read_opts = Self::default_read_opts();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_state_step {
                 StreamingStep::Ongoing(max_key) => {
                     let mut iter = self.db.iterator_cf_opt(
                         handle,
-                        read_opt,
+                        read_opts,
                         IteratorMode::From(max_key, Direction::Forward),
                     );
                     iter.next();
@@ -180,7 +186,7 @@ where
                 }
                 _ => self
                     .db
-                    .iterator_cf_opt(handle, read_opt, IteratorMode::Start),
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
 
             let u64_ser = U64VarIntSerializer::new();
@@ -299,17 +305,22 @@ where
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+            let read_opts = Self::default_read_opts();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_versioning_step {
                 StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self
-                        .db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    let mut iter = self.db.iterator_cf_opt(
+                        handle,
+                        read_opts,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+                _ => self
+                    .db
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
             let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
@@ -587,7 +598,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
-    /// Sets various db options for RocksDB, e.g. to minimize memory usage
+	/// Sets various db options for RocksDB, e.g. to minimize memory usage
     pub fn default_db_opts() -> Options {
         // 1. Basic options
         let mut db_opts = Options::default();
@@ -601,36 +612,46 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let mut block_opts = BlockBasedOptions::default();
 
         // Default block cache is 8 Mb, but here we will also include filters and indexes
-        let cache = Cache::new_lru_cache(256 * 1024 * 1024); // 256 Mio
+        let cache = Cache::new_lru_cache(1 * 1024 * 1024 * 1024); // 1 GB
         block_opts.set_block_cache(&cache);
+        block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
 
-        // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, optimized it for memory, and add to cache
-        block_opts.set_hybrid_ribbon_filter(10.0, 2);
-        block_opts.set_optimize_filters_for_memory(true);
+        // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, and add to cache
+        block_opts.set_hybrid_ribbon_filter(5.0, 2);
         block_opts.set_cache_index_and_filter_blocks(true);
+        block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+        block_opts.set_pin_top_level_index_and_filter(true);
+        // Note: optimized it for memory depends on rocksdb feature "malloc-usable-size"
+        //block_opts.set_optimize_filters_for_memory(true);
 
         db_opts.set_block_based_table_factory(&block_opts);
 
-        // 4. Set memtables (write cache) options
-        // Use a global memtable budget of 128 MB for the DB
-        let wbm = WriteBufferManager::new_write_buffer_manager(128 * 1024 * 1024, true);
-        db_opts.set_write_buffer_manager(&wbm);
+        // 4. If needed, set memtables (write cache) options
+        // Use a global memtable budget of 512 MB for the DB
+        // Also, for safety, limit each memtable to 128 MB and at most 4 of them
 
-        // Also, for safety, limit each memtable to 32 MB and at most 4 of them
-        db_opts.set_write_buffer_size(32 * 1024 * 1024);
-        db_opts.set_max_write_buffer_number(4);
+        //let wbm = WriteBufferManager::new_write_buffer_manager(512 * 1024 * 1024, true);
+        //db_opts.set_write_buffer_manager(&wbm);
+        //db_opts.set_write_buffer_size(128 * 1024 * 1024);
+        //db_opts.set_max_write_buffer_number(4);
+
+        // 5. If needed, for debug purposes
+
+        //db_opts.set_dump_malloc_stats(true);
+        //db_opts.enable_statistics();
+        //db_opts.increase_parallelism(8);
         db_opts
     }
 
     /// Returns a new `MassaDB` instance given a config and RocksDB options
     fn new_with_options(config: MassaDBConfig, db_opts: Options) -> Result<Self, rocksdb::Error> {
         let db = DB::open_cf_descriptors(
-            &db_opts,
+            &db_opts.clone(),
             &config.path,
             vec![
-                ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ColumnFamilyDescriptor::new(STATE_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(METADATA_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(VERSIONING_CF, db_opts),
             ],
         )?;
 
@@ -806,9 +827,7 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 IteratorMode::From(key, Direction::Reverse)
             }
         };
-        let mut read_opts = ReadOptions::default();
-        read_opts.fill_cache(false);
-
+        let read_opts = Self::default_read_opts();
         Box::new(
             db.iterator_cf_opt(handle, read_opts, rocksdb_mode)
                 .flatten()
