@@ -1,6 +1,5 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]

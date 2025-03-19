@@ -598,7 +598,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
-	/// Sets various db options for RocksDB, e.g. to minimize memory usage
+    /// Sets various db options for RocksDB, e.g. to minimize memory usage
     pub fn default_db_opts() -> Options {
         // 1. Basic options
         let mut db_opts = Options::default();
