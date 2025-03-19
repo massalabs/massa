@@ -2589,7 +2589,7 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>block_opts = BlockBasedOptions::default();
 
         <span class="comment">// Default block cache is 8 Mb, but here we will also include filters and indexes
-        </span><span class="kw">let </span>cache = Cache::new_lru_cache(<span class="number">1 </span>* <span class="number">1024 </span>* <span class="number">1024 </span>* <span class="number">1024</span>); <span class="comment">// 1 GB
+        </span><span class="kw">let </span>cache = Cache::new_lru_cache(<span class="number">1024 </span>* <span class="number">1024 </span>* <span class="number">1024</span>); <span class="comment">// 1 GB
         </span>block_opts.set_block_cache(<span class="kw-2">&amp;</span>cache);
         block_opts.set_block_size(<span class="number">16 </span>* <span class="number">1024</span>); <span class="comment">// 16 KB instead of default 4 KB, to reduce memory usage
 
