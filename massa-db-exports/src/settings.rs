@@ -15,4 +15,6 @@ pub struct MassaDBConfig {
     pub thread_count: u8,
     /// Maximum number of ledger backups to keep
     pub max_ledger_backups: u64,
+    /// Enable metrics
+    pub enable_metrics: bool,
 }
