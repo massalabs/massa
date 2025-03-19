@@ -652,7 +652,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let mut block_opts = BlockBasedOptions::default();
 
         // Default block cache is 8 Mb, but here we will also include filters and indexes
-        let cache = Cache::new_lru_cache(1 * 1024 * 1024 * 1024); // 1 GB
+        let cache = Cache::new_lru_cache(1024 * 1024 * 1024); // 1 GB
         block_opts.set_block_cache(&cache);
         block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
 
