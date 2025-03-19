@@ -2916,6 +2916,7 @@ dependencies = [
  "parking_lot",
  "rand",
  "serde",
+ "tikv-jemalloc-sys",
  "tokio",
  "tracing",
  "tracing-subscriber",

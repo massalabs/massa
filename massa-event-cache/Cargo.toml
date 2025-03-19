@@ -9,6 +9,7 @@ test-exports = [
     "mockall",
     "mockall_wrap"
 ]
+jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
 nom = {workspace = true}
@@ -30,6 +31,3 @@ rand = {workspace = true}
 mockall = {workspace = true}
 mockall_wrap = {workspace = true}
 massa_models = { workspace = true, features = ["test-exports"] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-rocksdb = {workspace = true, features = ["jemalloc"]}
