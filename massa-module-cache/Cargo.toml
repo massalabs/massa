@@ -22,3 +22,6 @@ massa-sc-runtime = {workspace = true}
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
 serial_test = {workspace = true}
 massa-sc-runtime = {workspace = true, "features" = ["testing"]}
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rocksdb = {workspace = true, features = ["jemalloc"]}

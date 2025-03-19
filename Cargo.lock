@@ -360,17 +360,16 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "bindgen"
-version = "0.65.1"
+version = "0.69.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
+checksum = "271383c67ccabffb7381723dea0672a673f292304fcb45c01cc648c7a8d58088"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.6.0",
  "cexpr",
  "clang-sys",
+ "itertools 0.12.1",
  "lazy_static",
  "lazycell",
- "peeking_take_while",
- "prettyplease",
  "proc-macro2 1.0.92",
  "quote 1.0.37",
  "regex",
@@ -2667,22 +2666,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "librocksdb-sys"
-version = "0.11.0+8.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3386f101bcb4bd252d8e9d2fb41ec3b0862a15a62b478c355b2982efa469e3e"
-dependencies = [
- "bindgen",
- "bzip2-sys",
- "cc",
- "glob",
- "libc",
- "libz-sys",
- "lz4-sys",
- "zstd-sys",
-]
-
-[[package]]
 name = "libsecp256k1"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3189,7 +3172,7 @@ dependencies = [
  "massa_models",
  "massa_serialization",
  "parking_lot",
- "rocksdb",
+ "rust-rocksdb",
  "tempfile",
 ]
 
@@ -3227,7 +3210,7 @@ dependencies = [
  "num_enum",
  "parking_lot",
  "rand",
- "rocksdb",
+ "rust-rocksdb",
  "serial_test",
  "tempfile",
  "tracing",
@@ -3314,7 +3297,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
- "rocksdb",
+ "rust-rocksdb",
  "schnellru",
  "serde_json",
  "sha2 0.10.8",
@@ -3553,7 +3536,7 @@ dependencies = [
  "nom",
  "num_enum",
  "rand",
- "rocksdb",
+ "rust-rocksdb",
  "schnellru",
  "serial_test",
  "tempfile",
@@ -4303,12 +4286,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peeking_take_while"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19b17cddbe7ec3f8bc800887bab5e717348c95ea2ca0b1bf0837fb964dc67099"
-
-[[package]]
 name = "peernet"
 version = "0.1.0"
 source = "git+https://github.com/massalabs/PeerNet?rev=04b05ddd320fbe76cc858115af7b5fc28bdb8310#04b05ddd320fbe76cc858115af7b5fc28bdb8310"
@@ -5002,16 +4979,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rocksdb"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb6f170a4041d50a0ce04b0d2e14916d6ca863ea2e422689a5b694395d299ffe"
-dependencies = [
- "libc",
- "librocksdb-sys",
-]
-
-[[package]]
 name = "ron"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5036,6 +5003,33 @@ checksum = "f6d5f2436026b4f6e79dc829837d467cc7e9a55ee40e750d716713540715a2df"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
+]
+
+[[package]]
+name = "rust-librocksdb-sys"
+version = "0.32.0+9.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50146b7fadd68926e9dcb902bf0515783aaaf5f73af26949f188aead5ede8cd0"
+dependencies = [
+ "bindgen",
+ "bzip2-sys",
+ "cc",
+ "glob",
+ "libc",
+ "libz-sys",
+ "lz4-sys",
+ "tikv-jemalloc-sys",
+ "zstd-sys",
+]
+
+[[package]]
+name = "rust-rocksdb"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bf088a714aa3fad699f7dbe06047ca732c09629a2f9b28aa16ca6d3897a4c2f"
+dependencies = [
+ "libc",
+ "rust-librocksdb-sys",
 ]
 
 [[package]]
@@ -5890,6 +5884,16 @@ checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
+]
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
+dependencies = [
+ "cc",
+ "libc",
 ]
 
 [[package]]
