@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 test-exports = ["massa_db_exports/test-exports"]
+jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
 parking_lot = {workspace = true}
@@ -18,5 +19,3 @@ massa_db_exports = {workspace = true}
 tempfile = {workspace = true}
 assert_matches = {workspace = true}
 
-[target.'cfg(target_os = "linux")'.dependencies]
-rocksdb = {workspace = true, features = ["jemalloc"]}

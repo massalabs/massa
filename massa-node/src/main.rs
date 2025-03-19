@@ -3,6 +3,10 @@
 #![doc = include_str!("../../README.md")]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
+
+#[cfg(feature = "jemalloc")]
+mod jemalloc_init;
+
 extern crate massa_logging;
 
 #[cfg(feature = "op_spammer")]
