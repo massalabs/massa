@@ -88,6 +88,9 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
 
+    /// Get the total size of the change history and the change versioning history respectively
+    fn get_change_history_sizes(&self) -> (usize, usize);
+
     /// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
     #[cfg(feature = "test-exports")]
     fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>>;
