@@ -4209,7 +4209,7 @@
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="kw-2">&amp;</span>execution_result {
                 <span class="kw">let </span><span class="kw-2">mut </span>context = <span class="macro">context_guard!</span>(<span class="self">self</span>);
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call, err);
+                context.deferred_call_fail_exec(id, <span class="kw-2">&amp;</span>call);
             }
             execution_result
         }
