@@ -460,25 +460,25 @@ impl FinalState {
         // apply the state changes to the batch
 
         self.async_pool
-            .apply_changes_to_batch(&changes.async_pool_changes, &mut db_batch);
+            .apply_changes_to_batch(&changes.clone().async_pool_changes, &mut db_batch);
         self.pos_state
-            .apply_changes_to_batch(changes.pos_changes, slot, true, &mut db_batch)?;
+            .apply_changes_to_batch(changes.clone().pos_changes, slot, true, &mut db_batch)?;
 
         // do not panic above, it might just mean that the lookback cycle is not available
         // bootstrap again instead
         self.ledger.apply_changes_to_batch(
-            changes.ledger_changes,
+            changes.clone().ledger_changes,
             &mut db_batch,
             final_state_component_version,
         );
         self.executed_ops
-            .apply_changes_to_batch(changes.executed_ops_changes, slot, &mut db_batch);
+            .apply_changes_to_batch(changes.clone().executed_ops_changes, slot, &mut db_batch);
 
         self.deferred_call_registry
-            .apply_changes_to_batch(changes.deferred_call_changes, &mut db_batch);
+            .apply_changes_to_batch(changes.clone().deferred_call_changes, &mut db_batch);
 
         self.executed_denunciations.apply_changes_to_batch(
-            changes.executed_denunciations_changes,
+            changes.clone().executed_denunciations_changes,
             slot,
             &mut db_batch,
         );
@@ -504,11 +504,25 @@ impl FinalState {
         )?;
 
         // Update execution trail hash
-        if let SetOrKeep::Set(new_hash) = changes.execution_trail_hash_change {
+        if let SetOrKeep::Set(new_hash) = changes.clone().execution_trail_hash_change {
             db_batch.insert(
                 EXECUTION_TRAIL_HASH_PREFIX.as_bytes().to_vec(),
                 Some(new_hash.to_bytes().to_vec()),
             );
+        }
+
+        if slot.thread == 0 {
+            println!("LEO: Finalizing slot {}", slot);
+            println!();
+            println!();
+            println!();
+            println!("LEO: Changes: {:?}", changes);
+            println!();
+            println!();
+            println!();
+            for (key, value) in db_batch.iter() {
+                println!("LEO: key: {:?}, value: {:?}", key, value);
+            }
         }
 
         self.db
