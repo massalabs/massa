@@ -1426,6 +1426,26 @@
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
+<a href="#1435" id="1435">1435</a>
+<a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1438,8 +1458,8 @@
     AsyncMessageSerializer,
 };
 <span class="kw">use </span>massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
-    MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, ShareableMassaDBController, ASYNC_POOL_PREFIX, MESSAGE_ID_DESER_ERROR,
+    MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
@@ -1453,7 +1473,7 @@
     sequence::tuple,
     IResult, Parser,
 };
-<span class="kw">use </span>std::collections::BTreeMap;
+<span class="kw">use </span>std::collections::{BTreeMap, HashSet};
 <span class="kw">use </span>std::ops::Bound::Included;
 
 <span class="kw">const </span>EMISSION_SLOT_IDENT: u8 = <span class="number">0u8</span>;
@@ -1659,37 +1679,34 @@
         <span class="kw">let </span>db = <span class="self">self</span>.db.read();
 
         <span class="comment">// Iterates over the whole database
-        </span><span class="kw">let </span><span class="kw-2">mut </span>last_id: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt; = <span class="prelude-val">None</span>;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>found_message_ids = HashSet::new();
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>((serialized_message_id, <span class="kw">_</span>)) = <span class="kw">match </span>last_id {
-            <span class="prelude-val">Some</span>(id) =&gt; db
-                .iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(<span class="kw-2">&amp;</span><span class="macro">can_be_executed_key!</span>(id), MassaDirection::Forward),
-                )
-                .nth(<span class="number">1</span>),
-            <span class="prelude-val">None </span>=&gt; db
-                .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
-                .next(),
-        } {
-            <span class="kw">if </span>!serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
+        <span class="kw">for </span>(key_serialized_message_id, <span class="kw">_</span>) <span class="kw">in
+            </span>db.prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
+        {
+            <span class="kw">if </span>!key_serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
                 <span class="kw">break</span>;
             }
 
             <span class="kw">let </span>(<span class="kw">_</span>, message_id) = <span class="self">self
                 </span>.message_id_deserializer
-                .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_message_id[ASYNC_POOL_PREFIX.len()..])
+                .deserialize::&lt;DeserializeError&gt;(
+                    <span class="kw-2">&amp;</span>key_serialized_message_id[ASYNC_POOL_PREFIX.len()..],
+                )
                 .expect(MESSAGE_ID_DESER_ERROR);
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(message) = <span class="self">self</span>.fetch_message(<span class="kw-2">&amp;</span>message_id) {
-                <span class="self">self</span>.message_info_cache.insert(message_id, message.into());
-            }
+            found_message_ids.insert(message_id);
+        }
 
-            <span class="comment">// The -1 is to remove the IDENT byte at the end of the key
-            </span>last_id = <span class="prelude-val">Some</span>(
-                serialized_message_id[ASYNC_POOL_PREFIX.len()..serialized_message_id.len() - <span class="number">1</span>]
-                    .to_vec(),
-            );
+        <span class="kw">for </span>message_id <span class="kw">in </span>found_message_ids {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(message) = <span class="self">self</span>.fetch_message(<span class="kw-2">&amp;</span>message_id) {
+                <span class="kw">if </span>message.compute_id() == message_id {
+                    <span class="self">self</span>.message_info_cache
+                        .insert(message_id, AsyncMessageInfo::from(message));
+                } <span class="kw">else </span>{
+                    <span class="macro">panic!</span>(<span class="string">"Async message ID mismatch in DB"</span>);
+                }
+            }
         }
     }
 
@@ -1748,21 +1765,44 @@
             .expect(MESSAGE_ID_SER_ERROR);
 
         <span class="kw">let </span><span class="kw-2">mut </span>serialized_message: Vec&lt;u8&gt; = Vec::new();
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
-            </span>db.prefix_iterator_cf(STATE_CF, <span class="kw-2">&amp;</span><span class="macro">message_id_prefix!</span>(serialized_message_id))
-        {
-            <span class="kw">if </span>!serialized_key.starts_with(<span class="kw-2">&amp;</span><span class="macro">message_id_prefix!</span>(serialized_message_id)) {
-                <span class="kw">break</span>;
-            }
 
-            serialized_message.extend(serialized_value.iter());
+        <span class="kw">let </span>query = <span class="macro">vec!</span>[
+            (STATE_CF, <span class="macro">emission_slot_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">emission_index_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">sender_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">destination_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">function_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">max_gas_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">fee_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">coins_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">validity_start_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">validity_end_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">function_params_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">trigger_key!</span>(serialized_message_id)),
+            (STATE_CF, <span class="macro">can_be_executed_key!</span>(serialized_message_id)),
+        ];
+
+        <span class="kw">let </span>results = db.multi_get_cf(query);
+
+        <span class="kw">for </span>result <span class="kw">in </span>results {
+            <span class="kw">if let </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(value)) = result {
+                serialized_message.extend(value.iter());
+            } <span class="kw">else </span>{
+                <span class="kw">return </span><span class="prelude-val">None</span>;
+            }
         }
 
         <span class="kw">match </span><span class="self">self
             </span>.message_deserializer_db
             .deserialize::&lt;DeserializeError&gt;(<span class="kw-2">&amp;</span>serialized_message)
         {
-            <span class="prelude-val">Ok</span>((<span class="kw">_</span>, message)) =&gt; <span class="prelude-val">Some</span>(message),
+            <span class="prelude-val">Ok</span>((<span class="kw">_</span>, message)) =&gt; {
+                <span class="kw">if </span>message.compute_id() == <span class="kw-2">*</span>message_id {
+                    <span class="prelude-val">Some</span>(message)
+                } <span class="kw">else </span>{
+                    <span class="prelude-val">None
+                </span>}
+            }
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
     }
@@ -2470,7 +2510,7 @@
     <span class="kw">use </span>std::str::FromStr;
     <span class="kw">use </span>std::sync::Arc;
 
-    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController};
+    <span class="kw">use </span>massa_db_exports::{MassaDBConfig, MassaDBController, MassaIteratorMode};
     <span class="kw">use </span>massa_models::config::{
         MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE, THREAD_COUNT,
