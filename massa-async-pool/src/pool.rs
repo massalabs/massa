@@ -10,8 +10,8 @@ use crate::{
     AsyncMessageSerializer,
 };
 use massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
-    MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
+    DBBatch, ShareableMassaDBController, ASYNC_POOL_PREFIX, MESSAGE_ID_DESER_ERROR,
+    MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_models::address::Address;
 use massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
@@ -25,7 +25,7 @@ use nom::{
     sequence::tuple,
     IResult, Parser,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::ops::Bound::Included;
 
 const EMISSION_SLOT_IDENT: u8 = 0u8;
@@ -231,37 +231,34 @@ impl AsyncPool {
         let db = self.db.read();
 
         // Iterates over the whole database
-        let mut last_id: Option<Vec<u8>> = None;
+        let mut found_message_ids = HashSet::new();
 
-        while let Some((serialized_message_id, _)) = match last_id {
-            Some(id) => db
-                .iterator_cf(
-                    STATE_CF,
-                    MassaIteratorMode::From(&can_be_executed_key!(id), MassaDirection::Forward),
-                )
-                .nth(1),
-            None => db
-                .prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
-                .next(),
-        } {
-            if !serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
+        for (key_serialized_message_id, _) in
+            db.prefix_iterator_cf(STATE_CF, ASYNC_POOL_PREFIX.as_bytes())
+        {
+            if !key_serialized_message_id.starts_with(ASYNC_POOL_PREFIX.as_bytes()) {
                 break;
             }
 
             let (_, message_id) = self
                 .message_id_deserializer
-                .deserialize::<DeserializeError>(&serialized_message_id[ASYNC_POOL_PREFIX.len()..])
+                .deserialize::<DeserializeError>(
+                    &key_serialized_message_id[ASYNC_POOL_PREFIX.len()..],
+                )
                 .expect(MESSAGE_ID_DESER_ERROR);
 
-            if let Some(message) = self.fetch_message(&message_id) {
-                self.message_info_cache.insert(message_id, message.into());
-            }
+            found_message_ids.insert(message_id);
+        }
 
-            // The -1 is to remove the IDENT byte at the end of the key
-            last_id = Some(
-                serialized_message_id[ASYNC_POOL_PREFIX.len()..serialized_message_id.len() - 1]
-                    .to_vec(),
-            );
+        for message_id in found_message_ids {
+            if let Some(message) = self.fetch_message(&message_id) {
+                if message.compute_id() == message_id {
+                    self.message_info_cache
+                        .insert(message_id, AsyncMessageInfo::from(message));
+                } else {
+                    panic!("Async message ID mismatch in DB");
+                }
+            }
         }
     }
 
@@ -320,21 +317,44 @@ impl AsyncPool {
             .expect(MESSAGE_ID_SER_ERROR);
 
         let mut serialized_message: Vec<u8> = Vec::new();
-        for (serialized_key, serialized_value) in
-            db.prefix_iterator_cf(STATE_CF, &message_id_prefix!(serialized_message_id))
-        {
-            if !serialized_key.starts_with(&message_id_prefix!(serialized_message_id)) {
-                break;
-            }
 
-            serialized_message.extend(serialized_value.iter());
+        let query = vec![
+            (STATE_CF, emission_slot_key!(serialized_message_id)),
+            (STATE_CF, emission_index_key!(serialized_message_id)),
+            (STATE_CF, sender_key!(serialized_message_id)),
+            (STATE_CF, destination_key!(serialized_message_id)),
+            (STATE_CF, function_key!(serialized_message_id)),
+            (STATE_CF, max_gas_key!(serialized_message_id)),
+            (STATE_CF, fee_key!(serialized_message_id)),
+            (STATE_CF, coins_key!(serialized_message_id)),
+            (STATE_CF, validity_start_key!(serialized_message_id)),
+            (STATE_CF, validity_end_key!(serialized_message_id)),
+            (STATE_CF, function_params_key!(serialized_message_id)),
+            (STATE_CF, trigger_key!(serialized_message_id)),
+            (STATE_CF, can_be_executed_key!(serialized_message_id)),
+        ];
+
+        let results = db.multi_get_cf(query);
+
+        for result in results {
+            if let Ok(Some(value)) = result {
+                serialized_message.extend(value.iter());
+            } else {
+                return None;
+            }
         }
 
         match self
             .message_deserializer_db
             .deserialize::<DeserializeError>(&serialized_message)
         {
-            Ok((_, message)) => Some(message),
+            Ok((_, message)) => {
+                if message.compute_id() == *message_id {
+                    Some(message)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -1042,7 +1062,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, MassaIteratorMode};
     use massa_models::config::{
         MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE, THREAD_COUNT,
