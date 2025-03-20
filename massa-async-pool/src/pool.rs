@@ -252,7 +252,7 @@ impl AsyncPool {
                 if message.compute_id() == message_id {
                     self.message_info_cache.insert(message_id, AsyncMessageInfo::from(message));
                 } else {
-                    panic!("Async message ID mismatch in DB");
+                    panic!("Mismatch in message ID computation, expected {:?}, got {:?}", message_id, message.compute_id());
                 }
             }
         }
@@ -336,7 +336,7 @@ impl AsyncPool {
             if let Ok(Some(value)) = result {
                 serialized_message.extend(value.iter());
             } else {
-                return None;
+                panic!("Error fetching message from DB");
             }
         }
 
@@ -348,7 +348,7 @@ impl AsyncPool {
                 if message.compute_id() == *message_id {
                     Some(message)
                 } else {
-                    None
+                    panic!("Mismatch in message ID computation, expected {:?}, got {:?}", message_id, message.compute_id());
                 }
             },
             _ => None,
@@ -1058,7 +1058,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use massa_db_exports::{MassaDBConfig, MassaDBController};
+    use massa_db_exports::{MassaDBConfig, MassaDBController, MassaIteratorMode};
     use massa_models::config::{
         MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_FUNCTION_NAME_LENGTH,
         MAX_PARAMETERS_SIZE, THREAD_COUNT,
