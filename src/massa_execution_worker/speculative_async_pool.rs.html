@@ -578,7 +578,7 @@
         slot: Slot,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
+    ) -&gt; BTreeMap&lt;AsyncMessageId, AsyncMessage&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>available_gas = max_gas;
 
         <span class="comment">// Choose which messages to take based on self.message_infos
@@ -634,7 +634,7 @@
         slot: <span class="kw-2">&amp;</span>Slot,
         ledger_changes: <span class="kw-2">&amp;</span>LedgerChanges,
         fix_eliminated_msg: bool,
-    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
+    ) -&gt; BTreeMap&lt;AsyncMessageId, AsyncMessage&gt; {
         <span class="kw">let </span>execution_component_version = <span class="self">self</span>.get_execution_component_version(slot);
 
         <span class="comment">// Update the messages_info: remove messages that should be removed
@@ -729,8 +729,8 @@
         <span class="kw-2">mut </span>wanted_ids: Vec&lt;<span class="kw-2">&amp;</span>AsyncMessageId&gt;,
         delete_existing: bool,
         execution_component_version: u32,
-    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>msgs = Vec::new();
+    ) -&gt; BTreeMap&lt;AsyncMessageId, AsyncMessage&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>msgs = BTreeMap::new();
 
         <span class="kw">let </span><span class="kw-2">mut </span>current_changes = HashMap::new();
         <span class="kw">for </span>id <span class="kw">in </span>wanted_ids.iter() {
@@ -745,7 +745,7 @@
                 <span class="kw">if </span>delete_existing {
                     <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
                 }
-                msgs.push((<span class="kw-2">*</span>message_id, msg.clone()));
+                msgs.insert(<span class="kw-2">*</span>message_id, msg.clone());
                 <span class="bool-val">false
             </span>}
             <span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(msg_update)) =&gt; {
@@ -770,7 +770,7 @@
                     <span class="kw">if </span>delete_existing {
                         <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
                     }
-                    msgs.push((<span class="kw-2">*</span>message_id, msg));
+                    msgs.insert(<span class="kw-2">*</span>message_id, msg);
                     <span class="kw">return </span><span class="bool-val">false</span>;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) =&gt; {
@@ -805,7 +805,7 @@
                 <span class="kw">if </span>delete_existing {
                     <span class="self">self</span>.pool_changes.push_delete(<span class="kw-2">*</span>message_id);
                 }
-                msgs.push((<span class="kw-2">*</span>message_id, msg));
+                msgs.insert(<span class="kw-2">*</span>message_id, msg);
             }
         }
 

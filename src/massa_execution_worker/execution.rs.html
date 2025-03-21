@@ -4723,7 +4723,7 @@
 
             <span class="comment">// Try executing asynchronous messages.
             // Effects are cancelled on failure and the sender is reimbursed.
-            </span><span class="kw">for </span>(_message_id, message) <span class="kw">in </span>messages {
+            </span><span class="kw">for </span>(_message_id, message) <span class="kw">in </span>messages.into_iter() {
                 <span class="kw">let </span>opt_bytecode = <span class="macro">context_guard!</span>(<span class="self">self</span>).get_bytecode(<span class="kw-2">&amp;</span>message.destination);
 
                 <span class="kw">match </span><span class="self">self</span>.execute_async_message(message, opt_bytecode, execution_version) {

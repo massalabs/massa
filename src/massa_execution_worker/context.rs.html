@@ -2035,8 +2035,8 @@
     ) -&gt; Vec&lt;(<span class="prelude-ty">Option</span>&lt;Bytecode&gt;, AsyncMessage)&gt; {
         <span class="self">self</span>.speculative_async_pool
             .take_batch_to_execute(<span class="self">self</span>.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
+            .into_values()
+            .map(|msg| (<span class="self">self</span>.get_bytecode(<span class="kw-2">&amp;</span>msg.destination), msg))
             .collect()
     }
 
@@ -2044,7 +2044,7 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -&gt; Vec&lt;(AsyncMessageId, AsyncMessage)&gt; {
+    ) -&gt; BTreeMap&lt;AsyncMessageId, AsyncMessage&gt; {
         <span class="self">self</span>.speculative_async_pool.take_batch_to_execute(
             <span class="self">self</span>.slot,
             max_gas,
