@@ -117,7 +117,7 @@ impl SpeculativeAsyncPool {
         slot: Slot,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -> BTreeMap<AsyncMessageId, AsyncMessage> {
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut available_gas = max_gas;
 
         // Choose which messages to take based on self.message_infos
@@ -173,7 +173,7 @@ impl SpeculativeAsyncPool {
         slot: &Slot,
         ledger_changes: &LedgerChanges,
         fix_eliminated_msg: bool,
-    ) -> BTreeMap<AsyncMessageId, AsyncMessage> {
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let execution_component_version = self.get_execution_component_version(slot);
 
         // Update the messages_info: remove messages that should be removed
@@ -268,8 +268,8 @@ impl SpeculativeAsyncPool {
         mut wanted_ids: Vec<&AsyncMessageId>,
         delete_existing: bool,
         execution_component_version: u32,
-    ) -> BTreeMap<AsyncMessageId, AsyncMessage> {
-        let mut msgs = BTreeMap::new();
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        let mut msgs = Vec::new();
 
         let mut current_changes = HashMap::new();
         for id in wanted_ids.iter() {
@@ -284,7 +284,7 @@ impl SpeculativeAsyncPool {
                 if delete_existing {
                     self.pool_changes.push_delete(*message_id);
                 }
-                msgs.insert(*message_id, msg.clone());
+                msgs.push((*message_id, msg.clone()));
                 false
             }
             Some(SetUpdateOrDelete::Update(msg_update)) => {
@@ -309,7 +309,7 @@ impl SpeculativeAsyncPool {
                     if delete_existing {
                         self.pool_changes.push_delete(*message_id);
                     }
-                    msgs.insert(*message_id, msg);
+                    msgs.push((*message_id, msg));
                     return false;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
@@ -344,7 +344,7 @@ impl SpeculativeAsyncPool {
                 if delete_existing {
                     self.pool_changes.push_delete(*message_id);
                 }
-                msgs.insert(*message_id, msg);
+                msgs.push((*message_id, msg));
             }
         }
 
