@@ -1499,6 +1499,9 @@ impl ExecutionState {
         );
 
         let execution_version = execution_context.execution_component_version;
+
+        println!("LEO - EXECUTE SLOT {:?} with execution_version: {}", slot, execution_version);
+        
         if self.cur_execution_version != execution_version {
             // Reset the cache because a new execution version has become active
             info!("A new execution version has become active! Resetting the module-cache.");
