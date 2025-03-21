@@ -1451,6 +1451,7 @@ impl Interface for InterfaceImpl {
                 .transpose()?,
             None,
         ));
+        println!("     LEO - send_message targetting func {}, emission_index: {}", target_function, emission_index);
         execution_context.created_message_index += 1;
         Ok(())
     }
