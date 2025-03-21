@@ -444,8 +444,8 @@ impl ExecutionContext {
     ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
         self.speculative_async_pool
             .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
+            .into_values()
+            .map(|msg| (self.get_bytecode(&msg.destination), msg))
             .collect()
     }
 
@@ -453,7 +453,7 @@ impl ExecutionContext {
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
-    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+    ) -> BTreeMap<AsyncMessageId, AsyncMessage> {
         self.speculative_async_pool.take_batch_to_execute(
             self.slot,
             max_gas,

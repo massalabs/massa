@@ -1967,7 +1967,7 @@ impl ExecutionState {
 
             // Try executing asynchronous messages.
             // Effects are cancelled on failure and the sender is reimbursed.
-            for (_message_id, message) in messages {
+            for (_message_id, message) in messages.into_iter() {
                 let opt_bytecode = context_guard!(self).get_bytecode(&message.destination);
 
                 match self.execute_async_message(message, opt_bytecode, execution_version) {
