@@ -1501,7 +1501,7 @@ impl ExecutionState {
         let execution_version = execution_context.execution_component_version;
 
         println!("LEO - EXECUTE SLOT {:?} with execution_version: {}", slot, execution_version);
-
+        
         if self.cur_execution_version != execution_version {
             // Reset the cache because a new execution version has become active
             info!("A new execution version has become active! Resetting the module-cache.");
@@ -1522,11 +1522,6 @@ impl ExecutionState {
                     self.config.max_async_gas,
                     self.config.async_msg_cst_gas_cost,
                 );
-
-                let msg = messages.clone().into_iter().map(|(_, m)| m).collect::<Vec<_>>();
-                println!("   LEO - TAKE ASYNC BATCH V0");
-                println!("   LEO - MESSAGES LEN : {:?}", msg.len());
-                println!("   LEO - MESSAGES: {:?}", msg);
 
                 // Apply the created execution context for slot execution
                 *context_guard!(self) = execution_context;
@@ -1563,10 +1558,6 @@ impl ExecutionState {
 
                 // Apply the created execution context for slot execution
                 *context_guard!(self) = execution_context;
-
-                println!("   LEO - DEFERRED CALLS");
-                println!("   LEO - DEFERRED CALLS LEN : {:?}", calls.slot_calls.len());
-                println!("   LEO - DEFERRED CALLS : {:?}", calls.slot_calls);
 
                 for (id, call) in calls.slot_calls {
                     let cancelled = call.cancelled;
@@ -1663,12 +1654,6 @@ impl ExecutionState {
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.
-
-            let op_ids = operations.iter().map(|op| op.id).collect::<Vec<_>>();
-            println!("   LEO - BLOCK ID EXECUTE : {:?}", block_id);
-            println!("   LEO - BLOCK OP LEN : {:?}", op_ids.len());
-            println!("   LEO - BLOCK OP : {:?}", op_ids);
-
             for operation in operations.into_iter() {
                 match self.execute_operation(
                     &operation,
@@ -1979,11 +1964,6 @@ impl ExecutionState {
             // Get asynchronous messages to execute
             let messages = context_guard!(self)
                 .take_async_batch_v1(async_msg_gas_available, self.config.async_msg_cst_gas_cost);
-
-            let msg = messages.clone().into_iter().map(|(_, m)| m).collect::<Vec<_>>();
-            println!("   LEO - TAKE ASYNC BATCH V1");
-            println!("   LEO - MESSAGES LEN : {:?}", msg.len());
-            println!("   LEO - MESSAGES: {:?}", msg);
 
             // clear operation id (otherwise events will be generated using this operation id)
             self.execution_context.lock().origin_operation_id = None;
