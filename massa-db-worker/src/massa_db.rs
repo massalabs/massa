@@ -13,8 +13,8 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, BlockBasedOptions, Cache, ColumnFamilyDescriptor, Direction,
-    IteratorMode, Options, ReadOptions, WriteBatch, DB,
+    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -82,7 +82,7 @@ where
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
     /// If we read the db with these options, cache will be disabled (useful for scanning the whole db)
-    pub fn default_read_opts() -> ReadOptions {
+    pub fn read_opts_for_full_db_traversal() -> ReadOptions {
         let mut read_opts = ReadOptions::default();
         read_opts.fill_cache(false);
         read_opts
@@ -173,7 +173,7 @@ where
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
-            let read_opts = Self::default_read_opts();
+            let read_opts = Self::read_opts_for_full_db_traversal();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_state_step {
@@ -307,7 +307,7 @@ where
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-            let read_opts = Self::default_read_opts();
+            let read_opts = Self::read_opts_for_full_db_traversal();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_versioning_step {
@@ -638,7 +638,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
-    /// Sets various db options for RocksDB, e.g. to minimize memory usage
+    /// Sets various db options for RocksDB
     pub fn default_db_opts() -> Options {
         // 1. Basic options
         let mut db_opts = Options::default();
@@ -648,23 +648,22 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         // 2. Limit the max number of open files (which decreases memory requirements)
         db_opts.set_max_open_files(820);
 
-        // 3. Set block (read cache) related options
-        let mut block_opts = BlockBasedOptions::default();
+        // 3. If needed, set block (read cache) related options
+        //let mut block_opts = BlockBasedOptions::default();
 
         // Default block cache is 8 Mb, but here we will also include filters and indexes
-        let cache = Cache::new_lru_cache(1024 * 1024 * 1024); // 1 GB
-        block_opts.set_block_cache(&cache);
-        block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
+        //let cache = Cache::new_lru_cache(1024 * 1024 * 1024); // 1 GB
+        //block_opts.set_block_cache(&cache);
+        //block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
 
         // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, and add to cache
-        block_opts.set_hybrid_ribbon_filter(5.0, 2);
-        block_opts.set_cache_index_and_filter_blocks(true);
-        block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
-        block_opts.set_pin_top_level_index_and_filter(true);
+        //block_opts.set_hybrid_ribbon_filter(5.0, 2);
+        //block_opts.set_cache_index_and_filter_blocks(true);
+        //block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+        //block_opts.set_pin_top_level_index_and_filter(true);
         // Note: optimized it for memory depends on rocksdb feature "malloc-usable-size"
         //block_opts.set_optimize_filters_for_memory(true);
-
-        db_opts.set_block_based_table_factory(&block_opts);
+        //db_opts.set_block_based_table_factory(&block_opts);
 
         // 4. If needed, set memtables (write cache) options
         // Use a global memtable budget of 512 MB for the DB
@@ -868,7 +867,33 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 IteratorMode::From(key, Direction::Reverse)
             }
         };
-        let read_opts = Self::default_read_opts();
+        Box::new(
+            db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf_for_full_db_traversal(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+        let read_opts = Self::read_opts_for_full_db_traversal();
         Box::new(
             db.iterator_cf_opt(handle, read_opts, rocksdb_mode)
                 .flatten()
@@ -959,9 +984,21 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
-        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
-        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let iter_state = self.db.iterator_cf_opt(
+            handle_state,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        let iter_metadata = self.db.iterator_cf_opt(
+            handle_metadata,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        let iter_versioning = self.db.iterator_cf_opt(
+            handle_versioning,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
         let mut entire_database = Vec::new();
         let mut state = BTreeMap::new();
         for (k, v) in iter_state.flatten() {
