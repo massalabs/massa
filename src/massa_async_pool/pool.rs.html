@@ -1426,6 +1426,12 @@
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
 <a href="#1428" id="1428">1428</a>
+<a href="#1429" id="1429">1429</a>
+<a href="#1430" id="1430">1430</a>
+<a href="#1431" id="1431">1431</a>
+<a href="#1432" id="1432">1432</a>
+<a href="#1433" id="1433">1433</a>
+<a href="#1434" id="1434">1434</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -1433,16 +1439,22 @@
 </span><span class="kw">use crate</span>::{
     changes::AsyncPoolChanges,
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
-    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
+    message::{AsyncMessage, AsyncMessageInfo, AsyncMessageUpdate},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-<span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::{
+    address::Address,
+    async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
+    types::Applicable,
+};
+<span class="kw">use </span>massa_models::{
+    async_msg_id::AsyncMessageIdDeserializer,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
