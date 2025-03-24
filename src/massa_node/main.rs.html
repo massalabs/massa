@@ -1590,12 +1590,20 @@
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
 #![warn(missing_docs)]
 #![warn(unused_crate_dependencies)]
-</span><span class="kw">extern crate </span>massa_logging;
+
+#[cfg(feature = <span class="string">"jemalloc"</span>)]
+</span><span class="kw">mod </span>jemalloc_init;
+
+<span class="kw">extern crate </span>massa_logging;
 
 <span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::operation_injector::start_operation_injector;

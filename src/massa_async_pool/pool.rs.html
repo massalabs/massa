@@ -1425,7 +1425,6 @@
 <a href="#1425" id="1425">1425</a>
 <a href="#1426" id="1426">1426</a>
 <a href="#1427" id="1427">1427</a>
-<a href="#1428" id="1428">1428</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
@@ -2490,9 +2489,8 @@
         column: <span class="kw-2">&amp;</span>str,
     ) -&gt; BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
         db.read()
-            .iterator_cf(column, MassaIteratorMode::Start)
-            <span class="comment">// .collect::&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;()
-            </span>.collect()
+            .iterator_cf_for_full_db_traversal(column, MassaIteratorMode::Start)
+            .collect()
     }
 
     <span class="kw">fn </span>create_message() -&gt; AsyncMessage {

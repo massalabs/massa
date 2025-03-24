@@ -1882,6 +1882,96 @@
 <a href="#1882" id="1882">1882</a>
 <a href="#1883" id="1883">1883</a>
 <a href="#1884" id="1884">1884</a>
+<a href="#1885" id="1885">1885</a>
+<a href="#1886" id="1886">1886</a>
+<a href="#1887" id="1887">1887</a>
+<a href="#1888" id="1888">1888</a>
+<a href="#1889" id="1889">1889</a>
+<a href="#1890" id="1890">1890</a>
+<a href="#1891" id="1891">1891</a>
+<a href="#1892" id="1892">1892</a>
+<a href="#1893" id="1893">1893</a>
+<a href="#1894" id="1894">1894</a>
+<a href="#1895" id="1895">1895</a>
+<a href="#1896" id="1896">1896</a>
+<a href="#1897" id="1897">1897</a>
+<a href="#1898" id="1898">1898</a>
+<a href="#1899" id="1899">1899</a>
+<a href="#1900" id="1900">1900</a>
+<a href="#1901" id="1901">1901</a>
+<a href="#1902" id="1902">1902</a>
+<a href="#1903" id="1903">1903</a>
+<a href="#1904" id="1904">1904</a>
+<a href="#1905" id="1905">1905</a>
+<a href="#1906" id="1906">1906</a>
+<a href="#1907" id="1907">1907</a>
+<a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
+<a href="#1913" id="1913">1913</a>
+<a href="#1914" id="1914">1914</a>
+<a href="#1915" id="1915">1915</a>
+<a href="#1916" id="1916">1916</a>
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
+<a href="#1919" id="1919">1919</a>
+<a href="#1920" id="1920">1920</a>
+<a href="#1921" id="1921">1921</a>
+<a href="#1922" id="1922">1922</a>
+<a href="#1923" id="1923">1923</a>
+<a href="#1924" id="1924">1924</a>
+<a href="#1925" id="1925">1925</a>
+<a href="#1926" id="1926">1926</a>
+<a href="#1927" id="1927">1927</a>
+<a href="#1928" id="1928">1928</a>
+<a href="#1929" id="1929">1929</a>
+<a href="#1930" id="1930">1930</a>
+<a href="#1931" id="1931">1931</a>
+<a href="#1932" id="1932">1932</a>
+<a href="#1933" id="1933">1933</a>
+<a href="#1934" id="1934">1934</a>
+<a href="#1935" id="1935">1935</a>
+<a href="#1936" id="1936">1936</a>
+<a href="#1937" id="1937">1937</a>
+<a href="#1938" id="1938">1938</a>
+<a href="#1939" id="1939">1939</a>
+<a href="#1940" id="1940">1940</a>
+<a href="#1941" id="1941">1941</a>
+<a href="#1942" id="1942">1942</a>
+<a href="#1943" id="1943">1943</a>
+<a href="#1944" id="1944">1944</a>
+<a href="#1945" id="1945">1945</a>
+<a href="#1946" id="1946">1946</a>
+<a href="#1947" id="1947">1947</a>
+<a href="#1948" id="1948">1948</a>
+<a href="#1949" id="1949">1949</a>
+<a href="#1950" id="1950">1950</a>
+<a href="#1951" id="1951">1951</a>
+<a href="#1952" id="1952">1952</a>
+<a href="#1953" id="1953">1953</a>
+<a href="#1954" id="1954">1954</a>
+<a href="#1955" id="1955">1955</a>
+<a href="#1956" id="1956">1956</a>
+<a href="#1957" id="1957">1957</a>
+<a href="#1958" id="1958">1958</a>
+<a href="#1959" id="1959">1959</a>
+<a href="#1960" id="1960">1960</a>
+<a href="#1961" id="1961">1961</a>
+<a href="#1962" id="1962">1962</a>
+<a href="#1963" id="1963">1963</a>
+<a href="#1964" id="1964">1964</a>
+<a href="#1965" id="1965">1965</a>
+<a href="#1966" id="1966">1966</a>
+<a href="#1967" id="1967">1967</a>
+<a href="#1968" id="1968">1968</a>
+<a href="#1969" id="1969">1969</a>
+<a href="#1970" id="1970">1970</a>
+<a href="#1971" id="1971">1971</a>
+<a href="#1972" id="1972">1972</a>
+<a href="#1973" id="1973">1973</a>
+<a href="#1974" id="1974">1974</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_db_exports::{
     DBBatch, Key, MassaDBConfig, MassaDBController, MassaDBError, MassaDirection,
     MassaIteratorMode, StreamBatch, Value, CF_ERROR, CHANGE_ID_DESER_ERROR, CHANGE_ID_KEY,
@@ -1897,8 +1987,8 @@
 <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 <span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
-    DB,
+    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::{
@@ -1925,7 +2015,7 @@
     ChangeIDDeserializer: Deserializer&lt;ChangeID&gt;,
 &gt; {
     <span class="doccomment">/// The rocksdb instance
-    </span><span class="kw">pub </span>db: Arc&lt;DB&gt;,
+    </span><span class="kw">pub </span>db: DB,
     <span class="doccomment">/// configuration for the `RawMassaDB`
     </span><span class="kw">pub </span>config: MassaDBConfig,
     <span class="doccomment">/// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
@@ -1965,6 +2055,13 @@
     ChangeIDSerializer: Serializer&lt;ChangeID&gt;,
     ChangeIDDeserializer: Deserializer&lt;ChangeID&gt;,
 {
+    <span class="doccomment">/// If we read the db with these options, cache will be disabled (useful for scanning the whole db)
+    </span><span class="kw">pub fn </span>read_opts_for_full_db_traversal() -&gt; ReadOptions {
+        <span class="kw">let </span><span class="kw-2">mut </span>read_opts = ReadOptions::default();
+        read_opts.fill_cache(<span class="bool-val">false</span>);
+        read_opts
+    }
+
     <span class="doccomment">/// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch&lt;ChangeID&gt;
@@ -2050,17 +2147,22 @@
 
         <span class="kw">if </span>!last_state_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
+            <span class="kw">let </span>read_opts = <span class="self">Self</span>::read_opts_for_full_db_traversal();
 
             <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_state_step {
                 StreamingStep::Ongoing(max_key) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
-                        </span>.db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
+                        handle,
+                        read_opts,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
+                <span class="kw">_ </span>=&gt; <span class="self">self
+                    </span>.db
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
 
             <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
@@ -2179,17 +2281,22 @@
 
         <span class="kw">if </span>!last_versioning_step.finished() {
             <span class="kw">let </span>handle = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+            <span class="kw">let </span>read_opts = <span class="self">Self</span>::read_opts_for_full_db_traversal();
 
             <span class="comment">// Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             </span><span class="kw">let </span>db_iterator = <span class="kw">match </span><span class="kw-2">&amp;</span>last_versioning_step {
                 StreamingStep::Ongoing(max_key) =&gt; {
-                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self
-                        </span>.db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    <span class="kw">let </span><span class="kw-2">mut </span>iter = <span class="self">self</span>.db.iterator_cf_opt(
+                        handle,
+                        read_opts,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                <span class="kw">_ </span>=&gt; <span class="self">self</span>.db.iterator_cf(handle, IteratorMode::Start),
+                <span class="kw">_ </span>=&gt; <span class="self">self
+                    </span>.db
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
             <span class="kw">let </span>u64_ser = U64VarIntSerializer::new();
             <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db_iterator.flatten() {
@@ -2505,27 +2612,62 @@
         <span class="self">Self</span>::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
-    <span class="kw">pub fn </span>default_db_opts() -&gt; Options {
-        <span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
-        db_opts.set_max_open_files(<span class="number">820</span>);
+    <span class="doccomment">/// Sets various db options for RocksDB
+    </span><span class="kw">pub fn </span>default_db_opts() -&gt; Options {
+        <span class="comment">// 1. Basic options
+        </span><span class="kw">let </span><span class="kw-2">mut </span>db_opts = Options::default();
         db_opts.create_if_missing(<span class="bool-val">true</span>);
         db_opts.create_missing_column_families(<span class="bool-val">true</span>);
-        db_opts
+
+        <span class="comment">// 2. Limit the max number of open files (which decreases memory requirements)
+        </span>db_opts.set_max_open_files(<span class="number">820</span>);
+
+        <span class="comment">// 3. If needed, set block (read cache) related options
+        //let mut block_opts = BlockBasedOptions::default();
+
+        // Default block cache is 8 Mb, but here we will also include filters and indexes
+        //let cache = Cache::new_lru_cache(1024 * 1024 * 1024); // 1 GB
+        //block_opts.set_block_cache(&amp;cache);
+        //block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
+
+        // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, and add to cache
+        //block_opts.set_hybrid_ribbon_filter(5.0, 2);
+        //block_opts.set_cache_index_and_filter_blocks(true);
+        //block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+        //block_opts.set_pin_top_level_index_and_filter(true);
+        // Note: optimized it for memory depends on rocksdb feature "malloc-usable-size"
+        //block_opts.set_optimize_filters_for_memory(true);
+        //db_opts.set_block_based_table_factory(&amp;block_opts);
+
+        // 4. If needed, set memtables (write cache) options
+        // Use a global memtable budget of 512 MB for the DB
+        // Also, for safety, limit each memtable to 128 MB and at most 4 of them
+
+        //let wbm = WriteBufferManager::new_write_buffer_manager(512 * 1024 * 1024, true);
+        //db_opts.set_write_buffer_manager(&amp;wbm);
+        //db_opts.set_write_buffer_size(128 * 1024 * 1024);
+        //db_opts.set_max_write_buffer_number(4);
+
+        // 5. If needed, for debug purposes
+
+        //db_opts.set_dump_malloc_stats(true);
+        //db_opts.enable_statistics();
+        //db_opts.increase_parallelism(8);
+        </span>db_opts
     }
 
     <span class="doccomment">/// Returns a new `MassaDB` instance given a config and RocksDB options
     </span><span class="kw">fn </span>new_with_options(config: MassaDBConfig, db_opts: Options) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, rocksdb::Error&gt; {
         <span class="kw">let </span>db = DB::open_cf_descriptors(
-            <span class="kw-2">&amp;</span>db_opts,
+            <span class="kw-2">&amp;</span>db_opts.clone(),
             <span class="kw-2">&amp;</span>config.path,
             <span class="macro">vec!</span>[
-                ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ColumnFamilyDescriptor::new(STATE_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(METADATA_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(VERSIONING_CF, db_opts),
             ],
         )<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>db = Arc::new(db);
         <span class="kw">let </span>current_batch = Arc::new(Mutex::new(WriteBatch::default()));
 
         <span class="kw">let </span>change_id_deserializer = SlotDeserializer::new(
@@ -2699,9 +2841,35 @@
                 IteratorMode::From(key, Direction::Reverse)
             }
         };
-
         Box::new(
             db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    <span class="doccomment">/// Exposes RocksDB's "iterator_cf" function
+    </span><span class="kw">fn </span>iterator_cf_for_full_db_traversal(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        handle_cf: <span class="kw-2">&amp;</span>str,
+        mode: MassaIteratorMode,
+    ) -&gt; Box&lt;<span class="kw">dyn </span>Iterator&lt;Item = (Key, Value)&gt; + <span class="lifetime">'_</span>&gt; {
+        <span class="kw">let </span>db = <span class="kw-2">&amp;</span><span class="self">self</span>.db;
+        <span class="kw">let </span>handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        <span class="kw">let </span>rocksdb_mode = <span class="kw">match </span>mode {
+            MassaIteratorMode::Start =&gt; IteratorMode::Start,
+            MassaIteratorMode::End =&gt; IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) =&gt; {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) =&gt; {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+        <span class="kw">let </span>read_opts = <span class="self">Self</span>::read_opts_for_full_db_traversal();
+        Box::new(
+            db.iterator_cf_opt(handle, read_opts, rocksdb_mode)
                 .flatten()
                 .map(|(k, v)| (k.to_vec(), v.to_vec())),
         )
@@ -2790,9 +2958,21 @@
         <span class="kw">let </span>handle_state = <span class="self">self</span>.db.cf_handle(STATE_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_metadata = <span class="self">self</span>.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         <span class="kw">let </span>handle_versioning = <span class="self">self</span>.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-        <span class="kw">let </span>iter_state = <span class="self">self</span>.db.iterator_cf(handle_state, IteratorMode::Start);
-        <span class="kw">let </span>iter_metadata = <span class="self">self</span>.db.iterator_cf(handle_metadata, IteratorMode::Start);
-        <span class="kw">let </span>iter_versioning = <span class="self">self</span>.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        <span class="kw">let </span>iter_state = <span class="self">self</span>.db.iterator_cf_opt(
+            handle_state,
+            <span class="self">Self</span>::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        <span class="kw">let </span>iter_metadata = <span class="self">self</span>.db.iterator_cf_opt(
+            handle_metadata,
+            <span class="self">Self</span>::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        <span class="kw">let </span>iter_versioning = <span class="self">self</span>.db.iterator_cf_opt(
+            handle_versioning,
+            <span class="self">Self</span>::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
         <span class="kw">let </span><span class="kw-2">mut </span>entire_database = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>state = BTreeMap::new();
         <span class="kw">for </span>(k, v) <span class="kw">in </span>iter_state.flatten() {
