@@ -2768,9 +2768,6 @@
 <a href="#2768" id="2768">2768</a>
 <a href="#2769" id="2769">2769</a>
 <a href="#2770" id="2770">2770</a>
-<a href="#2771" id="2771">2771</a>
-<a href="#2772" id="2772">2772</a>
-<a href="#2773" id="2773">2773</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -5466,10 +5463,7 @@
 
         <span class="comment">// Step 5: test is_key_value_valid
         </span><span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
-        <span class="kw">for </span>(ser_key, ser_value) <span class="kw">in </span>db
-            .read()
-            .iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start)
-        {
+        <span class="kw">for </span>(ser_key, ser_value) <span class="kw">in </span>db.read().iterator_cf(STATE_CF, MassaIteratorMode::Start) {
             <span class="macro">assert!</span>(mip_store.is_key_value_valid(<span class="kw-2">&amp;</span>ser_key, <span class="kw-2">&amp;</span>ser_value));
             count += <span class="number">1</span>;
         }
@@ -5478,7 +5472,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>count2 = <span class="number">0</span>;
         <span class="kw">for </span>(ser_key, ser_value) <span class="kw">in </span>db
             .read()
-            .iterator_cf_for_full_db_traversal(VERSIONING_CF, MassaIteratorMode::Start)
+            .iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
         {
             <span class="macro">assert!</span>(mip_store.is_key_value_valid(<span class="kw-2">&amp;</span>ser_key, <span class="kw-2">&amp;</span>ser_value));
             count2 += <span class="number">1</span>;

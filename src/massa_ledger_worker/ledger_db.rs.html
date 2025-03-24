@@ -1361,7 +1361,7 @@
         // address
         </span><span class="kw">let </span>end_prefix = key_prefix[<span class="number">0</span>..key_prefix.len() - <span class="number">1</span>].to_vec();
 
-        db.iterator_cf_for_full_db_traversal(
+        db.iterator_cf(
             STATE_CF,
             MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
         )
@@ -1384,7 +1384,7 @@
 
         <span class="kw">let </span>key_prefix = datastore_prefix_from_address(addr, <span class="kw-2">&amp;</span>[]);
 
-        db.iterator_cf_for_full_db_traversal(
+        db.iterator_cf(
             STATE_CF,
             MassaIteratorMode::From(<span class="kw-2">&amp;</span>key_prefix, MassaDirection::Forward),
         )
