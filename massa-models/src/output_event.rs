@@ -1,4 +1,7 @@
+use crate::async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer};
+use crate::deferred_calls::DeferredCallId;
 use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
+use massa_serialization::Serializer;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::{collections::VecDeque, fmt::Display};
@@ -51,6 +54,10 @@ pub struct EventExecutionContext {
     pub is_final: bool,
     /// if the sc that emitted this event failed
     pub is_error: bool,
+    /// the deferred call id that is currently being executed
+    pub deferred_call_id: Option<DeferredCallId>,
+    /// the async message id that is currently being executed
+    pub async_msg_id: Option<AsyncMessageId>,
 }
 
 impl Display for EventExecutionContext {
@@ -71,6 +78,19 @@ impl Display for EventExecutionContext {
         }
         if let Some(id) = self.origin_operation_id {
             writeln!(f, "Origin operation id: {}", id)?;
+        }
+        if let Some(id) = &self.deferred_call_id {
+            writeln!(f, "Deferred call id: {}", id)?;
+        }
+        if let Some(id) = self.async_msg_id {
+            let serializer = AsyncMessageIdSerializer::new();
+            let mut serialized = Vec::new();
+            serializer.serialize(&id, &mut serialized).unwrap();
+            writeln!(
+                f,
+                "Async message id: {}",
+                bs58::encode(serialized).into_string()
+            )?;
         }
         writeln!(
             f,

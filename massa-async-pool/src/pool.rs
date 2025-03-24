@@ -5,16 +5,22 @@
 use crate::{
     changes::AsyncPoolChanges,
     config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
-    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
+    message::{AsyncMessage, AsyncMessageInfo, AsyncMessageUpdate},
+    AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_models::address::Address;
-use massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
+use massa_models::{
+    address::Address,
+    async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
+    types::Applicable,
+};
+use massa_models::{
+    async_msg_id::AsyncMessageIdDeserializer,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,

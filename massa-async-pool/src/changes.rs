@@ -8,15 +8,18 @@ use std::{
 
 use crate::{
     message::{
-        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+        AsyncMessage, AsyncMessageUpdate, AsyncMessageUpdateDeserializer,
+        AsyncMessageUpdateSerializer,
     },
     AsyncMessageDeserializer, AsyncMessageSerializer,
 };
 
-use massa_models::types::{
-    Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
+use massa_models::{
+    async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    types::{
+        Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+        SetUpdateOrDeleteSerializer,
+    },
 };
 
 use massa_serialization::{

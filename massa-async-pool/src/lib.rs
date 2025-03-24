@@ -94,9 +94,8 @@ mod pool;
 pub use changes::{AsyncPoolChanges, AsyncPoolChangesDeserializer, AsyncPoolChangesSerializer};
 pub use config::AsyncPoolConfig;
 pub use message::{
-    AsyncMessage, AsyncMessageDeserializer, AsyncMessageId, AsyncMessageIdDeserializer,
-    AsyncMessageIdSerializer, AsyncMessageInfo, AsyncMessageSerializer, AsyncMessageTrigger,
-    AsyncMessageTriggerSerializer, AsyncMessageUpdate,
+    AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
+    AsyncMessageTrigger, AsyncMessageTriggerSerializer, AsyncMessageUpdate,
 };
 pub use pool::{AsyncPool, AsyncPoolDeserializer, AsyncPoolSerializer};
 

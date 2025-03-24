@@ -1,8 +1,10 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
 use crate::StateChanges;
-use massa_async_pool::AsyncMessageId;
-use massa_models::types::{SetOrKeep, SetUpdateOrDelete};
+use massa_models::{
+    async_msg_id::AsyncMessageId,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_proto_rs::massa::model::v1 as grpc_model;
 
 impl From<StateChanges> for grpc_model::StateChanges {

@@ -1,6 +1,7 @@
-use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
+use massa_async_pool::{AsyncMessage, AsyncMessageUpdate};
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
 use massa_models::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};

@@ -1200,6 +1200,7 @@ impl ExecutionState {
             context.gas_remaining_before_subexecution = None;
             context.recursion_counter = 0;
             context.user_event_count_in_current_exec = 0;
+            context.async_msg_id = Some(message.compute_id());
 
             // check the target address
             if let Err(err) = context.check_target_sc_address(message.destination) {
@@ -1367,6 +1368,7 @@ impl ExecutionState {
                     context.gas_remaining_before_subexecution = None;
                     context.recursion_counter = 0;
                     context.user_event_count_in_current_exec = 0;
+                    context.deferred_call_id = Some(id.clone());
 
                     // Ensure that the target address is an SC address
                     // Ensure that the target address exists
@@ -1453,7 +1455,7 @@ impl ExecutionState {
             if let Err(err) = &execution_result {
                 let mut context = context_guard!(self);
                 context.reset_to_snapshot(snapshot, err.clone());
-                context.deferred_call_fail_exec(id, &call, err);
+                context.deferred_call_fail_exec(id, &call);
             }
             execution_result
         }
