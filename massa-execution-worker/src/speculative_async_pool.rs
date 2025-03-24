@@ -342,6 +342,8 @@ impl SpeculativeAsyncPool {
         msgs
     }
 
+    /// In this version, we need to ensure the order of the messages is preserved when we fetch them
+    /// (to avoid a non-deterministic behavior in the execution).
     fn fetch_msgs_v1(
         &mut self,
         wanted_ids: Vec<&AsyncMessageId>,
