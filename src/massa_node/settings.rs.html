@@ -404,6 +404,12 @@
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
 <a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -423,6 +429,11 @@
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>LoggingSettings {
     <span class="kw">pub </span>level: usize,
+}
+
+<span class="attr">#[derive(Debug, Deserialize, Clone)]
+</span><span class="kw">pub struct </span>CliSettings {
+    <span class="kw">pub </span>approved_disclaimer_file_path: PathBuf,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
@@ -558,6 +569,7 @@
     <span class="kw">pub </span>metrics: MetricsSettings,
     <span class="kw">pub </span>versioning: VersioningSettings,
     <span class="kw">pub </span>block_dump: BlockDumpSettings,
+    <span class="kw">pub </span>cli: CliSettings,
 }
 
 <span class="doccomment">/// Consensus configuration
