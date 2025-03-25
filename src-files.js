@@ -1,7 +1,7 @@
 var srcIndex = new Map(JSON.parse('[\
 ["massa_api",["",[],["api.rs","api_trait.rs","lib.rs","private.rs","public.rs"]]],\
 ["massa_api_exports",["",[],["address.rs","block.rs","config.rs","datastore.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","node.rs","operation.rs","page.rs","rolls.rs","slot.rs"]]],\
-["massa_async_pool",["",[],["changes.rs","config.rs","lib.rs","mapping_grpc.rs","message.rs","pool.rs"]]],\
+["massa_async_pool",["",[],["changes.rs","config.rs","lib.rs","pool.rs"]]],\
 ["massa_bootstrap",["",[["bindings",[],["client.rs","server.rs"]]],["bindings.rs","client.rs","error.rs","lib.rs","listener.rs","messages.rs","server.rs","settings.rs","tools.rs","white_black_list.rs"]]],\
 ["massa_channel",["",[],["lib.rs","receiver.rs","sender.rs"]]],\
 ["massa_cipher",["",[["tests",[],["mod.rs"]]],["constants.rs","decrypt.rs","encrypt.rs","error.rs","lib.rs"]]],\
@@ -24,7 +24,7 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_ledger_worker",["",[],["ledger.rs","ledger_db.rs","lib.rs"]]],\
 ["massa_logging",["",[],["lib.rs"]]],\
 ["massa_metrics",["",[],["lib.rs","server.rs"]]],\
-["massa_models",["",[["config",[],["compact_config.rs","constants.rs","massa_disclaimer.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","deferred_calls.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","mapping_grpc.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","types.rs","version.rs"]]],\
+["massa_models",["",[["config",[],["compact_config.rs","constants.rs","massa_settings.rs","mod.rs"]]],["active_block.rs","address.rs","amount.rs","async_msg.rs","async_msg_id.rs","block.rs","block_header.rs","block_id.rs","bytecode.rs","clique.rs","composite.rs","datastore.rs","deferred_calls.rs","denunciation.rs","endorsement.rs","error.rs","execution.rs","ledger.rs","lib.rs","mapping_grpc.rs","node.rs","operation.rs","output_event.rs","prehash.rs","rolls.rs","secure_share.rs","serialization.rs","slot.rs","stats.rs","streaming_step.rs","timeslots.rs","types.rs","version.rs"]]],\
 ["massa_module_cache",["",[],["config.rs","controller.rs","error.rs","hd_cache.rs","lib.rs","lru_cache.rs","types.rs"]]],\
 ["massa_node",["",[],["main.rs","settings.rs","survey.rs"]]],\
 ["massa_pool_exports",["",[],["channels.rs","config.rs","controller_traits.rs","lib.rs"]]],\

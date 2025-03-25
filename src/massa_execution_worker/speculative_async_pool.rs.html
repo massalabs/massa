@@ -459,18 +459,20 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative asynchronous pool represents the state of
 //! the pool at an arbitrary execution slot.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult::Present};
-<span class="kw">use </span>massa_async_pool::{
-    AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
-    AsyncPoolChanges,
-};
+<span class="kw">use </span>massa_async_pool::AsyncPoolChanges;
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
+<span class="kw">use </span>massa_models::async_msg::{
+    AsyncMessage, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
+};
+<span class="kw">use </span>massa_models::async_msg_id::AsyncMessageId;
 <span class="kw">use </span>massa_models::types::{Applicable, SetUpdateOrDelete};
 <span class="kw">use </span>massa_models::{
     config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},

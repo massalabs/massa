@@ -1590,15 +1590,6 @@
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
-<a href="#1593" id="1593">1593</a>
-<a href="#1594" id="1594">1594</a>
-<a href="#1595" id="1595">1595</a>
-<a href="#1596" id="1596">1596</a>
-<a href="#1597" id="1597">1597</a>
-<a href="#1598" id="1598">1598</a>
-<a href="#1599" id="1599">1599</a>
-<a href="#1600" id="1600">1600</a>
-<a href="#1601" id="1601">1601</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1688,16 +1679,15 @@
     VERSION,
 };
 <span class="kw">use </span>massa_models::config::{
-    handle_disclaimer, BASE_OPERATION_GAS_COST, CHAINID,
-    DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR, DEFERRED_CALL_CST_GAS_COST,
-    DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY, DEFERRED_CALL_MAX_ASYNC_GAS,
-    DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST, DEFERRED_CALL_MIN_GAS_INCREMENT,
-    DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-    MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE, MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE,
-    MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_DATA_SIZE_V1, MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE,
-    MAX_RECURSIVE_CALLS_DEPTH, MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN,
-    MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN, MAX_RUNTIME_MODULE_EXPORTS,
-    MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
+    BASE_OPERATION_GAS_COST, CHAINID, DEFERRED_CALL_BASE_FEE_MAX_CHANGE_DENOMINATOR,
+    DEFERRED_CALL_CST_GAS_COST, DEFERRED_CALL_GLOBAL_OVERBOOKING_PENALTY,
+    DEFERRED_CALL_MAX_ASYNC_GAS, DEFERRED_CALL_MAX_POOL_CHANGES, DEFERRED_CALL_MIN_GAS_COST,
+    DEFERRED_CALL_MIN_GAS_INCREMENT, DEFERRED_CALL_SLOT_OVERBOOKING_PENALTY,
+    KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE,
+    MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE, MAX_EVENT_DATA_SIZE_V0, MAX_EVENT_DATA_SIZE_V1,
+    MAX_EVENT_PER_OPERATION, MAX_MESSAGE_SIZE, MAX_RECURSIVE_CALLS_DEPTH,
+    MAX_RUNTIME_MODULE_CUSTOM_SECTION_DATA_LEN, MAX_RUNTIME_MODULE_CUSTOM_SECTION_LEN,
+    MAX_RUNTIME_MODULE_EXPORTS, MAX_RUNTIME_MODULE_FUNCTIONS, MAX_RUNTIME_MODULE_FUNCTION_NAME_LEN,
     MAX_RUNTIME_MODULE_GLOBAL_INITIALIZER, MAX_RUNTIME_MODULE_IMPORTS, MAX_RUNTIME_MODULE_MEMORIES,
     MAX_RUNTIME_MODULE_NAME_LEN, MAX_RUNTIME_MODULE_PASSIVE_DATA,
     MAX_RUNTIME_MODULE_PASSIVE_ELEMENT, MAX_RUNTIME_MODULE_SIGNATURE_LEN, MAX_RUNTIME_MODULE_TABLE,
@@ -2972,9 +2962,6 @@
     </span><span class="attr">#[arg(long = <span class="string">"restart-from-snapshot-at-period"</span>)]
     </span>restart_from_snapshot_at_period: <span class="prelude-ty">Option</span>&lt;u64&gt;,
 
-    <span class="attr">#[arg(short = <span class="string">'a'</span>, long = <span class="string">"accept-disclaimer"</span>)]
-    </span>accept_disclaimer: bool,
-
     <span class="attr">#[cfg(feature = <span class="string">"op_spammer"</span>)]
     </span><span class="doccomment">/// number of operations
     </span><span class="attr">#[arg(
@@ -3074,11 +3061,6 @@
     }));
 
     <span class="macro">info!</span>(<span class="string">"Node version : {}"</span>, <span class="kw-2">*</span>VERSION);
-
-    handle_disclaimer(
-        cur_args.accept_disclaimer,
-        <span class="kw-2">&amp;</span>SETTINGS.cli.approved_disclaimer_file_path,
-    );
 
     <span class="comment">// load or create wallet, asking for password if necessary
     </span><span class="kw">let </span>node_wallet = load_wallet(
