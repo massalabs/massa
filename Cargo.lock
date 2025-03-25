@@ -3519,6 +3519,7 @@ dependencies = [
  "bitvec",
  "bs58",
  "config",
+ "dialoguer",
  "directories",
  "displaydoc",
  "lazy_static",
