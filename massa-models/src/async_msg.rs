@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 //! This file defines the structure representing an asynchronous message
-
+#![allow(missing_docs)]
 use crate::address::{AddressDeserializer, AddressSerializer};
 use crate::amount::{AmountDeserializer, AmountSerializer};
 use crate::async_msg_id::AsyncMessageId;
