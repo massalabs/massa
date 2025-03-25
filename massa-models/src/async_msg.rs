@@ -2,14 +2,14 @@
 
 //! This file defines the structure representing an asynchronous message
 
-use massa_models::address::{AddressDeserializer, AddressSerializer};
-use massa_models::amount::{AmountDeserializer, AmountSerializer};
-use massa_models::async_msg_id::AsyncMessageId;
-use massa_models::config::GENESIS_KEY;
-use massa_models::serialization::{StringDeserializer, StringSerializer};
-use massa_models::slot::{SlotDeserializer, SlotSerializer};
-use massa_models::types::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
-use massa_models::{
+use crate::address::{AddressDeserializer, AddressSerializer};
+use crate::amount::{AmountDeserializer, AmountSerializer};
+use crate::async_msg_id::AsyncMessageId;
+use crate::config::GENESIS_KEY;
+use crate::serialization::{StringDeserializer, StringSerializer};
+use crate::slot::{SlotDeserializer, SlotSerializer};
+use crate::types::{Applicable, SetOrKeep, SetOrKeepDeserializer, SetOrKeepSerializer};
+use crate::{
     address::Address,
     amount::Amount,
     serialization::{VecU8Deserializer, VecU8Serializer},
@@ -263,8 +263,7 @@ impl Default for AsyncMessageSerializer {
 impl Serializer<AsyncMessage> for AsyncMessageSerializer {
     /// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger};
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, async_msg::{AsyncMessage, AsyncMessageSerializer, AsyncMessageTrigger}};
     /// use massa_serialization::Serializer;
     /// use std::str::FromStr;
     ///
@@ -380,8 +379,7 @@ impl AsyncMessageDeserializer {
 impl Deserializer<AsyncMessage> for AsyncMessageDeserializer {
     /// ## Example
     /// ```
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer, AsyncMessageTrigger};
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, async_msg::{AsyncMessage, AsyncMessageSerializer, AsyncMessageDeserializer, AsyncMessageTrigger}};
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
     /// use std::str::FromStr;
     ///
@@ -852,7 +850,11 @@ impl Applicable<AsyncMessageUpdate> for AsyncMessageInfo {
 
 #[cfg(test)]
 mod tests {
-    use massa_models::{
+    use crate::{
+        async_msg::{
+            AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageTrigger,
+            AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+        },
         async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
         types::{Applicable, SetOrKeep},
     };
@@ -860,11 +862,6 @@ mod tests {
     use num::rational::Ratio;
 
     use crate::{
-        message::{AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer},
-        AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageTrigger,
-        AsyncMessageUpdate,
-    };
-    use massa_models::{
         address::Address,
         amount::Amount,
         config::{

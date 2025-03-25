@@ -2,18 +2,17 @@
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
-use crate::{
-    changes::AsyncPoolChanges,
-    config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageInfo, AsyncMessageUpdate},
-    AsyncMessageDeserializer, AsyncMessageSerializer,
-};
+use crate::{changes::AsyncPoolChanges, config::AsyncPoolConfig};
 use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
 use massa_models::{
     address::Address,
+    async_msg::{
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
+        AsyncMessageUpdate,
+    },
     async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
     types::Applicable,
 };
@@ -1055,7 +1054,7 @@ mod tests {
     };
     use massa_models::{address::Address, amount::Amount, slot::Slot};
 
-    use crate::message::AsyncMessageTrigger;
+    use massa_models::async_msg::AsyncMessageTrigger;
 
     use massa_db_worker::MassaDB;
     use parking_lot::RwLock;

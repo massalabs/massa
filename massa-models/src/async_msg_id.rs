@@ -42,9 +42,8 @@ impl Serializer<AsyncMessageId> for AsyncMessageIdSerializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::Serializer;
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer}, async_msg::AsyncMessage};
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer};
     ///
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),
@@ -112,9 +111,9 @@ impl Deserializer<AsyncMessageId> for AsyncMessageIdDeserializer {
     /// ```
     /// use std::ops::Bound::Included;
     /// use massa_serialization::{Serializer, Deserializer, DeserializeError};
-    /// use massa_models::{address::Address, amount::Amount, slot::Slot};
+    /// use massa_models::{address::Address, amount::Amount, slot::Slot, async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer}};
+    /// use massa_models::async_msg::AsyncMessage;
     /// use std::str::FromStr;
-    /// use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageIdSerializer, AsyncMessageIdDeserializer};
     ///
     /// let message = AsyncMessage::new(
     ///     Slot::new(1, 0),

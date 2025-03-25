@@ -14,7 +14,6 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
-use massa_async_pool::AsyncMessage;
 use massa_deferred_calls::DeferredCall;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
@@ -26,6 +25,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::async_msg::AsyncMessage;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
 use massa_models::deferred_calls::DeferredCallId;
