@@ -83,7 +83,30 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer};
+<span class="kw">use </span><span class="kw">crate</span>::deferred_calls::DeferredCallId;
+<span class="kw">use crate</span>::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
+<span class="kw">use </span>massa_serialization::Serializer;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::{collections::VecDeque, fmt::Display};
@@ -136,6 +159,10 @@
     </span><span class="kw">pub </span>is_final: bool,
     <span class="doccomment">/// if the sc that emitted this event failed
     </span><span class="kw">pub </span>is_error: bool,
+    <span class="doccomment">/// the deferred call id that is currently being executed
+    </span><span class="kw">pub </span>deferred_call_id: <span class="prelude-ty">Option</span>&lt;DeferredCallId&gt;,
+    <span class="doccomment">/// the async message id that is currently being executed
+    </span><span class="kw">pub </span>async_msg_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
 }
 
 <span class="kw">impl </span>Display <span class="kw">for </span>EventExecutionContext {
@@ -156,6 +183,19 @@
         }
         <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = <span class="self">self</span>.origin_operation_id {
             <span class="macro">writeln!</span>(f, <span class="string">"Origin operation id: {}"</span>, id)<span class="question-mark">?</span>;
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = <span class="kw-2">&amp;</span><span class="self">self</span>.deferred_call_id {
+            <span class="macro">writeln!</span>(f, <span class="string">"Deferred call id: {}"</span>, id)<span class="question-mark">?</span>;
+        }
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = <span class="self">self</span>.async_msg_id {
+            <span class="kw">let </span>serializer = AsyncMessageIdSerializer::new();
+            <span class="kw">let </span><span class="kw-2">mut </span>serialized = Vec::new();
+            serializer.serialize(<span class="kw-2">&amp;</span>id, <span class="kw-2">&amp;mut </span>serialized).unwrap();
+            <span class="macro">writeln!</span>(
+                f,
+                <span class="string">"Async message id: {}"</span>,
+                bs58::encode(serialized).into_string()
+            )<span class="question-mark">?</span>;
         }
         <span class="macro">writeln!</span>(
             f,
