@@ -1589,7 +1589,6 @@
 <a href="#1589" id="1589">1589</a>
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
-<a href="#1592" id="1592">1592</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1606,9 +1605,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::speculative_executed_ops::SpeculativeExecutedOps;
 <span class="kw">use </span><span class="kw">crate</span>::speculative_ledger::SpeculativeLedger;
 <span class="kw">use crate</span>::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-<span class="kw">use </span>massa_async_pool::AsyncMessageInfo;
-
 <span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncPoolChanges};
+<span class="kw">use </span>massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
 <span class="kw">use </span>massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 <span class="kw">use </span>massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 <span class="kw">use </span>massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
@@ -1620,7 +1618,6 @@
 <span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
-<span class="kw">use </span>massa_models::async_msg_id::AsyncMessageId;
 <span class="kw">use </span>massa_models::block_id::BlockIdSerializer;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
@@ -1804,12 +1801,6 @@
     <span class="doccomment">/// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     </span><span class="kw">pub </span>user_event_count_in_current_exec: u16,
-
-    <span class="doccomment">/// The deferred call id that is currently being executed
-    </span><span class="kw">pub </span>deferred_call_id: <span class="prelude-ty">Option</span>&lt;DeferredCallId&gt;,
-
-    <span class="doccomment">/// The async message id that is currently being executed
-    </span><span class="kw">pub </span>async_msg_id: <span class="prelude-ty">Option</span>&lt;AsyncMessageId&gt;,
 }
 
 <span class="kw">impl </span>ExecutionContext {
@@ -1895,8 +1886,6 @@
                 .get_latest_component_version_at(<span class="kw-2">&amp;</span>MipComponent::Execution, ts),
             recursion_counter: <span class="number">0</span>,
             user_event_count_in_current_exec: <span class="number">0</span>,
-            deferred_call_id: Default::default(),
-            async_msg_id: Default::default(),
         }
     }
 
@@ -2905,8 +2894,6 @@
             origin_operation_id: <span class="self">self</span>.origin_operation_id,
             is_final: <span class="bool-val">false</span>,
             is_error,
-            deferred_call_id: <span class="self">self</span>.deferred_call_id.clone(),
-            async_msg_id: <span class="self">self</span>.async_msg_id,
         };
 
         <span class="comment">// Return the event
@@ -3072,10 +3059,21 @@
             <span class="self">self</span>.transfer_coins(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(call.sender_address), call.coins, <span class="bool-val">false</span>);
         <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result.as_ref() {
             <span class="macro">debug!</span>(
-                <span class="string">"deferred call {} fail: reimbursement of {} to {} failed: {}"</span>,
-                id, call.coins, call.sender_address, e
+                <span class="string">"deferred call cancel: reimbursement of {} failed: {}"</span>,
+                call.sender_address, e
             );
         }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>event =
+            <span class="self">self</span>.event_create(<span class="macro">format!</span>(<span class="string">"DeferredCall execution fail call_id:{}"</span>, id), <span class="bool-val">true</span>);
+        <span class="kw">let </span>max_event_size = <span class="kw">match </span><span class="self">self</span>.execution_component_version {
+            <span class="number">0 </span>=&gt; <span class="self">self</span>.config.max_event_size_v0,
+            <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
+        };
+        <span class="kw">if </span>event.data.len() &gt; max_event_size {
+            event.data.truncate(max_event_size);
+        }
+        <span class="self">self</span>.event_emit(event);
 
         <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = transfer_result {
@@ -3098,8 +3096,8 @@
                 <span class="comment">// check that the caller is the one who registered the deferred call
                 </span><span class="kw">if </span>call.sender_address != caller_address {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ExecutionError::DeferredCallsError(<span class="macro">format!</span>(
-                        <span class="string">"only the caller {} can cancel the deferred call (cancel caller: {})"</span>,
-                        call.sender_address, caller_address
+                        <span class="string">"only the caller {} can cancel the deferred call"</span>,
+                        call.sender_address
                     )));
                 }
 
