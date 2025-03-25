@@ -1,7 +1,6 @@
-use crate::async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer};
+use crate::async_msg_id::{AsyncMessageId, AsyncMessageIdWrapper};
 use crate::deferred_calls::DeferredCallId;
 use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
-use massa_serialization::Serializer;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::{collections::VecDeque, fmt::Display};
@@ -83,14 +82,8 @@ impl Display for EventExecutionContext {
             writeln!(f, "Deferred call id: {}", id)?;
         }
         if let Some(id) = self.async_msg_id {
-            let serializer = AsyncMessageIdSerializer::new();
-            let mut serialized = Vec::new();
-            serializer.serialize(&id, &mut serialized).unwrap();
-            writeln!(
-                f,
-                "Async message id: {}",
-                bs58::encode(serialized).into_string()
-            )?;
+            let wrapper = AsyncMessageIdWrapper(id);
+            writeln!(f, "Async message id: {}", wrapper)?;
         }
         writeln!(
             f,

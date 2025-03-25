@@ -11,10 +11,31 @@ use std::ops::Bound::{Excluded, Included};
 
 use crate::slot::{Slot, SlotDeserializer, SlotSerializer};
 
+const ASYNC_MESSAGE_ID_PREFIX: &str = "ASC";
+
 /// Unique identifier of a message.
 /// Also has the property of ordering by priority (highest first) following the triplet:
 /// `(rev(Ratio(msg.fee, max(msg.max_gas,1))), emission_slot, emission_index)`
 pub type AsyncMessageId = (std::cmp::Reverse<Ratio<u64>>, Slot, u64);
+
+#[derive(Clone)]
+pub struct AsyncMessageIdWrapper(pub AsyncMessageId);
+
+impl std::fmt::Display for AsyncMessageIdWrapper {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut bytes = Vec::new();
+        let serializer = AsyncMessageIdSerializer::new();
+        serializer
+            .serialize(&self.0, &mut bytes)
+            .map_err(|_| std::fmt::Error)?;
+        write!(
+            f,
+            "{}{}",
+            ASYNC_MESSAGE_ID_PREFIX,
+            bs58::encode(&bytes).with_check().into_string()
+        )
+    }
+}
 
 #[derive(Clone)]
 pub struct AsyncMessageIdSerializer {
