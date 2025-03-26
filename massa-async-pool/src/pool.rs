@@ -346,7 +346,7 @@ impl AsyncPool {
         &self,
         message_ids: &[AsyncMessageId],
     ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
-        let mut fetched_messages = Vec::new();
+        let mut fetched_messages = Vec::with_capacity(message_ids.len());
 
         for message_id in message_ids {
             let message = self.fetch_message(message_id);
@@ -1120,7 +1120,18 @@ mod tests {
         let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*k, v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().expect(
+                        format!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                        .as_str(),
+                    ),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
 
@@ -1180,7 +1191,18 @@ mod tests {
         let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*k, v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().expect(
+                        format!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                        .as_str(),
+                    ),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1241,7 +1263,18 @@ mod tests {
         let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*k, v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().expect(
+                        format!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                        .as_str(),
+                    ),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
