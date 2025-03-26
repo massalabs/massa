@@ -13,7 +13,7 @@ pub fn handle_disclaimer(accept_disclaimer: bool, approved_disclaimer_file_path:
             .expect("IO Error: Could not query if the disclaimer was approved or not ");
 
         if !accepted_disclaimer {
-            panic!("You have to approve the legal disclaimer to continue. Exiting.");
+            panic!("You have to approve the legal disclaimer to continue. You can read it in 'licenses/Disclaimer_content.txt' and re-run with the flag '-a' or '--accept-disclaimer' to automatically accept them. Exiting.");
         }
     }
     // Create the file to avoid showing the disclaimer again
