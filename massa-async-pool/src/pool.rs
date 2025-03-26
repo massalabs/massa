@@ -1123,13 +1123,12 @@ mod tests {
             .map(|(k, v)| {
                 (
                     *k,
-                    v.clone().expect(
-                        format!(
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
                             "message_id {:?} should have been inserted in the pool above",
                             k
                         )
-                        .as_str(),
-                    ),
+                    }),
                 )
             })
             .collect();
@@ -1194,13 +1193,12 @@ mod tests {
             .map(|(k, v)| {
                 (
                     *k,
-                    v.clone().expect(
-                        format!(
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
                             "message_id {:?} should have been inserted in the pool above",
                             k
                         )
-                        .as_str(),
-                    ),
+                    }),
                 )
             })
             .collect();
@@ -1266,13 +1264,12 @@ mod tests {
             .map(|(k, v)| {
                 (
                     *k,
-                    v.clone().expect(
-                        format!(
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
                             "message_id {:?} should have been inserted in the pool above",
                             k
                         )
-                        .as_str(),
-                    ),
+                    }),
                 )
             })
             .collect();
