@@ -235,14 +235,12 @@ mod test {
     use std::collections::BTreeMap;
     use std::str::FromStr;
 
-    use massa_async_pool::AsyncMessage;
     use massa_deferred_calls::config::DeferredCallsConfig;
     use massa_ledger_exports::LedgerEntryUpdate;
-    use massa_models::address::Address;
-    use massa_models::amount::Amount;
-    use massa_models::bytecode::Bytecode;
-    use massa_models::slot::Slot;
-    use massa_models::types::SetUpdateOrDelete;
+    use massa_models::{
+        address::Address, amount::Amount, async_msg::AsyncMessage, bytecode::Bytecode, slot::Slot,
+        types::SetUpdateOrDelete,
+    };
     use massa_serialization::DeserializeError;
 
     use massa_models::config::{

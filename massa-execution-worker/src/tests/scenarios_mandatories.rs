@@ -1,6 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use massa_async_pool::{AsyncMessage, AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
+use massa_async_pool::{AsyncPool, AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, ShareableMassaDBController};
 use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
@@ -26,6 +26,7 @@ use massa_models::test_exports::gen_endorsements_for_denunciation;
 use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{address::Address, amount::Amount, slot::Slot};
 use massa_models::{
+    async_msg::AsyncMessage,
     denunciation::Denunciation,
     execution::EventFilter,
     operation::{Operation, OperationSerializer, OperationType},

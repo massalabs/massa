@@ -991,6 +991,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1073,6 +1075,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1112,6 +1116,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1154,6 +1160,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1198,6 +1206,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1277,6 +1287,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1352,6 +1364,8 @@ mod tests {
                 origin_operation_id: Some(op_id_1),
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1451,6 +1465,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1560,6 +1576,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1663,6 +1681,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -1746,6 +1766,8 @@ mod tests {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: true,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "error foo bar".to_string(),
         };

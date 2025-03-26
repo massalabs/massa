@@ -5,7 +5,7 @@ use crate::{
     /*test_exports::{assert_eq_final_state, assert_eq_final_state_hash},*/
     FinalState, FinalStateConfig, StateChanges,
 };
-use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
+use massa_async_pool::{AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
 use massa_deferred_calls::config::DeferredCallsConfig;
@@ -18,11 +18,15 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
     KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_FUNCTION_NAME_LENGTH,
-    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
 };
-use massa_models::types::{SetOrKeep, SetUpdateOrDelete};
-use massa_models::{config::MAX_DATASTORE_VALUE_LENGTH, slot::Slot};
+use massa_models::slot::Slot;
+use massa_models::{
+    async_msg::AsyncMessage,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_pos_exports::{PoSConfig, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use parking_lot::RwLock;
