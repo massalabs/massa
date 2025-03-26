@@ -302,66 +302,7 @@
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
-<a href="#310" id="310">310</a>
-<a href="#311" id="311">311</a>
-<a href="#312" id="312">312</a>
-<a href="#313" id="313">313</a>
-<a href="#314" id="314">314</a>
-<a href="#315" id="315">315</a>
-<a href="#316" id="316">316</a>
-<a href="#317" id="317">317</a>
-<a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a>
-<a href="#322" id="322">322</a>
-<a href="#323" id="323">323</a>
-<a href="#324" id="324">324</a>
-<a href="#325" id="325">325</a>
-<a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
-<a href="#330" id="330">330</a>
-<a href="#331" id="331">331</a>
-<a href="#332" id="332">332</a>
-<a href="#333" id="333">333</a>
-<a href="#334" id="334">334</a>
-<a href="#335" id="335">335</a>
-<a href="#336" id="336">336</a>
-<a href="#337" id="337">337</a>
-<a href="#338" id="338">338</a>
-<a href="#339" id="339">339</a>
-<a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a>
-<a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>massa_models::async_msg_id::{
-    AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-};
-<span class="kw">use </span>massa_models::deferred_calls::{
-    DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer,
-};
-<span class="kw">use </span>std::collections::Bound::{Excluded, Included};
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::Bound::{Excluded, Included};
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="comment">// third-party
 </span><span class="kw">use </span>nom::{
@@ -392,8 +333,6 @@
     block_id_ser: OptionSerializer&lt;BlockId, BlockIdSerializer&gt;,
     op_id_ser: OptionSerializer&lt;OperationId, OperationIdSerializer&gt;,
     data_ser: StringSerializer&lt;U64VarIntSerializer, u64&gt;,
-    deferred_call_id_ser: OptionSerializer&lt;DeferredCallId, DeferredCallIdSerializer&gt;,
-    async_msg_id_ser: OptionSerializer&lt;AsyncMessageId, AsyncMessageIdSerializer&gt;,
 }
 
 <span class="kw">impl </span>SCOutputEventSerializer {
@@ -406,8 +345,6 @@
             block_id_ser: OptionSerializer::new(BlockIdSerializer::new()),
             op_id_ser: OptionSerializer::new(OperationIdSerializer::new()),
             data_ser: StringSerializer::new(U64VarIntSerializer::new()),
-            deferred_call_id_ser: OptionSerializer::new(DeferredCallIdSerializer::new()),
-            async_msg_id_ser: OptionSerializer::new(AsyncMessageIdSerializer::new()),
         }
     }
 }
@@ -446,12 +383,6 @@
 
         <span class="comment">// data
         </span><span class="self">self</span>.data_ser.serialize(<span class="kw-2">&amp;</span>value.data, buffer)<span class="question-mark">?</span>;
-
-        <span class="self">self</span>.deferred_call_id_ser
-            .serialize(<span class="kw-2">&amp;</span>value.context.deferred_call_id, buffer)<span class="question-mark">?</span>;
-        <span class="self">self</span>.async_msg_id_ser
-            .serialize(<span class="kw-2">&amp;</span>value.context.async_msg_id, buffer)<span class="question-mark">?</span>;
-
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -465,8 +396,6 @@
     block_id_deser: OptionDeserializer&lt;BlockId, BlockIdDeserializer&gt;,
     op_id_deser: OptionDeserializer&lt;OperationId, OperationIdDeserializer&gt;,
     data_deser: StringDeserializer&lt;U64VarIntDeserializer, u64&gt;,
-    deferred_call_id_deser: OptionDeserializer&lt;DeferredCallId, DeferredCallIdDeserializer&gt;,
-    async_msg_id_deser: OptionDeserializer&lt;AsyncMessageId, AsyncMessageIdDeserializer&gt;,
 }
 
 <span class="kw">impl </span>SCOutputEventDeserializer {
@@ -487,10 +416,6 @@
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
                 Included(<span class="number">0</span>),
                 Included(args.max_event_data_length),
-            )),
-            deferred_call_id_deser: OptionDeserializer::new(DeferredCallIdDeserializer::new()),
-            async_msg_id_deser: OptionDeserializer::new(AsyncMessageIdDeserializer::new(
-                args.thread_count,
             )),
         }
     }
@@ -569,28 +494,10 @@
                 context(<span class="string">"Failed data deserialization"</span>, |input| {
                     <span class="self">self</span>.data_deser.deserialize(input)
                 }),
-                context(<span class="string">"Failed deferred call id deserialization"</span>, |input| {
-                    <span class="self">self</span>.deferred_call_id_deser.deserialize(input)
-                }),
-                context(<span class="string">"Failed async msg id deserialization"</span>, |input| {
-                    <span class="self">self</span>.async_msg_id_deser.deserialize(input)
-                }),
             )),
         )
         .map(
-            |(
-                slot,
-                bid,
-                read_only,
-                idx,
-                call_stack,
-                oid,
-                is_final,
-                is_error,
-                data,
-                deferred_call_id,
-                async_msg_id,
-            )| {
+            |(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
                 SCOutputEvent {
                     context: EventExecutionContext {
                         slot,
@@ -601,8 +508,6 @@
                         origin_operation_id: oid,
                         is_final,
                         is_error,
-                        deferred_call_id,
-                        async_msg_id,
                     },
                     data,
                 }
@@ -642,11 +547,6 @@
                 origin_operation_id: <span class="prelude-val">None</span>,
                 is_final: <span class="bool-val">true</span>,
                 is_error: <span class="bool-val">false</span>,
-                deferred_call_id: <span class="prelude-val">Some</span>(
-                    massa_models::deferred_calls::DeferredCallId::new(<span class="number">0</span>, Slot::new(<span class="number">1</span>, <span class="number">0</span>), <span class="number">1</span>, <span class="kw-2">&amp;</span>[])
-                        .unwrap(),
-                ),
-                async_msg_id: <span class="prelude-val">None</span>,
             },
             data: <span class="string">"message foo bar"</span>.to_string(),
         };
@@ -667,10 +567,6 @@
 
         <span class="macro">assert_eq!</span>(event.context, event_new.context);
         <span class="macro">assert_eq!</span>(event.data, event_new.data);
-        <span class="macro">assert_eq!</span>(
-            event.context.deferred_call_id.unwrap().get_slot().unwrap(),
-            Slot::new(<span class="number">1</span>, <span class="number">0</span>)
-        );
         <span class="macro">assert!</span>(rem.is_empty());
     }
 
@@ -691,8 +587,6 @@
                 origin_operation_id: <span class="prelude-val">None</span>,
                 is_final: <span class="bool-val">true</span>,
                 is_error: <span class="bool-val">false</span>,
-                deferred_call_id: <span class="prelude-val">None</span>,
-                async_msg_id: <span class="prelude-val">None</span>,
             },
             data: <span class="string">"message foo bar"</span>.to_string(),
         };
