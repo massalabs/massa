@@ -1,3 +1,9 @@
+use massa_models::async_msg_id::{
+    AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+};
+use massa_models::deferred_calls::{
+    DeferredCallId, DeferredCallIdDeserializer, DeferredCallIdSerializer,
+};
 use std::collections::Bound::{Excluded, Included};
 use std::collections::VecDeque;
 // third-party
@@ -29,6 +35,8 @@ pub struct SCOutputEventSerializer {
     block_id_ser: OptionSerializer<BlockId, BlockIdSerializer>,
     op_id_ser: OptionSerializer<OperationId, OperationIdSerializer>,
     data_ser: StringSerializer<U64VarIntSerializer, u64>,
+    deferred_call_id_ser: OptionSerializer<DeferredCallId, DeferredCallIdSerializer>,
+    async_msg_id_ser: OptionSerializer<AsyncMessageId, AsyncMessageIdSerializer>,
 }
 
 impl SCOutputEventSerializer {
@@ -41,6 +49,8 @@ impl SCOutputEventSerializer {
             block_id_ser: OptionSerializer::new(BlockIdSerializer::new()),
             op_id_ser: OptionSerializer::new(OperationIdSerializer::new()),
             data_ser: StringSerializer::new(U64VarIntSerializer::new()),
+            deferred_call_id_ser: OptionSerializer::new(DeferredCallIdSerializer::new()),
+            async_msg_id_ser: OptionSerializer::new(AsyncMessageIdSerializer::new()),
         }
     }
 }
@@ -79,6 +89,12 @@ impl Serializer<SCOutputEvent> for SCOutputEventSerializer {
 
         // data
         self.data_ser.serialize(&value.data, buffer)?;
+
+        self.deferred_call_id_ser
+            .serialize(&value.context.deferred_call_id, buffer)?;
+        self.async_msg_id_ser
+            .serialize(&value.context.async_msg_id, buffer)?;
+
         Ok(())
     }
 }
@@ -92,6 +108,8 @@ pub struct SCOutputEventDeserializer {
     block_id_deser: OptionDeserializer<BlockId, BlockIdDeserializer>,
     op_id_deser: OptionDeserializer<OperationId, OperationIdDeserializer>,
     data_deser: StringDeserializer<U64VarIntDeserializer, u64>,
+    deferred_call_id_deser: OptionDeserializer<DeferredCallId, DeferredCallIdDeserializer>,
+    async_msg_id_deser: OptionDeserializer<AsyncMessageId, AsyncMessageIdDeserializer>,
 }
 
 impl SCOutputEventDeserializer {
@@ -112,6 +130,10 @@ impl SCOutputEventDeserializer {
             data_deser: StringDeserializer::new(U64VarIntDeserializer::new(
                 Included(0),
                 Included(args.max_event_data_length),
+            )),
+            deferred_call_id_deser: OptionDeserializer::new(DeferredCallIdDeserializer::new()),
+            async_msg_id_deser: OptionDeserializer::new(AsyncMessageIdDeserializer::new(
+                args.thread_count,
             )),
         }
     }
@@ -190,10 +212,28 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                 context("Failed data deserialization", |input| {
                     self.data_deser.deserialize(input)
                 }),
+                context("Failed deferred call id deserialization", |input| {
+                    self.deferred_call_id_deser.deserialize(input)
+                }),
+                context("Failed async msg id deserialization", |input| {
+                    self.async_msg_id_deser.deserialize(input)
+                }),
             )),
         )
         .map(
-            |(slot, bid, read_only, idx, call_stack, oid, is_final, is_error, data)| {
+            |(
+                slot,
+                bid,
+                read_only,
+                idx,
+                call_stack,
+                oid,
+                is_final,
+                is_error,
+                data,
+                deferred_call_id,
+                async_msg_id,
+            )| {
                 SCOutputEvent {
                     context: EventExecutionContext {
                         slot,
@@ -204,6 +244,8 @@ impl Deserializer<SCOutputEvent> for SCOutputEventDeserializer {
                         origin_operation_id: oid,
                         is_final,
                         is_error,
+                        deferred_call_id,
+                        async_msg_id,
                     },
                     data,
                 }
@@ -243,6 +285,11 @@ mod test {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: Some(
+                    massa_models::deferred_calls::DeferredCallId::new(0, Slot::new(1, 0), 1, &[])
+                        .unwrap(),
+                ),
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
@@ -263,6 +310,10 @@ mod test {
 
         assert_eq!(event.context, event_new.context);
         assert_eq!(event.data, event_new.data);
+        assert_eq!(
+            event.context.deferred_call_id.unwrap().get_slot().unwrap(),
+            Slot::new(1, 0)
+        );
         assert!(rem.is_empty());
     }
 
@@ -283,6 +334,8 @@ mod test {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: "message foo bar".to_string(),
         };
