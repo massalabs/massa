@@ -2453,10 +2453,10 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::context::ExecutionContext;
 <span class="kw">use </span>anyhow::{anyhow, bail, <span class="prelude-ty">Result</span>};
-<span class="kw">use </span>massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_execution_exports::ExecutionConfig;
 <span class="kw">use </span>massa_execution_exports::ExecutionStackElement;
+<span class="kw">use </span>massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;

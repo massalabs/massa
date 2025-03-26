@@ -2754,6 +2754,8 @@
 <a href="#2754" id="2754">2754</a>
 <a href="#2755" id="2755">2755</a>
 <a href="#2756" id="2756">2756</a>
+<a href="#2757" id="2757">2757</a>
+<a href="#2758" id="2758">2758</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -2770,7 +2772,6 @@
 <span class="kw">use </span><span class="kw">crate</span>::stats::ExecutionStatsCounter;
 <span class="attr">#[cfg(feature = <span class="string">"dump-block"</span>)]
 </span><span class="kw">use </span><span class="kw">crate</span>::storage_backend::StorageBackend;
-<span class="kw">use </span>massa_async_pool::AsyncMessage;
 <span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_event_cache::controller::EventCacheController;
 <span class="kw">use </span>massa_execution_exports::{
@@ -2782,6 +2783,7 @@
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::address::ExecutionAddressCycleInfo;
+<span class="kw">use </span>massa_models::async_msg::AsyncMessage;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
 <span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
 <span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
@@ -3956,6 +3958,7 @@
             context.gas_remaining_before_subexecution = <span class="prelude-val">None</span>;
             context.recursion_counter = <span class="number">0</span>;
             context.user_event_count_in_current_exec = <span class="number">0</span>;
+            context.async_msg_id = <span class="prelude-val">Some</span>(message.compute_id());
 
             <span class="comment">// check the target address
             </span><span class="kw">if let </span><span class="prelude-val">Err</span>(err) = context.check_target_sc_address(message.destination) {
@@ -4123,6 +4126,7 @@
                     context.gas_remaining_before_subexecution = <span class="prelude-val">None</span>;
                     context.recursion_counter = <span class="number">0</span>;
                     context.user_event_count_in_current_exec = <span class="number">0</span>;
+                    context.deferred_call_id = <span class="prelude-val">Some</span>(id.clone());
 
                     <span class="comment">// Ensure that the target address is an SC address
                     // Ensure that the target address exists
