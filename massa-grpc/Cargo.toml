@@ -11,7 +11,7 @@ documentation = "https://docs.massa.net/"
 execution-trace = ["serde_json"]
 dump-block = []
 test-exports = []
-execution-info = ["execution-trace"]
+execution-info = ["execution-trace", "massa_execution_exports/execution-info"]
 
 [dependencies]
 massa-proto-rs = { workspace = true, "features" = ["tonic"] }

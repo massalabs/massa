@@ -74,7 +74,7 @@ pub use types::{
 #[cfg(any(feature = "test-exports", feature = "gas_calibration"))]
 pub mod test_exports;
 
-/// types for execution-trace / execution-info
+/// types for execution-trace
 pub mod types_trace_info;
 
 /// types for execution-info
