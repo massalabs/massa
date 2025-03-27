@@ -361,23 +361,27 @@ impl SpeculativeAsyncPool {
         let pool_changes_clone = self.pool_changes.clone();
 
         // First, look in speculative pool
-        for (index, &message_id) in wanted_ids.iter().enumerate() {
+        for (index, message_id) in wanted_ids.iter().enumerate() {
             match pool_changes_clone.0.get(message_id) {
                 Some(SetUpdateOrDelete::Set(msg)) => {
                     if delete_existing {
-                        self.pool_changes.push_delete(*message_id);
+                        self.pool_changes.push_delete(**message_id);
                     }
-                    msgs_opt.push((*message_id, Some(msg.clone())));
+                    msgs_opt.push((**message_id, Some(msg.clone())));
                 }
                 Some(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
                         e.apply(msg_update.clone());
                     });
-                    msgs_opt.push((*message_id, None));
+                    msgs_opt.push((**message_id, None));
                     still_wanted_ids_index.push(index);
                 }
-                Some(SetUpdateOrDelete::Delete) | None => {
-                    msgs_opt.push((*message_id, None));
+                Some(SetUpdateOrDelete::Delete) => {
+                    msgs_opt.push((**message_id, None));
+                    still_wanted_ids_index.push(index)
+                }
+                None => {
+                    msgs_opt.push((**message_id, None));
                     still_wanted_ids_index.push(index)
                 }
             }
@@ -416,14 +420,14 @@ impl SpeculativeAsyncPool {
                 .collect(),
         );
 
-        for (index, (message_id, message)) in fetched_msgs.into_iter().enumerate() {
+        for (index, (message_id, message)) in fetched_msgs.iter().enumerate() {
             if let Some(msg) = message {
                 let mut msg = msg.clone();
                 msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
                 if delete_existing {
-                    self.pool_changes.push_delete(*message_id);
+                    self.pool_changes.push_delete(**message_id);
                 }
-                *msgs_opt.get_mut(index).unwrap() = (*message_id, Some(msg.clone()));
+                *msgs_opt.get_mut(index).unwrap() = (**message_id, Some(msg.clone()));
             }
         }
 
