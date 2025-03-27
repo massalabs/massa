@@ -344,12 +344,11 @@ impl SpeculativeAsyncPool {
 
     fn fetch_msgs_v1(
         &mut self,
-        wanted_ids: Vec<&AsyncMessageId>,
+        mut wanted_ids: Vec<&AsyncMessageId>,
         delete_existing: bool,
         execution_component_version: u32,
-    ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
-        let mut msgs_opt = Vec::new();
-        let mut still_wanted_ids_index = Vec::new();
+    ) -> BTreeMap<AsyncMessageId, AsyncMessage> {
+        let mut msgs = BTreeMap::new();
 
         let mut current_changes = HashMap::new();
         for id in wanted_ids.iter() {
@@ -359,34 +358,26 @@ impl SpeculativeAsyncPool {
         let pool_changes_clone = self.pool_changes.clone();
 
         // First, look in speculative pool
-        for (index, message_id) in wanted_ids.iter().enumerate() {
-            match pool_changes_clone.0.get(message_id) {
-                Some(SetUpdateOrDelete::Set(msg)) => {
-                    if delete_existing {
-                        self.pool_changes.push_delete(**message_id);
-                    }
-                    msgs_opt.push((**message_id, Some(msg.clone())));
+        wanted_ids.retain(|&message_id| match pool_changes_clone.0.get(message_id) {
+            Some(SetUpdateOrDelete::Set(msg)) => {
+                if delete_existing {
+                    self.pool_changes.push_delete(*message_id);
                 }
-                Some(SetUpdateOrDelete::Update(msg_update)) => {
-                    current_changes.entry(message_id).and_modify(|e| {
-                        e.apply(msg_update.clone());
-                    });
-                    msgs_opt.push((**message_id, None));
-                    still_wanted_ids_index.push(index);
-                }
-                Some(SetUpdateOrDelete::Delete) => {
-                    msgs_opt.push((**message_id, None));
-                    still_wanted_ids_index.push(index)
-                }
-                None => {
-                    msgs_opt.push((**message_id, None));
-                    still_wanted_ids_index.push(index)
-                }
+                msgs.insert(*message_id, msg.clone());
+                false
             }
-        }
+            Some(SetUpdateOrDelete::Update(msg_update)) => {
+                current_changes.entry(message_id).and_modify(|e| {
+                    e.apply(msg_update.clone());
+                });
+                true
+            }
+            Some(SetUpdateOrDelete::Delete) => true,
+            None => true,
+        });
 
-        still_wanted_ids_index.retain(|index| {
-            let message_id = wanted_ids[*index];
+        // Then, search the active history
+        wanted_ids.retain(|&message_id| {
             match self.active_history.read().fetch_message(
                 message_id,
                 current_changes.get(message_id).cloned().unwrap_or_default(),
@@ -397,39 +388,39 @@ impl SpeculativeAsyncPool {
                     if delete_existing {
                         self.pool_changes.push_delete(*message_id);
                     }
-                    *msgs_opt.get_mut(*index).unwrap() = (*message_id, Some(msg.clone()));
-                    false
+                    msgs.insert(*message_id, msg);
+                    return false;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
                         *e = msg_update.clone();
                     });
-                    true
+                    return true;
                 }
-                _ => true,
+                _ => {}
             }
+            true
         });
 
         // Then, fetch all the remaining messages from the final state
-        let fetched_msgs = self.final_state.read().get_async_pool().fetch_messages(
-            still_wanted_ids_index
-                .into_iter()
-                .map(|index| wanted_ids[index])
-                .collect(),
-        );
+        let fetched_msgs = self
+            .final_state
+            .read()
+            .get_async_pool()
+            .fetch_messages(wanted_ids);
 
-        for (index, (message_id, message)) in fetched_msgs.iter().enumerate() {
+        for (message_id, message) in fetched_msgs {
             if let Some(msg) = message {
                 let mut msg = msg.clone();
                 msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
                 if delete_existing {
-                    self.pool_changes.push_delete(**message_id);
+                    self.pool_changes.push_delete(*message_id);
                 }
-                *msgs_opt.get_mut(index).unwrap() = (**message_id, Some(msg.clone()));
+                msgs.insert(*message_id, msg);
             }
         }
 
-        msgs_opt
+        msgs
     }
 
     fn fetch_msgs(
@@ -440,11 +431,11 @@ impl SpeculativeAsyncPool {
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         match execution_component_version {
             0 => self.fetch_msgs_v0(wanted_ids, delete_existing),
-            _ => self
-                .fetch_msgs_v1(wanted_ids, delete_existing, execution_component_version)
-                .into_iter()
-                .map(|(id, msg_opt)| (id, msg_opt.unwrap()))
-                .collect(),
+            _ => {
+                let msgs =
+                    self.fetch_msgs_v1(wanted_ids, delete_existing, execution_component_version);
+                msgs.into_iter().collect()
+            }
         }
     }
 
