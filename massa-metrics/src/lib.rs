@@ -46,10 +46,17 @@ lazy_static! {
         static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
             "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
 
+        static ref EVENT_CACHE_VEC: IntGauge = register_int_gauge!(
+            "event_cache_vec_len", "vector len for events" ).unwrap();
+
 }
 
 pub fn inc_deferred_calls_registered() {
     DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_event_cache_vec_len(val: usize) {
+    EVENT_CACHE_VEC.set(val as i64);
 }
 
 pub fn set_deferred_calls_total_gas(val: u128) {
@@ -65,11 +72,21 @@ pub fn inc_deferred_calls_failed_by(val: u64) {
 }
 
 pub fn dec_deferred_calls_cancelled_by(val: u64) {
-    DEFERRED_CALL_CANCELLED.set(DEFERRED_CALL_CANCELLED.get().saturating_sub(val as i64));
+    DEFERRED_CALL_CANCELLED.set(
+        DEFERRED_CALL_CANCELLED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
 }
 
 pub fn dec_deferred_calls_registered_by(val: u64) {
-    DEFERRED_CALL_REGISTERED.set(DEFERRED_CALL_REGISTERED.get().saturating_sub(val as i64));
+    DEFERRED_CALL_REGISTERED.set(
+        DEFERRED_CALL_REGISTERED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
 }
 
 pub fn inc_deferred_calls_cancelled() {
@@ -219,6 +236,16 @@ pub struct MassaMetrics {
     // network versions votes <version, votes>
     network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
     network_current_version: IntGauge,
+
+    // massa-db
+    db_change_history_size: IntGauge,
+    db_change_versioning_history_size: IntGauge,
+
+    // module cache
+    module_lru_cache_memory_usage: IntGauge,
+
+    // active history
+    active_history_total_event_len: IntGauge,
 
     pub tick_delay: Duration,
 }
@@ -457,6 +484,30 @@ impl MassaMetrics {
         let network_current_version =
             IntGauge::new("network_current_version", "current version of network").unwrap();
 
+        let db_change_history_size = IntGauge::new(
+            "db_change_history_size",
+            "total size of change history in DB",
+        )
+        .unwrap();
+
+        let db_change_versioning_history_size = IntGauge::new(
+            "db_change_versioning_history_size",
+            "total size of change versioning history in DB",
+        )
+        .unwrap();
+
+        let module_lru_cache_memory_usage = IntGauge::new(
+            "module_lru_cache_memory_usage",
+            "total size of the lru module cache in bytes",
+        )
+        .unwrap();
+
+        let active_history_total_event_len = IntGauge::new(
+            "active_history_total_event_len",
+            "total events len currently in the active history (1 event: max 1kB)",
+        )
+        .unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -510,6 +561,10 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
                 let _ = prometheus::register(Box::new(network_current_version.clone()));
+                let _ = prometheus::register(Box::new(db_change_history_size.clone()));
+                let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
+                let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
+                let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -567,6 +622,10 @@ impl MassaMetrics {
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
                 network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
                 network_current_version,
+                db_change_history_size,
+                db_change_versioning_history_size,
+                module_lru_cache_memory_usage,
+                active_history_total_event_len,
                 tick_delay,
             },
             stopper,
@@ -758,6 +817,22 @@ impl MassaMetrics {
 
     pub fn set_network_current_version(&self, version: u32) {
         self.network_current_version.set(version as i64);
+    }
+
+    pub fn set_db_change_history_size(&self, size: usize) {
+        self.db_change_history_size.set(size as i64);
+    }
+
+    pub fn set_db_change_versioning_history_size(&self, size: usize) {
+        self.db_change_versioning_history_size.set(size as i64);
+    }
+
+    pub fn set_module_lru_cache_memory_usage(&self, size: usize) {
+        self.module_lru_cache_memory_usage.set(size as i64);
+    }
+
+    pub fn set_active_history_total_event_len(&self, size: usize) {
+        self.active_history_total_event_len.set(size as i64);
     }
 
     // Update the network version vote metrics

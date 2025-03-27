@@ -621,6 +621,8 @@ async fn get_sc_execution_events() {
                     ),
                     is_final: false,
                     is_error: false,
+                    deferred_call_id: None,
+                    async_msg_id: None,
                 },
                 data: "massa".to_string(),
             }]

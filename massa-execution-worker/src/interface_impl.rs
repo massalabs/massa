@@ -6,11 +6,11 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
 use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::{
     execution_info::TransferContext, ExecutionConfig, ExecutionStackElement,
 };
+use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -121,6 +121,7 @@ impl InterfaceImpl {
             max_versioning_elements_size: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
 
         let db = Arc::new(RwLock::new(
@@ -1707,6 +1708,10 @@ impl Interface for InterfaceImpl {
         let context = context_guard!(self);
         let current_slot = context.slot;
 
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
+
         let target_slot = Slot::new(target_slot.0, target_slot.1);
 
         let gas_request =
@@ -1745,6 +1750,10 @@ impl Interface for InterfaceImpl {
         coins: u64,
     ) -> Result<String> {
         // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
+
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
 
         let target_addr = Address::from_str(target_addr).map_err(|e| e.to_string())?;
 

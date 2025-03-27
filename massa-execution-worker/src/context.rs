@@ -14,8 +14,8 @@ use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
+use massa_async_pool::AsyncPoolChanges;
+
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
@@ -30,6 +30,8 @@ use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo};
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::cleanup_datastore_key_range_query;
@@ -223,6 +225,12 @@ pub struct ExecutionContext {
     /// Execution info
     #[cfg(feature = "execution-info")]
     pub execution_info: ExecutionInfoForSlot,
+
+    /// The deferred call id that is currently being executed
+    pub deferred_call_id: Option<DeferredCallId>,
+
+    /// The async message id that is currently being executed
+    pub async_msg_id: Option<AsyncMessageId>,
 }
 
 impl ExecutionContext {
@@ -315,6 +323,8 @@ impl ExecutionContext {
             transfers_history,
             #[cfg(feature = "execution-info")]
             execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, None),
+            deferred_call_id: Default::default(),
+            async_msg_id: Default::default(),
         }
     }
 
@@ -1385,6 +1395,8 @@ impl ExecutionContext {
             origin_operation_id: self.origin_operation_id,
             is_final: false,
             is_error,
+            deferred_call_id: self.deferred_call_id.clone(),
+            async_msg_id: self.async_msg_id,
         };
 
         // Return the event
@@ -1555,21 +1567,10 @@ impl ExecutionContext {
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
-                "deferred call cancel: reimbursement of {} failed: {}",
-                call.sender_address, e
+                "deferred call {} fail: reimbursement of {} to {} failed: {}",
+                id, call.coins, call.sender_address, e
             );
         }
-
-        let mut event =
-            self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
-        let max_event_size = match self.execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
-        };
-        if event.data.len() > max_event_size {
-            event.data.truncate(max_event_size);
-        }
-        self.event_emit(event);
 
         #[cfg(feature = "execution-info")]
         if let Err(e) = transfer_result {
@@ -1592,8 +1593,8 @@ impl ExecutionContext {
                 // check that the caller is the one who registered the deferred call
                 if call.sender_address != caller_address {
                     return Err(ExecutionError::DeferredCallsError(format!(
-                        "only the caller {} can cancel the deferred call",
-                        call.sender_address
+                        "only the caller {} can cancel the deferred call (cancel caller: {})",
+                        call.sender_address, caller_address
                     )));
                 }
 

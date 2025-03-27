@@ -717,6 +717,7 @@ mod tests {
             max_versioning_elements_size: 100_000,
             max_ledger_backups: 10,
             thread_count: 32,
+            enable_metrics: false,
         };
 
         let db = Arc::new(RwLock::new(

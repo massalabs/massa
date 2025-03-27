@@ -15,7 +15,6 @@ use crate::interface_impl::InterfaceImpl;
 use crate::stats::ExecutionStatsCounter;
 #[cfg(feature = "dump-block")]
 use crate::storage_backend::StorageBackend;
-use massa_async_pool::AsyncMessage;
 use massa_deferred_calls::DeferredCall;
 use massa_event_cache::controller::EventCacheController;
 use massa_execution_exports::{
@@ -27,6 +26,7 @@ use massa_execution_exports::{
 use massa_final_state::FinalStateController;
 use massa_metrics::MassaMetrics;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::async_msg::AsyncMessage;
 use massa_models::bytecode::Bytecode;
 use massa_models::deferred_calls::DeferredCallId;
 use massa_models::denunciation::{Denunciation, DenunciationIndex};
@@ -108,7 +108,7 @@ pub(crate) struct ExecutionState {
     // Whenever an executed active slot becomes final,
     // its output is popped from the front of active_history and applied to the final state.
     // It has atomic R/W access.
-    active_history: Arc<RwLock<ActiveHistory>>,
+    pub active_history: Arc<RwLock<ActiveHistory>>,
     // a cursor pointing to the highest executed slot
     pub active_cursor: Slot,
     // a cursor pointing to the highest executed final slot
@@ -124,7 +124,7 @@ pub(crate) struct ExecutionState {
     // execution statistics
     stats_counter: ExecutionStatsCounter,
     // cache of pre compiled sc modules
-    module_cache: Arc<RwLock<ModuleCache>>,
+    pub module_cache: Arc<RwLock<ModuleCache>>,
     // MipStore (Versioning)
     mip_store: MipStore,
     // wallet used to verify double staking on local addresses
@@ -1249,6 +1249,7 @@ impl ExecutionState {
             context.gas_remaining_before_subexecution = None;
             context.recursion_counter = 0;
             context.user_event_count_in_current_exec = 0;
+            context.async_msg_id = Some(message.compute_id());
 
             // check the target address
             if let Err(err) = context.check_target_sc_address(message.destination) {
@@ -1426,6 +1427,7 @@ impl ExecutionState {
                     context.gas_remaining_before_subexecution = None;
                     context.recursion_counter = 0;
                     context.user_event_count_in_current_exec = 0;
+                    context.deferred_call_id = Some(id.clone());
 
                     // Ensure that the target address is an SC address
                     // Ensure that the target address exists

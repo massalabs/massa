@@ -2,19 +2,24 @@
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
-use crate::{
-    changes::AsyncPoolChanges,
-    config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
-    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
-};
+use crate::{changes::AsyncPoolChanges, config::AsyncPoolConfig};
 use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_models::address::Address;
-use massa_models::types::{Applicable, SetOrKeep, SetUpdateOrDelete};
+use massa_models::{
+    address::Address,
+    async_msg::{
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
+        AsyncMessageUpdate,
+    },
+    async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
+    types::Applicable,
+};
+use massa_models::{
+    async_msg_id::AsyncMessageIdDeserializer,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -1049,7 +1054,7 @@ mod tests {
     };
     use massa_models::{address::Address, amount::Amount, slot::Slot};
 
-    use crate::message::AsyncMessageTrigger;
+    use massa_models::async_msg::AsyncMessageTrigger;
 
     use massa_db_worker::MassaDB;
     use parking_lot::RwLock;
@@ -1100,6 +1105,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1142,6 +1148,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1204,6 +1211,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1261,6 +1269,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1318,6 +1327,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1368,6 +1378,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),

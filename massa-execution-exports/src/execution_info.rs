@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use massa_async_pool::AsyncMessageId;
 use massa_hash::Hash;
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockId;
 use massa_models::config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT};
 use massa_models::deferred_calls::DeferredCallId;
@@ -175,7 +175,7 @@ impl ExecutionInfoForSlot {
     pub fn build_transfer_list(&mut self) {
         #[cfg(feature = "execution-info")]
         {
-            use massa_async_pool::AsyncMessageIdSerializer;
+            use massa_models::async_msg_id::AsyncMessageIdSerializer;
             use massa_serialization::Serializer;
             use tracing::error;
             let msg_id_serializer = AsyncMessageIdSerializer::new();
