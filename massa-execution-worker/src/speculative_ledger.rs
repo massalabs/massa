@@ -553,7 +553,6 @@ impl SpeculativeLedger {
             || Ok(Amount::zero()),
             |(new_key, new_value)| self.get_storage_cost_datastore_entry(new_key, new_value),
         )?;
-
         // charge the difference
         match new_storage_cost.cmp(&old_storage_cost) {
             Ordering::Greater => {

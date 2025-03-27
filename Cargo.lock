@@ -3258,7 +3258,6 @@ dependencies = [
  "displaydoc",
  "massa-proto-rs",
  "massa-sc-runtime",
- "massa_async_pool",
  "massa_deferred_calls",
  "massa_final_state",
  "massa_hash",

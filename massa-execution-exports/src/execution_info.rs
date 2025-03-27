@@ -72,27 +72,40 @@ impl TransferInfo {
     }
 }
 
+#[derive(Debug, Default, Clone, Serialize)]
+/// context for the transfer
+pub struct OriginTransferContext {
+    /// original operation id
+    pub operation_id: Option<OperationId>,
+    /// deferred call id
+    pub deferred_call_id: Option<DeferredCallId>,
+    /// async message id
+    pub async_message_id: Option<AsyncMessageId>,
+    /// async message id as string
+    pub async_message_id_str: Option<String>,
+    /// denunciation index
+    pub denunciation_index: Option<DenunciationIndex>,
+}
+
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Serialize)]
 pub enum TransferContext {
-    TransactionCoins(OperationId),
-    /// (AsyncMessageId, serialized AsyncMessageId)
-    AyncMsgCancel(Option<AsyncMessageId>, Option<String>),
-    DeferredCredits(Option<DenunciationIndex>),
-    DeferredCallFail(DeferredCallId),
-    DeferredCallCancel(DeferredCallId),
-    DeferredCallCoins(DeferredCallId),
-    DeferredCallRegister,
-    DeferredCallStorageRefund(DeferredCallId),
-    OperationFee(OperationId),
-    RollBuy(OperationId),
-    RollSell(OperationId),
+    TransactionCoins(OriginTransferContext),
+    AyncMsgCancel(OriginTransferContext),
+    DeferredCredits(OriginTransferContext),
+    DeferredCallFail(OriginTransferContext),
+    DeferredCallCancel(OriginTransferContext),
+    DeferredCallCoins(OriginTransferContext),
+    DeferredCallRegister(OriginTransferContext),
+    DeferredCallStorageRefund(OriginTransferContext),
+    OperationFee(OriginTransferContext),
+    RollBuy(OriginTransferContext),
+    RollSell(OriginTransferContext),
     RollSlash,
     CreateSCStorage,
     DatastoreStorage,
-    CallSCCoins(OperationId),
-    /// (AsyncMessageId, serialized AsyncMessageId)
-    AsyncMsgCoins(Option<AsyncMessageId>, Option<String>),
+    CallSCCoins(OriginTransferContext),
+    AsyncMsgCoins(OriginTransferContext),
     EndorsementCreatorReward,
     EndorsementTargetReward,
     BlockCreatorReward,
@@ -188,9 +201,9 @@ impl ExecutionInfoForSlot {
 
                     // serialize the msg_id if it exists
                     match &transfer.context {
-                        TransferContext::AsyncMsgCoins(msg_id, _msg_id_str)
-                        | TransferContext::AyncMsgCancel(msg_id, _msg_id_str) => {
-                            if let Some(id) = msg_id {
+                        TransferContext::AsyncMsgCoins(ctx)
+                        | TransferContext::AyncMsgCancel(ctx) => {
+                            if let Some(id) = ctx.async_message_id {
                                 let mut buf = Vec::new();
                                 let str_opt: Option<String> =
                                     match msg_id_serializer.serialize(&id, &mut buf) {
@@ -201,11 +214,17 @@ impl ExecutionInfoForSlot {
                                         }
                                     };
                                 transfer.context = match transfer.context {
-                                    TransferContext::AsyncMsgCoins(_, _) => {
-                                        TransferContext::AsyncMsgCoins(None, str_opt)
+                                    TransferContext::AsyncMsgCoins(_) => {
+                                        TransferContext::AsyncMsgCoins(OriginTransferContext {
+                                            async_message_id_str: str_opt,
+                                            ..Default::default()
+                                        })
                                     }
-                                    TransferContext::AyncMsgCancel(_, _) => {
-                                        TransferContext::AyncMsgCancel(None, str_opt)
+                                    TransferContext::AyncMsgCancel(_) => {
+                                        TransferContext::AyncMsgCancel(OriginTransferContext {
+                                            async_message_id_str: str_opt,
+                                            ..Default::default()
+                                        })
                                     }
                                     // not reachable
                                     _ => transfer.context.clone(),

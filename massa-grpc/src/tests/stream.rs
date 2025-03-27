@@ -1270,6 +1270,8 @@ async fn new_slot_execution_outputs() {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                async_msg_id: None,
+                deferred_call_id: None,
             },
             data: "my precious ring".to_string(),
         });
@@ -1307,6 +1309,8 @@ async fn new_slot_execution_outputs() {
                 origin_operation_id: None,
                 is_final: true,
                 is_error: false,
+                async_msg_id: None,
+                deferred_call_id: None,
             },
             data: "my precious".to_string(),
         });

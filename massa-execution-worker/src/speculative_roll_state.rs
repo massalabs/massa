@@ -3,7 +3,9 @@
 use crate::active_history::ActiveHistory;
 use massa_execution_exports::execution_info::TransferInfo;
 #[cfg(feature = "execution-info")]
-use massa_execution_exports::execution_info::{TransferContext, TransferValue};
+use massa_execution_exports::execution_info::{
+    OriginTransferContext, TransferContext, TransferValue,
+};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
@@ -111,7 +113,10 @@ impl SpeculativeRollState {
         {
             self.transfers_history.write().push(TransferInfo::new(
                 TransferValue::Rolls(roll_count),
-                TransferContext::RollBuy(_operation_id),
+                TransferContext::RollBuy(OriginTransferContext {
+                    operation_id: Some(_operation_id),
+                    ..Default::default()
+                }),
                 None,
                 Some(buyer_addr.clone()),
             ));
@@ -180,14 +185,20 @@ impl SpeculativeRollState {
             let mut lock = self.transfers_history.write();
             lock.push(TransferInfo::new(
                 TransferValue::Rolls(roll_count),
-                TransferContext::RollSell(_operation_id.clone()),
+                TransferContext::RollSell(OriginTransferContext {
+                    operation_id: Some(_operation_id.clone()),
+                    ..Default::default()
+                }),
                 Some(seller_addr.clone()),
                 None,
             ));
 
             lock.push(TransferInfo::new(
                 TransferValue::DeferredCredits(new_deferred_credits),
-                TransferContext::RollSell(_operation_id.clone()),
+                TransferContext::RollSell(OriginTransferContext {
+                    operation_id: Some(_operation_id.clone()),
+                    ..Default::default()
+                }),
                 Some(seller_addr.clone()),
                 None,
             ));
@@ -271,7 +282,10 @@ impl SpeculativeRollState {
         {
             self.transfers_history.write().push(TransferInfo::new(
                 TransferValue::Coins(slashed),
-                TransferContext::DeferredCredits(Some(_denunciation_idx.clone())),
+                TransferContext::DeferredCredits(OriginTransferContext {
+                    denunciation_index: Some(_denunciation_idx.clone()),
+                    ..Default::default()
+                }),
                 Some(addr.clone()),
                 None,
             ));

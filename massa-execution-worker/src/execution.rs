@@ -73,7 +73,8 @@ use massa_proto_rs::massa::model::v1 as grpc_model;
 use prost::Message;
 
 use massa_execution_exports::execution_info::{
-    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult, TransferContext,
+    AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
+    OriginTransferContext, TransferContext,
 };
 #[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::{ExecutionInfoForSlot, RollOperationInfo};
@@ -530,7 +531,10 @@ impl ExecutionState {
             None,
             operation.content.fee,
             false,
-            TransferContext::OperationFee(operation_id),
+            TransferContext::OperationFee(OriginTransferContext {
+                operation_id: Some(operation_id),
+                ..Default::default()
+            }),
         ) {
             let mut error = format!("could not spend fees: {}", err);
             let max_event_size = match execution_component_version {
@@ -946,7 +950,10 @@ impl ExecutionState {
             None,
             spend_coins,
             false,
-            TransferContext::RollBuy(operation_id),
+            TransferContext::RollBuy(OriginTransferContext {
+                operation_id: Some(operation_id),
+                ..Default::default()
+            }),
         ) {
             return Err(ExecutionError::RollBuyError(format!(
                 "{} failed to buy {} rolls: {}",
@@ -1000,7 +1007,10 @@ impl ExecutionState {
             Some(*recipient_address),
             *amount,
             true,
-            TransferContext::TransactionCoins(operation_id),
+            TransferContext::TransactionCoins(OriginTransferContext {
+                operation_id: Some(operation_id),
+                ..Default::default()
+            }),
         ) {
             return Err(ExecutionError::TransactionError(format!(
                 "transfer of {} coins from {} to {} failed: {}",
@@ -1143,7 +1153,10 @@ impl ExecutionState {
                 Some(target_addr),
                 coins,
                 false,
-                TransferContext::CallSCCoins(operation_id),
+                TransferContext::CallSCCoins(OriginTransferContext {
+                    operation_id: Some(operation_id),
+                    ..Default::default()
+                }),
             ) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "failed to transfer {} operation coins from {} to {}: {}",
@@ -1275,7 +1288,10 @@ impl ExecutionState {
                 Some(message.destination),
                 message.coins,
                 false,
-                TransferContext::AsyncMsgCoins(Some(message.compute_id()), None),
+                TransferContext::AsyncMsgCoins(OriginTransferContext {
+                    async_message_id: Some(message.compute_id()),
+                    ..Default::default()
+                }),
             ) {
                 // coin crediting failed: reset context to snapshot and reimburse sender
                 let err = ExecutionError::RuntimeError(format!(
@@ -1386,7 +1402,10 @@ impl ExecutionState {
                 Some(call.sender_address),
                 amount,
                 false,
-                TransferContext::DeferredCallStorageRefund(id.clone()),
+                TransferContext::DeferredCallStorageRefund(OriginTransferContext {
+                    deferred_call_id: Some(id.clone()),
+                    ..Default::default()
+                }),
             ) {
                 warn!(
                     "could not refund storage costs to sender: {} - amount: {} - e:{}",
@@ -1439,7 +1458,10 @@ impl ExecutionState {
                         Some(call.target_address),
                         call.coins,
                         false,
-                        TransferContext::DeferredCallCoins(id.clone()),
+                        TransferContext::DeferredCallCoins(OriginTransferContext {
+                            deferred_call_id: Some(id.clone()),
+                            ..Default::default()
+                        }),
                     ) {
                         // coin crediting failed: reset context to snapshot and reimburse sender
                         return Err(ExecutionError::DeferredCallsError(format!(

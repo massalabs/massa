@@ -519,165 +519,91 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                     }
                 };
 
-                let (origin, operation_id, async_msg_id, deferred_call_id, denunciation_index) =
-                    match transfer.context {
-                        TransferContext::TransactionCoins(ope_id) => (
-                            CoinOrigin::OpTransactionCoins as i32,
-                            Some(ope_id.to_string()),
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::AyncMsgCancel(_msg_id, msg_id_str) => (
-                            CoinOrigin::AsyncMsgCancel as i32,
-                            None,
-                            msg_id_str,
-                            None,
-                            None,
-                        ),
-                        TransferContext::DeferredCredits(denunciation) => (
-                            CoinOrigin::DeferredCredit as i32,
-                            None,
-                            None,
-                            None,
-                            denunciation.map(|d| d.into()),
-                        ),
-                        TransferContext::DeferredCallFail(call_id) => (
-                            CoinOrigin::DeferredCallFail as i32,
-                            None,
-                            None,
-                            Some(call_id.to_string()),
-                            None,
-                        ),
-                        TransferContext::DeferredCallCancel(call_id) => (
-                            CoinOrigin::DeferredCallCancel as i32,
-                            None,
-                            None,
-                            Some(call_id.to_string()),
-                            None,
-                        ),
-                        TransferContext::DeferredCallCoins(call_id) => (
-                            CoinOrigin::DeferredCallCoins as i32,
-                            None,
-                            None,
-                            Some(call_id.to_string()),
-                            None,
-                        ),
-                        TransferContext::DeferredCallRegister => (
-                            CoinOrigin::DeferredCallRegister as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::DeferredCallStorageRefund(call_id) => (
-                            CoinOrigin::DeferredCallStorageRefund as i32,
-                            None,
-                            None,
-                            Some(call_id.to_string()),
-                            None,
-                        ),
-                        TransferContext::OperationFee(ope_id) => (
-                            CoinOrigin::OpTransactionFees as i32,
-                            Some(ope_id.to_string()),
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::RollBuy(ope_id) => (
-                            CoinOrigin::OpRollBuy as i32,
-                            Some(ope_id.to_string()),
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::RollSell(ope_id) => (
-                            CoinOrigin::OpRollSell as i32,
-                            Some(ope_id.to_string()),
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::RollSlash => {
-                            (CoinOrigin::Slash as i32, None, None, None, None)
-                        }
-                        TransferContext::CreateSCStorage => {
-                            (CoinOrigin::CreateScStorage as i32, None, None, None, None)
-                        }
-                        TransferContext::DatastoreStorage => {
-                            (CoinOrigin::DatastoreStorage as i32, None, None, None, None)
-                        }
-                        TransferContext::CallSCCoins(ope_id) => (
-                            CoinOrigin::OpCallscCoins as i32,
-                            Some(ope_id.to_string()),
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::AsyncMsgCoins(_msg_id, msg_id_str) => (
-                            CoinOrigin::AsyncMsgCoins as i32,
-                            None,
-                            msg_id_str,
-                            None,
-                            None,
-                        ),
-                        TransferContext::EndorsementCreatorReward => {
-                            (CoinOrigin::EndorsementReward as i32, None, None, None, None)
-                        }
-                        TransferContext::EndorsementTargetReward => {
-                            (CoinOrigin::EndorsedReward as i32, None, None, None, None)
-                        }
-                        TransferContext::BlockCreatorReward => {
-                            (CoinOrigin::BlockReward as i32, None, None, None, None)
-                        }
-                        TransferContext::ReadOnlyBytecodeExecutionFee => (
-                            CoinOrigin::ReadOnlyBytecodeExecFees as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::ReadOnlyFunctionCallFee => (
-                            CoinOrigin::ReadOnlyFnCallFees as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::ReadOnlyFunctionCallCoins => (
-                            CoinOrigin::ReadOnlyFnCallCoins as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::SetBytecodeStorage => (
-                            CoinOrigin::SetBytecodeStorage as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::AbiCallCoins => {
-                            (CoinOrigin::AbiCallCoins as i32, None, None, None, None)
-                        }
-                        TransferContext::AbiTransferCoins => {
-                            (CoinOrigin::AbiTransferCoins as i32, None, None, None, None)
-                        }
-                        TransferContext::AbiTransferForCoins => (
-                            CoinOrigin::AbiTransferForCoins as i32,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ),
-                        TransferContext::AbiSendMsgCoins => {
-                            (CoinOrigin::AbiSendMsgCoins as i32, None, None, None, None)
-                        }
-                        TransferContext::AbiSendMsgFee => {
-                            (CoinOrigin::AbiSendMsgFees as i32, None, None, None, None)
-                        }
-                    };
+                let (origin, ctx) = match transfer.context {
+                    TransferContext::TransactionCoins(ctx) => {
+                        (CoinOrigin::OpTransactionCoins as i32, Some(ctx))
+                    }
+                    TransferContext::AyncMsgCancel(ctx) => {
+                        (CoinOrigin::AsyncMsgCancel as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCredits(ctx) => {
+                        (CoinOrigin::DeferredCredit as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallFail(ctx) => {
+                        (CoinOrigin::DeferredCallFail as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallCancel(ctx) => {
+                        (CoinOrigin::DeferredCallCancel as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallCoins(ctx) => {
+                        (CoinOrigin::DeferredCallCoins as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallRegister(ctx) => {
+                        (CoinOrigin::DeferredCallRegister as i32, Some(ctx))
+                    }
+                    TransferContext::DeferredCallStorageRefund(ctx) => {
+                        (CoinOrigin::DeferredCallStorageRefund as i32, Some(ctx))
+                    }
+                    TransferContext::OperationFee(ctx) => {
+                        (CoinOrigin::OpTransactionFees as i32, Some(ctx))
+                    }
+                    TransferContext::RollBuy(ctx) => (CoinOrigin::OpRollBuy as i32, Some(ctx)),
+                    TransferContext::RollSell(ctx) => (CoinOrigin::OpRollSell as i32, Some(ctx)),
+                    TransferContext::RollSlash => (CoinOrigin::Slash as i32, None),
+                    TransferContext::CreateSCStorage => (CoinOrigin::CreateScStorage as i32, None),
+                    TransferContext::DatastoreStorage => {
+                        (CoinOrigin::DatastoreStorage as i32, None)
+                    }
+                    TransferContext::CallSCCoins(ctx) => {
+                        (CoinOrigin::OpCallscCoins as i32, Some(ctx))
+                    }
+                    TransferContext::AsyncMsgCoins(ctx) => {
+                        (CoinOrigin::AsyncMsgCoins as i32, Some(ctx))
+                    }
+                    TransferContext::RollSlash => (CoinOrigin::Slash as i32, None),
+                    TransferContext::CreateSCStorage => (CoinOrigin::CreateScStorage as i32, None),
+                    TransferContext::DatastoreStorage => {
+                        (CoinOrigin::DatastoreStorage as i32, None)
+                    }
+                    TransferContext::EndorsementCreatorReward => {
+                        (CoinOrigin::EndorsementReward as i32, None)
+                    }
+                    TransferContext::EndorsementTargetReward => {
+                        (CoinOrigin::EndorsedReward as i32, None)
+                    }
+                    TransferContext::BlockCreatorReward => (CoinOrigin::BlockReward as i32, None),
+                    TransferContext::ReadOnlyBytecodeExecutionFee => {
+                        (CoinOrigin::ReadOnlyBytecodeExecFees as i32, None)
+                    }
+                    TransferContext::ReadOnlyFunctionCallFee => {
+                        (CoinOrigin::ReadOnlyFnCallFees as i32, None)
+                    }
+                    TransferContext::ReadOnlyFunctionCallCoins => {
+                        (CoinOrigin::ReadOnlyFnCallCoins as i32, None)
+                    }
+                    TransferContext::SetBytecodeStorage => {
+                        (CoinOrigin::SetBytecodeStorage as i32, None)
+                    }
+                    TransferContext::AbiCallCoins => (CoinOrigin::AbiCallCoins as i32, None),
+                    TransferContext::AbiTransferCoins => {
+                        (CoinOrigin::AbiTransferCoins as i32, None)
+                    }
+                    TransferContext::AbiTransferForCoins => {
+                        (CoinOrigin::AbiTransferForCoins as i32, None)
+                    }
+                    TransferContext::AbiSendMsgCoins => (CoinOrigin::AbiSendMsgCoins as i32, None),
+                    TransferContext::AbiSendMsgFee => (CoinOrigin::AbiSendMsgFees as i32, None),
+                };
+
+                let (operation_id, async_msg_id, deferred_call_id, denunciation_index) = match ctx {
+                    Some(ctx) => (
+                        ctx.operation_id.map(|id| id.to_string()),
+                        ctx.async_message_id_str,
+                        ctx.deferred_call_id.map(|id| id.to_string()),
+                        ctx.denunciation_index.map(|idx| idx.into()),
+                    ),
+                    None => (None, None, None, None),
+                };
 
                 grpc_model::ExecTransferInfo {
                     id,

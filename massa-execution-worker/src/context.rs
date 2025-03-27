@@ -21,7 +21,9 @@ use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
 #[cfg(feature = "execution-info")]
 use massa_execution_exports::execution_info::ExecutionInfoForSlot;
-use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
+use massa_execution_exports::execution_info::{
+    OriginTransferContext, TransferContext, TransferInfo,
+};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -916,7 +918,10 @@ impl ExecutionContext {
             Some(msg.sender),
             msg.coins,
             false,
-            TransferContext::AyncMsgCancel(Some(msg.compute_id()), None),
+            TransferContext::AyncMsgCancel(OriginTransferContext {
+                async_message_id: Some(msg.compute_id()),
+                ..Default::default()
+            }),
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
@@ -1154,7 +1159,9 @@ impl ExecutionContext {
                     Some(address),
                     amount,
                     false,
-                    TransferContext::DeferredCredits(None),
+                    TransferContext::DeferredCredits(OriginTransferContext {
+                        ..Default::default()
+                    }),
                 );
 
                 if let Err(e) = transfer_result.as_ref() {
@@ -1563,7 +1570,12 @@ impl ExecutionContext {
             Some(call.sender_address),
             call.coins,
             false,
-            TransferContext::DeferredCallFail(id.clone()),
+            TransferContext::DeferredCallFail(OriginTransferContext {
+                deferred_call_id: Some(id.clone()),
+                operation_id: self.origin_operation_id.clone(),
+                async_message_id: self.async_msg_id.clone(),
+                ..Default::default()
+            }),
         );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
@@ -1606,7 +1618,12 @@ impl ExecutionContext {
                     Some(address),
                     amount,
                     false,
-                    TransferContext::DeferredCallCancel(call_id.clone()),
+                    TransferContext::DeferredCallCancel(OriginTransferContext {
+                        deferred_call_id: Some(call_id.clone()),
+                        operation_id: self.origin_operation_id.clone(),
+                        async_message_id: self.async_msg_id.clone(),
+                        ..Default::default()
+                    }),
                 );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(

@@ -7,6 +7,7 @@
 
 use crate::context::ExecutionContext;
 use massa_deferred_calls::DeferredCall;
+use massa_execution_exports::execution_info::OriginTransferContext;
 use massa_execution_exports::{
     execution_info::TransferContext, ExecutionConfig, ExecutionStackElement,
 };
@@ -1785,6 +1786,9 @@ impl Interface for InterfaceImpl {
         // get caller address
         let sender_address = context.get_current_address().map_err(|e| e.to_string())?;
 
+        let operation_id = context.origin_operation_id.clone();
+        let async_message_id = context.async_msg_id.clone();
+
         // make sender pay coins + fee
         // coins + cost for booking the deferred call
         context
@@ -1793,7 +1797,11 @@ impl Interface for InterfaceImpl {
                 None,
                 coins.saturating_add(fee),
                 true,
-                TransferContext::DeferredCallRegister,
+                TransferContext::DeferredCallRegister(OriginTransferContext {
+                    operation_id,
+                    async_message_id,
+                    ..Default::default()
+                }),
             )
             .map_err(|e| e.to_string())?;
 
