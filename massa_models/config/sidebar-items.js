@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["build_massa_settings"],"mod":["compact_config","constants","massa_settings"],"struct":["CompactConfig"]};
+window.SIDEBAR_ITEMS = {"fn":["build_massa_settings","handle_disclaimer"],"mod":["compact_config","constants","massa_disclaimer","massa_settings"],"struct":["CompactConfig"]};
