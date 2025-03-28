@@ -2,9 +2,11 @@ use super::COMMUNITY_CHARTER_CONTENT;
 use std::path::PathBuf;
 
 /// Helper function to display the Community Charter if needed
-pub fn handle_disclaimer(auto_accept_community_charter: bool, approved_community_charter_file_path: &PathBuf) {
+pub fn handle_disclaimer(
+    auto_accept_community_charter: bool,
+    approved_community_charter_file_path: &PathBuf,
+) {
     if !auto_accept_community_charter && !approved_community_charter_file_path.exists() {
-
         let mut prompt = COMMUNITY_CHARTER_CONTENT.to_string();
         prompt.push_str("\n\nDo you accept the Community Charter?");
 
