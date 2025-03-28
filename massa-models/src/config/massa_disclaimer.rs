@@ -11,11 +11,15 @@ pub fn handle_disclaimer(
         prompt.push_str("\n\nDo you accept the Community Charter?");
 
         let accepted_community_charter = dialoguer::Confirm::new()
-            .with_prompt(prompt)
+            .with_prompt(prompt.clone())
             .default(false)
             .report(false)
             .interact()
-            .expect("IO Error: Could not query if the Community Charter was accepted or not ");
+            .unwrap_or_else(|_| {
+                prompt.push_str("\n\nError: Not in a terminal, could not get user input.\n\n");
+                print!("{}", prompt);
+                false
+            });
 
         if !accepted_community_charter {
             panic!("You have to approve the Community Charter to continue. You can read it in 'COMMUNITY_CHARTER.md' and re-run with the flag '-a' or '--accept-community-charter' to automatically accept them. Exiting.");
