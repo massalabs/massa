@@ -3,7 +3,7 @@
     level = 2
 
 [cli]
-    approved_disclaimer_file_path = "config/approved_disclaimer.txt"
+    approved_community_charter_file_path = "config/approved_community_charter.txt"
 
 [api]
     # max number of future periods considered during requests

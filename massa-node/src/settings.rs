@@ -21,7 +21,7 @@ pub struct LoggingSettings {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct CliSettings {
-    pub approved_disclaimer_file_path: PathBuf,
+    pub approved_community_charter_file_path: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize)]

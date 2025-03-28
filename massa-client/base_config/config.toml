@@ -3,7 +3,7 @@ history_file_path = "config/.massa_history"
 timeout = 1000
 
 [cli]
-    approved_disclaimer_file_path = "config/approved_disclaimer.txt"
+    approved_community_charter_file_path = "config/approved_community_charter.txt"
 
 [default_node]
 # The IP of your node. Works both with IPv4 (like 127.0.0.1) and IPv6 (like ::1) addresses, if the node is bound to the correct protocol.

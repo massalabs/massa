@@ -1,55 +1,154 @@
 # Massa Community Charter
 
-Code for open collaboration & truly decentralized blockchain
+Code for open collaboration and truly decentralized blockchain
 
-This is the “social” contract that all members of the Massa community are committed to read and to follow (hereinafter the “Charter”). By member we mean anyone who owns Massa tokens, who hosts a node, or who creates blocks on the Massa blockchain (hereinafter a “Member”).
+## 1. Introduction and scope
 
-This Charter aims to reflect the values of openness, transparency, and decentralization. By signing this Charter, any individual, institution, or social group of any kind commits to fulfill the principles established below. 
+This charter (the “Charter”) serves as the social contract that governs the conduct and responsibilities of all members of the Massa community (the “Massa Community”) when interacting with the Massa layer-1 blockchain (the “Massa Blockchain”) and the Massa network (the “Massa Network”). This Charter aims to reflect the values of openness, transparency, and decentralization.
 
-## Decentralization
+For the purposes of this Charter, a “Member” is defined as any individual, entity, or group that:
 
-In order to preserve the fully decentralized character of the blockchain, the members undertake to make direct use of their Massa and more specifically not to delegate or transmit the management of their Massa to other members for staking; or to take on such delegation or management to stake on their behalf (as described in the section Prohibition on delegation by any means). Such a prohibition is effective when the amount of tokens transmitted or delegated to a given member is greater than or equal to 1,000,000 MAS tokens in total.
+* operates or hosts a Massa node, contributing to network security, decentralization, and consensus;
+* participates in block creation and validation within the Massa Blockchain;
+* uses, modifies, or interacts with Massa’s open-source software, which is made available under its respective license and requires compliance with this Charter; or
+* engages with systems and applications deployed on the Massa Blockchain.
 
+## 2. Acceptance
 
-Thus, any Member commits themselves not to act within the Massa community as professional delegates (person or entity whose economic activity, whether principal or accessory, is to receive coins from other members to stake them on their behalf). For the avoidance of doubt, listing Massa on an exchange platform is allowed and other exchange platform activities (receive, manage and trade cryptocurrencies between blockchain networks) are allowed except staking of Massa tokens.
+Operating a node, using the Massa Blockchain’s systems, or interacting with any software implementing the Massa protocol means accepting and adhering to this Massa Community Charter. By using, modifying, or interacting with Massa’s open-source software or any system built on the Massa Blockchain, you automatically become a Member of the Massa Community and agree to comply with this Charter.
 
-## Prohibition of delegation by any means 
+As a Member, you are expected to read, accept, and follow its terms, while also encouraging others in the community to do the same.
 
-As mentioned above (see Decentralization section above), the Massa ecosystem community recognizes that, for reasons of decentralization, delegating or transferring the management of tokens held by a given Member to another one constitutes an assumption of delegation contrary to the terms of this Charter. This includes, but is not limited to:
-Delegating or transferring tokens to a third party, whether professional or not, to stake or validate blocks on behalf of a given token holder;
-Participating in a delegation pool.
-Any violation of the prohibition of delegation is subject to sanctions, such as:
-Suspension or exclusion of the given Member from the Massa community;
-Legal action against the failing Member.
-In any and all instances, any Member who feels aggrieved under the terms of the present provisions may request Massa Foundation's support, in particular for the purpose of taking legal action in the event that the defaulting Member's behavior is manifestly disproportionate and contrary to the present provisions. 
-In addition, any Member may also bring legal action with the support of any private entity they choose, such as a law firm. The provisions of this charter have full contractual value, allowing such an action to be brought in the event of a violation, whether the action is brought directly by the Foundation, by a community member with the support of the Foundation, or by a community member with the support of a private law firm.
+Your continued participation in the Massa Network signifies your ongoing agreement to uphold these principles and contribute to a transparent, traceable, and secure ecosystem.
 
-## Accountability
+If you do not accept these terms, you should immediately discontinue all activities within the Massa Network.
 
-The community recognizes everyone's right to be anonymous, however members' activities must be carried out in accordance with the charter to ensure that they do not undermine other members or even the decentralization of the Massa blockchain.
+## 3. Key principles: transparency, traceability and integrity
 
-Massa members agree about what constitutes fair use of the platform, and are committed to not engaging in its misuse, whether explicitly or covertly. On a regular basis, and in case of doubt, the community may implement a number of measures to ensure compliance with these commitments. The community can also engage in all necessary actions in order to establish evidence of non-compliance in order to incur the liability of non-compliant persons. 
+The Massa Network, in all its current and future configurations, development, deployment, and use, must uphold and prioritize three fundamental principles at all times: (1) transparency, (2) traceability, and (3) integrity. These principles are essential to maintaining trust, accountability, and fairness within the Massa Community.
 
-## Transparency and integrity
+(1) Transparency is a fundamental requirement for monitoring participatory processes and mechanisms. However, it shall never be applied in a manner that compromises personal data protection or infringes upon the privacy of Massa participants.
 
-The Massa network, and its current or future configuration, development, deployment and use must ensure and prioritize transparency [1], traceability [2] and integrity [3] within the community at all times.
+(2) Traceability guarantees full accountability for past participatory and decision-making processes within the Massa Community while ensuring the same standards for present and future interactions. Each Member must act in their own name or explicitly disclose when acting on behalf of another Massa user or Member.
 
-* [1] Transparency is a necessary condition for monitoring participatory processes and mechanisms, but will never, in any case, be applied to the processing of personal data or in violation of the privacy of Massa participants. 
+(3) Integrity ensures the authenticity and legitimacy of operations, votes, and decision-making processes, preventing any form of manipulation that could compromise the blockchain or distort the results of participatory mechanisms.
 
-* [2] Traceability refers to the ability to fully account for what happens in any participatory or decision-making process related to the Massa community in the past and, to guarantee similar conditions for present and future ones. Each member acts on his or her own behalf or undertakes to make his or her position clear when acting on behalf of another Massa user or member. 
+## 4. Decentralization Policy
 
-* [3] Integrity is understood as the authenticity of a specific operation, vote, or decision process, in order to avoid manipulation of the blockchain or results of participatory processes or mechanisms.
+TO SAFEGUARD THE DECENTRALIZED NATURE OF THE MASSA BLOCKCHAIN, ALL MEMBERS HEREBY COMMIT TO AVOIDING ANY ACTIONS THAT MAY LEAD TO THE CONCENTRATION OF STAKING POWER AMONG A LIMITED NUMBER OF PARTICIPANTS. MEMBERS AGREE NOT TO OPERATE AS PROFESSIONNAL DELEGATORS WITHIN THE MASSA COMMUNITY.
 
-## Continuous improvement and governance
+A professional delegator refers to a person or an entity whose activity, whether principal or accessory, is to receive tokens from other members to stake them on their behalf. A Member will be deemed a professional delegator if they receive or manage a total of 1,000,000 MAS tokens or more through delegation or direct transmission on behalf of strictly more than one person or entity.
 
-The Charter will be accessible within the blockchain source code available at https://github.com/massalabs/massa. The community will be responsible for updating the present Charter in light of its collective needs. Mechanisms for periodic review and evaluation of this Charter will be provided in order to facilitate its continuous improvement.
+For the avoidance of doubt, listing MAS tokens on exchange platforms is permitted, as are all other exchange-related activities, including but not limited to receiving, managing, and trading cryptocurrencies across blockchain networks or facilitating market liquidity and token accessibility. However, any staking activity involving MAS tokens, including through third-parties, is restricted as pert the limits set forth in this Massa Community Charter.
 
-Every Member of the Massa community is responsible for the application of this Charter.
+## 5. Prohibition of delegation by any means
 
-## Massa protocol license
+In line with the Decentralization Policy described in section 4, any form of delegation, transfer, or management of MAS tokens to a Member or third-party acting on behalf of a Member, where the total delegated or transferred amount meets or exceeds 1,000,000 MAS tokens (the “Delegation Threshold”), shall be considered a breach of this Charter. Members of the Massa Community are strictly prohibited from engaging in any form of delegation, transfer, or management of MAS tokens—whether as a staking participant or a professional delegator —resulting in exceeding the Delegation Threshold.
 
-In addition to the rights set forth in the Open Source license(s) included in the distribution for this software, data, and/or documentation (collectively the "Software," and such licenses collectively with this additional terms the "Software License"), the copyright holders wish to facilitate interoperability and regulate such data exchange with other software (including constants, function signatures, data structures and other invocation methods used to run or interact with each of them).
+The Massa Community strictly prohibits any attempt to bypass the delegation restrictions through indirect or concealed means. Members commit to refraining from any actions that would violate this prohibition and specifically undertake not to engage in, including but not limited to, the following actions:
 
-The implementation of the Massa protocol is conditional to the acceptance of and compliance with the Massa Charter available (the "Charter"). The mere use of any software implementing the Massa protocol makes you a Member of the Massa community and requires the reading and acceptance of the Charter. You must therefore accept the terms of the Charter and undertake to ensure that other members of the community respect them as well. 
+* operate multiple validator nodes or establish multiple staking entities under different identities to circumvent the Delegation Threshold;
+* accept, manage, or stake MAS tokens on behalf of third parties beyond the specified Delegation Threshold;
+* operate a staking delegation pool or other similar mechanisms that facilitate delegation beyond the Delegation Threshold;
+* run validator nodes or stake MAS tokens on behalf of another entity or individual;
+* establish corporate structures or proxy entities to circumvent the Delegation Threshold.
 
-Failure to comply with these terms may result in legal action, as specified in the present provisions.
+Violations of this prohibition shall result in enforcement actions, which may include but are not limited to:
+
+1. blacklisting of the public addresses used to exceed the Delegation Threshold;
+2. contractual penalties as described under section 10;
+3. legal action, including but not limited to contractual enforcement and potential civil claims for damages caused to the network.
+
+## 6. Accountability
+
+All Members of the Massa Community are expected to adhere to the principles outlined in this Charter, and to ensure they do not undermine other Members or even the decentralization of the Massa Blockchain. The provisions of this Charter carry full contractual force and are binding on all Members. Any violation of these provisions may result in accountability and potential sanctions, as outlined in the enforcement measures detailed in section 10.
+
+Engaging in activities that disrupt the integrity, security or functionality of the Massa Network, such as spamming, spreading misinformation, conducting unauthorized transactions, or using the platform to carry out any illegal activities, including but not limited to money laundering, terrorist financing, bypassing international sanctions, or the purchase or sale of illegal goods, is strictly prohibited.
+
+Similarly, altering, distributing or deploying the Massa codebase in ways that violate the Massa license terms, introduce vulnerabilities, facilitate malicious activities, or contribute to illegal activities as described above is forbidden.
+
+When publishing content using the Massa Decentralized Web or interacting with content published on the Massa Decentralized Web, Members must ensure that their contributions comply with all applicable laws and regulations. Additionally, Members should not use the Massa Decentralized Web, or any other systems provided on the Massa Blockchain, to engage in activities that could compromise network security, violate laws and regulations, or breach the system’s terms of use. Members are encouraged to act in a manner that upholds the integrity and security of the Massa Decentralized Web, and of all systems provided on the Massa Blockchain, and that complies with the principles of the Massa Community.
+
+## 7. Limitation of Warranty
+
+THE MASSA BLOCKCHAIN AND THE MASSA NETWORK, INCLUDING ALL ASSOCIATED INFRASTRUCTURE, SOFTWARE, PLATFORMS, APPLICATIONS, AND SYSTEMS, ARE PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS, WITHOUT ANY REPRESENTATIONS OR WARRANTIES OF ANY KIND, WHETHER EXPRESS OR IMPLIED.
+
+TO THE FULLEST EXTENT PERMITTED BY LAW, MASSA LABS AND THE MASSA FOUNDATION EXPRESSLY DISCLAIM ALL WARRANTIES, INCLUDING BUT NOT LIMITED TO:
+
+* IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT;
+* WARRANTIES REGARDING THE RELIABILITY, AVAILABILITY, ACCURACY, SECURITY, OR PERFORMANCE OF THE MASSA BLOCKCHAIN, THE MASSA NETWORK, OR ANY ASSOCIATED INFRASTRUCTURE, SOFTWARE, PLATFORMS, SYSTEMS, OR APPLICATION;
+* WARRANTIES RELATED TO THE OPERATION, SECURITY, OR UNINTERRUPTED PERFORMANCE OF NODES, INCLUDING BUT NOT LIMITED TO NETWORK DISRUPTIONS, SOFTWARE BUGS, REQUIRED PROTOCOL UPDATES, PENALTIES, OR EXTERNAL ATTACKS THAT MAY IMPACT MEMBERS;
+* WARRANTIES CONCERNING STAKING ACTIVITIES, INCLUDING ANY GUARANTEE OF REWARDS, SECURITY OF STAKED FUNDS, VALIDATOR PERFORMANCE, OR RISKS RELATED TO PENALTIES, LEGAL ACTION, OR MISBEHAVIOR.
+
+FURTHERMORE, MASSA LABS AND THE MASSA FOUNDATION DO NOT WARRANT OR GUARANTEE THAT MEMBERS OF THE MASSA NETWORK WILL COMPLY WITH THIS COMMUNITY CHARTER OR ACT IN ALIGNMENT WITH THE PRINCIPLES OF THE MASSA NETWORK. ANY RELIANCE ON THE ACTIONS, STATEMENTS, OR COMMITMENTS OF OTHER MEMBERS IS SOLELY AT THE USER’S OWN RISK.
+
+## 8. Disclaimer of liability
+
+MEMBERS ACKNOWLEDGE AND AGREE THAT THEIR PARTICIPATION IN THE MASSA BLOCKCHAIN AND THE MASSA NETWORK, INCLUDING OPERATING NODES, VALIDATING TRANSACTIONS, EXECUTING SMART CONTRACTS, AND INTERACTING WITH ALL UNDERLYING INFRASTRUCTURE, SOFTWARE, PLATFORMS, APPLICATIONS, AND SYSTEMS, IS ENTIRELY AT THEIR OWN RISK.
+
+TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, MASSA LABS AND THE MASSA FOUNDATION EXPRESSLY DISCLAIM ALL LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL, CONSEQUENTIAL, PUNITIVE, OR SPECIAL DAMAGES ARISING FROM OR IN ANY WAY RELATED TO:
+
+* THE OPERATION OF NODES, VALIDATION OF TRANSACTIONS, AND OVERALL PARTICIPATION IN THE MASSA BLOCKCHAIN AND NETWORK, INCLUDING BUT NOT LIMITED TO NETWORK FAILURES, INTERRUPTIONS, SECURITY BREACHES, OR TECHNICAL ERRORS;
+* THE RELIABILITY, ACCURACY, AVAILABILITY, OR INTEGRITY OF THE MASSA BLOCKCHAIN, THE MASSA NETWORK, OR ANY CONTENT PUBLISHED, STORED, OR HOSTED ON THEM;
+* THE DEPLOYMENT, EXECUTION, OR INTERACTION WITH SMART CONTRACTS, INCLUDING VULNERABILITIES, EXPLOITS, UNINTENDED CONSEQUENCES, OR SECURITY RISKS;
+* FRAUDULENT, UNLAWFUL, OR UNAUTHORIZED ACTIVITIES CONDUCTED BY THIRD PARTIES OR OTHER MEMBERS WITHIN THE MASSA NETWORK;
+* LOSS, THEFT, OR COMPROMISE OF CRYPTOGRAPHIC KEYS, DIGITAL ASSETS, WALLETS, OR CREDENTIALS DUE TO SECURITY FLAWS, TECHNICAL MALFUNCTIONS, OR MEMBER ERROR;
+* BREACHES OF DATA PROTECTION LAWS, INTELLECTUAL PROPERTY RIGHTS, OR OTHER LEGAL PROVISIONS RESULTING FROM DECENTRALIZED HOSTING, PEER-TO-PEER TRANSACTIONS, OR AUTONOMOUS INTERACTIONS WITHIN THE MASSA BLOCKCHAIN OR NETWORK;
+* BREACHES OF INTERNATIONAL LAWS, REGULATIONS, OR COMPLIANCE REQUIREMENTS ARISING FROM THE DECENTRALIZED NATURE OF THE MASSA BLOCKCHAIN AND NETWORK;
+* ISSUES RESULTING FROM THIRD-PARTY TOOLS, SERVICES, PROTOCOLS, OR INTEGRATIONS, WHETHER OR NOT THEY ARE REFERENCED, RECOMMENDED, OR ACCESSIBLE THROUGH THE MASSA BLOCKCHAIN OR NETWORK.
+
+MEMBERS BEAR SOLE RESPONSIBILITY FOR ENSURING THAT THEIR OPERATION OF NODES, EXECUTION OF SMART CONTRACTS, AND ANY OTHER USE OF THE MASSA BLOCKCHAIN AND THE MASSA NETWORK COMPLY WITH ALL APPLICABLE LAWS AND REGULATIONS IN THEIR JURISDICTION. MEMBERS ARE ALSO SOLELY RESPONSIBLE FOR ANY CONSEQUENCES ARISING FROM THEIR ACTIONS, INCLUDING ANY FAILURE TO PROPERLY CONFIGURE, MAINTAIN, OR SECURE THEIR NODES OR DIGITAL ASSETS.
+
+MASSA LABS AND THE MASSA FOUNDATION DO NOT ASSUME RESPONSIBILITY FOR THE CONDUCT OF OTHER MEMBERS, ANY FAILURES IN NETWORK GOVERNANCE, OR ANY VIOLATIONS OF THIS COMMUNITY CHARTER.
+
+## 9. Continuous improvement and governance
+
+The Charter will be accessible within the blockchain source code available at https://github.com/massalabs/massa. The Massa Community will be responsible for updating the present Charter in light of its collective needs. Mechanisms for periodic review and evaluation of this Charter will be provided in order to facilitate its continuous improvement.
+
+Every Member of the Massa Community is responsible for the application of this Charter, as described under section 6.
+
+## 10. Non-compliance and enforcement
+
+Members of the Massa Community are expected to uphold the principles and provisions of this Charter. In the event of non-compliance, the Massa Community may take all necessary actions to address violations, including establishing evidence of non-compliance, holding offenders accountable, and imposing appropriate sanctions.
+
+Any Member adversely affected by a breach of this Charter may seek assistance from the Massa Foundation or may engage private legal counsel to initiate legal proceedings. In cases of severe violations that compromise the integrity of the network, formal legal action may be pursued against the offending party.
+
+Any offending Member who violates this Charter shall be liable to pay a contractual penalty equal to ten percent (10%) of the MAS tokens involved in the breach, per infringement, plus all rewards accrued through their participation in staking. The penalized MAS tokens shall be irrevocably burned by transferring them to this designated burn address: AU1111111111111111111111111111111112m1s9K (Massa encoding of a hash with 32 bytes of zeros), thereby permanently removing them from circulation.
+
+Furthermore, the offending Member shall be liable for any and all damages, losses, or claims awarded to an aggrieved Member arising from such breach, as determined by a competent authority or court of law. The offending Member shall also be obligated to reimburse all reasonable costs and expenses incurred in connection with the enforcement of rights under this Charter, including, without limitation, attorneys’ fees, court costs, and any other legal or administrative expenses.
+
+This Charter holds contractual value, rendering its provisions legally binding and enforceable through appropriate legal channels. In cases of non-compliance, additional legal measures may be pursued to ensure execution of the penalty.
+
+## 11. General clauses
+
+### Dispute resolution, jurisdiction and applicable law
+
+Any disputes arising from or related to this Charter shall be resolved exclusively through litigation in the courts of Geneva, Switzerland, subject to possible appeal to the Swiss Supreme Court.
+This Charter and all matters related to it shall be governed by and construed in accordance with the laws of Switzerland, without regard to its conflict of law principles.
+
+### Severability
+
+If any provision of this Charter is found to be invalid, illegal, or unenforceable under applicable law, the remaining provisions shall remain in full force and effect. Any invalid or unenforceable provision will be replaced with a valid provision that reflects the original intent as closely as possible.
+
+### No waiver
+
+The failure of the Massa Community to enforce any provision of this Charter shall not be deemed a waiver of their right to enforce such provision at any time.
+
+### Entire understanding
+
+This Charter serves as the foundational document outlining the shared principles, values, and commitments of the Massa Community. It reflects the collective understanding of Members regarding their responsibilities and obligations to one another and to the Massa Community as a whole. This Charter does not replace other governance documents or agreements but works in harmony with them to guide the Massa Community’s actions.
+
+### Amendments
+
+The Massa Community reserves the right to amend, modify, or update this Charter at any time. Any such changes shall take effect upon publication through official Massa Community communication channels and shall be binding upon all Members from the date of such publication.
+
+## Annex 1 - Definitions
+
+For the purposes of this Charter, the capitalized terms shall have the following definitions:
+
+* Massa Blockchain: means the Massa layer 1 blockchain network.
+* Massa Decentralized Web: means the fully decentralized web experience online platform provided on the Massa Blockchain.
+* Massa Foundation: refers to the Swiss-based foundation that is supporting the development of the Massa Network, registered under identification number CHE-403.846.550, at c/o Calliopée Sàrl, Rue de Chantepoulet 10, 1201 Genève.
+* Massa Labs: refers to the lab that developed the Massa technology, a French company, registered under identification number 881 320 592 R.C.S., at 226 Boulevard Voltaire, 75011 Paris, France.
+* MAS tokens: means the native tokens of the Massa Blockchain protocol.
+* Member(s): means any individual, entity, or organization that participates in the Massa Network and is within the scope of application defined in section 1 of the present Massa Community Charter. By engaging with the Massa Network, Members acknowledge and agree to adhere to the principles, rules, and obligations outlined in this Charter.

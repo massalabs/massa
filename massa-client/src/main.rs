@@ -62,8 +62,8 @@ struct Args {
     #[arg(short = 'p', long = "pwd")]
     /// Wallet password
     password: Option<String>,
-    #[arg(short = 'a', long = "accept-disclaimer")]
-    accept_disclaimer: bool,
+    #[arg(short = 'a', long = "accept-community-charter")]
+    accept_community_charter: bool,
 }
 
 #[derive(Serialize)]
@@ -161,8 +161,8 @@ async fn run(args: Args) -> Result<()> {
     }));
 
     handle_disclaimer(
-        args.accept_disclaimer,
-        &SETTINGS.cli.approved_disclaimer_file_path,
+        args.accept_community_charter,
+        &SETTINGS.cli.approved_community_charter_file_path,
     );
 
     // Note: grpc handler requires a mut handler

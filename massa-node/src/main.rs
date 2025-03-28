@@ -1371,8 +1371,8 @@ struct Args {
     #[arg(long = "restart-from-snapshot-at-period")]
     restart_from_snapshot_at_period: Option<u64>,
 
-    #[arg(short = 'a', long = "accept-disclaimer")]
-    accept_disclaimer: bool,
+    #[arg(short = 'a', long = "accept-community-charter")]
+    accept_community_charter: bool,
 
     #[cfg(feature = "op_spammer")]
     /// number of operations
@@ -1475,8 +1475,8 @@ async fn run(args: Args) -> anyhow::Result<()> {
     info!("Node version : {}", *VERSION);
 
     handle_disclaimer(
-        cur_args.accept_disclaimer,
-        &SETTINGS.cli.approved_disclaimer_file_path,
+        cur_args.accept_community_charter,
+        &SETTINGS.cli.approved_community_charter_file_path,
     );
 
     // load or create wallet, asking for password if necessary
