@@ -35,7 +35,7 @@ The Massa Network, in all its current and future configurations, development, de
 
 ## 4. Decentralization Policy
 
-TO SAFEGUARD THE DECENTRALIZED NATURE OF THE MASSA BLOCKCHAIN, ALL MEMBERS HEREBY COMMIT TO AVOIDING ANY ACTIONS THAT MAY LEAD TO THE CONCENTRATION OF STAKING POWER AMONG A LIMITED NUMBER OF PARTICIPANTS. MEMBERS AGREE NOT TO OPERATE AS PROFESSIONNAL DELEGATORS WITHIN THE MASSA COMMUNITY.
+TO SAFEGUARD THE DECENTRALIZED NATURE OF THE MASSA BLOCKCHAIN, ALL MEMBERS HEREBY COMMIT TO AVOIDING ANY ACTIONS THAT MAY LEAD TO THE CONCENTRATION OF STAKING POWER AMONG A LIMITED NUMBER OF PARTICIPANTS. MEMBERS AGREE NOT TO OPERATE AS PROFESSIONAL DELEGATORS WITHIN THE MASSA COMMUNITY.
 
 A professional delegator refers to a person or an entity whose activity, whether principal or accessory, is to receive tokens from other members to stake them on their behalf. A Member will be deemed a professional delegator if they receive or manage a total of 1,000,000 MAS tokens or more through delegation or direct transmission on behalf of strictly more than one person or entity.
 
