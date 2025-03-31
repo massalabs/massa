@@ -3,6 +3,9 @@ name = "massa_module_cache"
 version = "2.5.0"
 edition = "2021"
 
+[features]
+jemalloc = ["rocksdb/jemalloc"]
+
 [dependencies]
 schnellru = {workspace = true}
 rand = {workspace = true}   # BOM UPGRADE     Revert to "0.8.5" if problem

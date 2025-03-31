@@ -1067,8 +1067,7 @@ mod tests {
         column: &str,
     ) -> BTreeMap<Vec<u8>, Vec<u8>> {
         db.read()
-            .iterator_cf(column, MassaIteratorMode::Start)
-            // .collect::<BTreeMap<Vec<u8>, Vec<u8>>>()
+            .iterator_cf_for_full_db_traversal(column, MassaIteratorMode::Start)
             .collect()
     }
 

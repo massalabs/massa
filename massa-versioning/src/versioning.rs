@@ -2693,7 +2693,10 @@ mod test {
 
         // Step 5: test is_key_value_valid
         let mut count = 0;
-        for (ser_key, ser_value) in db.read().iterator_cf(STATE_CF, MassaIteratorMode::Start) {
+        for (ser_key, ser_value) in db
+            .read()
+            .iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start)
+        {
             assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
             count += 1;
         }
@@ -2702,7 +2705,7 @@ mod test {
         let mut count2 = 0;
         for (ser_key, ser_value) in db
             .read()
-            .iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
+            .iterator_cf_for_full_db_traversal(VERSIONING_CF, MassaIteratorMode::Start)
         {
             assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
             count2 += 1;

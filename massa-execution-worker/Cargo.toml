@@ -51,6 +51,11 @@ db_storage_backend = []
 file_storage_backend = []
 execution-info = ["execution-trace"]
 slot-replayer = []
+jemalloc = [
+    "rocksdb/jemalloc",
+    "massa_event_cache/jemalloc",
+    "massa_module_cache/jemalloc"
+]
 
 [dependencies]
 anyhow = { workspace = true }
