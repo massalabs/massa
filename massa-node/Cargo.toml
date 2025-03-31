@@ -36,6 +36,12 @@ dump-block = [
 db_storage_backend = []
 file_storage_backend = []
 execution-info = ["execution-trace"]
+jemalloc = [
+    "massa_db_worker/jemalloc",
+    "massa_execution_worker/jemalloc",
+    "massa_event_cache/jemalloc",
+    "tikv-jemalloc-sys"
+]
 
 [dependencies]
 crossbeam-channel = { workspace = true } # BOM UPGRADE     Revert to "0.5.6" if problem
@@ -55,6 +61,7 @@ rand = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"ver
 clap = { workspace = true }
 dialoguer = { workspace = true }
 ctrlc = { workspace = true }
+tikv-jemalloc-sys = { workspace = true, optional = true }
 massa_api_exports = { workspace = true }
 massa_api = { workspace = true }
 massa_async_pool = { workspace = true }

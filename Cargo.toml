@@ -176,7 +176,8 @@ rand_distr = "=0.4"
 rand_xoshiro = "0.6"
 rayon = "1.7"
 rcgen = "0.11"
-rocksdb = "0.21"
+# "rust-rocksdb" instead of "rocksdb" fixes jemalloc feature, see https://github.com/rust-rocksdb/rust-rocksdb/issues/863
+rocksdb = { package = "rust-rocksdb", version = "0.36.0" }
 rust_decimal = { version = "1.32", default-features = false }
 rustyline = "12.0"
 rustyline-derive = "0.9"
@@ -215,3 +216,4 @@ variant_count = "1.1"
 walkdir = "2.3"
 zeroize = { version = "1.7", features = ["derive"] }
 prost = { version = "=0.13" }
+tikv-jemalloc-sys = { version = "0.6", features = ["unprefixed_malloc_on_supported_platforms"] }

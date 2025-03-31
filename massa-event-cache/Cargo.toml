@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 test-exports = ["massa_models/test-exports", "mockall", "mockall_wrap"]
-
+jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
 nom = { workspace = true }
