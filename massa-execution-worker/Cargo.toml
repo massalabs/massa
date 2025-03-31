@@ -4,7 +4,7 @@ harness = false
 
 [package]
 name = "massa_execution_worker"
-version = "28.10.0"
+version = "28.12.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
