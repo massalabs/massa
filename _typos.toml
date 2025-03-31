@@ -3,7 +3,9 @@ extend-exclude = [
     "lcov.info",
     "massa-node/base_config/*.json",
     "massa-node/src/tests/config.toml",
-    "*.patch"
+    "*.patch",
+    "LICENSE.md",
+
 ]
 
 [default]

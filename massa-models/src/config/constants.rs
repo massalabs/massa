@@ -20,6 +20,9 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Massa Community charter content
+pub const COMMUNITY_CHARTER_CONTENT: &str = include_str!("../../../COMMUNITY_CHARTER.md");
+
 /// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
