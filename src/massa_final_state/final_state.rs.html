@@ -1370,6 +1370,7 @@
 <a href="#1370" id="1370">1370</a>
 <a href="#1371" id="1371">1371</a>
 <a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines the final state of the node, which includes
@@ -1948,7 +1949,8 @@
             }
         }
 
-        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in </span>db.iterator_cf(STATE_CF, MassaIteratorMode::Start)
+        <span class="kw">for </span>(serialized_key, serialized_value) <span class="kw">in
+            </span>db.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start)
         {
             <span class="attr">#[allow(clippy::if_same_then_else)]
             </span><span class="kw">if </span>serialized_key.starts_with(CYCLE_HISTORY_PREFIX.as_bytes()) {
