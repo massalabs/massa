@@ -19,6 +19,11 @@ pub struct LoggingSettings {
     pub level: usize,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct CliSettings {
+    pub approved_community_charter_file_path: PathBuf,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct ExecutionSettings {
     pub max_final_events: usize,
@@ -152,6 +157,7 @@ pub struct Settings {
     pub metrics: MetricsSettings,
     pub versioning: VersioningSettings,
     pub block_dump: BlockDumpSettings,
+    pub cli: CliSettings,
 }
 
 /// Consensus configuration
