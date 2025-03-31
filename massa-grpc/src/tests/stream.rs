@@ -208,7 +208,7 @@ async fn new_operations() {
         ),
     };
 
-    // send filter with unknow op id
+    // send filter with unknown op id
     tx_request
         .send(NewOperationsRequest {
             filters: vec![filter],
@@ -219,7 +219,7 @@ async fn new_operations() {
     op_send_signal.send(()).await.unwrap();
 
     // wait for response
-    // should be timed out because of unknow op id
+    // should be timed out because of unknown op id
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
     assert!(result.is_err());
 
