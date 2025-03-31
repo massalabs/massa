@@ -1,4 +1,41 @@
 #![allow(dead_code)]
+// Copyright (c) 2022 MASSA LABS <info@massa.net>
+//! # General description
+//!
+//! 'execution-info' is a Rust feature that can be enabled for the execution module to provide
+//! various execution information
+//!
+//! Note:
+//! * enabling the 'execution-info' feature also enables the 'execution-trace' feature.
+//!
+//! # Information collected during execution
+//!
+//! * Roll:
+//!   * Roll buy
+//!   * Roll sell
+//!   * Auto sell
+//! * Denunciations execution (aka slash)
+//! * Rewards
+//!   * endorsement creator reward
+//!   * endorsement target reward
+//!   * block producer reward
+//! * Deferred credits execution
+//! * Async message execution + cancellation
+//!
+//! # Usage
+//!
+//! The 'execution-info' feature was originally developed for the [slot-replayer](https://github.com/massalabs/massa-slot-replayer) project.
+//!
+//! By running a massa node with the Rust feature 'dump-block', the executed blocks will be stored on disk (files or rocksdb).
+//!
+//! Then the slot-replayer use the massa-execution-module to replay those blocks and use the 'execution-info' + 'slot-replayer' features
+//! to print the result of each execution (see execution.rs, method: apply_final_execution_output).
+//!  
+//! Note: no json-rpc or grpc endpoint is available to query 'execution-info' result.
+//!
+//! # Test
+//!
+//! The functional test `test_local_sandbox_op_with_backup` shows how to backup blocks.
 
 use std::collections::HashMap;
 
