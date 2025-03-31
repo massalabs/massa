@@ -347,13 +347,13 @@ impl AsyncPool {
     ///
     /// This should only be called when we know we want to execute the messages.
     /// Otherwise, we should use the `message_info_cache`.
-    pub fn fetch_messages<'a>(
+    pub fn fetch_messages(
         &self,
-        message_ids: Vec<&'a AsyncMessageId>,
-    ) -> Vec<(&'a AsyncMessageId, Option<AsyncMessage>)> {
-        let mut fetched_messages = Vec::new();
+        message_ids: &[AsyncMessageId],
+    ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
+        let mut fetched_messages = Vec::with_capacity(message_ids.len());
 
-        for message_id in message_ids.iter() {
+        for message_id in message_ids {
             let message = self.fetch_message(message_id);
             fetched_messages.push((*message_id, message));
         }
@@ -1121,11 +1121,21 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message_ids: Vec<&AsyncMessageId> = vec![];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
 
@@ -1181,11 +1191,21 @@ mod tests {
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
 
-        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![message_id, message2_id];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1242,11 +1262,21 @@ mod tests {
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
 
-        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![message_id, message2_id];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
