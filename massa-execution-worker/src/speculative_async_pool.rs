@@ -143,19 +143,18 @@ impl SpeculativeAsyncPool {
             {
                 available_gas -= corrected_max_gas;
 
-                wanted_messages.push(message_id);
+                wanted_messages.push(*message_id);
             }
         }
 
-        let taken = self.fetch_msgs(
-            wanted_messages,
-            true,
-            self.get_execution_component_version(&slot),
-        );
+        let taken = self.fetch_msgs(wanted_messages, self.get_execution_component_version(&slot));
 
-        for (message_id, _) in taken.iter() {
+        // Remove the messages_info of the taken messages, and push their deletion in the pool changes
+        let taken_ids: Vec<_> = taken.iter().map(|(id, _)| *id).collect();
+        for message_id in taken_ids.iter() {
             self.message_infos.remove(message_id);
         }
+        self.delete_messages(taken_ids);
 
         taken
     }
@@ -239,8 +238,7 @@ impl SpeculativeAsyncPool {
 
         // Query triggered messages
         let triggered_msg = self.fetch_msgs(
-            triggered_info.iter().map(|(id, _)| id).collect(),
-            false,
+            triggered_info.into_iter().map(|(id, _)| id).collect(),
             execution_component_version,
         );
 
@@ -250,10 +248,12 @@ impl SpeculativeAsyncPool {
 
         // Query eliminated messages
         let mut eliminated_msg = self.fetch_msgs(
-            eliminated_infos.iter().map(|(id, _)| id).collect(),
-            true,
+            eliminated_infos.into_iter().map(|(id, _)| id).collect(),
             execution_component_version,
         );
+        // Push their deletion in the pool changes
+        self.delete_messages(eliminated_msg.iter().map(|(id, _)| *id).collect());
+
         if fix_eliminated_msg {
             eliminated_msg.extend(eliminated_new_messages.iter().filter_map(|(k, v)| match v {
                 SetUpdateOrDelete::Set(v) => Some((*k, v.clone())),
@@ -264,14 +264,11 @@ impl SpeculativeAsyncPool {
         eliminated_msg
     }
 
-    fn fetch_msgs(
+    fn fetch_msgs_v0(
         &mut self,
-        mut wanted_ids: Vec<&AsyncMessageId>,
-        delete_existing: bool,
-        execution_component_version: u32,
+        mut wanted_ids: Vec<AsyncMessageId>,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
         let mut msgs = Vec::new();
-
         let mut current_changes = HashMap::new();
         for id in wanted_ids.iter() {
             current_changes.insert(*id, AsyncMessageUpdate::default());
@@ -280,12 +277,9 @@ impl SpeculativeAsyncPool {
         let pool_changes_clone = self.pool_changes.clone();
 
         // First, look in speculative pool
-        wanted_ids.retain(|&message_id| match pool_changes_clone.0.get(message_id) {
+        wanted_ids.retain(|&message_id| match pool_changes_clone.0.get(&message_id) {
             Some(SetUpdateOrDelete::Set(msg)) => {
-                if delete_existing {
-                    self.pool_changes.push_delete(*message_id);
-                }
-                msgs.push((*message_id, msg.clone()));
+                msgs.push((message_id, msg.clone()));
                 false
             }
             Some(SetUpdateOrDelete::Update(msg_update)) => {
@@ -301,28 +295,26 @@ impl SpeculativeAsyncPool {
         // Then, search the active history
         wanted_ids.retain(|&message_id| {
             match self.active_history.read().fetch_message(
-                message_id,
-                current_changes.get(message_id).cloned().unwrap_or_default(),
-                execution_component_version,
+                &message_id,
+                current_changes
+                    .get(&message_id)
+                    .cloned()
+                    .unwrap_or_default(),
+                0,
             ) {
                 Present(SetUpdateOrDelete::Set(mut msg)) => {
-                    msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
-                    if delete_existing {
-                        self.pool_changes.push_delete(*message_id);
-                    }
-                    msgs.push((*message_id, msg));
+                    msg.apply(
+                        current_changes
+                            .get(&message_id)
+                            .cloned()
+                            .unwrap_or_default(),
+                    );
+                    msgs.push((message_id, msg));
                     return false;
                 }
                 Present(SetUpdateOrDelete::Update(msg_update)) => {
                     current_changes.entry(message_id).and_modify(|e| {
-                        match execution_component_version {
-                            0 => {
-                                e.apply(msg_update.clone());
-                            }
-                            _ => {
-                                *e = msg_update.clone();
-                            }
-                        }
+                        e.apply(msg_update.clone());
                     });
                     return true;
                 }
@@ -336,20 +328,90 @@ impl SpeculativeAsyncPool {
             .final_state
             .read()
             .get_async_pool()
-            .fetch_messages(wanted_ids);
+            .fetch_messages(&wanted_ids);
 
         for (message_id, message) in fetched_msgs {
             if let Some(msg) = message {
                 let mut msg = msg.clone();
-                msg.apply(current_changes.get(message_id).cloned().unwrap_or_default());
-                if delete_existing {
-                    self.pool_changes.push_delete(*message_id);
-                }
-                msgs.push((*message_id, msg));
+                msg.apply(
+                    current_changes
+                        .get(&message_id)
+                        .cloned()
+                        .unwrap_or_default(),
+                );
+                msgs.push((message_id, msg));
             }
         }
 
         msgs
+    }
+
+    /// This version changes two things:
+    /// - We ensure the order of the messages is preserved when we fetch them (to avoid a non-deterministic behavior in the execution)
+    /// - We simplify the code by working from the final state and applying changes of the active history and the current changes
+    fn fetch_msgs_v1(
+        &mut self,
+        wanted_ids: Vec<AsyncMessageId>,
+    ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
+        // fetch final state
+        let mut retrieved = self
+            .final_state
+            .read()
+            .get_async_pool()
+            .fetch_messages(&wanted_ids);
+
+        // function to accumulate changes to the retrieved list
+        let mut apply_changes = |changes: &AsyncPoolChanges| {
+            for (id, msg_opt) in retrieved.iter_mut() {
+                match changes.0.get(id) {
+                    Some(SetUpdateOrDelete::Set(msg)) => {
+                        *msg_opt = Some(msg.clone());
+                    }
+                    Some(SetUpdateOrDelete::Update(msg_update)) => {
+                        if msg_opt.is_none() {
+                            *msg_opt = Some(AsyncMessage::default());
+                        }
+                        msg_opt.as_mut().unwrap().apply(msg_update.clone()); // unwrap checked above
+                    }
+                    Some(SetUpdateOrDelete::Delete) => {
+                        *msg_opt = None;
+                    }
+                    None => {}
+                }
+            }
+        };
+
+        // fetch active history
+        for hist_item in self.active_history.read().0.iter() {
+            apply_changes(&hist_item.state_changes.async_pool_changes);
+        }
+
+        // fetch current changes
+        apply_changes(&self.pool_changes);
+
+        retrieved
+    }
+
+    fn fetch_msgs(
+        &mut self,
+        wanted_ids: Vec<AsyncMessageId>,
+        execution_component_version: u32,
+    ) -> Vec<(AsyncMessageId, AsyncMessage)> {
+        match execution_component_version {
+            0 => self.fetch_msgs_v0(wanted_ids),
+            // Here, we only return the messages that have been found (and not deleted)
+            _ => self
+                .fetch_msgs_v1(wanted_ids)
+                .into_iter()
+                .filter_map(|(id, msg_opt)| msg_opt.map(|msg| (id, msg)))
+                .collect(),
+        }
+    }
+
+    fn delete_messages(&mut self, message_ids: Vec<AsyncMessageId>) {
+        for message_id in message_ids {
+            self.pool_changes.push_delete(message_id);
+        }
     }
 
     fn get_execution_component_version(&self, slot: &Slot) -> u32 {
