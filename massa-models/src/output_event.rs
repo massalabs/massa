@@ -1,3 +1,5 @@
+use crate::async_msg_id::{AsyncMessageId, AsyncMessageIdWrapper};
+use crate::deferred_calls::DeferredCallId;
 use crate::{address::Address, block_id::BlockId, operation::OperationId, slot::Slot};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -51,6 +53,10 @@ pub struct EventExecutionContext {
     pub is_final: bool,
     /// if the sc that emitted this event failed
     pub is_error: bool,
+    /// the deferred call id that is currently being executed
+    pub deferred_call_id: Option<DeferredCallId>,
+    /// the async message id that is currently being executed
+    pub async_msg_id: Option<AsyncMessageId>,
 }
 
 impl Display for EventExecutionContext {
@@ -71,6 +77,13 @@ impl Display for EventExecutionContext {
         }
         if let Some(id) = self.origin_operation_id {
             writeln!(f, "Origin operation id: {}", id)?;
+        }
+        if let Some(id) = &self.deferred_call_id {
+            writeln!(f, "Deferred call id: {}", id)?;
+        }
+        if let Some(id) = self.async_msg_id {
+            let wrapper = AsyncMessageIdWrapper(id);
+            writeln!(f, "Async message id: {}", wrapper)?;
         }
         writeln!(
             f,

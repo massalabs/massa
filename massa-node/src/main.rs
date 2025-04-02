@@ -270,6 +270,7 @@ async fn launch(
         max_versioning_elements_size: MAX_BOOTSTRAP_VERSIONING_ELEMENTS_SIZE.try_into().unwrap(),
         thread_count: THREAD_COUNT,
         max_ledger_backups: SETTINGS.ledger.max_ledger_backups,
+        enable_metrics: SETTINGS.metrics.enabled,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -592,6 +593,9 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         event_cache_size: SETTINGS.execution.event_cache_size,
         event_snip_amount: SETTINGS.execution.event_snip_amount,
+        broadcast_slot_execution_info_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_info_channel_capacity,
     };
 
     let execution_channels = ExecutionChannels {
@@ -602,6 +606,11 @@ async fn launch(
         #[cfg(feature = "execution-trace")]
         slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
+        )
+        .0,
+        #[cfg(feature = "execution-info")]
+        slot_execution_info_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_info_channel_capacity,
         )
         .0,
     };
@@ -1122,6 +1131,7 @@ async fn launch(
         SETTINGS.metrics.tick_delay.to_duration(),
         execution_controller,
         pool_controller,
+        db.clone(),
         massa_metrics,
         (
             api_config.thread_count,

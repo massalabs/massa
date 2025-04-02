@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use crate::SlotRange;
 use crate::{config::GrpcConfig, error::GrpcError};
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
 use massa_execution_exports::{ExecutionOutput, SlotExecutionOutput};
 use massa_models::address::Address;
 use massa_models::block::{FilledBlock, SecureShareBlock};
@@ -85,6 +86,12 @@ pub(crate) struct NewEndorsementsFilter {
     addresses: Option<HashSet<Address>>,
     // Block ids to filter
     block_ids: Option<HashSet<BlockId>>,
+}
+
+pub(crate) struct NewExecutionInfoFilter {
+    // Address to filter (not used without feature execution-info)
+    #[allow(dead_code)]
+    address: Option<Address>,
 }
 
 impl
@@ -818,5 +825,51 @@ impl FilterGrpc<Vec<grpc_api::NewEndorsementsFilter>, NewEndorsementsFilter, Sec
         }
 
         Some(content)
+    }
+}
+
+impl FilterGrpc<Option<String>, NewExecutionInfoFilter, ExecutionInfoForSlot>
+    for NewExecutionInfoFilter
+{
+    fn build_from_request(
+        filter: Option<String>,
+        _grpc_config: &GrpcConfig,
+    ) -> Result<NewExecutionInfoFilter, GrpcError> {
+        let address = filter
+            .map(|addr| {
+                Address::from_str(&addr)
+                    .map_err(|_| GrpcError::InvalidArgument(format!("invalid address: {}", addr)))
+            })
+            .transpose()?;
+        Ok(NewExecutionInfoFilter { address })
+    }
+
+    #[allow(unused_mut)]
+    fn filter_output(
+        &self,
+        mut _content: ExecutionInfoForSlot,
+        _grpc_config: &GrpcConfig,
+    ) -> Option<ExecutionInfoForSlot> {
+        #[cfg(feature = "execution-info")]
+        {
+            if let Some(address_filter) = &self.address {
+                _content.transfers.retain(|transfer| {
+                    transfer.from.map_or(false, |from| from.eq(address_filter))
+                        || transfer.to.map_or(false, |to| to.eq(address_filter))
+                });
+            }
+
+            if _content.transfers.is_empty() {
+                // if content.is_empty() {
+                return None;
+            } else {
+                return Some(_content);
+            }
+        }
+
+        #[cfg(not(feature = "execution-info"))]
+        {
+            None
+        }
     }
 }

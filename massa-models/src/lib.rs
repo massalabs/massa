@@ -12,6 +12,10 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
+/// async message related structures
+pub mod async_msg;
+/// async message id
+pub mod async_msg_id;
 /// block structure
 pub mod block;
 /// block-related structure: block_header

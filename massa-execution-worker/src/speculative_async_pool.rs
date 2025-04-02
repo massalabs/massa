@@ -4,12 +4,13 @@
 //! the pool at an arbitrary execution slot.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult::Present};
-use massa_async_pool::{
-    AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
-    AsyncPoolChanges,
-};
+use massa_async_pool::AsyncPoolChanges;
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
+use massa_models::async_msg::{
+    AsyncMessage, AsyncMessageInfo, AsyncMessageTrigger, AsyncMessageUpdate,
+};
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::types::{Applicable, SetUpdateOrDelete};
 use massa_models::{
     config::{GENESIS_TIMESTAMP, T0, THREAD_COUNT},

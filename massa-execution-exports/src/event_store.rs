@@ -130,6 +130,8 @@ fn test_prune() {
                 origin_operation_id: None,
                 is_final: false,
                 is_error: false,
+                deferred_call_id: None,
+                async_msg_id: None,
             },
             data: i.to_string(),
         });

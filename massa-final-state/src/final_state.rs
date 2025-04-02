@@ -971,7 +971,7 @@ mod test {
     use parking_lot::RwLock;
     use tempfile::tempdir;
 
-    use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
+    use massa_async_pool::{AsyncPoolChanges, AsyncPoolConfig};
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
@@ -979,17 +979,19 @@ mod test {
     use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
     use massa_ledger_worker::FinalLedger;
     use massa_models::address::Address;
-    use massa_models::amount::Amount;
-    use massa_models::bytecode::Bytecode;
-    use massa_models::types::SetUpdateOrDelete;
-
-    use massa_models::config::{
-        DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
-        MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
-        MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
-        MAX_DENUNCIATION_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
-        MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
-        PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
+    use massa_models::{
+        amount::Amount,
+        async_msg::AsyncMessage,
+        bytecode::Bytecode,
+        config::{
+            DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, KEEP_EXECUTED_HISTORY_EXTRA_PERIODS,
+            MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH, MAX_DATASTORE_VALUE_LENGTH,
+            MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+            MAX_DENUNCIATION_CHANGES_LENGTH, MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE,
+            MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, MIP_STORE_STATS_BLOCK_CONSIDERED,
+            PERIODS_PER_CYCLE, POS_SAVED_CYCLES, T0, THREAD_COUNT,
+        },
+        types::SetUpdateOrDelete,
     };
     use massa_pos_exports::MockSelectorController;
     use massa_pos_exports::{PoSChanges, PoSConfig, PosError};
@@ -1074,6 +1076,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>

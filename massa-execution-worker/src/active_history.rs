@@ -1,6 +1,7 @@
-use massa_async_pool::{AsyncMessage, AsyncMessageId, AsyncMessageUpdate};
 use massa_execution_exports::ExecutionOutput;
 use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+use massa_models::async_msg::{AsyncMessage, AsyncMessageUpdate};
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::denunciation::DenunciationIndex;
 use massa_models::prehash::{CapacityAllocator, PreHashMap, PreHashSet};
 use massa_models::types::{Applicable, SetOrDelete, SetOrKeep, SetUpdateOrDelete};
@@ -484,6 +485,7 @@ mod test {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            transfers_history: vec![],
         };
         let exec_output_2 = ExecutionOutput {
             slot: Slot::new(1, 1),
@@ -497,6 +499,7 @@ mod test {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            transfers_history: vec![],
         };
 
         let active_history = ActiveHistory(VecDeque::from([exec_output_1, exec_output_2]));

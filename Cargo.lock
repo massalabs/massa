@@ -2650,7 +2650,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2919,7 +2919,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?branch=mainnet_2_6#a0cf93a05110d74e3a42ef92d8ec6ed4a41251bf"
+source = "git+https://github.com/massalabs/massa-proto-rs?branch=ellipx#6d36d936468400b737c9d6260ad1975e649c60ff"
 dependencies = [
  "glob",
  "prost",
@@ -2933,7 +2933,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#425f6dc3cb1a6aabd46ab91ecde1e41633048211"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=ellipx#0e3e0a4bb0feca55e4f05e39e3abe78a489667e0"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3220,6 +3220,7 @@ dependencies = [
 name = "massa_event_cache"
 version = "2.6.0"
 dependencies = [
+ "massa_metrics",
  "massa_models",
  "massa_serialization",
  "massa_time",
@@ -3263,6 +3264,7 @@ dependencies = [
  "massa_models",
  "massa_module_cache",
  "massa_pos_exports",
+ "massa_serialization",
  "massa_storage",
  "massa_time",
  "massa_versioning",
@@ -3272,6 +3274,7 @@ dependencies = [
  "tempfile",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4650,8 +4653,8 @@ version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0f3e5beed80eb580c68e2c600937ac2c4eedabdfd5ef1e5b7ea4f3fba84497b"
 dependencies = [
- "heck 0.4.1",
- "itertools 0.10.5",
+ "heck 0.5.0",
+ "itertools 0.12.1",
  "log",
  "multimap",
  "once_cell",
@@ -4671,7 +4674,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "157c5a9d7ea5c2ed2d9fb8f495b64759f7816c7eaea54ba3978f0d63000162e3"
 dependencies = [
  "anyhow",
- "itertools 0.10.5",
+ "itertools 0.12.1",
  "proc-macro2 1.0.93",
  "quote 1.0.38",
  "syn 2.0.98",
@@ -6922,7 +6925,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

@@ -14,11 +14,16 @@ use crate::speculative_executed_denunciations::SpeculativeExecutedDenunciations;
 use crate::speculative_executed_ops::SpeculativeExecutedOps;
 use crate::speculative_ledger::SpeculativeLedger;
 use crate::{active_history::ActiveHistory, speculative_roll_state::SpeculativeRollState};
-use massa_async_pool::{AsyncMessage, AsyncPoolChanges};
-use massa_async_pool::{AsyncMessageId, AsyncMessageInfo};
+use massa_async_pool::AsyncPoolChanges;
+
 use massa_deferred_calls::registry_changes::DeferredCallRegistryChanges;
 use massa_deferred_calls::{DeferredCall, DeferredSlotCalls};
 use massa_executed_ops::{ExecutedDenunciationsChanges, ExecutedOpsChanges};
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::ExecutionInfoForSlot;
+use massa_execution_exports::execution_info::{
+    OriginTransferContext, TransferContext, TransferInfo,
+};
 use massa_execution_exports::{
     EventStore, ExecutedBlockInfo, ExecutionConfig, ExecutionError, ExecutionOutput,
     ExecutionStackElement,
@@ -27,6 +32,8 @@ use massa_final_state::{FinalStateController, StateChanges};
 use massa_hash::Hash;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo};
+use massa_models::async_msg_id::AsyncMessageId;
 use massa_models::block_id::BlockIdSerializer;
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::cleanup_datastore_key_range_query;
@@ -110,6 +117,9 @@ pub struct ExecutionContextSnapshot {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    /// Transfer history count
+    pub transfer_history_len: usize,
 }
 
 /// An execution context that needs to be initialized before executing bytecode,
@@ -211,6 +221,18 @@ pub struct ExecutionContext {
     /// Counts the number of event (apart from system events) in the current execution_context
     /// Should be reset to 0 when executing a new op / readonly request / asc / deferred call
     pub user_event_count_in_current_exec: u16,
+
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
+
+    /// Execution info
+    #[cfg(feature = "execution-info")]
+    pub execution_info: ExecutionInfoForSlot,
+
+    /// The deferred call id that is currently being executed
+    pub deferred_call_id: Option<DeferredCallId>,
+
+    /// The async message id that is currently being executed
+    pub async_msg_id: Option<AsyncMessageId>,
 }
 
 impl ExecutionContext {
@@ -243,6 +265,8 @@ impl ExecutionContext {
         )
         .expect("Time overflow when getting block slot timestamp for MIP");
 
+        let transfers_history = Arc::new(RwLock::new(Vec::new()));
+
         ExecutionContext {
             speculative_ledger: SpeculativeLedger::new(
                 final_state.clone(),
@@ -251,6 +275,7 @@ impl ExecutionContext {
                 config.max_bytecode_size,
                 config.max_datastore_value_size,
                 config.storage_costs_constants,
+                transfers_history.clone(),
             ),
             speculative_async_pool: SpeculativeAsyncPool::new(
                 final_state.clone(),
@@ -264,6 +289,7 @@ impl ExecutionContext {
             speculative_roll_state: SpeculativeRollState::new(
                 final_state.clone(),
                 active_history.clone(),
+                transfers_history.clone(),
             ),
             speculative_executed_ops: SpeculativeExecutedOps::new(
                 final_state.clone(),
@@ -271,7 +297,7 @@ impl ExecutionContext {
             ),
             speculative_executed_denunciations: SpeculativeExecutedDenunciations::new(
                 final_state,
-                active_history,
+                active_history.clone(),
             ),
             creator_min_balance: Default::default(),
             slot,
@@ -296,6 +322,11 @@ impl ExecutionContext {
                 .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
+            transfers_history,
+            #[cfg(feature = "execution-info")]
+            execution_info: ExecutionInfoForSlot::new(slot, execution_trail_hash, None),
+            deferred_call_id: Default::default(),
+            async_msg_id: Default::default(),
         }
     }
 
@@ -320,6 +351,7 @@ impl ExecutionContext {
             gas_remaining_before_subexecution: self.gas_remaining_before_subexecution,
             recursion_counter: self.recursion_counter,
             user_event_count_in_current_exec: self.user_event_count_in_current_exec,
+            transfer_history_len: self.transfers_history.read().len(),
         }
     }
 
@@ -367,6 +399,11 @@ impl ExecutionContext {
         self.gas_remaining_before_subexecution = snapshot.gas_remaining_before_subexecution;
         self.recursion_counter = snapshot.recursion_counter;
         self.user_event_count_in_current_exec = snapshot.user_event_count_in_current_exec;
+
+        {
+            let mut transfers_history = self.transfers_history.write();
+            transfers_history.truncate(snapshot.transfer_history_len);
+        }
 
         // For events, set snapshot delta to error events.
         for event in self.events.0.range_mut(snapshot.event_count..) {
@@ -805,6 +842,7 @@ impl ExecutionContext {
         to_addr: Option<Address>,
         amount: Amount,
         check_rights: bool,
+        transfer_context: TransferContext,
     ) -> Result<(), ExecutionError> {
         let execution_component_version = self.execution_component_version;
 
@@ -853,6 +891,7 @@ impl ExecutionContext {
             to_addr,
             amount,
             execution_component_version,
+            transfer_context,
         )
     }
 
@@ -874,7 +913,16 @@ impl ExecutionContext {
     ) -> Option<(Address, Result<Amount, String>)> {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
-        let transfer_result = self.transfer_coins(None, Some(msg.sender), msg.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(msg.sender),
+            msg.coins,
+            false,
+            TransferContext::AyncMsgCancel(OriginTransferContext {
+                async_message_id: Some(msg.compute_id()),
+                ..Default::default()
+            }),
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
                 "async message cancel: reimbursement of {} failed: {}",
@@ -898,9 +946,9 @@ impl ExecutionContext {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64, operation_id: OperationId) {
         self.speculative_roll_state
-            .add_rolls(buyer_addr, roll_count);
+            .add_rolls(buyer_addr, roll_count, operation_id);
     }
 
     /// Try to sell `roll_count` rolls from the seller address.
@@ -912,6 +960,7 @@ impl ExecutionContext {
         &mut self,
         seller_addr: &Address,
         roll_count: u64,
+        operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         self.speculative_roll_state.try_sell_rolls(
             seller_addr,
@@ -920,6 +969,7 @@ impl ExecutionContext {
             self.config.periods_per_cycle,
             self.config.thread_count,
             self.config.roll_price,
+            operation_id,
         )
     }
 
@@ -933,12 +983,13 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         let execution_component_version = self.execution_component_version;
 
         match execution_component_version {
-            0 => self.try_slash_rolls_v0(denounced_addr, roll_count),
-            _ => self.try_slash_rolls_v1(denounced_addr, roll_count),
+            0 => self.try_slash_rolls_v0(denounced_addr, roll_count, denunciation_idx),
+            _ => self.try_slash_rolls_v1(denounced_addr, roll_count, denunciation_idx),
         }
     }
 
@@ -946,6 +997,7 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         // try to slash as many roll as available
         let slashed_rolls = self
@@ -979,9 +1031,13 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+            let slashed_coins_in_deferred_credits =
+                self.speculative_roll_state.try_slash_deferred_credits(
+                    &self.slot,
+                    denounced_addr,
+                    &amount_remaining_to_slash,
+                    denunciation_idx,
+                );
 
             slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
 
@@ -1003,6 +1059,7 @@ impl ExecutionContext {
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
+        denunciation_idx: &DenunciationIndex,
     ) -> Result<Amount, ExecutionError> {
         // try to slash as many roll as available
         let slashed_rolls = self
@@ -1039,9 +1096,13 @@ impl ExecutionContext {
         if amount_remaining_to_slash > Amount::zero() {
             // There is still an amount to slash for this denunciation so we need to slash
             // in deferred credits
-            let slashed_coins_in_deferred_credits = self
-                .speculative_roll_state
-                .try_slash_deferred_credits(&self.slot, denounced_addr, &amount_remaining_to_slash);
+            let slashed_coins_in_deferred_credits =
+                self.speculative_roll_state.try_slash_deferred_credits(
+                    &self.slot,
+                    denounced_addr,
+                    &amount_remaining_to_slash,
+                    denunciation_idx,
+                );
 
             total_slashed_coins =
                 total_slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
@@ -1093,7 +1154,15 @@ impl ExecutionContext {
             .credits
         {
             for (address, amount) in map {
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCredits(OriginTransferContext {
+                        ..Default::default()
+                    }),
+                );
 
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
@@ -1170,6 +1239,8 @@ impl ExecutionContext {
             deferred_call_changes: self.speculative_deferred_calls.take(),
         };
         std::mem::take(&mut self.opt_block_id);
+
+        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
         ExecutionOutput {
             slot,
             block_info,
@@ -1182,6 +1253,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
+            transfers_history,
         }
     }
 
@@ -1244,6 +1316,8 @@ impl ExecutionContext {
             execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
         };
 
+        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
+
         std::mem::take(&mut self.opt_block_id);
         ExecutionOutput {
             slot,
@@ -1257,6 +1331,7 @@ impl ExecutionContext {
             deferred_credits_execution: deferred_credits_transfers,
             cancel_async_message_execution: cancel_async_message_transfers,
             auto_sell_execution: auto_sell_rolls,
+            transfers_history,
         }
     }
 
@@ -1327,6 +1402,8 @@ impl ExecutionContext {
             origin_operation_id: self.origin_operation_id,
             is_final: false,
             is_error,
+            deferred_call_id: self.deferred_call_id.clone(),
+            async_msg_id: self.async_msg_id,
         };
 
         // Return the event
@@ -1488,25 +1565,24 @@ impl ExecutionContext {
         #[allow(unused_assignments, unused_mut)]
         let mut result = None;
 
-        let transfer_result =
-            self.transfer_coins(None, Some(call.sender_address), call.coins, false);
+        let transfer_result = self.transfer_coins(
+            None,
+            Some(call.sender_address),
+            call.coins,
+            false,
+            TransferContext::DeferredCallFail(OriginTransferContext {
+                deferred_call_id: Some(id.clone()),
+                operation_id: self.origin_operation_id.clone(),
+                async_message_id: self.async_msg_id.clone(),
+                ..Default::default()
+            }),
+        );
         if let Err(e) = transfer_result.as_ref() {
             debug!(
-                "deferred call cancel: reimbursement of {} failed: {}",
-                call.sender_address, e
+                "deferred call {} fail: reimbursement of {} to {} failed: {}",
+                id, call.coins, call.sender_address, e
             );
         }
-
-        let mut event =
-            self.event_create(format!("DeferredCall execution fail call_id:{}", id), true);
-        let max_event_size = match self.execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
-        };
-        if event.data.len() > max_event_size {
-            event.data.truncate(max_event_size);
-        }
-        self.event_emit(event);
 
         #[cfg(feature = "execution-info")]
         if let Err(e) = transfer_result {
@@ -1529,15 +1605,26 @@ impl ExecutionContext {
                 // check that the caller is the one who registered the deferred call
                 if call.sender_address != caller_address {
                     return Err(ExecutionError::DeferredCallsError(format!(
-                        "only the caller {} can cancel the deferred call",
-                        call.sender_address
+                        "only the caller {} can cancel the deferred call (cancel caller: {})",
+                        call.sender_address, caller_address
                     )));
                 }
 
                 let (address, amount) = self.speculative_deferred_calls.cancel_call(call_id)?;
 
                 // refund the coins to the caller
-                let transfer_result = self.transfer_coins(None, Some(address), amount, false);
+                let transfer_result = self.transfer_coins(
+                    None,
+                    Some(address),
+                    amount,
+                    false,
+                    TransferContext::DeferredCallCancel(OriginTransferContext {
+                        deferred_call_id: Some(call_id.clone()),
+                        operation_id: self.origin_operation_id.clone(),
+                        async_message_id: self.async_msg_id.clone(),
+                        ..Default::default()
+                    }),
+                );
                 if let Err(e) = transfer_result.as_ref() {
                     debug!(
                         "deferred call cancel: reimbursement of {} failed: {}",

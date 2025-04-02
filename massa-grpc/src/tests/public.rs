@@ -362,6 +362,7 @@ async fn execute_read_only_call() {
                     deferred_credits_execution: vec![],
                     cancel_async_message_execution: vec![],
                     auto_sell_execution: vec![],
+                    transfers_history: vec![],
                 },
                 gas_cost: 100,
                 call_result: "toto".as_bytes().to_vec(),
@@ -620,6 +621,8 @@ async fn get_sc_execution_events() {
                     ),
                     is_final: false,
                     is_error: false,
+                    deferred_call_id: None,
+                    async_msg_id: None,
                 },
                 data: "massa".to_string(),
             }]
