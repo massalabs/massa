@@ -43,6 +43,13 @@ pub trait MassaDBController: Send + Sync + Debug {
     /// Exposes RocksDB's "multi_get_cf" function
     fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>>;
 
+    /// Exposes RocksDB's "iterator_cf" function, without filling up the read cache
+    fn iterator_cf_for_full_db_traversal(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
         &self,

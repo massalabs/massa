@@ -6,6 +6,7 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
+use anyhow::{anyhow, bail, Result};
 use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::execution_info::OriginTransferContext;
 use massa_execution_exports::{

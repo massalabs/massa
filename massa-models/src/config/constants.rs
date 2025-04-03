@@ -20,6 +20,9 @@ use massa_signature::KeyPair;
 use massa_time::MassaTime;
 use num::rational::Ratio;
 
+/// Massa Community charter content
+pub const COMMUNITY_CHARTER_CONTENT: &str = include_str!("../../../COMMUNITY_CHARTER.md");
+
 /// IMPORTANNT TODO: should be removed after the bootstrap messages refacto
 pub const SIGNATURE_DESER_SIZE: usize = 64 + 1;
 
@@ -78,6 +81,16 @@ lazy_static::lazy_static! {
         .unwrap()
     };
     /// node chain id (to avoid replay attacks)
+    ///
+    /// By signing an operation with an ID of the target chain
+    /// (e.g. whether the operation targets LABNET, BUILDNET or MAINNET), the user is protected from
+    /// a malicious actor that could steal operations created on BUILDNET / LABNET and try to replay
+    /// them on the Massa MAINNET (and potentially stealing real coins)
+    /// Chain id idea and implementation come from Ethereum EIPs:
+    /// * https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
+    /// * https://eips.ethereum.org/EIPS/eip-1344
+    /// Chain id can be queried in Smart contracts (AssemblyScript: chain_id call) and in the
+    /// jsonrpc get_status call
     pub static ref CHAINID: u64 = {
         // MASM (MainNet):           77658377
         // MASS (SecureNet):         77658383

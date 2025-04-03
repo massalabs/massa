@@ -200,44 +200,6 @@ impl PartialEq for Advance {
 
 impl Eq for Advance {}
 
-// A Lightweight version of 'Advance' (used in MipState history)
-#[derive(Clone, Debug)]
-pub struct AdvanceLW {
-    /// % of past blocks with this version
-    pub threshold: Ratio<u64>,
-    /// Current time (timestamp)
-    pub now: MassaTime,
-}
-
-impl From<&Advance> for AdvanceLW {
-    fn from(value: &Advance) -> Self {
-        Self {
-            threshold: value.threshold,
-            now: value.now,
-        }
-    }
-}
-
-impl Ord for AdvanceLW {
-    fn cmp(&self, other: &Self) -> Ordering {
-        (self.now, self.threshold).cmp(&(other.now, other.threshold))
-    }
-}
-
-impl PartialOrd for AdvanceLW {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for AdvanceLW {
-    fn eq(&self, other: &Self) -> bool {
-        self.threshold == other.threshold && self.now == other.now
-    }
-}
-
-impl Eq for AdvanceLW {}
-
 transitions!(ComponentState,
     [
         (Defined, Advance) => [Defined, Started, Failed],
@@ -300,6 +262,44 @@ impl Failed {
         Failed {}
     }
 }
+
+// A Lightweight version of 'Advance' (used in MipState history)
+#[derive(Clone, Debug)]
+pub struct AdvanceLW {
+    /// % of past blocks with this version
+    pub threshold: Ratio<u64>,
+    /// Current time (timestamp)
+    pub now: MassaTime,
+}
+
+impl From<&Advance> for AdvanceLW {
+    fn from(value: &Advance) -> Self {
+        Self {
+            threshold: value.threshold,
+            now: value.now,
+        }
+    }
+}
+
+impl Ord for AdvanceLW {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.now, self.threshold).cmp(&(other.now, other.threshold))
+    }
+}
+
+impl PartialOrd for AdvanceLW {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for AdvanceLW {
+    fn eq(&self, other: &Self) -> bool {
+        self.threshold == other.threshold && self.now == other.now
+    }
+}
+
+impl Eq for AdvanceLW {}
 
 /// Error returned by `MipState::is_consistent_with`
 #[derive(Error, Debug, PartialEq)]
@@ -2695,7 +2695,10 @@ mod test {
 
         // Step 5: test is_key_value_valid
         let mut count = 0;
-        for (ser_key, ser_value) in db.read().iterator_cf(STATE_CF, MassaIteratorMode::Start) {
+        for (ser_key, ser_value) in db
+            .read()
+            .iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start)
+        {
             assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
             count += 1;
         }
@@ -2704,7 +2707,7 @@ mod test {
         let mut count2 = 0;
         for (ser_key, ser_value) in db
             .read()
-            .iterator_cf(VERSIONING_CF, MassaIteratorMode::Start)
+            .iterator_cf_for_full_db_traversal(VERSIONING_CF, MassaIteratorMode::Start)
         {
             assert!(mip_store.is_key_value_valid(&ser_key, &ser_value));
             count2 += 1;

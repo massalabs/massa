@@ -56,6 +56,11 @@ execution-info = [
     "execution-trace",
 ]
 slot-replayer = []
+jemalloc = [
+    "rocksdb/jemalloc",
+    "massa_event_cache/jemalloc",
+    "massa_module_cache/jemalloc"
+]
 
 [dependencies]
 blake3 = { workspace = true }

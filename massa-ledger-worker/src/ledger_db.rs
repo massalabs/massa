@@ -605,7 +605,7 @@ impl LedgerDB {
         // address
         let end_prefix = key_prefix[0..key_prefix.len() - 1].to_vec();
 
-        db.iterator_cf(
+        db.iterator_cf_for_full_db_traversal(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
@@ -628,7 +628,7 @@ impl LedgerDB {
 
         let key_prefix = datastore_prefix_from_address(addr, &[]);
 
-        db.iterator_cf(
+        db.iterator_cf_for_full_db_traversal(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )

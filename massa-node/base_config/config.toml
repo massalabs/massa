@@ -2,6 +2,9 @@
     # Logging level. High log levels might impact performance. 0: ERROR, 1: WARN, 2: INFO, 3: DEBUG, 4: TRACE
     level = 2
 
+[cli]
+    approved_community_charter_file_path = "config/approved_community_charter.txt"
+
 [api]
     # max number of future periods considered during requests
     draw_lookahead_period_count = 10
@@ -247,8 +250,8 @@
     initial_ledger_path = "base_config/initial_ledger.json"
     # path to the disk ledger db directory
     disk_ledger_path = "storage/ledger/rocks_db"
-    # length of the changes history. Higher values allow bootstrapping nodes with slower connections
-    final_history_length = 100
+    # length of the changes history. Higher values allow bootstrapping nodes with slower connections (300s between messages = 600 slots to keep)
+    final_history_length = 600
     # path of the initial deferred credits file
     initial_deferred_credits_path = "base_config/deferred_credits.json"
     # Interval of periods between creation of each ledger backup
