@@ -6,7 +6,6 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
-use anyhow::{anyhow, bail, Result};
 use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::execution_info::OriginTransferContext;
 use massa_execution_exports::{
@@ -1787,8 +1786,8 @@ impl Interface for InterfaceImpl {
         // get caller address
         let sender_address = context.get_current_address().map_err(|e| e.to_string())?;
 
-        let operation_id = context.origin_operation_id.clone();
-        let async_message_id = context.async_msg_id.clone();
+        let operation_id = context.origin_operation_id;
+        let async_message_id = context.async_msg_id;
 
         // make sender pay coins + fee
         // coins + cost for booking the deferred call

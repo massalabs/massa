@@ -1572,8 +1572,8 @@ impl ExecutionContext {
             false,
             TransferContext::DeferredCallFail(OriginTransferContext {
                 deferred_call_id: Some(id.clone()),
-                operation_id: self.origin_operation_id.clone(),
-                async_message_id: self.async_msg_id.clone(),
+                operation_id: self.origin_operation_id,
+                async_message_id: self.async_msg_id,
                 ..Default::default()
             }),
         );
@@ -1620,8 +1620,8 @@ impl ExecutionContext {
                     false,
                     TransferContext::DeferredCallCancel(OriginTransferContext {
                         deferred_call_id: Some(call_id.clone()),
-                        operation_id: self.origin_operation_id.clone(),
-                        async_message_id: self.async_msg_id.clone(),
+                        operation_id: self.origin_operation_id,
+                        async_message_id: self.async_msg_id,
                         ..Default::default()
                     }),
                 );

@@ -3325,6 +3325,7 @@ dependencies = [
  "prost",
  "rand",
  "rand_xoshiro",
+ "regex",
  "rust-rocksdb",
  "schnellru",
  "serde_json",
