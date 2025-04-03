@@ -560,11 +560,6 @@ impl From<ExecutionInfoForSlot> for grpc_api::NewTransfersInfoServerResponse {
                     TransferContext::AsyncMsgCoins(ctx) => {
                         (CoinOrigin::AsyncMsgCoins as i32, Some(ctx))
                     }
-                    TransferContext::RollSlash => (CoinOrigin::Slash as i32, None),
-                    TransferContext::CreateSCStorage => (CoinOrigin::CreateScStorage as i32, None),
-                    TransferContext::DatastoreStorage => {
-                        (CoinOrigin::DatastoreStorage as i32, None)
-                    }
                     TransferContext::EndorsementCreatorReward => {
                         (CoinOrigin::EndorsementReward as i32, None)
                     }
