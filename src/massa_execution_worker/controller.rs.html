@@ -601,6 +601,36 @@
 <a href="#601" id="601">601</a>
 <a href="#602" id="602">602</a>
 <a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module implements an execution controller.
@@ -798,20 +828,44 @@
                         <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate { addr, prefix } =&gt; {
-                    <span class="kw">let </span>(_final_v, speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix);
+                ExecutionQueryRequestItem::AddressDatastoreKeysCandidate {
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count,
+                } =&gt; {
+                    <span class="kw">let </span>(_final_v, speculative_v) = execution_lock
+                        .get_final_and_candidate_datastore_keys(
+                            <span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count,
+                        );
                     <span class="kw">match </span>speculative_v {
-                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::KeyList(keys)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, <span class="bool-val">false</span>,
+                        )),
+                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                            <span class="string">"Account {}"</span>,
+                            address
+                        ))),
                     }
                 }
-                ExecutionQueryRequestItem::AddressDatastoreKeysFinal { addr, prefix } =&gt; {
-                    <span class="kw">let </span>(final_v, _speculative_v) =
-                        execution_lock.get_final_and_candidate_datastore_keys(<span class="kw-2">&amp;</span>addr, <span class="kw-2">&amp;</span>prefix);
+                ExecutionQueryRequestItem::AddressDatastoreKeysFinal {
+                    address,
+                    prefix,
+                    start_key,
+                    end_key,
+                    count,
+                } =&gt; {
+                    <span class="kw">let </span>final_v = execution_lock
+                        .get_final_datastore_keys(<span class="kw-2">&amp;</span>address, <span class="kw-2">&amp;</span>prefix, start_key, end_key, count);
                     <span class="kw">match </span>final_v {
-                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::KeyList(keys)),
-                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(<span class="string">"Account {}"</span>, addr))),
+                        <span class="prelude-val">Some</span>(keys) =&gt; <span class="prelude-val">Ok</span>(ExecutionQueryResponseItem::AddressDatastoreKeys(
+                            keys, address, <span class="bool-val">true</span>,
+                        )),
+                        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">Err</span>(ExecutionQueryError::NotFound(<span class="macro">format!</span>(
+                            <span class="string">"Account {}"</span>,
+                            address
+                        ))),
                     }
                 }
                 ExecutionQueryRequestItem::AddressDatastoreValueCandidate { addr, key } =&gt; {
@@ -1078,8 +1132,14 @@
         <span class="kw">let </span><span class="kw-2">mut </span>res = Vec::with_capacity(addresses.len());
         <span class="kw">let </span>exec_state = <span class="self">self</span>.execution_state.read();
         <span class="kw">for </span>addr <span class="kw">in </span>addresses {
-            <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) =
-                exec_state.get_final_and_candidate_datastore_keys(addr, <span class="kw-2">&amp;</span>[]);
+            <span class="kw">let </span>(final_datastore_keys, candidate_datastore_keys) = exec_state
+                .get_final_and_candidate_datastore_keys(
+                    addr,
+                    <span class="kw-2">&amp;</span>[],
+                    std::ops::Bound::Unbounded,
+                    std::ops::Bound::Unbounded,
+                    <span class="prelude-val">None</span>,
+                );
             <span class="kw">let </span>(final_balance, candidate_balance) =
                 exec_state.get_final_and_candidate_balance(addr);
             <span class="kw">let </span>(final_roll_count, candidate_roll_count) =

@@ -195,47 +195,18 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
-</span><span class="kw">use </span><span class="kw">crate</span>::config::GrpcConfig;
-<span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
+</span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
 <span class="kw">use </span><span class="kw">crate</span>::server::MassaPublicGrpc;
 <span class="kw">use </span>futures_util::StreamExt;
-<span class="kw">use </span>massa_models::address::Address;
-<span class="kw">use </span>massa_models::operation::{OperationId, SecureShareOperation};
-<span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api, NewOperationsRequest};
-<span class="kw">use </span>massa_proto_rs::massa::model::v1 <span class="kw">as </span>grpc_model;
-<span class="kw">use </span>std::collections::HashSet;
-<span class="kw">use </span>std::pin::Pin;
-<span class="kw">use </span>std::str::FromStr;
-<span class="kw">use </span>tokio::select;
+<span class="kw">use </span>massa_proto_rs::massa::api::v1::{<span class="self">self </span><span class="kw">as </span>grpc_api};
+<span class="kw">use </span>std::{pin::Pin, time::Duration};
+<span class="kw">use </span>tokio::{select, time};
 <span class="kw">use </span>tonic::{Request, Streaming};
 <span class="kw">use </span>tracing::error;
+
+<span class="kw">use </span><span class="kw">super</span>::trait_filters_impl::{FilterGrpc, FilterNewOperations};
 
 <span class="doccomment">/// Type declaration for NewOperations
 </span><span class="kw">pub type </span>NewOperationsStreamType = Pin&lt;
@@ -246,16 +217,15 @@
     &gt;,
 &gt;;
 
-<span class="comment">// Type declaration for NewOperationsFilter
-</span><span class="attr">#[derive(Debug)]
-</span><span class="kw">struct </span>Filter {
-    <span class="comment">// Operation ids to filter
-    </span>operation_ids: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt;,
-    <span class="comment">// Addresses to filter
-    </span>addresses: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt;,
-    <span class="comment">// Operation types to filter
-    </span>operation_types: <span class="prelude-ty">Option</span>&lt;HashSet&lt;i32&gt;&gt;,
-}
+<span class="doccomment">/// Type declaration for NewOperations server
+</span><span class="kw">pub type </span>NewOperationsServerStreamType = Pin&lt;
+    Box&lt;
+        <span class="kw">dyn </span>futures_util::Stream&lt;
+                Item = <span class="prelude-ty">Result</span>&lt;grpc_api::NewOperationsServerResponse, tonic::Status&gt;,
+            &gt; + Send
+            + <span class="lifetime">'static</span>,
+    &gt;,
+&gt;;
 
 <span class="doccomment">/// Creates a new stream of new produced and received operations
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations(
@@ -276,17 +246,18 @@
     tokio::spawn(<span class="kw">async move </span>{
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(request)) = in_stream.next().<span class="kw">await </span>{
             <span class="comment">// Spawn a new task for sending new operations
-            </span><span class="kw">let </span><span class="kw-2">mut </span>filters = <span class="kw">match </span>get_filter(request, <span class="kw-2">&amp;</span>config) {
-                <span class="prelude-val">Ok</span>(filter) =&gt; filter,
-                <span class="prelude-val">Err</span>(err) =&gt; {
-                    <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
-                    <span class="comment">// Send the error response back to the client
-                    </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
-                        <span class="macro">error!</span>(<span class="string">"failed to send back NewOperations error response: {}"</span>, e);
+            </span><span class="kw">let </span><span class="kw-2">mut </span>filters =
+                <span class="kw">match </span>FilterNewOperations::build_from_request(request.filters, <span class="kw-2">&amp;</span>config) {
+                    <span class="prelude-val">Ok</span>(filter) =&gt; filter,
+                    <span class="prelude-val">Err</span>(err) =&gt; {
+                        <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
+                        <span class="comment">// Send the error response back to the client
+                        </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
+                            <span class="macro">error!</span>(<span class="string">"failed to send back NewOperations error response: {}"</span>, e);
+                        }
+                        <span class="kw">return</span>;
                     }
-                    <span class="kw">return</span>;
-                }
-            };
+                };
 
             <span class="kw">loop </span>{
                 <span class="macro">select!</span> {
@@ -295,15 +266,15 @@
                         <span class="kw">match </span>event {
                             <span class="prelude-val">Ok</span>(massa_operation) =&gt; {
                                 <span class="comment">// Check if the operation should be sent
-                                </span><span class="kw">if </span>!should_send(<span class="kw-2">&amp;</span>massa_operation, <span class="kw-2">&amp;</span>filters) {
-                                    <span class="kw">continue</span>;
+                                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(data) = filters.filter_output(massa_operation, <span class="kw-2">&amp;</span>config) {
+                                         <span class="comment">// Send the new operation through the channel
+                                         </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsResponse {signed_operation: <span class="prelude-val">Some</span>(data.into())})).<span class="kw">await </span>{
+                                            <span class="macro">error!</span>(<span class="string">"failed to send operation : {}"</span>, e);
+                                            <span class="kw">break</span>;
+                                        }
                                 }
 
-                                <span class="comment">// Send the new operation through the channel
-                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsResponse {signed_operation: <span class="prelude-val">Some</span>(massa_operation.into())})).<span class="kw">await </span>{
-                                    <span class="macro">error!</span>(<span class="string">"failed to send operation : {}"</span>, e);
-                                    <span class="kw">break</span>;
-                                }
+
                             },
                             <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"{}"</span>, e)
                         }
@@ -315,7 +286,7 @@
                                 <span class="kw">match </span>res {
                                     <span class="prelude-val">Ok</span>(message) =&gt; {
                                         <span class="comment">// Update current filter
-                                        </span>filters = <span class="kw">match </span>get_filter(message, <span class="kw-2">&amp;</span>config) {
+                                        </span>filters = <span class="kw">match </span>FilterNewOperations::build_from_request(message.filters, <span class="kw-2">&amp;</span>config) {
                                             <span class="prelude-val">Ok</span>(filter) =&gt; filter,
                                             <span class="prelude-val">Err</span>(err) =&gt; {
                                                 <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
@@ -350,96 +321,75 @@
     <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsStreamType)
 }
 
-<span class="comment">// This function returns a filter from the request
-</span><span class="kw">fn </span>get_filter(
-    request: NewOperationsRequest,
-    grpc_config: <span class="kw-2">&amp;</span>GrpcConfig,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Filter, GrpcError&gt; {
-    <span class="kw">if </span>request.filters.len() <span class="kw">as </span>u32 &gt; grpc_config.max_filters_per_request {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-            <span class="string">"too many filters received. Only a maximum of {} filters are accepted per request"</span>,
-            grpc_config.max_filters_per_request
-        )));
-    }
+<span class="doccomment">/// Creates a new stream of new produced and received operations
+/// unidirectional streaming
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>new_operations_server(
+    grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
+    request: Request&lt;grpc_api::NewOperationsServerRequest&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;NewOperationsServerStreamType, GrpcError&gt; {
+    <span class="comment">// Create a channel to handle communication with the client
+    </span><span class="kw">let </span>(tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    <span class="comment">// Get the inner request
+    </span><span class="kw">let </span>request = request.into_inner();
+    <span class="comment">// Subscribe to the new operations channel
+    </span><span class="kw">let </span><span class="kw-2">mut </span>subscriber = grpc.pool_broadcasts.operation_sender.subscribe();
+    <span class="comment">// Clone grpc to be able to use it in the spawned task
+    </span><span class="kw">let </span>config = grpc.grpc_config.clone();
 
-    <span class="kw">let </span><span class="kw-2">mut </span>operation_ids_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;OperationId&gt;&gt; = <span class="prelude-val">None</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>addresses_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;Address&gt;&gt; = <span class="prelude-val">None</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>operation_types_filter: <span class="prelude-ty">Option</span>&lt;HashSet&lt;i32&gt;&gt; = <span class="prelude-val">None</span>;
+    tokio::spawn(<span class="kw">async move </span>{
+        <span class="kw">let </span>filter = <span class="kw">match </span>FilterNewOperations::build_from_request(request.filters, <span class="kw-2">&amp;</span>config) {
+            <span class="prelude-val">Ok</span>(filter) =&gt; filter,
+            <span class="prelude-val">Err</span>(err) =&gt; {
+                <span class="macro">error!</span>(<span class="string">"failed to get filter: {}"</span>, err);
+                <span class="comment">// Send the error response back to the client
+                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx.send(<span class="prelude-val">Err</span>(err.into())).<span class="kw">await </span>{
+                    <span class="macro">error!</span>(<span class="string">"failed to send back NewOperations error response: {}"</span>, e);
+                }
+                <span class="kw">return</span>;
+            }
+        };
 
-    <span class="comment">// Get params filter from the request.
-    </span><span class="kw">for </span>query <span class="kw">in </span>request.filters.into_iter() {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(filter) = query.filter {
-            <span class="kw">match </span>filter {
-                grpc_api::new_operations_filter::Filter::OperationIds(ids) =&gt; {
-                    <span class="kw">if </span>ids.operation_ids.len() <span class="kw">as </span>u32 &gt; grpc_config.max_operation_ids_per_request {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                            <span class="string">"too many operation ids received. Only a maximum of {} operation ids are accepted per request"</span>,
-                         grpc_config.max_block_ids_per_request
-                        )));
+        <span class="comment">// Create a timer that ticks every 10 seconds to check if the client is still connected
+        </span><span class="kw">let </span><span class="kw-2">mut </span>interval = time::interval(Duration::from_secs(
+            config.unidirectional_stream_interval_check,
+        ));
+
+        <span class="comment">// Continuously loop until the stream ends or an error occurs
+        </span><span class="kw">loop </span>{
+            <span class="macro">select!</span> {
+                <span class="comment">// Receive a new filled block from the subscriber
+                </span>event = subscriber.recv() =&gt; {
+                    <span class="kw">match </span>event {
+                        <span class="prelude-val">Ok</span>(massa_operation) =&gt; {
+                            <span class="comment">// Check if the operation should be sent
+                            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(data) = filter.filter_output(massa_operation, <span class="kw-2">&amp;</span>config) {
+                                <span class="comment">// Send the new operation through the channel
+                                </span><span class="kw">if let </span><span class="prelude-val">Err</span>(e) = tx
+                                    .send(<span class="prelude-val">Ok</span>(grpc_api::NewOperationsServerResponse {
+                                        signed_operation: <span class="prelude-val">Some</span>(data.into()),
+                                    }))
+                                    .<span class="kw">await
+                                </span>{
+                                    <span class="macro">error!</span>(<span class="string">"failed to send operation : {}"</span>, e);
+                                    <span class="kw">break</span>;
+                                }
+                            }
+                        }
+                        <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">error!</span>(<span class="string">"error on receive new operation: {}"</span>, e)
                     }
-                    <span class="kw">let </span>operation_ids = operation_ids_filter.get_or_insert_with(HashSet::new);
-                    <span class="kw">for </span>id <span class="kw">in </span>ids.operation_ids {
-                        operation_ids.insert(OperationId::from_str(<span class="kw-2">&amp;</span>id).map_err(|<span class="kw">_</span>| {
-                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid operation id: {}"</span>, id))
-                        })<span class="question-mark">?</span>);
+                },
+                <span class="comment">// Execute the code block whenever the timer ticks
+                </span><span class="kw">_ </span>= interval.tick() =&gt; {
+                    <span class="kw">if </span>tx.is_closed() {
+                        <span class="comment">// Client disconnected
+                        </span><span class="kw">break</span>;
                     }
-                }
-                grpc_api::new_operations_filter::Filter::Addresses(addrs) =&gt; {
-                    <span class="kw">if </span>addrs.addresses.len() <span class="kw">as </span>u32 &gt; grpc_config.max_addresses_per_request {
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(
-                            <span class="string">"too many addresses received. Only a maximum of {} addresses are accepted per request"</span>,
-                         grpc_config.max_addresses_per_request
-                        )));
-                    }
-                    <span class="kw">let </span>addresses = addresses_filter.get_or_insert_with(HashSet::new);
-                    <span class="kw">for </span>address <span class="kw">in </span>addrs.addresses {
-                        addresses.insert(Address::from_str(<span class="kw-2">&amp;</span>address).map_err(|<span class="kw">_</span>| {
-                            GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"invalid address: {}"</span>, address))
-                        })<span class="question-mark">?</span>);
-                    }
-                }
-                grpc_api::new_operations_filter::Filter::OperationTypes(ope_types) =&gt; {
-                    <span class="comment">// The length limited to the number of operation types in the enum
-                    </span><span class="kw">if </span>ope_types.op_types.len() <span class="kw">as </span>u64 &gt; <span class="number">6 </span>{
-                        <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
-                            <span class="string">"too many operation types received. Only a maximum of 6 operation types are accepted per request"</span>.to_string()
-                        ));
-                    }
-                    <span class="kw">let </span>operation_types = operation_types_filter.get_or_insert_with(HashSet::new);
-                    operation_types.extend(<span class="kw-2">&amp;</span>ope_types.op_types);
                 }
             }
         }
-    }
+    });
 
-    <span class="prelude-val">Ok</span>(Filter {
-        operation_ids: operation_ids_filter,
-        addresses: addresses_filter,
-        operation_types: operation_types_filter,
-    })
+    <span class="kw">let </span>out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
+    <span class="prelude-val">Ok</span>(Box::pin(out_stream) <span class="kw">as </span>NewOperationsServerStreamType)
 }
-
-<span class="comment">// This function checks if the operation should be sent
-</span><span class="kw">fn </span>should_send(signed_operation: <span class="kw-2">&amp;</span>SecureShareOperation, filters: <span class="kw-2">&amp;</span>Filter) -&gt; bool {
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_ids) = <span class="kw-2">&amp;</span>filters.operation_ids {
-        <span class="kw">if </span>!operation_ids.contains(<span class="kw-2">&amp;</span>signed_operation.id) {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-    }
-
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(addresses) = <span class="kw-2">&amp;</span>filters.addresses {
-        <span class="kw">if </span>!addresses.contains(<span class="kw-2">&amp;</span>signed_operation.content_creator_address) {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-    }
-
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(operation_types) = <span class="kw-2">&amp;</span>filters.operation_types {
-        <span class="kw">let </span>op_type = grpc_model::OpType::from(signed_operation.content.op.clone()) <span class="kw">as </span>i32;
-        <span class="kw">if </span>!operation_types.contains(<span class="kw-2">&amp;</span>op_type) {
-            <span class="kw">return </span><span class="bool-val">false</span>;
-        }
-    }
-
-    <span class="bool-val">true
-</span>}
 </code></pre></div></section></main></body></html>
