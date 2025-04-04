@@ -9,22 +9,23 @@ use crate::versioning::{MipComponent, MipInfo, MipState};
 
 #[cfg(not(feature = "test-exports"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
-    let mip_list = [
-        (
-            MipInfo {
-                name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
-                version: 1,
-                components: BTreeMap::from([
-                    (MipComponent::Execution, 1),
-                    (MipComponent::FinalState, 1),
-                ]),
-                start: MassaTime::from_utc_ymd_hms(2025, 2, 5, 10, 0, 0).unwrap(), // TODO: set when known (ex: Wednesday 5th February 2025 10:00:00 UTC)
-                timeout: MassaTime::from_utc_ymd_hms(2025, 4, 5, 10, 0, 0).unwrap(), // TODO: set when known (ex: 2 months after start date)
-                activation_delay: MassaTime::from_millis(3 * 24 * 60 * 60 * 1000), // TODO: set when known (ex: 3 days)
-            },
-            MipState::new(MassaTime::from_utc_ymd_hms(2025, 2, 4, 10, 0, 0).unwrap()),
-        ), // TODO: set when known, (when the MIP becomes defined, e.g. when merged to main branch, ex: Tuesday 4th February 2025 10:00:00 UTC)
-    ];
+    // When the MIP becomes defined, e.g. when merged to main branch
+    let defined = MassaTime::from_utc_ymd_hms(2025, 5, 7, 10, 0, 0).unwrap(); // Wednesday 7th May 2025 10:00:00 UTC
+
+    let mip_list = [(
+        MipInfo {
+            name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
+            version: 1,
+            components: BTreeMap::from([
+                (MipComponent::Execution, 1),
+                (MipComponent::FinalState, 1),
+            ]),
+            start: MassaTime::from_utc_ymd_hms(2025, 5, 14, 10, 0, 0).unwrap(), // Wednesday 14th May 2025 10:00:00 UTC
+            timeout: MassaTime::from_utc_ymd_hms(2025, 6, 14, 10, 0, 0).unwrap(), // Saturday 14th June 2025 10:00:00 UTC
+            activation_delay: MassaTime::from_millis(7 * 24 * 60 * 60 * 1000),    // 7 days
+        },
+        MipState::new(defined),
+    )];
 
     // debug!("MIP list: {:?}", mip_list);
     #[allow(clippy::let_and_return)]
@@ -44,9 +45,9 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
         name: "MIP-0001-DeferredCalls-And-Execution-BugFix".to_string(),
         version: 1,
         components: BTreeMap::from([(MipComponent::Execution, 1), (MipComponent::FinalState, 1)]),
-        start: MassaTime::from_millis(2), // TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
-        timeout: MassaTime::from_millis(10), // TODO: set when known
-        activation_delay: MassaTime::from_millis(2), // TODO: set when known, 3 days as an example
+        start: MassaTime::from_millis(2),
+        timeout: MassaTime::from_millis(10),
+        activation_delay: MassaTime::from_millis(2),
     };
     let mip_state_1 = advance_state_until(
         ComponentState::Active(Active {
