@@ -1542,6 +1542,10 @@
 <a href="#1542" id="1542">1542</a>
 <a href="#1543" id="1543">1543</a>
 <a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1581,7 +1585,7 @@
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
-    config::CompactConfig,
+    config::{CompactConfig, BLOCK_REWARD_V1},
     datastore::DatastoreDeserializer,
     deferred_calls::DeferredCallId,
     endorsement::{EndorsementId, SecureShareEndorsement},
@@ -1999,7 +2003,7 @@
         <span class="kw">let </span>api_settings = <span class="self">self</span>.<span class="number">0</span>.api_settings.clone();
         <span class="kw">let </span>protocol_config = <span class="self">self</span>.<span class="number">0</span>.protocol_config.clone();
         <span class="kw">let </span>node_id = <span class="self">self</span>.<span class="number">0</span>.node_id;
-        <span class="kw">let </span>config = CompactConfig::default();
+        <span class="kw">let </span><span class="kw-2">mut </span>config = CompactConfig::default();
         <span class="kw">let </span>now = MassaTime::now();
 
         <span class="kw">let </span>current_mip_version = <span class="self">self
@@ -2007,6 +2011,10 @@
             </span>.keypair_factory
             .mip_store
             .get_network_version_current();
+
+        <span class="kw">if </span>current_mip_version &gt; <span class="number">0 </span>{
+            config.block_reward = BLOCK_REWARD_V1;
+        }
 
         <span class="kw">let </span>last_slot_result = get_latest_block_slot_at_timestamp(
             api_settings.thread_count,

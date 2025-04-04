@@ -2756,6 +2756,9 @@
 <a href="#2756" id="2756">2756</a>
 <a href="#2757" id="2757">2757</a>
 <a href="#2758" id="2758">2758</a>
+<a href="#2759" id="2759">2759</a>
+<a href="#2760" id="2760">2760</a>
+<a href="#2761" id="2761">2761</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module deals with executing final and active slots, as well as read-only requests.
@@ -4407,7 +4410,10 @@
             <span class="comment">// Block credits count every operation fee, denunciation slash and endorsement reward.
             // We initialize the block credits with the block reward to stimulate block production
             // even in the absence of operations and denunciations.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>block_credits = <span class="self">self</span>.config.block_reward;
+            </span><span class="kw">let </span><span class="kw-2">mut </span>block_credits = <span class="kw">match </span>execution_version {
+                <span class="number">0 </span>=&gt; <span class="self">self</span>.config.block_reward_v0,
+                <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.block_reward_v1,
+            };
 
             <span class="comment">// Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.

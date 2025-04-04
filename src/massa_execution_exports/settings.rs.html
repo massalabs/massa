@@ -121,6 +121,8 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -166,8 +168,10 @@
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// period duration
     </span><span class="kw">pub </span>t0: MassaTime,
-    <span class="doccomment">/// block creation reward
-    </span><span class="kw">pub </span>block_reward: Amount,
+    <span class="doccomment">/// block creation reward (v0)
+    </span><span class="kw">pub </span>block_reward_v0: Amount,
+    <span class="doccomment">/// block creation reward (v1)
+    </span><span class="kw">pub </span>block_reward_v1: Amount,
     <span class="doccomment">/// operation validity period
     </span><span class="kw">pub </span>operation_validity_period: u64,
     <span class="doccomment">/// endorsement count

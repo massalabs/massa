@@ -1603,6 +1603,7 @@
 <a href="#1603" id="1603">1603</a>
 <a href="#1604" id="1604">1604</a>
 <a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -1668,8 +1669,8 @@
 <span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::config::constants::{
-    ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
-    CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CALL_MAX_FUTURE_SLOTS, DELTA_F0,
+    ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD_V0, BLOCK_REWARD_V1, BOOTSTRAP_RANDOMNESS_SIZE_BYTES,
+    CHANNEL_SIZE, CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CALL_MAX_FUTURE_SLOTS, DELTA_F0,
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
     INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
     LEDGER_ENTRY_DATASTORE_BASE_SIZE, MAX_ADVERTISE_LENGTH, MAX_ASYNC_GAS, MAX_ASYNC_POOL_LENGTH,
@@ -2158,7 +2159,8 @@
         thread_count: THREAD_COUNT,
         t0: T0,
         genesis_timestamp: <span class="kw-2">*</span>GENESIS_TIMESTAMP,
-        block_reward: BLOCK_REWARD,
+        block_reward_v0: BLOCK_REWARD_V0,
+        block_reward_v1: BLOCK_REWARD_V1,
         endorsement_count: ENDORSEMENT_COUNT <span class="kw">as </span>u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
