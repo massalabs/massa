@@ -83,11 +83,6 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! # Overview
@@ -154,9 +149,7 @@
 <span class="kw">pub use </span>error::{ExecutionError, ExecutionQueryError};
 <span class="kw">pub use </span>event_store::EventStore;
 <span class="kw">pub use </span>massa_sc_runtime::{CondomLimits, GasCosts};
-<span class="kw">use </span>massa_serialization <span class="kw">as _</span>;
 <span class="kw">pub use </span>settings::{ExecutionConfig, StorageCostsConstants};
-<span class="kw">use </span>tracing <span class="kw">as _</span>;
 <span class="kw">pub use </span>types::{
     ExecutedBlockInfo, ExecutionAddressInfo, ExecutionBlockMetadata, ExecutionOutput,
     ExecutionQueryCycleInfos, ExecutionQueryExecutionStatus, ExecutionQueryRequest,
@@ -168,11 +161,8 @@
 <span class="attr">#[cfg(any(feature = <span class="string">"test-exports"</span>, feature = <span class="string">"gas_calibration"</span>))]
 </span><span class="kw">pub mod </span>test_exports;
 
-<span class="doccomment">/// types for execution-trace
+<span class="doccomment">/// types for execution-trace / execution-info
 </span><span class="kw">pub mod </span>types_trace_info;
-
-<span class="doccomment">/// types for execution-info
-</span><span class="kw">pub mod </span>execution_info;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">pub use </span>types_trace_info::{

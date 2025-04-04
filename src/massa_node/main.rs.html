@@ -1603,20 +1603,6 @@
 <a href="#1603" id="1603">1603</a>
 <a href="#1604" id="1604">1604</a>
 <a href="#1605" id="1605">1605</a>
-<a href="#1606" id="1606">1606</a>
-<a href="#1607" id="1607">1607</a>
-<a href="#1608" id="1608">1608</a>
-<a href="#1609" id="1609">1609</a>
-<a href="#1610" id="1610">1610</a>
-<a href="#1611" id="1611">1611</a>
-<a href="#1612" id="1612">1612</a>
-<a href="#1613" id="1613">1613</a>
-<a href="#1614" id="1614">1614</a>
-<a href="#1615" id="1615">1615</a>
-<a href="#1616" id="1616">1616</a>
-<a href="#1617" id="1617">1617</a>
-<a href="#1618" id="1618">1618</a>
-<a href="#1619" id="1619">1619</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="attr">#![doc = <span class="macro">include_str!</span>(<span class="string">"../../README.md"</span>)]
@@ -2217,9 +2203,6 @@
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         event_cache_size: SETTINGS.execution.event_cache_size,
         event_snip_amount: SETTINGS.execution.event_snip_amount,
-        broadcast_slot_execution_info_channel_capacity: SETTINGS
-            .execution
-            .broadcast_slot_execution_info_channel_capacity,
     };
 
     <span class="kw">let </span>execution_channels = ExecutionChannels {
@@ -2230,11 +2213,6 @@
         <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
         </span>slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
-        )
-        .<span class="number">0</span>,
-        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
-        </span>slot_execution_info_sender: broadcast::channel(
-            execution_config.broadcast_slot_execution_info_channel_capacity,
         )
         .<span class="number">0</span>,
     };
@@ -2588,9 +2566,6 @@
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
-        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
-        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
     };
 
     <span class="comment">// spawn Massa API
@@ -2890,9 +2865,6 @@
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: <span class="kw-2">*</span>CHAINID,
         minimal_fees,
-        max_datastore_keys_queries: settings.max_datastore_keys_query,
-        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
-        unidirectional_stream_interval_check: settings.unidirectional_stream_interval_check,
     }
 }
 
