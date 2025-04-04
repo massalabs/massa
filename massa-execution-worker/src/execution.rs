@@ -1649,7 +1649,10 @@ impl ExecutionState {
             // Block credits count every operation fee, denunciation slash and endorsement reward.
             // We initialize the block credits with the block reward to stimulate block production
             // even in the absence of operations and denunciations.
-            let mut block_credits = self.config.block_reward;
+            let mut block_credits = match execution_version {
+                0 => self.config.block_reward_v0,
+                _ => self.config.block_reward_v1,   
+            };
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.

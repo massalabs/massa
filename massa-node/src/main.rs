@@ -63,7 +63,7 @@ use massa_metrics::{MassaMetrics, MetricsStopper};
 use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::config::constants::{
-    ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
+    ASYNC_MSG_CST_GAS_COST, BLOCK_REWARD_V0, BLOCK_REWARD_V1, BOOTSTRAP_RANDOMNESS_SIZE_BYTES, CHANNEL_SIZE,
     CONSENSUS_BOOTSTRAP_PART_SIZE, DEFERRED_CALL_MAX_FUTURE_SLOTS, DELTA_F0,
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, END_TIMESTAMP, GENESIS_KEY, GENESIS_TIMESTAMP,
     INITIAL_DRAW_SEED, LEDGER_COST_PER_BYTE, LEDGER_ENTRY_BASE_COST,
@@ -553,7 +553,8 @@ async fn launch(
         thread_count: THREAD_COUNT,
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
-        block_reward: BLOCK_REWARD,
+        block_reward_v0: BLOCK_REWARD_V0,
+        block_reward_v1: BLOCK_REWARD_V1,
         endorsement_count: ENDORSEMENT_COUNT as u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
