@@ -109,10 +109,10 @@
         name: <span class="string">"MIP-0001-DeferredCalls-And-Execution-BugFix"</span>.to_string(),
         version: <span class="number">1</span>,
         components: BTreeMap::from([(MipComponent::Execution, <span class="number">1</span>), (MipComponent::FinalState, <span class="number">1</span>)]),
-        start: MassaTime::from_millis(<span class="number">2</span>), <span class="comment">// TODO: set when known, ex: MassaTime::from_utc_ymd_hms(2024, 7, 10, 15, 0, 0).unwrap();
-        </span>timeout: MassaTime::from_millis(<span class="number">10</span>), <span class="comment">// TODO: set when known
-        </span>activation_delay: MassaTime::from_millis(<span class="number">2</span>), <span class="comment">// TODO: set when known, 3 days as an example
-    </span>};
+        start: MassaTime::from_millis(<span class="number">2</span>),
+        timeout: MassaTime::from_millis(<span class="number">10</span>),
+        activation_delay: MassaTime::from_millis(<span class="number">2</span>),
+    };
     <span class="kw">let </span>mip_state_1 = advance_state_until(
         ComponentState::Active(Active {
             at: MassaTime::from_millis(<span class="number">3</span>),
