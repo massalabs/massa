@@ -1651,7 +1651,7 @@ impl ExecutionState {
             // even in the absence of operations and denunciations.
             let mut block_credits = match execution_version {
                 0 => self.config.block_reward_v0,
-                _ => self.config.block_reward_v1,   
+                _ => self.config.block_reward_v1,
             };
 
             // Try executing the operations of this block in the order in which they appear in the block.
