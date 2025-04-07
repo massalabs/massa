@@ -434,8 +434,6 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! DEFAULT VALUES USED TO INITIALIZE DIVERS CONFIGURATIONS STRUCTURES
 //!
 //!
@@ -511,9 +509,9 @@
     <span class="doccomment">/// node version
     </span><span class="kw">pub static </span><span class="kw-2">ref </span>VERSION: Version = {
         <span class="kw">if </span><span class="macro">cfg!</span>(feature = <span class="string">"sandbox"</span>) {
-            <span class="string">"SAND.2.5"
+            <span class="string">"SAND.2.6"
         </span>} <span class="kw">else </span>{
-            <span class="string">"MAIN.2.5"
+            <span class="string">"MAIN.2.6"
         </span>}
         .parse()
         .unwrap()
@@ -570,9 +568,7 @@
 <span class="doccomment">/// Price of a roll in the network
 </span><span class="kw">pub const </span>ROLL_PRICE: Amount = Amount::const_init(<span class="number">100</span>, <span class="number">0</span>);
 <span class="doccomment">/// Block reward is given for each block creation
-</span><span class="kw">pub const </span>BLOCK_REWARD_V0: Amount = Amount::const_init(<span class="number">102</span>, <span class="number">2</span>);
-<span class="doccomment">/// Block reward is given for each block creation
-</span><span class="kw">pub const </span>BLOCK_REWARD_V1: Amount = Amount::const_init(<span class="number">4</span>, <span class="number">1</span>);
+</span><span class="kw">pub const </span>BLOCK_REWARD: Amount = Amount::const_init(<span class="number">102</span>, <span class="number">2</span>);
 <span class="doccomment">/// Cost to store one byte in the ledger
 </span><span class="kw">pub const </span>LEDGER_COST_PER_BYTE: Amount = Amount::const_init(<span class="number">1</span>, <span class="number">4</span>);
 <span class="doccomment">/// Cost for a base entry default 0.01 MASSA

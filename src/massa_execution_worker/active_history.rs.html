@@ -580,6 +580,8 @@
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
 <a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_execution_exports::ExecutionOutput;
 <span class="kw">use </span>massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
 <span class="kw">use </span>massa_models::async_msg::{AsyncMessage, AsyncMessageUpdate};
@@ -1067,6 +1069,7 @@
             deferred_credits_execution: <span class="macro">vec!</span>[],
             cancel_async_message_execution: <span class="macro">vec!</span>[],
             auto_sell_execution: <span class="macro">vec!</span>[],
+            transfers_history: <span class="macro">vec!</span>[],
         };
         <span class="kw">let </span>exec_output_2 = ExecutionOutput {
             slot: Slot::new(<span class="number">1</span>, <span class="number">1</span>),
@@ -1080,6 +1083,7 @@
             deferred_credits_execution: <span class="macro">vec!</span>[],
             cancel_async_message_execution: <span class="macro">vec!</span>[],
             auto_sell_execution: <span class="macro">vec!</span>[],
+            transfers_history: <span class="macro">vec!</span>[],
         };
 
         <span class="kw">let </span>active_history = ActiveHistory(VecDeque::from([exec_output_1, exec_output_2]));
