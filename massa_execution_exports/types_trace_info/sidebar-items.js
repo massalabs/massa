@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"type":["ExecutionResult"]};
+window.SIDEBAR_ITEMS = {};

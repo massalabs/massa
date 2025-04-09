@@ -410,14 +410,6 @@
 <a href="#410" id="410">410</a>
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! Build here the default node settings from the configuration file toml
@@ -465,8 +457,6 @@
     <span class="kw">pub </span>event_cache_size: usize,
     <span class="kw">pub </span>event_snip_amount: usize,
     <span class="kw">pub </span>max_event_per_query: usize,
-    <span class="doccomment">/// slot execution info channel capacity
-    </span><span class="kw">pub </span>broadcast_slot_execution_info_channel_capacity: usize,
 }
 
 <span class="attr">#[derive(Clone, Debug, Deserialize)]
@@ -560,8 +550,6 @@
     <span class="comment">// whether to broadcast for blocks, endorsement and operations
     </span><span class="kw">pub </span>enable_broadcast: bool,
     <span class="kw">pub </span>deferred_credits_delta: MassaTime,
-    <span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="kw">pub </span>max_addresses_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
 }
 
 <span class="attr">#[derive(Debug, Deserialize, Clone)]
@@ -803,10 +791,6 @@
     </span><span class="kw">pub </span>client_certificate_path: PathBuf,
     <span class="doccomment">/// client private key path
     </span><span class="kw">pub </span>client_private_key_path: PathBuf,
-    <span class="doccomment">/// Max keys returned by a datastore key query
-    </span><span class="kw">pub </span>max_datastore_keys_query: <span class="prelude-ty">Option</span>&lt;u32&gt;,
-    <span class="doccomment">/// interval for check the connection stream
-    </span><span class="kw">pub </span>unidirectional_stream_interval_check: u64,
 }
 
 <span class="doccomment">/// gRPC API settings.

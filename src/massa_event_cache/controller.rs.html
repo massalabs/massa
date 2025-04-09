@@ -124,6 +124,17 @@
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="comment">// std
 </span><span class="kw">use </span>std::collections::{BTreeSet, VecDeque};
 <span class="kw">use </span>std::sync::Arc;
@@ -149,7 +160,18 @@
             events: Default::default(),
         }
     }
-}
+
+    <span class="comment">/*
+    /// Takes the current input data into a clone that is returned,
+    /// and resets self.
+    pub fn take(&amp;mut self) -&gt; Self {
+        Self {
+            stop: std::mem::take(&amp;mut self.stop),
+            events: std::mem::take(&amp;mut self.events),
+        }
+    }
+    */
+</span>}
 
 <span class="doccomment">/// interface that communicates with the worker thread
 </span><span class="attr">#[cfg_attr(feature = <span class="string">"test-exports"</span>, mockall_wrap::wrap, mockall::automock)]
