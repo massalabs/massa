@@ -133,9 +133,10 @@
             ],
             "params": [
                 {
-                    "name": "address keys request",
+                    "name": "AddressesDatastoreKeys",
                     "description": "Vector of addresses for which to retrieve datastore keys",
                     "schema": {
+                        "title": "Datastore keys filter",
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/GetAddressDatastoreKeysRequest"
@@ -145,8 +146,9 @@
                 }
             ],
             "result": {
-                "name": "address keys response",
+                "name": "DatastoreKeys",
                 "schema": {
+                    "title": "Addresses Datastore keys",
                     "type": "array",
                     "items": {
                         "$ref": "#/components/schemas/GetAddressDatastoreKeysResponse"
@@ -2673,7 +2675,7 @@
                         "$ref": "#/components/schemas/Bytes"
                     },
                     "is_final": {
-                        "type": "boolean"
+                        "$ref": "#/components/schemas/IsFinal"
                     },
                     "start_key": {
                         "description": "start key to filter",
@@ -2681,14 +2683,7 @@
                     },
                     "inclusive_start_key": {
                         "description": "include or exclude start_key",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "type": "boolean"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     },
                     "end_key": {
                         "description": "The end key to filter the keys",
@@ -2696,14 +2691,7 @@
                     },
                     "inclusive_end_key": {
                         "description": "include or exclude end_key",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "type": "boolean"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     },
                     "count": {
                         "description": "limit the number of keys",
@@ -2716,7 +2704,8 @@
                             }
                         ]
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "GetAddressDatastoreKeysResponse": {
                 "title": "GetAddressDatastoreKeysResponse",
@@ -2731,7 +2720,7 @@
                         "$ref": "#/components/schemas/Address"
                     },
                     "is_final": {
-                        "type": "boolean"
+                        "$ref": "#/components/schemas/IsFinal"
                     },
                     "keys": {
                         "title": "keys list",
@@ -2740,7 +2729,8 @@
                             "$ref": "#/components/schemas/Bytes"
                         }
                     }
-                }
+                },
+                "additionalProperties": false
             },
             "GraphInterval": {
                 "title": "GraphInterval",
@@ -3037,6 +3027,18 @@
                     }
                 ]
             },
+            "BoolOption": {
+                "title": "Bool Option",
+                "description": "Boolean option",
+                "oneOf": [
+                    {
+                        "type": "null"
+                    },
+                    {
+                        "type": "boolean"
+                    }
+                ]
+            },
             "IsFinal": {
                 "title": "Is final",
                 "description": "Operation is final",
@@ -3104,14 +3106,7 @@
                     "is_operation_final": {
                         "description": "True if the operation is final (for example in a final block)",
                         "title": "Is Final Operation",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "$ref": "#/components/schemas/IsFinal"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     },
                     "thread": {
                         "description": "Thread in which the operation can be included",
@@ -3122,14 +3117,7 @@
                     },
                     "op_exec_status": {
                         "description": "true if the operation execution succeeded, false if failed, None means unknown",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "type": "boolean"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     }
                 },
                 "additionalProperties": false
