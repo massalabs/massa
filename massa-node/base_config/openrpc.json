@@ -2682,7 +2682,7 @@
                         "$ref": "#/components/schemas/BytesOption"
                     },
                     "inclusive_start_key": {
-                        "description": "include or exclude start_key",
+                        "description": "include or exclude start_key (default: true)",
                         "$ref": "#/components/schemas/BoolOption"
                     },
                     "end_key": {
@@ -2690,11 +2690,11 @@
                         "$ref": "#/components/schemas/BytesOption"
                     },
                     "inclusive_end_key": {
-                        "description": "include or exclude end_key",
+                        "description": "include or exclude end_key (default: true)",
                         "$ref": "#/components/schemas/BoolOption"
                     },
                     "count": {
-                        "description": "limit the number of keys",
+                        "description": "limit the number of keys (Max: 500)",
                         "oneOf": [
                             {
                                 "type": "null"
