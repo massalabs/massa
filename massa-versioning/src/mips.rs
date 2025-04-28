@@ -7,7 +7,7 @@ use massa_time::MassaTime;
 #[allow(unused_imports)]
 use crate::versioning::{MipComponent, MipInfo, MipState};
 
-#[cfg(not(feature = "test-exports"))]
+#[cfg(not(any(feature = "test-exports", feature = "sandbox")))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     let mip_list = [
         (
@@ -31,7 +31,7 @@ pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     mip_list
 }
 
-#[cfg(feature = "test-exports")]
+#[cfg(any(feature = "test-exports", feature = "sandbox"))]
 pub fn get_mip_list() -> [(MipInfo, MipState); 1] {
     use crate::{
         test_helpers::versioning_helpers::advance_state_until,

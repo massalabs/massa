@@ -6,6 +6,7 @@ edition = "2021"
 
 [features]
 test-exports = []
+sandbox = []
 
 [dependencies]
 machine = { workspace = true }

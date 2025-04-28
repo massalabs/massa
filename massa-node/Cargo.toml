@@ -21,6 +21,7 @@ sandbox = [
     "massa_final_state/sandbox",
     "massa_models/sandbox",
     "massa_metrics/sandbox",
+    "massa_versioning/sandbox",
 ]
 execution-trace = [
     "massa_grpc/execution-trace",
