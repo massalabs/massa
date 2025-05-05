@@ -133,6 +133,41 @@
             ],
             "params": [
                 {
+                    "name": "AddressesDatastoreKeys",
+                    "description": "Vector of addresses for which to retrieve datastore keys",
+                    "schema": {
+                        "title": "Datastore keys filter",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/GetAddressDatastoreKeysRequest"
+                        }
+                    },
+                    "required": true
+                }
+            ],
+            "result": {
+                "name": "DatastoreKeys",
+                "schema": {
+                    "title": "Addresses Datastore keys",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/components/schemas/GetAddressDatastoreKeysResponse"
+                    }
+                }
+            },
+            "name": "get_addresses_datastore_keys",
+            "summary": "Retrieve datastore keys for given addresses",
+            "description": "Returns a list of datastore keys associated with the given addresses. This endpoint allows fetching storage keys for multiple addresses in a single request."
+        },
+        {
+            "tags": [
+                {
+                    "name": "public",
+                    "description": "Massa public api"
+                }
+            ],
+            "params": [
+                {
                     "name": "addressFilter",
                     "description": "Need to provide at least one valid address filter",
                     "schema": {
@@ -2624,6 +2659,79 @@
                 },
                 "additionalProperties": false
             },
+            "GetAddressDatastoreKeysRequest": {
+                "title": "GetAddressDatastoreKeysRequest",
+                "required": [
+                    "address",
+                    "prefix",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "prefix": {
+                        "$ref": "#/components/schemas/Bytes"
+                    },
+                    "is_final": {
+                        "$ref": "#/components/schemas/IsFinal"
+                    },
+                    "start_key": {
+                        "description": "start key to filter",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_start_key": {
+                        "description": "include or exclude start_key (default: true)",
+                        "$ref": "#/components/schemas/BoolOption"
+                    },
+                    "end_key": {
+                        "description": "The end key to filter the keys",
+                        "$ref": "#/components/schemas/BytesOption"
+                    },
+                    "inclusive_end_key": {
+                        "description": "include or exclude end_key (default: true)",
+                        "$ref": "#/components/schemas/BoolOption"
+                    },
+                    "count": {
+                        "description": "limit the number of keys (Max: 500)",
+                        "oneOf": [
+                            {
+                                "type": "null"
+                            },
+                            {
+                                "type": "number"
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "GetAddressDatastoreKeysResponse": {
+                "title": "GetAddressDatastoreKeysResponse",
+                "required": [
+                    "address",
+                    "keys",
+                    "is_final"
+                ],
+                "type": "object",
+                "properties": {
+                    "address": {
+                        "$ref": "#/components/schemas/Address"
+                    },
+                    "is_final": {
+                        "$ref": "#/components/schemas/IsFinal"
+                    },
+                    "keys": {
+                        "title": "keys list",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Bytes"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
             "GraphInterval": {
                 "title": "GraphInterval",
                 "required": [
@@ -2919,6 +3027,18 @@
                     }
                 ]
             },
+            "BoolOption": {
+                "title": "Bool Option",
+                "description": "Boolean option",
+                "oneOf": [
+                    {
+                        "type": "null"
+                    },
+                    {
+                        "type": "boolean"
+                    }
+                ]
+            },
             "IsFinal": {
                 "title": "Is final",
                 "description": "Operation is final",
@@ -2986,14 +3106,7 @@
                     "is_operation_final": {
                         "description": "True if the operation is final (for example in a final block)",
                         "title": "Is Final Operation",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "$ref": "#/components/schemas/IsFinal"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     },
                     "thread": {
                         "description": "Thread in which the operation can be included",
@@ -3004,14 +3117,7 @@
                     },
                     "op_exec_status": {
                         "description": "true if the operation execution succeeded, false if failed, None means unknown",
-                        "oneOf": [
-                            {
-                                "type": "null"
-                            },
-                            {
-                                "type": "boolean"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/BoolOption"
                     }
                 },
                 "additionalProperties": false

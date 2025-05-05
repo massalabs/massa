@@ -485,6 +485,7 @@ mod test {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            transfers_history: vec![],
         };
         let exec_output_2 = ExecutionOutput {
             slot: Slot::new(1, 1),
@@ -498,6 +499,7 @@ mod test {
             deferred_credits_execution: vec![],
             cancel_async_message_execution: vec![],
             auto_sell_execution: vec![],
+            transfers_history: vec![],
         };
 
         let active_history = ActiveHistory(VecDeque::from([exec_output_1, exec_output_2]));

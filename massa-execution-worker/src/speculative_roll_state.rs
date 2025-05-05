@@ -1,9 +1,16 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::active_history::ActiveHistory;
+use massa_execution_exports::execution_info::TransferInfo;
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::{
+    OriginTransferContext, TransferContext, TransferValue,
+};
 use massa_execution_exports::ExecutionError;
 use massa_final_state::FinalStateController;
 use massa_models::address::ExecutionAddressCycleInfo;
+use massa_models::denunciation::DenunciationIndex;
+use massa_models::operation::OperationId;
 use massa_models::{
     address::Address, amount::Amount, block_id::BlockId, prehash::PreHashMap, slot::Slot,
 };
@@ -26,6 +33,8 @@ pub(crate) struct SpeculativeRollState {
 
     /// List of changes to the state after settling roll sell/buy
     pub(crate) added_changes: PoSChanges,
+
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 }
 
 impl SpeculativeRollState {
@@ -36,11 +45,13 @@ impl SpeculativeRollState {
     pub fn new(
         final_state: Arc<RwLock<dyn FinalStateController>>,
         active_history: Arc<RwLock<ActiveHistory>>,
+        transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
     ) -> Self {
         SpeculativeRollState {
             final_state,
             active_history,
             added_changes: PoSChanges::default(),
+            transfers_history,
         }
     }
 
@@ -80,7 +91,7 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `buyer_addr`: address that will receive the rolls
     /// * `roll_count`: number of rolls it will receive
-    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64) {
+    pub fn add_rolls(&mut self, buyer_addr: &Address, roll_count: u64, _operation_id: OperationId) {
         let count = self
             .added_changes
             .roll_changes
@@ -97,6 +108,19 @@ impl SpeculativeRollState {
                     })
             });
         *count = count.saturating_add(roll_count);
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Rolls(roll_count),
+                TransferContext::RollBuy(OriginTransferContext {
+                    operation_id: Some(_operation_id),
+                    ..Default::default()
+                }),
+                None,
+                Some(buyer_addr.clone()),
+            ));
+        }
     }
 
     /// Try to sell `roll_count` rolls from the seller address.
@@ -104,6 +128,10 @@ impl SpeculativeRollState {
     /// # Arguments
     /// * `seller_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to sell
+    ///
+    /// # Returns
+    /// * Ok(new_deferred_credits): the amount of deferred credits
+    #[allow(clippy::too_many_arguments)]
     pub fn try_sell_rolls(
         &mut self,
         seller_addr: &Address,
@@ -112,6 +140,7 @@ impl SpeculativeRollState {
         periods_per_cycle: u64,
         thread_count: u8,
         roll_price: Amount,
+        _operation_id: OperationId,
     ) -> Result<(), ExecutionError> {
         // fetch the roll count from: current changes > active history > final state
         let owned_count = self.get_rolls(seller_addr);
@@ -151,6 +180,30 @@ impl SpeculativeRollState {
             .deferred_credits
             .insert(target_slot, *seller_addr, new_deferred_credits);
 
+        #[cfg(feature = "execution-info")]
+        {
+            let mut lock = self.transfers_history.write();
+            lock.push(TransferInfo::new(
+                TransferValue::Rolls(roll_count),
+                TransferContext::RollSell(OriginTransferContext {
+                    operation_id: Some(_operation_id.clone()),
+                    ..Default::default()
+                }),
+                Some(seller_addr.clone()),
+                None,
+            ));
+
+            lock.push(TransferInfo::new(
+                TransferValue::DeferredCredits(new_deferred_credits),
+                TransferContext::RollSell(OriginTransferContext {
+                    operation_id: Some(_operation_id.clone()),
+                    ..Default::default()
+                }),
+                Some(seller_addr.clone()),
+                None,
+            ));
+        }
+
         Ok(())
     }
 
@@ -169,20 +222,32 @@ impl SpeculativeRollState {
         let owned_count = self.get_rolls(addr);
         let roll_to_slash = min(roll_count, owned_count);
 
-        match self.added_changes.roll_changes.get_mut(addr) {
+        let roll_slash = match self.added_changes.roll_changes.get_mut(addr) {
             None => {
                 // Rolls are in history or final state
                 self.added_changes
                     .roll_changes
                     .insert(*addr, owned_count.saturating_sub(roll_to_slash));
-                Ok(roll_to_slash)
+                roll_to_slash
             }
             Some(current_rolls) => {
                 // Rolls are in added_changes
                 *current_rolls = current_rolls.saturating_sub(roll_to_slash);
-                Ok(roll_to_slash)
+                roll_to_slash
             }
+        };
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Rolls(roll_slash),
+                TransferContext::RollSlash,
+                Some(addr.clone()),
+                None,
+            ));
         }
+
+        Ok(roll_slash)
     }
 
     /// Try to slash `amount` credits from the given address. If not enough credits, slash
@@ -196,6 +261,7 @@ impl SpeculativeRollState {
         slot: &Slot,
         addr: &Address,
         amount: &Amount,
+        _denunciation_idx: &DenunciationIndex,
     ) -> Amount {
         let credits = self.get_address_deferred_credits(addr, slot..);
 
@@ -210,7 +276,22 @@ impl SpeculativeRollState {
                 .insert(*credit_slot, *addr, new_deferred_credits);
         }
 
-        amount.saturating_sub(remaining_to_slash)
+        let slashed = amount.saturating_sub(remaining_to_slash);
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Coins(slashed),
+                TransferContext::DeferredCredits(OriginTransferContext {
+                    denunciation_index: Some(_denunciation_idx.clone()),
+                    ..Default::default()
+                }),
+                Some(addr.clone()),
+                None,
+            ));
+        }
+
+        slashed
     }
 
     /// Update production statistics of an address.

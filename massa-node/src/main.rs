@@ -598,6 +598,9 @@ async fn launch(
         event_cache_path: SETTINGS.execution.event_cache_path.clone(),
         event_cache_size: SETTINGS.execution.event_cache_size,
         event_snip_amount: SETTINGS.execution.event_snip_amount,
+        broadcast_slot_execution_info_channel_capacity: SETTINGS
+            .execution
+            .broadcast_slot_execution_info_channel_capacity,
     };
 
     let execution_channels = ExecutionChannels {
@@ -608,6 +611,11 @@ async fn launch(
         #[cfg(feature = "execution-trace")]
         slot_execution_traces_sender: broadcast::channel(
             execution_config.broadcast_slot_execution_traces_channel_capacity,
+        )
+        .0,
+        #[cfg(feature = "execution-info")]
+        slot_execution_info_sender: broadcast::channel(
+            execution_config.broadcast_slot_execution_info_channel_capacity,
         )
         .0,
     };
@@ -961,6 +969,9 @@ async fn launch(
         deferred_credits_delta: SETTINGS.api.deferred_credits_delta,
         minimal_fees: SETTINGS.pool.minimal_fees,
         deferred_calls_config,
+        max_datastore_keys_queries: SETTINGS.api.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        max_addresses_datastore_keys_query: SETTINGS.api.max_addresses_datastore_keys_query,
     };
 
     // spawn Massa API
@@ -1260,6 +1271,9 @@ fn configure_grpc(
         client_private_key_path: settings.client_private_key_path.clone(),
         chain_id: *CHAINID,
         minimal_fees,
+        max_datastore_keys_queries: settings.max_datastore_keys_query,
+        max_datastore_key_length: MAX_DATASTORE_KEY_LENGTH,
+        unidirectional_stream_interval_check: settings.unidirectional_stream_interval_check,
     }
 }
 

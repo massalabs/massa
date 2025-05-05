@@ -225,7 +225,7 @@ jobs:
           include-pre-releases: false
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - run: cargo install cargo-nextest --locked
-      - run: cargo nextest run --retries 10 --profile ci --all-features
+      - run: cargo nextest run --retries 10 --profile ci --features=execution-trace,dump-block
       - run: cargo clean
       - run: cargo test --doc
       - uses: codecov/codecov-action@v4

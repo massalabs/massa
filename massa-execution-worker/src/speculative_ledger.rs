@@ -6,13 +6,16 @@
 //! but keeps track of the changes that were applied to it since its creation.
 
 use crate::active_history::{ActiveHistory, HistorySearchResult};
+use crate::datastore_scan::scan_datastore;
+#[cfg(feature = "execution-info")]
+use massa_execution_exports::execution_info::TransferValue;
+use massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 use massa_execution_exports::ExecutionError;
 use massa_execution_exports::StorageCostsConstants;
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
 use massa_models::bytecode::Bytecode;
-use massa_models::datastore::get_prefix_bounds;
-use massa_models::types::{Applicable, SetOrDelete, SetUpdateOrDelete};
+use massa_models::types::Applicable;
 use massa_models::{address::Address, amount::Amount};
 use parking_lot::RwLock;
 use std::cmp::Ordering;
@@ -48,6 +51,9 @@ pub(crate) struct SpeculativeLedger {
 
     /// storage cost constants
     storage_costs_constants: StorageCostsConstants,
+
+    #[allow(dead_code)]
+    transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
 }
 
 impl SpeculativeLedger {
@@ -63,6 +69,7 @@ impl SpeculativeLedger {
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
         storage_costs_constants: StorageCostsConstants,
+        transfers_history: Arc<RwLock<Vec<TransferInfo>>>,
     ) -> Self {
         SpeculativeLedger {
             final_state,
@@ -72,6 +79,7 @@ impl SpeculativeLedger {
             max_datastore_value_size,
             max_bytecode_size,
             storage_costs_constants,
+            transfers_history,
         }
     }
 
@@ -145,6 +153,7 @@ impl SpeculativeLedger {
         to_addr: Option<Address>,
         amount: Amount,
         execution_component_version: u32,
+        _context: TransferContext,
     ) -> Result<(), ExecutionError> {
         // init empty ledger changes
         let mut changes = LedgerChanges::default();
@@ -202,6 +211,16 @@ impl SpeculativeLedger {
 
         // apply the simulated changes to the speculative ledger
         self.added_changes.apply(changes);
+
+        #[cfg(feature = "execution-info")]
+        {
+            self.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Coins(amount),
+                _context,
+                from_addr,
+                to_addr,
+            ));
+        }
 
         Ok(())
     }
@@ -290,6 +309,7 @@ impl SpeculativeLedger {
             None,
             address_storage_cost,
             execution_component_version,
+            TransferContext::CreateSCStorage,
         )?;
         self.added_changes.create_address(&addr);
         self.added_changes.set_bytecode(addr, bytecode);
@@ -343,12 +363,14 @@ impl SpeculativeLedger {
                     None,
                     storage_cost_bytecode,
                     execution_component_version,
+                    TransferContext::SetBytecodeStorage,
                 )?,
                 -1 => self.transfer_coins(
                     None,
                     Some(*caller_addr),
                     storage_cost_bytecode,
                     execution_component_version,
+                    TransferContext::SetBytecodeStorage,
                 )?,
                 _ => {}
             };
@@ -367,6 +389,7 @@ impl SpeculativeLedger {
                 None,
                 bytecode_storage_cost,
                 execution_component_version,
+                TransferContext::SetBytecodeStorage,
             )?;
         }
         // set the bytecode of that address
@@ -379,66 +402,32 @@ impl SpeculativeLedger {
     ///
     /// # Arguments
     /// * `addr`: address to query
-    /// * `prefix`: prefix to filter the keys
+    /// * `prefix`: prefix to filter keys
+    /// * `start_key`: start key of the range
+    /// * `end_key`: end key of the range
+    /// * `count`: maximum number of keys to return
     ///
     /// # Returns
     /// `Some(Vec<Vec<u8>>)` for found keys, `None` if the address does not exist.
-    pub fn get_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        // compute prefix range
-        let prefix_range = get_prefix_bounds(prefix);
-        let range_ref = (prefix_range.0.as_ref(), prefix_range.1.as_ref());
-
-        // init keys with final state
-        let mut candidate_keys: Option<BTreeSet<Vec<u8>>> = self
-            .final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix);
-
-        // here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
-        let active_history = self.active_history.read();
-        let changes_iterator = active_history
-            .0
-            .iter()
-            .map(|item| &item.state_changes.ledger_changes)
-            .chain(std::iter::once(&self.added_changes));
-        for ledger_changes in changes_iterator {
-            match ledger_changes.get(addr) {
-                // address absent from the changes
-                None => (),
-
-                // address ledger entry being reset to an absolute new list of keys
-                Some(SetUpdateOrDelete::Set(new_ledger_entry)) => {
-                    candidate_keys = Some(
-                        new_ledger_entry
-                            .datastore
-                            .range::<Vec<u8>, _>(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                // address ledger entry being updated
-                Some(SetUpdateOrDelete::Update(entry_updates)) => {
-                    let c_k = candidate_keys.get_or_insert_with(Default::default);
-                    for (ds_key, ds_update) in
-                        entry_updates.datastore.range::<Vec<u8>, _>(range_ref)
-                    {
-                        match ds_update {
-                            SetOrDelete::Set(_) => c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete => c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                // address ledger entry being deleted
-                Some(SetUpdateOrDelete::Delete) => {
-                    candidate_keys = None;
-                }
-            }
-        }
-
-        candidate_keys
+    pub fn get_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: std::ops::Bound<Vec<u8>>,
+        end_key: std::ops::Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            self.final_state.clone(),
+            self.active_history.clone(),
+            Some(&self.added_changes),
+        )
+        .1
     }
 
     /// Gets a copy of a datastore value for a given address and datastore key
@@ -564,7 +553,6 @@ impl SpeculativeLedger {
             || Ok(Amount::zero()),
             |(new_key, new_value)| self.get_storage_cost_datastore_entry(new_key, new_value),
         )?;
-
         // charge the difference
         match new_storage_cost.cmp(&old_storage_cost) {
             Ordering::Greater => {
@@ -574,6 +562,7 @@ impl SpeculativeLedger {
                     None,
                     new_storage_cost.saturating_sub(old_storage_cost),
                     execution_component_version,
+                    TransferContext::DatastoreStorage,
                 )
             }
             Ordering::Less => {
@@ -583,6 +572,7 @@ impl SpeculativeLedger {
                     Some(*caller_addr),
                     old_storage_cost.saturating_sub(new_storage_cost),
                     execution_component_version,
+                    TransferContext::DatastoreStorage,
                 )
             }
             Ordering::Equal => {

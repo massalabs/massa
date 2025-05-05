@@ -23,17 +23,6 @@ impl EventCacheWriterInputData {
             events: Default::default(),
         }
     }
-
-    /*
-    /// Takes the current input data into a clone that is returned,
-    /// and resets self.
-    pub fn take(&mut self) -> Self {
-        Self {
-            stop: std::mem::take(&mut self.stop),
-            events: std::mem::take(&mut self.events),
-        }
-    }
-    */
 }
 
 /// interface that communicates with the worker thread
