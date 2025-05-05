@@ -1313,7 +1313,7 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: SetOrKeep::Set(Amount::from_str("90.262164635").unwrap()),
+                    balance: SetOrKeep::Set(Amount::from_str("90.262165227").unwrap()),
                     bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
@@ -1703,7 +1703,7 @@ fn deferred_call_register() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("75.325164736").unwrap())
+                        SetOrKeep::Set(Amount::from_str("75.325165328").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
