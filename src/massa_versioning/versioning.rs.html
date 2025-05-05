@@ -2771,8 +2771,6 @@
 <a href="#2771" id="2771">2771</a>
 <a href="#2772" id="2772">2772</a>
 <a href="#2773" id="2773">2773</a>
-<a href="#2774" id="2774">2774</a>
-<a href="#2775" id="2775">2775</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cmp::Ordering;
 <span class="kw">use </span>std::collections::hash_map::Entry;
 <span class="kw">use </span>std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
@@ -3947,9 +3945,7 @@
     <span class="comment">// Network restart
 
     </span><span class="doccomment">/// Check if store is consistent with given last network shutdown
-    /// On a network shutdown, the MIP infos will be edited but we still need to check if this is consistent
-    /// See https://github.com/massalabs/massa-functional-tests/blob/main/tests_versioning_network_restart.py
-    /// for an example
+    /// On a network shutdown, the MIP infos will be edited, but we still need to check if this is consistent
     </span><span class="kw">fn </span>is_consistent_with_shutdown_period(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         shutdown_start: Slot,

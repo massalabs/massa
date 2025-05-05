@@ -1549,7 +1549,7 @@
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::block::{Block, BlockGraphStatus};
 <span class="kw">use </span>massa_models::block_id::BlockId;
-<span class="kw">use </span>massa_models::config::CompactConfig;
+<span class="kw">use </span>massa_models::config::{CompactConfig, BLOCK_REWARD_V1};
 <span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 <span class="kw">use </span>massa_models::operation::{OperationId, SecureShareOperation};
@@ -2449,7 +2449,7 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     _request: tonic::Request&lt;grpc_api::GetStatusRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetStatusResponse, GrpcError&gt; {
-    <span class="kw">let </span>config = CompactConfig::default();
+    <span class="kw">let </span><span class="kw-2">mut </span>config = CompactConfig::default();
     <span class="kw">let </span>now = MassaTime::now();
     <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -2481,6 +2481,11 @@
     </span><span class="kw">let </span>empty_request = ExecutionQueryRequest { requests: <span class="macro">vec!</span>[] };
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
+    <span class="kw">let </span>current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
+    <span class="kw">if </span>current_mip_version &gt; <span class="number">0 </span>{
+        config.block_reward = BLOCK_REWARD_V1;
+    }
+
     <span class="kw">let </span>status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
         version: grpc.version.to_string(),
@@ -2494,7 +2499,7 @@
         config: <span class="prelude-val">Some</span>(config.into()),
         chain_id: grpc.grpc_config.chain_id,
         minimal_fees: <span class="prelude-val">Some</span>(grpc.grpc_config.minimal_fees.into()),
-        current_mip_version: grpc.keypair_factory.mip_store.get_network_version_current(),
+        current_mip_version,
     };
 
     <span class="prelude-val">Ok</span>(grpc_api::GetStatusResponse {
@@ -2527,29 +2532,24 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::QueryStateRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::QueryStateResponse, GrpcError&gt; {
-    <span class="kw">let </span>queries = request.into_inner().queries;
+    <span class="kw">let </span>current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
+    <span class="kw">let </span>queries = request
+        .into_inner()
+        .queries
+        .into_iter()
+        .map(|q| to_querystate_filter(q, current_network_version))
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
+
     <span class="kw">if </span>queries.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">"no query items specified"</span>.to_string(),
         ));
     }
+
     <span class="kw">if </span>queries.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_query_items_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_query_items_per_request)));
     }
-
-    <span class="kw">let </span>current_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
-    <span class="kw">let </span>queries = queries
-        .into_iter()
-        .map(|q| {
-            to_querystate_filter(
-                q,
-                current_version,
-                grpc.grpc_config.max_datastore_keys_queries,
-                grpc.grpc_config.max_datastore_key_length,
-            )
-        })
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>response = grpc
         .execution_controller

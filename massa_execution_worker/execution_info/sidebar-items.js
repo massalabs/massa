@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["OperationInfo"],"struct":["AsyncMessageExecutionResult","DeferredCallExecutionResult","DenunciationResult","ExecutionInfo","ExecutionInfoForSlot"]};

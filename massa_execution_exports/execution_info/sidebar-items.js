@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["RollOperationInfo","TransferContext","TransferValue"],"struct":["AsyncMessageExecutionResult","DeferredCallExecutionResult","DenunciationResult","ExecutionInfoForSlot","OriginTransferContext","TransferInfo"]};

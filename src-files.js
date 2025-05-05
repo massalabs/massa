@@ -13,12 +13,12 @@ var srcIndex = new Map(JSON.parse('[\
 ["massa_deferred_calls",["",[],["call.rs","config.rs","lib.rs","macros.rs","registry_changes.rs","slot_changes.rs"]]],\
 ["massa_event_cache",["",[],["config.rs","controller.rs","event_cache.rs","lib.rs","rocksdb_operator.rs","ser_deser.rs","worker.rs"]]],\
 ["massa_executed_ops",["",[],["config.rs","denunciations_changes.rs","executed_denunciations.rs","executed_ops.rs","lib.rs","ops_changes.rs"]]],\
-["massa_execution_exports",["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","execution_info.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs","types_trace_info.rs"]]],\
-["massa_execution_worker",["",[],["active_history.rs","context.rs","controller.rs","datastore_scan.rs","execution.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_deferred_calls.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","storage_backend.rs","worker.rs"]]],\
+["massa_execution_exports",["",[],["channels.rs","controller_traits.rs","error.rs","event_store.rs","lib.rs","mapping_grpc.rs","settings.rs","types.rs","types_trace_info.rs"]]],\
+["massa_execution_worker",["",[],["active_history.rs","context.rs","controller.rs","execution.rs","execution_info.rs","interface_impl.rs","lib.rs","request_queue.rs","slot_sequencer.rs","speculative_async_pool.rs","speculative_deferred_calls.rs","speculative_executed_denunciations.rs","speculative_executed_ops.rs","speculative_ledger.rs","speculative_roll_state.rs","stats.rs","storage_backend.rs","worker.rs"]]],\
 ["massa_factory_exports",["",[],["config.rs","controller_traits.rs","error.rs","lib.rs","types.rs"]]],\
 ["massa_factory_worker",["",[],["block_factory.rs","endorsement_factory.rs","lib.rs","manager.rs","run.rs"]]],\
 ["massa_final_state",["",[],["config.rs","controller_trait.rs","error.rs","final_state.rs","lib.rs","mapping_grpc.rs","state_changes.rs"]]],\
-["massa_grpc",["",[["stream",[],["mod.rs","new_blocks.rs","new_endorsements.rs","new_filled_blocks.rs","new_operations.rs","new_slot_abi_call_stacks.rs","new_slot_execution_outputs.rs","new_slot_transfers.rs","new_transfers_info.rs","send_blocks.rs","send_endorsements.rs","send_operations.rs","trait_filters_impl.rs","tx_throughput.rs"]]],["config.rs","error.rs","handler.rs","lib.rs","private.rs","public.rs","server.rs"]]],\
+["massa_grpc",["",[["stream",[],["mod.rs","new_blocks.rs","new_endorsements.rs","new_filled_blocks.rs","new_operations.rs","new_slot_abi_call_stacks.rs","new_slot_execution_outputs.rs","new_slot_transfers.rs","send_blocks.rs","send_endorsements.rs","send_operations.rs","tx_throughput.rs"]]],["config.rs","error.rs","handler.rs","lib.rs","private.rs","public.rs","server.rs"]]],\
 ["massa_hash",["",[],["error.rs","hash.rs","hash_xof.rs","lib.rs","settings.rs"]]],\
 ["massa_ledger_exports",["",[],["config.rs","controller.rs","error.rs","key.rs","ledger_changes.rs","ledger_entry.rs","lib.rs","mapping_grpc.rs"]]],\
 ["massa_ledger_worker",["",[],["ledger.rs","ledger_db.rs","lib.rs"]]],\
