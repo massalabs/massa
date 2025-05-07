@@ -168,10 +168,8 @@
     </span><span class="kw">pub </span>genesis_timestamp: MassaTime,
     <span class="doccomment">/// period duration
     </span><span class="kw">pub </span>t0: MassaTime,
-    <span class="doccomment">/// block creation reward (v0)
-    </span><span class="kw">pub </span>block_reward_v0: Amount,
-    <span class="doccomment">/// block creation reward (v1)
-    </span><span class="kw">pub </span>block_reward_v1: Amount,
+    <span class="doccomment">/// block creation reward
+    </span><span class="kw">pub </span>block_reward: Amount,
     <span class="doccomment">/// operation validity period
     </span><span class="kw">pub </span>operation_validity_period: u64,
     <span class="doccomment">/// endorsement count
@@ -247,5 +245,7 @@
     </span><span class="kw">pub </span>event_cache_size: usize,
     <span class="doccomment">/// Amount of entries removed when `event_cache_size` is reached
     </span><span class="kw">pub </span>event_snip_amount: usize,
+    <span class="doccomment">/// slot execution info channel capacity
+    </span><span class="kw">pub </span>broadcast_slot_execution_info_channel_capacity: usize,
 }
 </code></pre></div></section></main></body></html>

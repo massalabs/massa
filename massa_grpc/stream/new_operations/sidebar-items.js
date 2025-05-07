@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_filter","new_operations","should_send"],"struct":["Filter"],"type":["NewOperationsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_operations","new_operations_server"],"type":["NewOperationsServerStreamType","NewOperationsStreamType"]};
