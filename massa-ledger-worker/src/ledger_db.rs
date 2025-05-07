@@ -216,7 +216,13 @@ impl LedgerDB {
             }
         };
         let end_bound = match end_bound {
-            std::ops::Bound::Unbounded => std::ops::Bound::Unbounded,
+            std::ops::Bound::Unbounded => {
+                let end_bound = get_prefix_bounds(&datastore_prefix_from_address(addr, &[])).1;
+                if end_bound == std::ops::Bound::Unbounded {
+                    panic!("End prefix can't be Unbounded for existing address");
+                }
+                end_bound
+            }
             std::ops::Bound::Excluded(k) => {
                 std::ops::Bound::Excluded(datastore_prefix_from_address(addr, &k))
             }
@@ -800,6 +806,30 @@ mod tests {
     fn test_end_prefix() {
         assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
         assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
+
+        // test end prefix for address with all bytes set to 255
+        {
+            use massa_serialization::Deserializer;
+            let addr_deser = massa_models::address::AddressDeserializer::new();
+            let serialized_addr = vec![
+                0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255,
+            ];
+            let (_, addr): (_, Address) = addr_deser
+                .deserialize::<massa_serialization::DeserializeError>(&serialized_addr)
+                .unwrap();
+            let prefix = end_prefix(&datastore_prefix_from_address(&addr, &[]));
+            assert!(prefix.is_some());
+            assert_eq!(
+                prefix,
+                Some(vec![
+                    108, 101, 100, 103, 101, 114, 47, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 4,
+                ])
+            );
+        }
     }
 
     #[test]
@@ -862,6 +892,8 @@ mod tests {
             .write()
             .write_batch(batch, Default::default(), None);
 
+        add_noise_to_ledger(&ledger_db);
+
         let keys = ledger_db
             .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, None)
             .unwrap();
@@ -918,5 +950,31 @@ mod tests {
         assert_eq!(keys.pop_first().unwrap(), b"111".to_vec());
         assert_eq!(keys.pop_first().unwrap(), b"12".to_vec());
         assert_eq!(keys.pop_first(), None);
+    }
+
+    fn add_noise_to_ledger(ledger_db: &LedgerDB) {
+        // add a bit of garbage data into the db to ensure bounds are respected
+        let mut batch = DBBatch::new();
+        // should at the beginning of the db
+        batch.insert(b"Agarbage".to_vec(), Some(b"garbage".to_vec()));
+        // should at the end of the db
+        batch.insert(b"zgarbage".to_vec(), Some(b"garbage".to_vec()));
+
+        // create an address with all bytes set to 255
+        let addr_deser = massa_models::address::AddressDeserializer::new();
+        let serialized_addr = vec![
+            0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ];
+        let (_, addr) = addr_deser
+            .deserialize::<DeserializeError>(&serialized_addr)
+            .unwrap();
+        ledger_db.put_entry(&addr, LedgerEntry::default(), &mut batch, 0);
+        ledger_db.update_entry(&addr, LedgerEntryUpdate::default(), &mut batch);
+
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
     }
 }
