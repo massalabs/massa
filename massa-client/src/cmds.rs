@@ -1341,8 +1341,8 @@ impl Command {
                     target_addr: voting_config.governance_sc_addr,
                     target_func: "vote".to_string(),
                     param: buffer,
-                    max_gas: 1000000,
-                    coins: Amount::from_str("0")?,
+                    max_gas: 4894131,
+                    coins: Amount::from_str("1")?,
                 };
 
                 send_operation(client, wallet, op, fee, addr, json).await
