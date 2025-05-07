@@ -4,26 +4,26 @@ version = "2.6.0"
 edition = "2021"
 
 [dependencies]
-anyhow = {workspace = true}
+anyhow = { workspace = true }
 is-terminal = { workspace = true }
-console = {workspace = true}
-dialoguer = {workspace = true}
-rustyline = {workspace = true}
-rustyline-derive = {workspace = true}
-erased-serde = {workspace = true}
-lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
-serde = {workspace = true, "features" = ["derive"]}
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-clap = {workspace = true}
-strum = {workspace = true}
-strum_macros = {workspace = true}
-tokio = {workspace = true, "features" = ["full"]}
-massa_api_exports = {workspace = true}
-massa_models = {workspace = true}
-massa_signature = {workspace = true}
-massa_time = {workspace = true}
-massa_sdk = {workspace = true}
-massa_wallet = {workspace = true}
+console = { workspace = true }
+dialoguer = { workspace = true }
+rustyline = { workspace = true }
+rustyline-derive = { workspace = true }
+erased-serde = { workspace = true }
+lazy_static = { workspace = true }                    # BOM UPGRADE     Revert to "1.4" if problem
+serde = { workspace = true, "features" = ["derive"] }
+serde_json = { workspace = true }                     # BOM UPGRADE     Revert to "1.0" if problem
+clap = { workspace = true }
+strum = { workspace = true }
+strum_macros = { workspace = true }
+tokio = { workspace = true, "features" = ["full"] }
+massa_api_exports = { workspace = true }
+massa_models = { workspace = true }
+massa_signature = { workspace = true }
+massa_time = { workspace = true }
+massa_sdk = { workspace = true }
+massa_wallet = { workspace = true }
 
 [dev-dependencies]
-toml_edit = {workspace = true}
+toml_edit = { workspace = true }
