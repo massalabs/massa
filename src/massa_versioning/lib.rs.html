@@ -136,8 +136,8 @@
 //! for the vote is not relevant. The only reason why we should consider a sufficient number of votes
 //! is to get a reasonable p-value on the vote itself:
 //!
-//! if we consider only 5 votes, the probability that a 30%-stake was selected to vote at least 50% of the times is 16%
-//! if we consider 1000 votes that probability falls to 5e-40.
+//! if we consider only 5 votes, the probability that a 30%-stake was selected to vote at least 75% of the times is 3%:
+//! if we consider 1000 votes that probability falls to 1e-149.
 //!
 //! # Notes on MipState
 //!
@@ -190,6 +190,6 @@
 <span class="kw">pub mod </span>versioning_ser_der;
 
 <span class="doccomment">/// Test utils
-</span><span class="attr">#[cfg(any(test, feature = <span class="string">"test-exports"</span>))]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>test_helpers;
 </code></pre></div></section></main></body></html>

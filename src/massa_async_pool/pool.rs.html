@@ -1420,68 +1420,23 @@
 <a href="#1420" id="1420">1420</a>
 <a href="#1421" id="1421">1421</a>
 <a href="#1422" id="1422">1422</a>
-<a href="#1423" id="1423">1423</a>
-<a href="#1424" id="1424">1424</a>
-<a href="#1425" id="1425">1425</a>
-<a href="#1426" id="1426">1426</a>
-<a href="#1427" id="1427">1427</a>
-<a href="#1428" id="1428">1428</a>
-<a href="#1429" id="1429">1429</a>
-<a href="#1430" id="1430">1430</a>
-<a href="#1431" id="1431">1431</a>
-<a href="#1432" id="1432">1432</a>
-<a href="#1433" id="1433">1433</a>
-<a href="#1434" id="1434">1434</a>
-<a href="#1435" id="1435">1435</a>
-<a href="#1436" id="1436">1436</a>
-<a href="#1437" id="1437">1437</a>
-<a href="#1438" id="1438">1438</a>
-<a href="#1439" id="1439">1439</a>
-<a href="#1440" id="1440">1440</a>
-<a href="#1441" id="1441">1441</a>
-<a href="#1442" id="1442">1442</a>
-<a href="#1443" id="1443">1443</a>
-<a href="#1444" id="1444">1444</a>
-<a href="#1445" id="1445">1445</a>
-<a href="#1446" id="1446">1446</a>
-<a href="#1447" id="1447">1447</a>
-<a href="#1448" id="1448">1448</a>
-<a href="#1449" id="1449">1449</a>
-<a href="#1450" id="1450">1450</a>
-<a href="#1451" id="1451">1451</a>
-<a href="#1452" id="1452">1452</a>
-<a href="#1453" id="1453">1453</a>
-<a href="#1454" id="1454">1454</a>
-<a href="#1455" id="1455">1455</a>
-<a href="#1456" id="1456">1456</a>
-<a href="#1457" id="1457">1457</a>
-<a href="#1458" id="1458">1458</a>
-<a href="#1459" id="1459">1459</a>
-<a href="#1460" id="1460">1460</a>
-<a href="#1461" id="1461">1461</a>
-<a href="#1462" id="1462">1462</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
-</span><span class="kw">use crate</span>::{changes::AsyncPoolChanges, config::AsyncPoolConfig};
+</span><span class="kw">use crate</span>::{
+    changes::AsyncPoolChanges,
+    config::AsyncPoolConfig,
+    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
+    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+    AsyncMessageSerializer,
+};
 <span class="kw">use </span>massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-<span class="kw">use </span>massa_models::{
-    address::Address,
-    async_msg::{
-        AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
-        AsyncMessageUpdate,
-    },
-    async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
-    types::Applicable,
-};
-<span class="kw">use </span>massa_models::{
-    async_msg_id::AsyncMessageIdDeserializer,
-    types::{SetOrKeep, SetUpdateOrDelete},
-};
+<span class="kw">use </span>massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::address::Address;
 <span class="kw">use </span>massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -1810,13 +1765,13 @@
     ///
     /// This should only be called when we know we want to execute the messages.
     /// Otherwise, we should use the `message_info_cache`.
-    </span><span class="kw">pub fn </span>fetch_messages(
+    </span><span class="kw">pub fn </span>fetch_messages&lt;<span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        message_ids: <span class="kw-2">&amp;</span>[AsyncMessageId],
-    ) -&gt; Vec&lt;(AsyncMessageId, <span class="prelude-ty">Option</span>&lt;AsyncMessage&gt;)&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>fetched_messages = Vec::with_capacity(message_ids.len());
+        message_ids: Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>AsyncMessageId&gt;,
+    ) -&gt; Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>AsyncMessageId, <span class="prelude-ty">Option</span>&lt;AsyncMessage&gt;)&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>fetched_messages = Vec::new();
 
-        <span class="kw">for </span>message_id <span class="kw">in </span>message_ids {
+        <span class="kw">for </span>message_id <span class="kw">in </span>message_ids.iter() {
             <span class="kw">let </span>message = <span class="self">self</span>.fetch_message(message_id);
             fetched_messages.push((<span class="kw-2">*</span>message_id, message));
         }
@@ -2516,7 +2471,7 @@
     };
     <span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot};
 
-    <span class="kw">use </span>massa_models::async_msg::AsyncMessageTrigger;
+    <span class="kw">use </span><span class="kw">crate</span>::message::AsyncMessageTrigger;
 
     <span class="kw">use </span>massa_db_worker::MassaDB;
     <span class="kw">use </span>parking_lot::RwLock;
@@ -2529,8 +2484,9 @@
         column: <span class="kw-2">&amp;</span>str,
     ) -&gt; BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt; {
         db.read()
-            .iterator_cf_for_full_db_traversal(column, MassaIteratorMode::Start)
-            .collect()
+            .iterator_cf(column, MassaIteratorMode::Start)
+            <span class="comment">// .collect::&lt;BTreeMap&lt;Vec&lt;u8&gt;, Vec&lt;u8&gt;&gt;&gt;()
+            </span>.collect()
     }
 
     <span class="kw">fn </span>create_message() -&gt; AsyncMessage {
@@ -2566,7 +2522,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2583,21 +2538,11 @@
             MAX_DATASTORE_KEY_LENGTH <span class="kw">as </span>u32,
         );
 
-        <span class="kw">let </span>message_ids = <span class="macro">vec!</span>[];
-        <span class="kw">let </span>to_ser_ = pool.fetch_messages(<span class="kw-2">&amp;</span>message_ids);
+        <span class="kw">let </span>message_ids: Vec&lt;<span class="kw-2">&amp;</span>AsyncMessageId&gt; = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| {
-                (
-                    <span class="kw-2">*</span>k,
-                    v.clone().unwrap_or_else(|| {
-                        <span class="macro">panic!</span>(
-                            <span class="string">"message_id {:?} should have been inserted in the pool above"</span>,
-                            k
-                        )
-                    }),
-                )
-            })
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
 
@@ -2619,7 +2564,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2653,21 +2597,11 @@
             .write()
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
 
-        <span class="kw">let </span>message_ids = <span class="macro">vec!</span>[message_id, message2_id];
-        <span class="kw">let </span>to_ser_ = pool.fetch_messages(<span class="kw-2">&amp;</span>message_ids);
+        <span class="kw">let </span>message_ids: Vec&lt;<span class="kw-2">&amp;</span>AsyncMessageId&gt; = <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;</span>message2_id];
+        <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| {
-                (
-                    <span class="kw-2">*</span>k,
-                    v.clone().unwrap_or_else(|| {
-                        <span class="macro">panic!</span>(
-                            <span class="string">"message_id {:?} should have been inserted in the pool above"</span>,
-                            k
-                        )
-                    }),
-                )
-            })
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
         <span class="macro">assert_eq!</span>(to_ser.len(), <span class="number">2</span>);
@@ -2692,7 +2626,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2724,21 +2657,11 @@
             .write()
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
 
-        <span class="kw">let </span>message_ids = <span class="macro">vec!</span>[message_id, message2_id];
-        <span class="kw">let </span>to_ser_ = pool.fetch_messages(<span class="kw-2">&amp;</span>message_ids);
+        <span class="kw">let </span>message_ids: Vec&lt;<span class="kw-2">&amp;</span>AsyncMessageId&gt; = <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;</span>message2_id];
+        <span class="kw">let </span>to_ser_ = pool.fetch_messages(message_ids);
         <span class="kw">let </span>to_ser = to_ser_
             .iter()
-            .map(|(k, v)| {
-                (
-                    <span class="kw-2">*</span>k,
-                    v.clone().unwrap_or_else(|| {
-                        <span class="macro">panic!</span>(
-                            <span class="string">"message_id {:?} should have been inserted in the pool above"</span>,
-                            k
-                        )
-                    }),
-                )
-            })
+            .map(|(k, v)| (<span class="kw-2">*</span>(<span class="kw-2">*</span>k), v.clone().unwrap()))
             .collect();
         serializer.serialize(<span class="kw-2">&amp;</span>to_ser, <span class="kw-2">&amp;mut </span>serialized).unwrap();
         <span class="macro">assert_eq!</span>(to_ser.len(), <span class="number">2</span>);
@@ -2760,7 +2683,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2784,7 +2706,7 @@
             .write_batch(batch, versioning_batch, <span class="prelude-val">Some</span>(slot_1));
 
         <span class="kw">let </span>content = dump_column(pool.db.clone(), <span class="string">"state"</span>);
-        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, split in 13 prefix
+        <span class="macro">assert_eq!</span>(content.len(), <span class="number">26</span>); <span class="comment">// 2 entries added, splitted in 13 prefix
 
         </span><span class="kw">let </span><span class="kw-2">mut </span>batch2 = DBBatch::new();
         pool.delete_entry(<span class="kw-2">&amp;</span>message_id, <span class="kw-2">&amp;mut </span>batch2);
@@ -2818,7 +2740,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;,
@@ -2869,7 +2790,6 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: THREAD_COUNT,
             max_ledger_backups: <span class="number">100</span>,
-            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),

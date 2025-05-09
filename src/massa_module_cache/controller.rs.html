@@ -185,42 +185,9 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
-<a href="#216" id="216">216</a>
-<a href="#217" id="217">217</a>
-<a href="#218" id="218">218</a>
-<a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>massa_hash::Hash;
 <span class="kw">use </span>massa_models::prehash::BuildHashMapper;
-<span class="kw">use </span>massa_sc_runtime::{Compiler, CondomLimits, RuntimeModule};
+<span class="kw">use </span>massa_sc_runtime::{Compiler, RuntimeModule};
 <span class="kw">use </span>schnellru::{ByLength, LruMap};
 <span class="kw">use </span>tracing::debug;
 
@@ -259,24 +226,9 @@
         }
     }
 
-    <span class="kw">pub fn </span>reset(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="self">self</span>.lru_cache.reset();
-        <span class="self">self</span>.hd_cache.reset();
-    }
-
     <span class="doccomment">/// Internal function to compile and build `ModuleInfo`
-    </span><span class="kw">fn </span>compile_cached(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        bytecode: <span class="kw-2">&amp;</span>[u8],
-        hash: Hash,
-        condom_limits: CondomLimits,
-    ) -&gt; ModuleInfo {
-        <span class="kw">match </span>RuntimeModule::new(
-            bytecode,
-            <span class="self">self</span>.cfg.gas_costs.clone(),
-            Compiler::CL,
-            condom_limits,
-        ) {
+    </span><span class="kw">fn </span>compile_cached(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], hash: Hash) -&gt; ModuleInfo {
+        <span class="kw">match </span>RuntimeModule::new(bytecode, <span class="self">self</span>.cfg.gas_costs.clone(), Compiler::CL) {
             <span class="prelude-val">Ok</span>(module) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">"compilation of module {} succeeded"</span>, hash);
                 ModuleInfo::Module(module)
@@ -290,12 +242,9 @@
     }
 
     <span class="doccomment">/// Save a new or an already existing module in the cache
-    </span><span class="kw">pub fn </span>save_module(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], condom_limits: CondomLimits) {
+    </span><span class="kw">pub fn </span>save_module(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) {
         <span class="kw">let </span>hash = Hash::compute_from(bytecode);
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(hd_module_info) =
-            <span class="self">self</span>.hd_cache
-                .get(hash, <span class="self">self</span>.cfg.gas_costs.clone(), condom_limits.clone())
-        {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(hd_module_info) = <span class="self">self</span>.hd_cache.get(hash, <span class="self">self</span>.cfg.gas_costs.clone()) {
             <span class="macro">debug!</span>(<span class="string">"save_module: {} present in hd"</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info);
         } <span class="kw">else if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
@@ -303,7 +252,7 @@
             <span class="self">self</span>.hd_cache.insert(hash, lru_module_info);
         } <span class="kw">else </span>{
             <span class="macro">debug!</span>(<span class="string">"save_module: {} missing"</span>, hash);
-            <span class="kw">let </span>module_info = <span class="self">self</span>.compile_cached(bytecode, hash, condom_limits);
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile_cached(bytecode, hash);
             <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
             <span class="self">self</span>.lru_cache.insert(hash, module_info);
         }
@@ -329,7 +278,7 @@
     /// * `ModuleInfo::Invalid` if the module is invalid
     /// * `ModuleInfo::Module` if the module is valid and has no delta
     /// * `ModuleInfo::ModuleAndDelta` if the module is valid and has a delta
-    </span><span class="kw">fn </span>load_module_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8], condom_limits: CondomLimits) -&gt; ModuleInfo {
+    </span><span class="kw">fn </span>load_module_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bytecode: <span class="kw-2">&amp;</span>[u8]) -&gt; ModuleInfo {
         <span class="kw">if </span>bytecode.is_empty() {
             <span class="kw">let </span>error_msg = <span class="string">"load_module: bytecode is absent"</span>.to_string();
             <span class="macro">debug!</span>(error_msg);
@@ -348,16 +297,13 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(lru_module_info) = <span class="self">self</span>.lru_cache.get(hash) {
             <span class="macro">debug!</span>(<span class="string">"load_module: {} present in lru"</span>, hash);
             lru_module_info
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hd_module_info) =
-            <span class="self">self</span>.hd_cache
-                .get(hash, <span class="self">self</span>.cfg.gas_costs.clone(), condom_limits.clone())
-        {
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(hd_module_info) = <span class="self">self</span>.hd_cache.get(hash, <span class="self">self</span>.cfg.gas_costs.clone()) {
             <span class="macro">debug!</span>(<span class="string">"load_module: {} missing in lru but present in hd"</span>, hash);
             <span class="self">self</span>.lru_cache.insert(hash, hd_module_info.clone());
             hd_module_info
         } <span class="kw">else </span>{
             <span class="macro">debug!</span>(<span class="string">"load_module: {} missing"</span>, hash);
-            <span class="kw">let </span>module_info = <span class="self">self</span>.compile_cached(bytecode, hash, condom_limits);
+            <span class="kw">let </span>module_info = <span class="self">self</span>.compile_cached(bytecode, hash);
             <span class="self">self</span>.hd_cache.insert(hash, module_info.clone());
             <span class="self">self</span>.lru_cache.insert(hash, module_info.clone());
             module_info
@@ -372,7 +318,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         bytecode: <span class="kw-2">&amp;</span>[u8],
         execution_gas: u64,
-        condom_limits: CondomLimits,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
         <span class="comment">// Do not actually debit the instance creation cost from the provided gas
         // This is only supposed to be a check
@@ -384,7 +329,7 @@
             )))<span class="question-mark">?</span>;
         <span class="comment">// TODO: interesting but unimportant optim
         // remove max_instance_cost hard check if module is cached and has a delta
-        </span><span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode, condom_limits);
+        </span><span class="kw">let </span>module_info = <span class="self">self</span>.load_module_info(bytecode);
         <span class="kw">let </span>module = <span class="kw">match </span>module_info {
             ModuleInfo::Invalid(err) =&gt; {
                 <span class="kw">let </span>err_msg = <span class="macro">format!</span>(<span class="string">"invalid module: {}"</span>, err);
@@ -413,7 +358,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         bytecode: <span class="kw-2">&amp;</span>[u8],
         limit: u64,
-        condom_limits: CondomLimits,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;RuntimeModule, CacheError&gt; {
         <span class="macro">debug!</span>(<span class="string">"load_tmp_module"</span>);
         <span class="comment">// Do not actually debit the instance creation cost from the provided gas
@@ -424,18 +368,8 @@
                 <span class="string">"Provided gas {} is lower than the base instance creation gas cost {}"</span>,
                 limit, <span class="self">self</span>.cfg.gas_costs.max_instance_cost
             )))<span class="question-mark">?</span>;
-        <span class="kw">let </span>module = RuntimeModule::new(
-            bytecode,
-            <span class="self">self</span>.cfg.gas_costs.clone(),
-            Compiler::SP,
-            condom_limits,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>module = RuntimeModule::new(bytecode, <span class="self">self</span>.cfg.gas_costs.clone(), Compiler::SP)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(module)
-    }
-
-    <span class="doccomment">/// Returns the memory usage of the LRU cache
-    </span><span class="kw">pub fn </span>get_module_lru_cache_memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.lru_cache.cache.memory_usage()
     }
 }
 </code></pre></div></section></main></body></html>

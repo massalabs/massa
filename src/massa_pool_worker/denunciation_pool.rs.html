@@ -411,6 +411,7 @@
 <a href="#411" id="411">411</a>
 <a href="#412" id="412">412</a>
 <a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>std::collections::{btree_map::Entry, BTreeMap};
@@ -461,10 +462,11 @@
     </span><span class="kw">pub fn </span>_contains(<span class="kw-2">&amp;</span><span class="self">self</span>, denunciation: <span class="kw-2">&amp;</span>Denunciation) -&gt; bool {
         <span class="self">self</span>.denunciations_cache
             .iter()
-            .any(|(<span class="kw">_</span>, de_st)| <span class="kw">match </span>de_st {
+            .find(|(<span class="kw">_</span>, de_st)| <span class="kw">match </span><span class="kw-2">*</span>de_st {
                 DenunciationStatus::Accumulating(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
                 DenunciationStatus::DenunciationEmitted(de) =&gt; de == denunciation,
             })
+            .is_some()
     }
 
     <span class="doccomment">/// Add a denunciation precursor to the pool - can lead to a Denunciation creation

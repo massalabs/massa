@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"constant":["ASYNC_MESSAGE_ID_PREFIX"],"struct":["AsyncMessageIdDeserializer","AsyncMessageIdSerializer","AsyncMessageIdWrapper"],"type":["AsyncMessageId"]};

@@ -346,6 +346,7 @@
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
 <a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 //! This file provides structures representing changes to the asynchronous message pool
@@ -354,16 +355,17 @@
     ops::Bound::Included,
 };
 
-<span class="kw">use </span>massa_models::{
-    async_msg::{
-        AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageUpdate,
-        AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+<span class="kw">use crate</span>::{
+    message::{
+        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
+        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
     },
-    async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
-    types::{
-        Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-        SetUpdateOrDeleteSerializer,
-    },
+    AsyncMessageDeserializer, AsyncMessageSerializer,
+};
+
+<span class="kw">use </span>massa_ledger_exports::{
+    Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+    SetUpdateOrDeleteSerializer,
 };
 
 <span class="kw">use </span>massa_serialization::{
@@ -580,11 +582,11 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::str::FromStr;
 
-    <span class="kw">use </span>massa_models::types::SetUpdateOrDelete;
-    <span class="kw">use </span>massa_models::{
-        address::Address, amount::Amount, async_msg::AsyncMessageTrigger, slot::Slot,
-    };
+    <span class="kw">use </span>massa_ledger_exports::SetUpdateOrDelete;
+    <span class="kw">use </span>massa_models::{address::Address, amount::Amount, slot::Slot};
     <span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer};
+
+    <span class="kw">use </span><span class="kw">crate</span>::message::AsyncMessageTrigger;
 
     <span class="kw">use </span>assert_matches::assert_matches;
 
@@ -681,7 +683,7 @@
                 <span class="macro">assert!</span>(msg.can_be_executed);
             }
             <span class="kw">_ </span>=&gt; {
-                <span class="macro">panic!</span>(<span class="string">"Unexpected value"</span>);
+                <span class="macro">panic!</span>(<span class="string">"Unexpect value"</span>);
             }
         }
 
