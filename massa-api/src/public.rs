@@ -234,6 +234,11 @@ impl MassaRpcServer for API<Public> {
             fee,
         } in reqs
         {
+            if address.is_none() && fee.is_some() {
+                return Err(
+                    ApiError::BadRequest("fee argument is set without address".into()).into(),
+                );
+            }
             let address = if let Some(addr) = address {
                 addr
             } else {
@@ -345,6 +350,12 @@ impl MassaRpcServer for API<Public> {
             fee,
         } in reqs
         {
+            if caller_address.is_none() && (fee.is_some() || coins.is_some()) {
+                return Err(ApiError::BadRequest(
+                    "fee or coins argument is set without caller_address".into(),
+                )
+                .into());
+            }
             let caller_address = if let Some(addr) = caller_address {
                 addr
             } else {
