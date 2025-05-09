@@ -4670,7 +4670,7 @@ fn test_dump_block() {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    // if the the storage backend for the dump-block feature is a rocksdb, this
+    // if the storage backend for the dump-block feature is a rocksdb, this
     // is mandatory (the db must be closed before we can reopen it to check the
     // data)
     drop(universe);
