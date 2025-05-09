@@ -185,13 +185,6 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! # General description
 //!
@@ -379,11 +372,4 @@
         (t_from, t_to, t_amount)
     }
 }
-
-<span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-</span><span class="doccomment">/// ABI and execution succeed or not
-</span><span class="kw">pub type </span>ExecutionResult = (Vec&lt;AbiTrace&gt;, bool);
-<span class="attr">#[cfg(not(feature = <span class="string">"execution-trace"</span>))]
-</span><span class="doccomment">/// ABI and execution succeed or not
-</span><span class="kw">pub type </span>ExecutionResult = ();
 </code></pre></div></section></main></body></html>
