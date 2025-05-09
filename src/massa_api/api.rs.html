@@ -194,7 +194,7 @@
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>futures::future::{<span class="self">self</span>, Either};
 <span class="kw">use </span>futures::StreamExt;
-<span class="kw">use </span>jsonrpsee::core::{Error <span class="kw">as </span>JsonRpseeError, RpcResult, SubscriptionResult};
+<span class="kw">use </span>jsonrpsee::core::{client::Error <span class="kw">as </span>JsonRpseeError, RpcResult, SubscriptionResult};
 <span class="kw">use </span>jsonrpsee::{PendingSubscriptionSink, SubscriptionMessage};
 <span class="kw">use </span>massa_api_exports::config::APIConfig;
 <span class="kw">use </span>massa_api_exports::error::ApiError;
@@ -338,7 +338,7 @@
     </span>}
 }
 
-<span class="comment">// Brodcast the stream(sender) content via a WebSocket
+<span class="comment">// Broadcast the stream(sender) content via a WebSocket
 </span><span class="kw">async fn </span>broadcast_via_ws&lt;T: Serialize + Send + Clone + <span class="lifetime">'static</span>&gt;(
     sender: tokio::sync::broadcast::Sender&lt;T&gt;,
     pending: PendingSubscriptionSink,

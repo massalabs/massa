@@ -2404,7 +2404,6 @@
 <a href="#2404" id="2404">2404</a>
 <a href="#2405" id="2405">2405</a>
 <a href="#2406" id="2406">2406</a>
-<a href="#2407" id="2407">2407</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     CycleHistoryDeserializer, CycleHistorySerializer, CycleInfo, DeferredCreditsDeserializer,
     DeferredCreditsSerializer, PoSChanges, PosError, PosResult, ProductionStats,
@@ -2420,22 +2419,15 @@
 <span class="kw">use </span>massa_hash::{Hash, HashXof, HASH_XOF_SIZE_BYTES};
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::{address::Address, prehash::PreHashMap, slot::Slot};
-<span class="kw">use </span>massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
+<span class="kw">use </span>massa_serialization::{
+    buf_to_array_ctr, DeserializeError, Deserializer, Serializer, U64VarIntSerializer,
+};
 <span class="kw">use </span>nom::AsBytes;
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::ops::Bound::{Excluded, Included, Unbounded};
 <span class="kw">use </span>std::ops::RangeBounds;
 <span class="kw">use </span>std::{collections::BTreeMap, path::PathBuf};
 <span class="kw">use </span>tracing::debug;
-
-<span class="comment">// Helper function to convert a slice to an array of a given size, if possible,
-// and then returning it with the rest of the slice.
-</span><span class="kw">fn </span>buf_to_array_ctr&lt;F: Fn(<span class="kw-2">&amp;</span>[u8; N]) -&gt; V, V, <span class="kw">const </span>N: usize&gt;(
-    buf: <span class="kw-2">&amp;</span>[u8],
-    ctr: F,
-) -&gt; <span class="prelude-ty">Option</span>&lt;(<span class="kw-2">&amp;</span>[u8], V)&gt; {
-    <span class="prelude-val">Some</span>((<span class="kw-2">&amp;</span>buf[N..], ctr(<span class="kw-2">&amp;</span>buf.get(..N)<span class="question-mark">?</span>.try_into().ok()<span class="question-mark">?</span>)))
-}
 
 <span class="comment">// General cycle info idents
 </span><span class="kw">const </span>COMPLETE_IDENT: u8 = <span class="number">0u8</span>;
@@ -4034,6 +4026,7 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4168,6 +4161,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4362,6 +4356,7 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4462,6 +4457,7 @@
             max_versioning_elements_size: <span class="number">100_000</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4637,6 +4633,7 @@
             max_versioning_elements_size: <span class="number">100</span>,
             thread_count: <span class="number">2</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;
@@ -4742,6 +4739,7 @@
             max_final_state_elements_size: <span class="number">100</span>,
             max_versioning_elements_size: <span class="number">100</span>,
             max_ledger_backups: <span class="number">10</span>,
+            enable_metrics: <span class="bool-val">false</span>,
         };
         <span class="kw">let </span>db = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) <span class="kw">as </span>Box&lt;(<span class="kw">dyn </span>MassaDBController + <span class="lifetime">'static</span>)&gt;

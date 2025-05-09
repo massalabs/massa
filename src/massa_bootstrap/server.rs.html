@@ -799,6 +799,7 @@
 <a href="#799" id="799">799</a>
 <a href="#800" id="800">800</a>
 <a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! start the bootstrapping system using [`start_bootstrap_server`]
 //! Once your node will be ready, you may want other to bootstrap from you.
 //!
@@ -814,13 +815,13 @@
 //! Shares an `Arc&lt;RwLock&gt;&gt;` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
-//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
-//! under the hood, making write contention virtually non-existant.
+//! Assuming no errors in code, this is the only write occurrence, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existent.
 //!
 //! # Worker loop
 //!
 //! 1. Checks if the stopper has been invoked.
-//! 2. Checks if the client is permited under the white/black list rules
+//! 2. Checks if the client is permitted under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
@@ -829,7 +830,7 @@
 </span><span class="kw">use </span>crossbeam::channel::tick;
 <span class="kw">use </span>humantime::format_duration;
 <span class="kw">use </span>massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-<span class="kw">use </span>massa_db_exports::CHANGE_ID_DESER_ERROR;
+<span class="kw">use </span>massa_db_exports::{MassaDBError, CHANGE_ID_DESER_ERROR};
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_logging::massa_trace;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
@@ -902,7 +903,7 @@
     <span class="doccomment">/// stop the bootstrap server
     </span><span class="kw">pub fn </span>stop(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), BootstrapError&gt; {
         <span class="macro">massa_trace!</span>(<span class="string">"bootstrap.lib.stop"</span>, {});
-        <span class="comment">// TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        <span class="comment">// TODO: Refactor the waker so that its existence is tied to the life of the event-loop
         </span><span class="kw">if </span><span class="self">self</span>.listener_stopper.stop().is_err() {
             <span class="macro">warn!</span>(<span class="string">"bootstrap server already dropped"</span>);
         }
@@ -1284,8 +1285,6 @@
         <span class="kw">let </span>last_start_period;
         <span class="kw">let </span>last_slot_before_downtime;
 
-        <span class="kw">let </span>slot_too_old = <span class="bool-val">false</span>;
-
         <span class="comment">// Scope of the final state read
         </span>{
             <span class="kw">let </span>final_state_read = final_state.read();
@@ -1301,13 +1300,18 @@
                 <span class="prelude-val">None
             </span>};
 
-            state_part = final_state_read
+            <span class="kw">let </span>state_part_res = final_state_read
                 .get_database()
                 .read()
-                .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, last_slot)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"Error get_batch_to_stream: {}"</span>, e))
-                })<span class="question-mark">?</span>;
+                .get_batch_to_stream(<span class="kw-2">&amp;</span>last_state_step, last_slot);
+
+            <span class="kw">match </span>state_part_res {
+                    <span class="prelude-val">Ok</span>(part) =&gt; state_part = part,
+                    <span class="prelude-val">Err</span>(MassaDBError::CacheMissError(s)) <span class="kw">if </span>s.as_str() == <span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any" </span>=&gt; {
+                        <span class="kw">return </span>server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
+                    }
+                    <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"Error get_batch_to_stream: {}"</span>, e))),
+                };
 
             <span class="kw">let </span>new_state_step = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_state_step, state_part.is_empty()) {
                 <span class="comment">// We already finished streaming the state
@@ -1342,16 +1346,18 @@
                 },
             };
 
-            versioning_part = final_state_read
+            <span class="kw">let </span>versioning_part_res = final_state_read
                 .get_database()
                 .read()
-                .get_versioning_batch_to_stream(<span class="kw-2">&amp;</span>last_versioning_step, last_slot)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(<span class="macro">format!</span>(
-                        <span class="string">"Error get_versioning_batch_to_stream: {}"</span>,
-                        e
-                    ))
-                })<span class="question-mark">?</span>;
+                .get_versioning_batch_to_stream(<span class="kw-2">&amp;</span>last_versioning_step, last_slot);
+
+            <span class="kw">match </span>versioning_part_res {
+               <span class="prelude-val">Ok</span>(part) =&gt; versioning_part = part,
+               <span class="prelude-val">Err</span>(MassaDBError::CacheMissError(s)) <span class="kw">if </span>s.as_str() == <span class="string">"all our changes are strictly after last_change_id, we can't be sure we did not miss any" </span>=&gt; {
+                   <span class="kw">return </span>server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
+               }
+               <span class="prelude-val">Err</span>(e) =&gt; <span class="kw">return </span><span class="prelude-val">Err</span>(BootstrapError::GeneralError(<span class="macro">format!</span>(<span class="string">"Error get_batch_to_stream: {}"</span>, e))),
+           };
 
             <span class="kw">let </span>new_versioning_step = <span class="kw">match </span>(<span class="kw-2">&amp;</span>last_versioning_step, versioning_part.is_empty()) {
                 <span class="comment">// We already finished streaming the versioning
@@ -1408,10 +1414,6 @@
             last_slot = <span class="prelude-val">Some</span>(db_slot);
             current_slot = db_slot;
             send_last_start_period = <span class="bool-val">false</span>;
-        }
-
-        <span class="kw">if </span>slot_too_old {
-            <span class="kw">return </span>server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
         }
 
         <span class="comment">// Setup final state global cursor

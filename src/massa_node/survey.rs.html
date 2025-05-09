@@ -156,19 +156,45 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
 </pre></div><pre class="rust"><code><span class="attr">#![allow(unused_imports)]
 </span><span class="kw">use </span>std::thread::JoinHandle;
 
 <span class="kw">use </span>crossbeam_channel::{select, tick};
 <span class="kw">use </span>massa_channel::{sender::MassaSender, MassaChannel};
+<span class="kw">use </span>massa_db_exports::ShareableMassaDBController;
 <span class="kw">use </span>massa_execution_exports::ExecutionController;
 <span class="kw">use </span>massa_metrics::MassaMetrics;
 <span class="kw">use </span>massa_models::{address::Address, slot::Slot, timeslots::get_latest_block_slot_at_timestamp};
 <span class="kw">use </span>massa_pool_exports::PoolController;
 <span class="kw">use </span>massa_time::MassaTime;
+<span class="kw">use </span>massa_versioning::versioning::MipStore;
 <span class="kw">use </span>tracing::info;
-<span class="comment">// use std::time::Duration;
-</span><span class="kw">use </span>tracing::warn;
+<span class="kw">use </span>tracing::warn;
 
 <span class="kw">pub struct </span>MassaSurvey {}
 
@@ -201,8 +227,10 @@
         tick_delay: std::time::Duration,
         execution_controller: Box&lt;<span class="kw">dyn </span>ExecutionController&gt;,
         pool_controller: Box&lt;<span class="kw">dyn </span>PoolController&gt;,
+        db: ShareableMassaDBController,
         massa_metrics: MassaMetrics,
         config: (u8, MassaTime, MassaTime, u64, u64),
+        mip_store: MipStore,
     ) -&gt; MassaSurveyStopper {
         <span class="kw">if </span>massa_metrics.is_enabled() {
             <span class="attr">#[cfg(all(not(feature = <span class="string">"sandbox"</span>), not(test)))]
@@ -287,6 +315,28 @@
                                     .unwrap_or(std::num::NonZeroUsize::MIN)
                                     .get();
                                     massa_metrics.set_available_processors(count);
+                                }
+
+                                {
+                                    massa_metrics.set_network_current_version(mip_store.get_network_version_current());
+                                    <span class="kw">let </span>network_stats= mip_store.<span class="number">0</span>.read().get_network_versions_stats();
+                                    massa_metrics.update_network_version_vote(network_stats);
+                                }
+
+                                {
+                                    <span class="kw">let </span>change_history_sizes = db.read().get_change_history_sizes();
+                                    massa_metrics.set_db_change_history_size(change_history_sizes.<span class="number">0</span>);
+                                    massa_metrics.set_db_change_versioning_history_size(change_history_sizes.<span class="number">1</span>);
+                                }
+
+                                {
+                                    <span class="kw">let </span>module_lru_cache_memory_usage = execution_controller.get_module_lru_cache_memory_usage();
+                                    massa_metrics.set_module_lru_cache_memory_usage(module_lru_cache_memory_usage);
+                                }
+
+                                {
+                                    <span class="kw">let </span>active_history_total_event_len = execution_controller.get_active_history_total_event_len();
+                                    massa_metrics.set_active_history_total_event_len(active_history_total_event_len);
                                 }
                             }
                         }
