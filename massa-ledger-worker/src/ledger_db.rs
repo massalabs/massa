@@ -217,12 +217,9 @@ impl LedgerDB {
         };
         let end_bound = match end_bound {
             std::ops::Bound::Unbounded => {
-                let end_bound = get_prefix_bounds(&datastore_prefix_from_address(addr, &[])).1;
-                if end_bound == std::ops::Bound::Unbounded {
-                    panic!("End prefix can't be Unbounded for existing address");
-                }
-                end_bound
+                get_prefix_bounds(&datastore_prefix_from_address(addr, &[])).1
             }
+
             std::ops::Bound::Excluded(k) => {
                 std::ops::Bound::Excluded(datastore_prefix_from_address(addr, &k))
             }
