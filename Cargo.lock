@@ -177,7 +177,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?branch=feature/update_wasmer_4_3_4#c0afa48488418a66d872a8c51bc7fa30fe4f8a11"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2925,7 +2925,7 @@ dependencies = [
 [[package]]
 name = "massa-proto-rs"
 version = "0.1.0"
-source = "git+https://github.com/massalabs/massa-proto-rs?rev=c9a7c55914f3d308996113df0936f15d96490313#c9a7c55914f3d308996113df0936f15d96490313"
+source = "git+https://github.com/massalabs/massa-proto-rs?rev=dad2ccf785c14d2a9015f87cf7db1dab8b0cf996#dad2ccf785c14d2a9015f87cf7db1dab8b0cf996"
 dependencies = [
  "glob",
  "prost",
@@ -2939,7 +2939,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?rev=cd14c775aff31b8c0f49064613118f428f9dd45f#cd14c775aff31b8c0f49064613118f428f9dd45f"
+source = "git+https://github.com/massalabs/massa-sc-runtime?rev=8b1e66c6116bf477078e6bd51b60d61e87dabcab#8b1e66c6116bf477078e6bd51b60d61e87dabcab"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
