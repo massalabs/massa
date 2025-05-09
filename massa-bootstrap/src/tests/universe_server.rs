@@ -57,6 +57,7 @@ impl BootstrapServerForeignControllers {
             max_final_state_elements_size: MAX_BOOTSTRAP_FINAL_STATE_PARTS_SIZE as usize,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         }))
             as Box<(dyn MassaDBController + 'static)>));
         Self {
@@ -202,7 +203,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch);
+            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
         self.controllers
             .database
             .write()
@@ -216,7 +217,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch);
+            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
         self.controllers
             .database
             .write()
@@ -232,7 +233,7 @@ impl BootstrapServerTestUniverseBuilder {
         let mut batch = DBBatch::default();
         let versioning_batch = DBBatch::default();
         self.final_ledger
-            .apply_changes_to_batch(ledger_changes, &mut batch);
+            .apply_changes_to_batch(ledger_changes, &mut batch, 1);
         self.controllers
             .database
             .write()

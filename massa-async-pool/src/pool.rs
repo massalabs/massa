@@ -2,19 +2,24 @@
 
 //! This file defines a finite size final pool of asynchronous messages for use in the context of autonomous smart contracts
 
-use crate::{
-    changes::AsyncPoolChanges,
-    config::AsyncPoolConfig,
-    message::{AsyncMessage, AsyncMessageId, AsyncMessageInfo, AsyncMessageUpdate},
-    AsyncMessageDeserializer, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-    AsyncMessageSerializer,
-};
+use crate::{changes::AsyncPoolChanges, config::AsyncPoolConfig};
 use massa_db_exports::{
     DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, ASYNC_POOL_PREFIX,
     MESSAGE_ID_DESER_ERROR, MESSAGE_ID_SER_ERROR, MESSAGE_SER_ERROR, STATE_CF,
 };
-use massa_ledger_exports::{Applicable, SetOrKeep, SetUpdateOrDelete};
-use massa_models::address::Address;
+use massa_models::{
+    address::Address,
+    async_msg::{
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageInfo, AsyncMessageSerializer,
+        AsyncMessageUpdate,
+    },
+    async_msg_id::{AsyncMessageId, AsyncMessageIdSerializer},
+    types::Applicable,
+};
+use massa_models::{
+    async_msg_id::AsyncMessageIdDeserializer,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_serialization::{
     DeserializeError, Deserializer, SerializeError, Serializer, U64VarIntDeserializer,
     U64VarIntSerializer,
@@ -343,13 +348,13 @@ impl AsyncPool {
     ///
     /// This should only be called when we know we want to execute the messages.
     /// Otherwise, we should use the `message_info_cache`.
-    pub fn fetch_messages<'a>(
+    pub fn fetch_messages(
         &self,
-        message_ids: Vec<&'a AsyncMessageId>,
-    ) -> Vec<(&'a AsyncMessageId, Option<AsyncMessage>)> {
-        let mut fetched_messages = Vec::new();
+        message_ids: &[AsyncMessageId],
+    ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
+        let mut fetched_messages = Vec::with_capacity(message_ids.len());
 
-        for message_id in message_ids.iter() {
+        for message_id in message_ids {
             let message = self.fetch_message(message_id);
             fetched_messages.push((*message_id, message));
         }
@@ -1049,7 +1054,7 @@ mod tests {
     };
     use massa_models::{address::Address, amount::Amount, slot::Slot};
 
-    use crate::message::AsyncMessageTrigger;
+    use massa_models::async_msg::AsyncMessageTrigger;
 
     use massa_db_worker::MassaDB;
     use parking_lot::RwLock;
@@ -1062,8 +1067,7 @@ mod tests {
         column: &str,
     ) -> BTreeMap<Vec<u8>, Vec<u8>> {
         db.read()
-            .iterator_cf(column, MassaIteratorMode::Start)
-            // .collect::<BTreeMap<Vec<u8>, Vec<u8>>>()
+            .iterator_cf_for_full_db_traversal(column, MassaIteratorMode::Start)
             .collect()
     }
 
@@ -1100,6 +1104,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1116,11 +1121,21 @@ mod tests {
             MAX_DATASTORE_KEY_LENGTH as u32,
         );
 
-        let message_ids: Vec<&AsyncMessageId> = vec![];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
 
@@ -1142,6 +1157,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1175,11 +1191,21 @@ mod tests {
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
 
-        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![message_id, message2_id];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1204,6 +1230,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1235,11 +1262,21 @@ mod tests {
             .write()
             .write_batch(batch, versioning_batch, Some(slot_1));
 
-        let message_ids: Vec<&AsyncMessageId> = vec![&message_id, &message2_id];
-        let to_ser_ = pool.fetch_messages(message_ids);
+        let message_ids = vec![message_id, message2_id];
+        let to_ser_ = pool.fetch_messages(&message_ids);
         let to_ser = to_ser_
             .iter()
-            .map(|(k, v)| (*(*k), v.clone().unwrap()))
+            .map(|(k, v)| {
+                (
+                    *k,
+                    v.clone().unwrap_or_else(|| {
+                        panic!(
+                            "message_id {:?} should have been inserted in the pool above",
+                            k
+                        )
+                    }),
+                )
+            })
             .collect();
         serializer.serialize(&to_ser, &mut serialized).unwrap();
         assert_eq!(to_ser.len(), 2);
@@ -1261,6 +1298,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1284,7 +1322,7 @@ mod tests {
             .write_batch(batch, versioning_batch, Some(slot_1));
 
         let content = dump_column(pool.db.clone(), "state");
-        assert_eq!(content.len(), 26); // 2 entries added, splitted in 13 prefix
+        assert_eq!(content.len(), 26); // 2 entries added, split in 13 prefix
 
         let mut batch2 = DBBatch::new();
         pool.delete_entry(&message_id, &mut batch2);
@@ -1318,6 +1356,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(
             Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>,
@@ -1368,6 +1407,7 @@ mod tests {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 100,
+            enable_metrics: false,
         };
         let db: ShareableMassaDBController = Arc::new(RwLock::new(Box::new(MassaDB::new(
             db_config.clone(),

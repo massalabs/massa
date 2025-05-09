@@ -1,7 +1,6 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
-use crate::AsyncMessage;
-use massa_models::{address::Address, amount::Amount, slot::Slot};
+use massa_models::{address::Address, amount::Amount, async_msg::AsyncMessage, slot::Slot};
 use massa_signature::KeyPair;
 use rand::Rng;
 use std::str::FromStr;

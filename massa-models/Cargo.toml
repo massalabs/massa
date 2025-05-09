@@ -1,6 +1,6 @@
 [package]
 name = "massa_models"
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -20,6 +20,7 @@ num = { workspace = true, "features" = [
     "serde",
 ] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
 directories = { workspace = true }
+dialoguer = { workspace = true }
 config = { workspace = true }
 bs58 = { workspace = true, "features" = ["check"] }
 bitvec = { workspace = true, "features" = [

@@ -19,6 +19,11 @@ pub struct LoggingSettings {
     pub level: usize,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct CliSettings {
+    pub approved_community_charter_file_path: PathBuf,
+}
+
 #[derive(Clone, Debug, Deserialize)]
 pub struct ExecutionSettings {
     pub max_final_events: usize,
@@ -27,7 +32,6 @@ pub struct ExecutionSettings {
     pub stats_time_window_duration: MassaTime,
     pub max_read_only_gas: u64,
     pub abi_gas_costs_file: PathBuf,
-    pub wasm_gas_costs_file: PathBuf,
     pub hd_cache_path: PathBuf,
     pub lru_cache_size: u32,
     pub hd_cache_size: usize,
@@ -37,6 +41,10 @@ pub struct ExecutionSettings {
     /// slot execution traces channel capacity
     pub broadcast_slot_execution_traces_channel_capacity: usize,
     pub execution_traces_limit: usize,
+    pub event_cache_path: PathBuf,
+    pub event_cache_size: usize,
+    pub event_snip_amount: usize,
+    pub max_event_per_query: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -149,6 +157,7 @@ pub struct Settings {
     pub metrics: MetricsSettings,
     pub versioning: VersioningSettings,
     pub block_dump: BlockDumpSettings,
+    pub cli: CliSettings,
 }
 
 /// Consensus configuration

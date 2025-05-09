@@ -68,7 +68,7 @@ impl Ord for ConnectionMetadata {
 
         // Time since last failed peer test, more recent = less priority
         let test_failure_check = match (self.last_test_failure, other.last_test_failure) {
-            (Some(st), Some(ot)) => Some(st.cmp(&ot)),
+            (Some(st), Some(other_)) => Some(st.cmp(&other_)),
             (Some(_), None) => Some(Ordering::Greater),
             (None, Some(_)) => Some(Ordering::Less),
             (None, None) => None,
@@ -79,7 +79,7 @@ impl Ord for ConnectionMetadata {
 
         // Time since last succeeded peer test, more recent = more priority
         let test_success_check = match (self.last_test_success, other.last_test_success) {
-            (Some(st), Some(ot)) => Some(st.cmp(&ot).reverse()),
+            (Some(st), Some(other_)) => Some(st.cmp(&other_).reverse()),
             (Some(_), None) => Some(Ordering::Less),
             (None, Some(_)) => Some(Ordering::Greater),
             (None, None) => None,

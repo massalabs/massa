@@ -51,7 +51,12 @@ pub trait LedgerController: Send + Sync {
     /// USED FOR BOOTSTRAP ONLY
     fn reset(&mut self);
 
-    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch);
+    fn apply_changes_to_batch(
+        &mut self,
+        changes: LedgerChanges,
+        ledger_batch: &mut DBBatch,
+        final_state_component_version: u32,
+    );
 
     /// Deserializes the key and value, useful after bootstrap
     fn is_key_value_valid(&self, serialized_key: &[u8], serialized_value: &[u8]) -> bool;

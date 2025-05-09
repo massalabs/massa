@@ -68,6 +68,10 @@ A list of all the contributors can be found [here](CONTRIBUTORS.md)
 The Massa Community Charter is designed to protect decentralization.
 You can find it here: [COMMUNITY_CHARTER.md](COMMUNITY_CHARTER.md)
 
+## License
+
+The Massa License terms can be found here: [LICENSE.md](LICENSE.md)
+
 ## Initial distribution files
 
 The following initial distribution files:

@@ -43,6 +43,13 @@ pub trait MassaDBController: Send + Sync + Debug {
     /// Exposes RocksDB's "multi_get_cf" function
     fn multi_get_cf(&self, query: Vec<(&str, Key)>) -> Vec<Result<Option<Value>, MassaDBError>>;
 
+    /// Exposes RocksDB's "iterator_cf" function, without filling up the read cache
+    fn iterator_cf_for_full_db_traversal(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_>;
+
     /// Exposes RocksDB's "iterator_cf" function
     fn iterator_cf(
         &self,
@@ -87,6 +94,9 @@ pub trait MassaDBController: Send + Sync + Debug {
         last_versioning_step: &StreamingStep<Vec<u8>>,
         last_change_id: Option<Slot>,
     ) -> Result<StreamBatch<Slot>, MassaDBError>;
+
+    /// Get the total size of the change history and the change versioning history respectively
+    fn get_change_history_sizes(&self) -> (usize, usize);
 
     /// Used in test to compare a prebuilt ledger with a ledger that has been built by the code
     #[cfg(feature = "test-exports")]

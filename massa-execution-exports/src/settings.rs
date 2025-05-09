@@ -2,8 +2,9 @@
 
 //! This module provides the structures used to provide configuration parameters to the Execution system
 
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_models::amount::Amount;
-use massa_sc_runtime::GasCosts;
+use massa_sc_runtime::{CondomLimits, GasCosts};
 use massa_time::MassaTime;
 use num::rational::Ratio;
 use std::path::PathBuf;
@@ -42,8 +43,10 @@ pub struct ExecutionConfig {
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
-    /// block creation reward
-    pub block_reward: Amount,
+    /// block creation reward (v0)
+    pub block_reward_v0: Amount,
+    /// block creation reward (v1)
+    pub block_reward_v1: Amount,
     /// operation validity period
     pub operation_validity_period: u64,
     /// endorsement count
@@ -91,7 +94,9 @@ pub struct ExecutionConfig {
     /// slot execution outputs channel capacity
     pub broadcast_slot_execution_output_channel_capacity: usize,
     /// max size of event data, in bytes
-    pub max_event_size: usize,
+    pub max_event_size_v0: usize,
+    /// max size of event data, in bytes
+    pub max_event_size_v1: usize,
     /// chain id
     pub chain_id: u64,
     /// whether slot execution traces broadcast is enabled
@@ -102,4 +107,19 @@ pub struct ExecutionConfig {
     pub max_execution_traces_slot_limit: usize,
     /// Where to dump blocks
     pub block_dump_folder_path: PathBuf,
+    /// Max recursive calls depth in SC
+    /// Used to limit the recursion_counter value in the context, to avoid stack overflow issues.
+    pub max_recursive_calls_depth: u16,
+    /// Runtime condom middleware limits
+    pub condom_limits: CondomLimits,
+    /// deferred calls config
+    pub deferred_calls_config: DeferredCallsConfig,
+    /// Maximum number of event that an operation can emit
+    pub max_event_per_operation: usize,
+    /// Path to the hard drive event cache storage
+    pub event_cache_path: PathBuf,
+    /// Maximum number of entries we want to keep in the Event cache
+    pub event_cache_size: usize,
+    /// Amount of entries removed when `event_cache_size` is reached
+    pub event_snip_amount: usize,
 }

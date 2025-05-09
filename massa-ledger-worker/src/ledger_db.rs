@@ -3,19 +3,21 @@
 //! Module to interact with the disk ledger
 
 use massa_db_exports::{
-    DBBatch, MassaDirection, MassaIteratorMode, ShareableMassaDBController, CRUD_ERROR,
-    KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
+    DBBatch, MassaDBController, MassaDirection, MassaIteratorMode, ShareableMassaDBController,
+    CRUD_ERROR, KEY_SER_ERROR, LEDGER_PREFIX, STATE_CF,
 };
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
 };
 use massa_serialization::{
     DeserializeError, Deserializer, Serializer, U64VarIntDeserializer, U64VarIntSerializer,
 };
+use parking_lot::{lock_api::RwLockReadGuard, RawRwLock};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 
@@ -110,7 +112,7 @@ impl LedgerDB {
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
-            self.put_entry(&address, entry, &mut batch);
+            self.put_entry(&address, entry, &mut batch, 0);
         }
 
         self.db.write().write_batch(
@@ -125,14 +127,19 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * batch: the batch to apply the changes to
-    pub fn apply_changes_to_batch(&self, changes: LedgerChanges, batch: &mut DBBatch) {
+    pub fn apply_changes_to_batch(
+        &self,
+        changes: LedgerChanges,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.put_entry(&addr, new_entry, batch);
+                    self.put_entry(&addr, new_entry, batch, final_state_component_version);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
@@ -143,7 +150,7 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, batch);
+                    self.delete_entry(&addr, batch, final_state_component_version);
                 }
             }
         }
@@ -283,8 +290,19 @@ impl LedgerDB {
     /// * `addr`: associated address
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
-    fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
+    fn put_entry(
+        &self,
+        addr: &Address,
+        ledger_entry: LedgerEntry,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         let db = self.db.read();
+
+        if final_state_component_version > 0 {
+            // Ensures any potential previous entry is fully deleted.
+            delete_datastore_entries(addr, &db, batch, final_state_component_version);
+        }
 
         // Version
         //TODO: Get version number from parameters
@@ -432,7 +450,12 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
+    fn delete_entry(
+        &self,
+        addr: &Address,
+        batch: &mut DBBatch,
+        final_state_component_version: u32,
+    ) {
         let db = self.db.read();
 
         // version
@@ -456,18 +479,32 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        // datastore
-        let key_prefix = datastore_prefix_from_address(addr, &[]);
+        delete_datastore_entries(addr, &db, batch, final_state_component_version);
+    }
+}
 
-        for (serialized_key, _) in db
-            .iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| key <= &end_prefix(&key_prefix).unwrap())
-        {
-            db.delete_key(batch, serialized_key.to_vec());
-        }
+// Helper function to delete all datastore entries for a given address
+// Needs to be called in put entry and delete entry
+// Note: This function takes a lock on the DB to avoid multiple reads.
+fn delete_datastore_entries(
+    addr: &Address,
+    db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
+    batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
+    final_state_component_version: u32,
+) {
+    // datastore
+    let key_prefix = datastore_prefix_from_address(addr, &[]);
+    for (serialized_key, _) in db
+        .iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(key, _)| match final_state_component_version {
+            0 => key <= &end_prefix(&key_prefix).unwrap(),
+            _ => key < &end_prefix(&key_prefix).unwrap(),
+        })
+    {
+        db.delete_key(batch, serialized_key.to_vec());
     }
 }
 
@@ -508,6 +545,30 @@ impl LedgerDB {
         addresses
     }
 
+    /// Get the entire datastore for a given address (no deserialization)
+    ///
+    /// IMPORTANT: This should only be used for debug purposes.
+    #[allow(dead_code)]
+    #[cfg(any(test, feature = "test-exports"))]
+    pub fn get_entire_datastore_raw(
+        &self,
+        addr: &Address,
+    ) -> std::collections::BTreeMap<Vec<u8>, Vec<u8>> {
+        let db = self.db.read();
+
+        let key_prefix = datastore_prefix_from_address(addr, &[]);
+        // Need an end_prefix otherwise the iterator can return entries not belonging to the given
+        // address
+        let end_prefix = key_prefix[0..key_prefix.len() - 1].to_vec();
+
+        db.iterator_cf_for_full_db_traversal(
+            STATE_CF,
+            MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
+        )
+        .take_while(|(k, _)| k.starts_with(&end_prefix))
+        .collect()
+    }
+
     /// Get the entire datastore for a given address.
     ///
     /// IMPORTANT: This should only be used for debug purposes.
@@ -523,7 +584,7 @@ impl LedgerDB {
 
         let key_prefix = datastore_prefix_from_address(addr, &[]);
 
-        db.iterator_cf(
+        db.iterator_cf_for_full_db_traversal(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
@@ -560,7 +621,8 @@ mod tests {
     use massa_db_exports::{MassaDBConfig, MassaDBController, STATE_HASH_INITIAL_BYTES};
     use massa_db_worker::MassaDB;
     use massa_hash::HashXof;
-    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate, SetOrKeep};
+    use massa_ledger_exports::{LedgerEntry, LedgerEntryUpdate};
+    use massa_models::types::SetOrKeep;
     use massa_models::{
         address::Address,
         amount::{Amount, AmountDeserializer},
@@ -574,13 +636,13 @@ mod tests {
     use std::sync::Arc;
     use tempfile::TempDir;
 
-    fn init_test_ledger(addr: Address) -> (LedgerDB, BTreeMap<Vec<u8>, Vec<u8>>) {
+    fn setup_test_ledger(addr: Address) -> (LedgerDB, DBBatch, BTreeMap<Vec<u8>, Vec<u8>>) {
         // init data
 
         let mut data = BTreeMap::new();
-        data.insert(b"1".to_vec(), b"a".to_vec());
         data.insert(b"2".to_vec(), b"b".to_vec());
         data.insert(b"3".to_vec(), b"c".to_vec());
+
         let entry = LedgerEntry {
             balance: Amount::from_str("42").unwrap(),
             datastore: data.clone(),
@@ -602,6 +664,7 @@ mod tests {
             max_versioning_elements_size: 100_000,
             max_ledger_backups: 10,
             thread_count: 32,
+            enable_metrics: false,
         };
 
         let db = Arc::new(RwLock::new(
@@ -611,22 +674,27 @@ mod tests {
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
 
-        ledger_db.put_entry(&addr, entry, &mut batch);
+        ledger_db.put_entry(&addr, entry, &mut batch, 0);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
-        ledger_db
-            .db
-            .write()
-            .write_batch(batch, Default::default(), None);
+        // ledger_db
+        //     .db
+        //     .write()
+        //     .write_batch(batch, Default::default(), None);
 
         // return db and initial data
-        (ledger_db, data)
+        // (ledger_db, data)
+        (ledger_db, batch, data)
     }
 
     /// Functional test of `LedgerDB`
     #[test]
     fn test_ledger_db() {
         let addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let (ledger_db, data) = init_test_ledger(addr);
+        let (ledger_db, batch, data) = setup_test_ledger(addr);
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
 
         let amount_deserializer =
             AmountDeserializer::new(Included(Amount::MIN), Included(Amount::MAX));
@@ -658,7 +726,7 @@ mod tests {
 
         // delete entry
         let mut batch = DBBatch::new();
-        ledger_db.delete_entry(&addr, &mut batch);
+        ledger_db.delete_entry(&addr, &mut batch, 1);
         ledger_db
             .db
             .write()
@@ -679,5 +747,54 @@ mod tests {
     fn test_end_prefix() {
         assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
         assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
+    }
+
+    #[test]
+    fn test_ledger_delete() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        let (ledger_db, mut batch, _data) = setup_test_ledger(addr);
+
+        // Add a key, value into db with a prefix right after datastore (datastore indent = 3, here we use indent = 4)
+        // This is to test if delete_datastore_entries only delete datastore entries
+        let mut datastore_key = vec![];
+        ledger_db
+            .key_serializer_db
+            .serialize(
+                &Key::new(&addr, KeyType::DATASTORE(b"a".to_vec())),
+                &mut datastore_key,
+            )
+            .expect(KEY_SER_ERROR);
+        let datastore_key_len = datastore_key.len();
+        // We modify the datastore key indent (from 3 to 4) so this is not a 'datastore' key anymore
+        datastore_key[datastore_key_len - 2] = DATASTORE_IDENT + 1;
+        // Value is not important here
+        let datastore_value = b"a".to_vec();
+        batch.insert(datastore_key.clone(), Some(datastore_value.clone()));
+        //
+
+        // Write batch into db
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
+
+        let datastore = ledger_db.get_entire_datastore(&addr);
+        // println!("datastore: {:?}", datastore);
+        assert!(!datastore.is_empty());
+
+        let mut batch = DBBatch::new();
+        let guard = ledger_db.db.read();
+        delete_datastore_entries(&addr, &guard, &mut batch, 1);
+        drop(guard);
+
+        let mut guard = ledger_db.db.write();
+        guard.write_batch(batch, Default::default(), None);
+        drop(guard);
+
+        let datastore = ledger_db.get_entire_datastore_raw(&addr);
+        // println!("datastore: {:?}", datastore);
+        assert_eq!(datastore.len(), 1);
+        assert!(datastore.contains_key(&datastore_key));
     }
 }

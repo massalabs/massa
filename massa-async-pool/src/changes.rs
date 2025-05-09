@@ -6,17 +6,16 @@ use std::{
     ops::Bound::Included,
 };
 
-use crate::{
-    message::{
-        AsyncMessage, AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer,
-        AsyncMessageUpdate, AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
+use massa_models::{
+    async_msg::{
+        AsyncMessage, AsyncMessageDeserializer, AsyncMessageSerializer, AsyncMessageUpdate,
+        AsyncMessageUpdateDeserializer, AsyncMessageUpdateSerializer,
     },
-    AsyncMessageDeserializer, AsyncMessageSerializer,
-};
-
-use massa_ledger_exports::{
-    Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
-    SetUpdateOrDeleteSerializer,
+    async_msg_id::{AsyncMessageId, AsyncMessageIdDeserializer, AsyncMessageIdSerializer},
+    types::{
+        Applicable, SetOrKeep, SetUpdateOrDelete, SetUpdateOrDeleteDeserializer,
+        SetUpdateOrDeleteSerializer,
+    },
 };
 
 use massa_serialization::{
@@ -233,11 +232,11 @@ impl AsyncPoolChanges {
 mod tests {
     use std::str::FromStr;
 
-    use massa_ledger_exports::SetUpdateOrDelete;
-    use massa_models::{address::Address, amount::Amount, slot::Slot};
+    use massa_models::types::SetUpdateOrDelete;
+    use massa_models::{
+        address::Address, amount::Amount, async_msg::AsyncMessageTrigger, slot::Slot,
+    };
     use massa_serialization::{DeserializeError, Deserializer, Serializer};
-
-    use crate::message::AsyncMessageTrigger;
 
     use assert_matches::assert_matches;
 
@@ -334,7 +333,7 @@ mod tests {
                 assert!(msg.can_be_executed);
             }
             _ => {
-                panic!("Unexpect value");
+                panic!("Unexpected value");
             }
         }
 

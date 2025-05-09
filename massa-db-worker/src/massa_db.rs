@@ -13,8 +13,8 @@ use massa_models::{
 use massa_serialization::{DeserializeError, Deserializer, Serializer, U64VarIntSerializer};
 use parking_lot::Mutex;
 use rocksdb::{
-    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, WriteBatch,
-    DB,
+    checkpoint::Checkpoint, ColumnFamilyDescriptor, Direction, IteratorMode, Options, ReadOptions,
+    WriteBatch, DB,
 };
 use std::path::PathBuf;
 use std::{
@@ -41,7 +41,7 @@ pub struct RawMassaDB<
     ChangeIDDeserializer: Deserializer<ChangeID>,
 > {
     /// The rocksdb instance
-    pub db: Arc<DB>,
+    pub db: DB,
     /// configuration for the `RawMassaDB`
     pub config: MassaDBConfig,
     /// In change_history, we keep the latest changes made to the database, useful for streaming them to a client.
@@ -54,6 +54,8 @@ pub struct RawMassaDB<
     pub change_id_deserializer: ChangeIDDeserializer,
     /// The current RocksDB batch of the database, in a Mutex to share it
     pub current_batch: Arc<Mutex<WriteBatch>>,
+    /// If metrics are enabled, we keep track of the size of the changes associated to each change_id
+    pub change_history_sizes: BTreeMap<ChangeID, (usize, usize)>,
 }
 
 impl<ChangeID, ChangeIDSerializer, ChangeIDDeserializer> std::fmt::Debug
@@ -79,6 +81,13 @@ where
     ChangeIDSerializer: Serializer<ChangeID>,
     ChangeIDDeserializer: Deserializer<ChangeID>,
 {
+    /// If we read the db with these options, cache will be disabled (useful for scanning the whole db)
+    pub fn read_opts_for_full_db_traversal() -> ReadOptions {
+        let mut read_opts = ReadOptions::default();
+        read_opts.fill_cache(false);
+        read_opts
+    }
+
     /// Used for bootstrap servers (get a new batch of data from STATE_CF to stream to the client)
     ///
     /// Returns a StreamBatch<ChangeID>
@@ -164,17 +173,22 @@ where
 
         if !last_state_step.finished() {
             let handle = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
+            let read_opts = Self::read_opts_for_full_db_traversal();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_state_step {
                 StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self
-                        .db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    let mut iter = self.db.iterator_cf_opt(
+                        handle,
+                        read_opts,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+                _ => self
+                    .db
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
 
             let u64_ser = U64VarIntSerializer::new();
@@ -293,17 +307,22 @@ where
 
         if !last_versioning_step.finished() {
             let handle = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
+            let read_opts = Self::read_opts_for_full_db_traversal();
 
             // Creates an iterator from the next element after the last if defined, otherwise initialize it at the first key.
             let db_iterator = match &last_versioning_step {
                 StreamingStep::Ongoing(max_key) => {
-                    let mut iter = self
-                        .db
-                        .iterator_cf(handle, IteratorMode::From(max_key, Direction::Forward));
+                    let mut iter = self.db.iterator_cf_opt(
+                        handle,
+                        read_opts,
+                        IteratorMode::From(max_key, Direction::Forward),
+                    );
                     iter.next();
                     iter
                 }
-                _ => self.db.iterator_cf(handle, IteratorMode::Start),
+                _ => self
+                    .db
+                    .iterator_cf_opt(handle, read_opts, IteratorMode::Start),
             };
             let u64_ser = U64VarIntSerializer::new();
             for (serialized_key, serialized_value) in db_iterator.flatten() {
@@ -349,8 +368,8 @@ where
         change_id: Option<ChangeID>,
         reset_history: bool,
     ) -> Result<(), MassaDBError> {
-        if let Some(change_id) = change_id.clone() {
-            if change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
+        if let Some(change_id) = change_id.as_ref() {
+            if *change_id < self.get_change_id().expect(CHANGE_ID_DESER_ERROR) {
                 return Err(MassaDBError::InvalidChangeID(String::from(
                     "change_id should monotonically increase after every write",
                 )));
@@ -389,15 +408,51 @@ where
             }
         }
 
-        // in versioning_changes, we have the data that we do not want to include in hash
-        // e.g everything that is not in 'Active' state (so hashes remain compatibles)
-        for (key, value) in versioning_changes.iter() {
-            if let Some(value) = value {
-                self.current_batch
-                    .lock()
-                    .put_cf(handle_versioning, key, value);
-            } else {
-                self.current_batch.lock().delete_cf(handle_versioning, key);
+        // If metrics are enabled, we keep track of the size of the changes (for state changes, and then for versioning changes)
+        if self.config.enable_metrics {
+            let changes_size;
+            let changes_versioning_size;
+            {
+                let mut current_batch_guard = self.current_batch.lock();
+                changes_size = current_batch_guard.size_in_bytes();
+
+                // in versioning_changes, we have the data that we do not want to include in hash
+                // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+                for (key, value) in versioning_changes.iter() {
+                    if let Some(value) = value {
+                        current_batch_guard.put_cf(handle_versioning, key, value);
+                    } else {
+                        current_batch_guard.delete_cf(handle_versioning, key);
+                    }
+                }
+
+                changes_versioning_size = current_batch_guard
+                    .size_in_bytes()
+                    .saturating_sub(changes_size);
+            }
+
+            match self
+                .change_history_sizes
+                .entry(self.get_change_id().expect(CHANGE_ID_DESER_ERROR))
+            {
+                std::collections::btree_map::Entry::Vacant(entry) => {
+                    entry.insert((changes_size, changes_versioning_size));
+                }
+                std::collections::btree_map::Entry::Occupied(mut entry) => {
+                    entry.get_mut().0 += changes_size;
+                    entry.get_mut().1 += changes_versioning_size;
+                }
+            }
+        } else {
+            let mut current_batch_guard = self.current_batch.lock();
+            // in versioning_changes, we have the data that we do not want to include in hash
+            // e.g everything that is not in 'Active' state (so hashes remain compatibles)
+            for (key, value) in versioning_changes.iter() {
+                if let Some(value) = value {
+                    current_batch_guard.put_cf(handle_versioning, key, value);
+                } else {
+                    current_batch_guard.delete_cf(handle_versioning, key);
+                }
             }
         }
 
@@ -446,10 +501,13 @@ where
 
         if reset_history {
             self.change_history.clear();
+            self.change_history_versioning.clear();
+            self.change_history_sizes.clear();
         }
 
         while self.change_history.len() > self.config.max_history_length {
             self.change_history.pop_first();
+            self.change_history_sizes.pop_first();
         }
 
         while self.change_history_versioning.len() > self.config.max_history_length {
@@ -580,27 +638,62 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         Self::new_with_options(config, db_opts).expect(OPEN_ERROR)
     }
 
+    /// Sets various db options for RocksDB
     pub fn default_db_opts() -> Options {
+        // 1. Basic options
         let mut db_opts = Options::default();
-        db_opts.set_max_open_files(820);
         db_opts.create_if_missing(true);
         db_opts.create_missing_column_families(true);
+
+        // 2. Limit the max number of open files (which decreases memory requirements)
+        db_opts.set_max_open_files(820);
+
+        // 3. If needed, set block (read cache) related options
+        //let mut block_opts = BlockBasedOptions::default();
+
+        // Default block cache is 8 Mb, but here we will also include filters and indexes
+        //let cache = Cache::new_lru_cache(1024 * 1024 * 1024); // 1 GB
+        //block_opts.set_block_cache(&cache);
+        //block_opts.set_block_size(16 * 1024); // 16 KB instead of default 4 KB, to reduce memory usage
+
+        // Set hybrid bloom and ribbon filter, to reduce both memory and cpu usage, and add to cache
+        //block_opts.set_hybrid_ribbon_filter(5.0, 2);
+        //block_opts.set_cache_index_and_filter_blocks(true);
+        //block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
+        //block_opts.set_pin_top_level_index_and_filter(true);
+        // Note: optimized it for memory depends on rocksdb feature "malloc-usable-size"
+        //block_opts.set_optimize_filters_for_memory(true);
+        //db_opts.set_block_based_table_factory(&block_opts);
+
+        // 4. If needed, set memtables (write cache) options
+        // Use a global memtable budget of 512 MB for the DB
+        // Also, for safety, limit each memtable to 128 MB and at most 4 of them
+
+        //let wbm = WriteBufferManager::new_write_buffer_manager(512 * 1024 * 1024, true);
+        //db_opts.set_write_buffer_manager(&wbm);
+        //db_opts.set_write_buffer_size(128 * 1024 * 1024);
+        //db_opts.set_max_write_buffer_number(4);
+
+        // 5. If needed, for debug purposes
+
+        //db_opts.set_dump_malloc_stats(true);
+        //db_opts.enable_statistics();
+        //db_opts.increase_parallelism(8);
         db_opts
     }
 
     /// Returns a new `MassaDB` instance given a config and RocksDB options
     fn new_with_options(config: MassaDBConfig, db_opts: Options) -> Result<Self, rocksdb::Error> {
         let db = DB::open_cf_descriptors(
-            &db_opts,
+            &db_opts.clone(),
             &config.path,
             vec![
-                ColumnFamilyDescriptor::new(STATE_CF, Options::default()),
-                ColumnFamilyDescriptor::new(METADATA_CF, Options::default()),
-                ColumnFamilyDescriptor::new(VERSIONING_CF, Options::default()),
+                ColumnFamilyDescriptor::new(STATE_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(METADATA_CF, db_opts.clone()),
+                ColumnFamilyDescriptor::new(VERSIONING_CF, db_opts),
             ],
         )?;
 
-        let db = Arc::new(db);
         let current_batch = Arc::new(Mutex::new(WriteBatch::default()));
 
         let change_id_deserializer = SlotDeserializer::new(
@@ -613,6 +706,7 @@ impl RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
             config,
             change_history: BTreeMap::new(),
             change_history_versioning: BTreeMap::new(),
+            change_history_sizes: BTreeMap::new(),
             change_id_serializer: SlotSerializer::new(),
             change_id_deserializer,
             current_batch,
@@ -719,9 +813,16 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
     }
 
     /// Reset the database, and attach it to the given slot.
+    ///
+    /// This function is used in the FinalStateController::reset method which is used in the Bootstrap
+    /// process when the bootstrap fails (Bootstrap slot too old). A bootstrap to another node will likely occur
+    /// after this reset.
     fn reset(&mut self, slot: Slot) {
-        self.set_initial_change_id(slot);
+        // For dev: please take care of correctly reset the db to avoid any issue when the bootstrap
+        //          process is restarted
+        self.set_initial_change_id(slot); // Note: this also reset the field: current_batch
         self.change_history.clear();
+        self.change_history_versioning.clear();
     }
 
     fn get_cf(&self, handle_cf: &str, key: Key) -> Result<Option<Value>, MassaDBError> {
@@ -766,9 +867,35 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
                 IteratorMode::From(key, Direction::Reverse)
             }
         };
-
         Box::new(
             db.iterator_cf(handle, rocksdb_mode)
+                .flatten()
+                .map(|(k, v)| (k.to_vec(), v.to_vec())),
+        )
+    }
+
+    /// Exposes RocksDB's "iterator_cf" function
+    fn iterator_cf_for_full_db_traversal(
+        &self,
+        handle_cf: &str,
+        mode: MassaIteratorMode,
+    ) -> Box<dyn Iterator<Item = (Key, Value)> + '_> {
+        let db = &self.db;
+        let handle = db.cf_handle(handle_cf).expect(CF_ERROR);
+
+        let rocksdb_mode = match mode {
+            MassaIteratorMode::Start => IteratorMode::Start,
+            MassaIteratorMode::End => IteratorMode::End,
+            MassaIteratorMode::From(key, MassaDirection::Forward) => {
+                IteratorMode::From(key, Direction::Forward)
+            }
+            MassaIteratorMode::From(key, MassaDirection::Reverse) => {
+                IteratorMode::From(key, Direction::Reverse)
+            }
+        };
+        let read_opts = Self::read_opts_for_full_db_traversal();
+        Box::new(
+            db.iterator_cf_opt(handle, read_opts, rocksdb_mode)
                 .flatten()
                 .map(|(k, v)| (k.to_vec(), v.to_vec())),
         )
@@ -843,14 +970,35 @@ impl MassaDBController for RawMassaDB<Slot, SlotSerializer, SlotDeserializer> {
         self.get_versioning_batch_to_stream(last_versioning_step, last_change_id)
     }
 
+    fn get_change_history_sizes(&self) -> (usize, usize) {
+        self.change_history_sizes.values().fold(
+            (0, 0),
+            |(acc_state, acc_version), &(state, version)| {
+                (acc_state + state, acc_version + version)
+            },
+        )
+    }
+
     #[cfg(feature = "test-exports")]
     fn get_entire_database(&self) -> Vec<BTreeMap<Vec<u8>, Vec<u8>>> {
         let handle_state = self.db.cf_handle(STATE_CF).expect(CF_ERROR);
         let handle_metadata = self.db.cf_handle(METADATA_CF).expect(CF_ERROR);
         let handle_versioning = self.db.cf_handle(VERSIONING_CF).expect(CF_ERROR);
-        let iter_state = self.db.iterator_cf(handle_state, IteratorMode::Start);
-        let iter_metadata = self.db.iterator_cf(handle_metadata, IteratorMode::Start);
-        let iter_versioning = self.db.iterator_cf(handle_versioning, IteratorMode::Start);
+        let iter_state = self.db.iterator_cf_opt(
+            handle_state,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        let iter_metadata = self.db.iterator_cf_opt(
+            handle_metadata,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
+        let iter_versioning = self.db.iterator_cf_opt(
+            handle_versioning,
+            Self::read_opts_for_full_db_traversal(),
+            IteratorMode::Start,
+        );
         let mut entire_database = Vec::new();
         let mut state = BTreeMap::new();
         for (k, v) in iter_state.flatten() {
@@ -925,6 +1073,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -955,6 +1104,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1039,6 +1189,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1087,7 +1238,7 @@ mod test {
         // assert!(dump_column(db_.clone(), "versioning").is_empty());
         assert!(dump_column(db.clone(), "versioning").is_empty());
 
-        // Add some datas then remove using prefix
+        // Add some data then remove using prefix
         batch.clear();
         db.read()
             .put_or_update_entry_value(&mut batch, vec![97, 98, 1], &[1]);
@@ -1124,6 +1275,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1173,6 +1325,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
+                enable_metrics: false,
             };
             let mut db_backup_1_opts = MassaDB::default_db_opts();
             db_backup_1_opts.create_if_missing(false);
@@ -1197,6 +1350,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
+                enable_metrics: false,
             };
             let mut db_backup_2_opts = MassaDB::default_db_opts();
             db_backup_2_opts.create_if_missing(false);
@@ -1230,6 +1384,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1277,6 +1432,7 @@ mod test {
                 max_versioning_elements_size: 100,
                 thread_count: THREAD_COUNT,
                 max_ledger_backups: 10,
+                enable_metrics: false,
             };
             // let db_backup_2_opts = MassaDB::default_db_opts();
 
@@ -1326,6 +1482,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1419,6 +1576,7 @@ mod test {
             max_versioning_elements_size: 100,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1507,6 +1665,7 @@ mod test {
             max_versioning_elements_size: 10,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1592,6 +1751,7 @@ mod test {
             max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
         let mut db_opts = MassaDB::default_db_opts();
         // Additional checks (only for testing)
@@ -1704,6 +1864,7 @@ mod test {
             max_versioning_elements_size: 20,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
 
         let slot_1 = Slot::new(1, 0);

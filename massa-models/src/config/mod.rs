@@ -69,3 +69,6 @@ pub use compact_config::CompactConfig;
 // Export tool to read user setting file
 mod massa_settings;
 pub use massa_settings::build_massa_settings;
+
+mod massa_disclaimer;
+pub use massa_disclaimer::handle_disclaimer;

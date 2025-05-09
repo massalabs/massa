@@ -871,10 +871,10 @@ impl Deserializer<BootstrapClientMessage> for BootstrapClientMessageDeserializer
                             context("Failed last_slot deserialization", |input| {
                                 self.slot_deserializer.deserialize(input)
                             }),
-                            context("Faild last_state_step deserialization", |input| {
+                            context("Failed last_state_step deserialization", |input| {
                                 self.state_step_deserializer.deserialize(input)
                             }),
-                            context("Faild last_versioning_step deserialization", |input| {
+                            context("Failed last_versioning_step deserialization", |input| {
                                 self.state_step_deserializer.deserialize(input)
                             }),
                             context("Failed last_consensus_step deserialization", |input| {

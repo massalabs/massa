@@ -1,14 +1,13 @@
 [package]
 name = "massa_module_cache"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 
 [features]
-test-exports = ["massa-sc-runtime/testing"]
+jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
 schnellru = {workspace = true}
-serial_test = {workspace = true}
 rand = {workspace = true}   # BOM UPGRADE     Revert to "0.8.5" if problem
 num_enum = {workspace = true}
 nom = {workspace = true}
@@ -20,7 +19,9 @@ rocksdb = {workspace = true}
 massa_hash = {workspace = true}
 massa_models = {workspace = true}
 massa_serialization = {workspace = true}
-massa-sc-runtime = {workspace = true, "features" = ["testing"]}
+massa-sc-runtime = {workspace = true}
 
 [dev-dependencies]
 tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
+serial_test = {workspace = true}
+massa-sc-runtime = {workspace = true, "features" = ["testing"]}

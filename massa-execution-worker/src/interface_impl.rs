@@ -7,11 +7,13 @@
 
 use crate::context::ExecutionContext;
 use anyhow::{anyhow, bail, Result};
-use massa_async_pool::{AsyncMessage, AsyncMessageTrigger};
+use massa_deferred_calls::DeferredCall;
 use massa_execution_exports::ExecutionConfig;
 use massa_execution_exports::ExecutionStackElement;
+use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
 use massa_models::bytecode::Bytecode;
 use massa_models::datastore::get_prefix_bounds;
+use massa_models::deferred_calls::DeferredCallId;
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -87,20 +89,25 @@ impl InterfaceImpl {
     pub fn new_default(
         sender_addr: Address,
         operation_datastore: Option<Datastore>,
+        config: Option<ExecutionConfig>,
     ) -> InterfaceImpl {
         use massa_db_exports::{MassaDBConfig, MassaDBController};
         use massa_db_worker::MassaDB;
         use massa_final_state::test_exports::get_sample_state;
-        use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+        use massa_ledger_exports::LedgerEntry;
         use massa_models::config::{MIP_STORE_STATS_BLOCK_CONSIDERED, THREAD_COUNT};
+        use massa_models::types::SetUpdateOrDelete;
         use massa_module_cache::{config::ModuleCacheConfig, controller::ModuleCache};
         use massa_pos_exports::SelectorConfig;
         use massa_pos_worker::start_selector_worker;
-        use massa_versioning::versioning::{MipStatsConfig, MipStore};
+        use massa_versioning::{
+            mips::get_mip_list,
+            versioning::{MipStatsConfig, MipStore},
+        };
         use parking_lot::RwLock;
         use tempfile::TempDir;
 
-        let config = ExecutionConfig::default();
+        let config = config.unwrap_or_default();
         let mip_stats_config = MipStatsConfig {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
@@ -116,6 +123,7 @@ impl InterfaceImpl {
             max_versioning_elements_size: 100_000,
             thread_count: THREAD_COUNT,
             max_ledger_backups: 10,
+            enable_metrics: false,
         };
 
         let db = Arc::new(RwLock::new(
@@ -130,6 +138,7 @@ impl InterfaceImpl {
             hd_cache_size: config.hd_cache_size,
             snip_amount: config.snip_amount,
             max_module_length: config.max_bytecode_size,
+            condom_limits: config.condom_limits.clone(),
         })));
 
         // create an empty default store
@@ -137,8 +146,8 @@ impl InterfaceImpl {
             block_count_considered: MIP_STORE_STATS_BLOCK_CONSIDERED,
             warn_announced_version_ratio: Ratio::new_raw(30, 100),
         };
-        let mip_store =
-            MipStore::try_from(([], mip_stats_config)).expect("Cannot create an empty MIP store");
+        let mip_store = MipStore::try_from((get_mip_list(), mip_stats_config))
+            .expect("Cannot create an empty MIP store");
 
         let mut execution_context = ExecutionContext::new(
             config.clone(),
@@ -163,6 +172,21 @@ impl InterfaceImpl {
         );
         let context = Arc::new(Mutex::new(execution_context));
         InterfaceImpl::new(config, context)
+    }
+
+    // Allow certain addresses to bypass:
+    // - the event size limit
+    // - the user event count per operation / asc / deferred_call
+    fn bypass_event_limitation(&self, call_stack: Vec<Address>) -> bool {
+        // NOTE: the router addresses are smart contract SC_1 that will call a smart contract SC_2,
+        // and SC_2 will generate the event.
+        // This is why we do not check against the last address in the call stack, but the one before (call_stack.len() - 2)
+        // These addresses are respectively the the Mainnet and Buildnet routers for Dusa
+        let allowed_router_addresses = [
+            Address::from_str("AS12UMSUxgpRBB6ArZDJ19arHoxNkkpdfofQGekAiAJqsuE6PEFJy").unwrap(),
+            Address::from_str("AS1XqtvX3rz2RWbnqLfaYVKEjM3VS5pny9yKDdXcmJ5C1vrcLEFd").unwrap(),
+        ];
+        call_stack.len() > 1 && allowed_router_addresses.contains(&call_stack[call_stack.len() - 2])
     }
 }
 
@@ -223,6 +247,38 @@ impl Interface for InterfaceImpl {
         } else {
             debug!("SC print: {}", message);
         }
+        Ok(())
+    }
+
+    fn get_interface_version(&self) -> Result<u32> {
+        let context = context_guard!(self);
+        Ok(context.execution_component_version)
+    }
+
+    fn increment_recursion_counter(&self) -> Result<()> {
+        let execution_component_version = self.get_interface_version()?;
+
+        let mut context = context_guard!(self);
+
+        context.recursion_counter += 1;
+
+        if execution_component_version > 0
+            && context.recursion_counter > self.config.max_recursive_calls_depth
+        {
+            bail!("recursion depth limit reached");
+        }
+
+        Ok(())
+    }
+
+    fn decrement_recursion_counter(&self) -> Result<()> {
+        let mut context = context_guard!(self);
+
+        match context.recursion_counter.checked_sub(1) {
+            Some(value) => context.recursion_counter = value,
+            None => bail!("recursion counter underflow"),
+        }
+
         Ok(())
     }
 
@@ -303,10 +359,15 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` CL compiled module & the remaining gas after loading the module
     fn get_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        Ok((context_guard!(self))
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
+
+        let ret = context
             .module_cache
             .write()
-            .load_module(bytecode, gas_limit)?)
+            .load_module(bytecode, gas_limit, condom_limits)?;
+
+        Ok(ret)
     }
 
     /// Compile and return a temporary module
@@ -314,10 +375,16 @@ impl Interface for InterfaceImpl {
     /// # Returns
     /// A `massa-sc-runtime` SP compiled module & the remaining gas after loading the module
     fn get_tmp_module(&self, bytecode: &[u8], gas_limit: u64) -> Result<RuntimeModule> {
-        Ok((context_guard!(self))
-            .module_cache
-            .write()
-            .load_tmp_module(bytecode, gas_limit)?)
+        let context = context_guard!(self);
+        let condom_limits = context.get_condom_limits();
+
+        let ret =
+            context
+                .module_cache
+                .write()
+                .load_tmp_module(bytecode, gas_limit, condom_limits)?;
+
+        Ok(ret)
     }
 
     /// Gets the balance of the current address address (top of the stack).
@@ -876,16 +943,21 @@ impl Interface for InterfaceImpl {
         signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
+        let execution_component_version = self.get_interface_version()?;
+
         // check the signature length
         if signature_.len() != 65 {
             return Err(anyhow!("invalid signature length in evm_signature_verify"));
         }
 
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(
-            public_key_,
-            Some(libsecp256k1::PublicKeyFormat::Raw),
-        )?;
+        let public_key = match execution_component_version {
+            0 => libsecp256k1::PublicKey::parse_slice(
+                public_key_,
+                Some(libsecp256k1::PublicKeyFormat::Raw),
+            )?,
+            _ => libsecp256k1::PublicKey::parse_slice(public_key_, None)?,
+        };
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -898,9 +970,38 @@ impl Interface for InterfaceImpl {
         // r is the R.x value of the signature's R point (32 bytes)
         // s is the signature proof for R.x (32 bytes)
         // v is a recovery parameter used to ease the signature verification (1 byte)
-        // we ignore the recovery parameter here
         // see test_evm_verify for an example of its usage
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+        if execution_component_version != 0 {
+            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?.into();
+            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+            //       restrict to only 27 & 28 (=> 0 & 1)
+            if recovery_id != 0 && recovery_id != 1 {
+                // Note:
+                // The v value in an EVM signature serves as a recovery ID,
+                // aiding in the recovery of the public key from the signature.
+                // Typically, v should be either 27 or 28
+                // (or sometimes 0 or 1, depending on the implementation).
+                // Ensuring that v is within the expected range is crucial
+                // for correctly recovering the public key.
+                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+                return Err(anyhow!(
+                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify"
+                ));
+            }
+
+            // Note:
+            // The s value in an EVM signature should be in the lower half of the elliptic curve
+            // in order to prevent malleability attacks.
+            // If s is in the high-order range, it can be converted to its low-order equivalent,
+            // which should be enforced during signature verification.
+            if signature.s.is_high() {
+                return Err(anyhow!(
+                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+                ));
+            }
+        }
 
         // verify the signature
         Ok(libsecp256k1::verify(&message, &signature, &public_key))
@@ -914,14 +1015,25 @@ impl Interface for InterfaceImpl {
     /// Get an EVM address from a raw secp256k1 public key (64 bytes).
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
-        // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(
-            public_key_,
-            Some(libsecp256k1::PublicKeyFormat::Raw),
-        )?;
+        let execution_component_version = self.get_interface_version()?;
 
-        // compute the hash of the public key
-        let hash = sha3::Keccak256::digest(public_key.serialize());
+        let hash = match execution_component_version {
+            0 => {
+                // parse the public key
+                let public_key = libsecp256k1::PublicKey::parse_slice(
+                    public_key_,
+                    Some(libsecp256k1::PublicKeyFormat::Raw),
+                )?;
+                // compute the hash of the public key
+                sha3::Keccak256::digest(public_key.serialize())
+            }
+            _ => {
+                // parse the public key
+                let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)?;
+                // compute the hash of the public key
+                sha3::Keccak256::digest(&public_key.serialize()[1..])
+            }
+        };
 
         // ignore the first 12 bytes of the hash
         let address = hash[12..].to_vec();
@@ -932,6 +1044,8 @@ impl Interface for InterfaceImpl {
 
     /// Get a raw secp256k1 public key from an EVM signature and the signed hash.
     fn evm_get_pubkey_from_signature(&self, hash_: &[u8], signature_: &[u8]) -> Result<Vec<u8>> {
+        let execution_component_version = self.get_interface_version()?;
+
         // check the signature length
         if signature_.len() != 65 {
             return Err(anyhow!(
@@ -939,20 +1053,58 @@ impl Interface for InterfaceImpl {
             ));
         }
 
-        // parse the message
-        let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
+        match execution_component_version {
+            0 => {
+                // parse the message
+                let message = libsecp256k1::Message::parse_slice(hash_).unwrap();
 
-        // parse the signature as being (r, s, v) use only r and s
-        let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
+                // parse the signature as being (r, s, v) use only r and s
+                let signature =
+                    libsecp256k1::Signature::parse_standard_slice(&signature_[..64]).unwrap();
 
-        // parse v as a recovery id
-        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
+                // parse v as a recovery id
+                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64]).unwrap();
 
-        // recover the public key
-        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
+                // recover the public key
+                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id).unwrap();
 
-        // return its serialized value
-        Ok(recovered.serialize().to_vec())
+                // return its serialized value
+                Ok(recovered.serialize().to_vec())
+            }
+            _ => {
+                // parse the message
+                let message = libsecp256k1::Message::parse_slice(hash_)?;
+
+                // parse the signature as being (r, s, v) use only r and s
+                let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])?;
+
+                // Note:
+                // See evm_signature_verify explanation
+                if signature.s.is_high() {
+                    return Err(anyhow!(
+                        "High-Order s Value are prohibited in evm_get_pubkey_from_signature"
+                    ));
+                }
+
+                // parse v as a recovery id
+                let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])?;
+
+                let recovery_id_: u8 = recovery_id.into();
+                if recovery_id_ != 0 && recovery_id_ != 1 {
+                    // Note:
+                    // See evm_signature_verify explanation
+                    return Err(anyhow!(
+                        "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
+                    ));
+                }
+
+                // recover the public key
+                let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)?;
+
+                // return its serialized value
+                Ok(recovered.serialize().to_vec())
+            }
+        }
     }
 
     // Return true if the address is a User address, false if it is an SC address.
@@ -1076,15 +1228,38 @@ impl Interface for InterfaceImpl {
     ///
     /// # Arguments:
     /// data: the string data that is the payload of the event
-    ///
-    /// [DeprecatedByNewRuntime] Replaced by `get_current_slot`
     fn generate_event(&self, data: String) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let mut context = context_guard!(self);
+
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
-        let mut context = context_guard!(self);
         let event = context.event_create(data, false);
+
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
+
+        if execution_component_version > 0 {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
+        }
         context.event_emit(event);
         Ok(())
     }
@@ -1094,13 +1269,38 @@ impl Interface for InterfaceImpl {
     /// # Arguments:
     /// data: the bytes_array data that is the payload of the event
     fn generate_event_wasmv1(&self, data: Vec<u8>) -> Result<()> {
-        if data.len() > self.config.max_event_size {
+        let execution_component_version = self.get_interface_version()?;
+        let mut context = context_guard!(self);
+
+        let bypass_event_limitation = self.bypass_event_limitation(context.get_call_stack());
+
+        // Even if we bypass the event limitation, we still limit the event size to max_event_size_v0
+        let max_event_size = match (execution_component_version, bypass_event_limitation) {
+            (0, _) => self.config.max_event_size_v0,
+            (_, true) => self.config.max_event_size_v0,
+            (_, false) => self.config.max_event_size_v1,
+        };
+
+        if data.len() > max_event_size {
             bail!("Event data size is too large");
         };
 
         let data_str = String::from_utf8(data.clone()).unwrap_or(format!("{:?}", data));
-        let mut context = context_guard!(self);
         let event = context.event_create(data_str, false);
+
+        // Do not increment the event count if we bypass the event limitation
+        if !bypass_event_limitation {
+            context.user_event_count_in_current_exec =
+                context.user_event_count_in_current_exec.saturating_add(1);
+        }
+
+        if execution_component_version > 0 {
+            let event_per_op = context.user_event_count_in_current_exec as usize;
+
+            if event_per_op > self.config.max_event_per_operation {
+                bail!("Too many event for this operation");
+            }
+        }
         context.event_emit(event);
 
         Ok(())
@@ -1183,6 +1383,7 @@ impl Interface for InterfaceImpl {
         if validity_end.1 >= self.config.thread_count {
             bail!("validity end thread exceeds the configuration thread count")
         }
+
         let target_addr = Address::from_str(target_address)?;
 
         // check that the target address is an SC address
@@ -1200,6 +1401,22 @@ impl Interface for InterfaceImpl {
 
         let mut execution_context = context_guard!(self);
         let emission_slot = execution_context.slot;
+
+        let execution_component_version = execution_context.execution_component_version;
+        if execution_component_version > 0 {
+            if max_gas < self.config.gas_costs.max_instance_cost {
+                bail!("max gas is lower than the minimum instance cost")
+            }
+            if Slot::new(validity_end.0, validity_end.1)
+                < Slot::new(validity_start.0, validity_start.1)
+            {
+                bail!("validity end is earlier than the validity start")
+            }
+            if Slot::new(validity_end.0, validity_end.1) < emission_slot {
+                bail!("validity end is earlier than the current slot")
+            }
+        }
+
         let emission_index = execution_context.created_message_index;
         let sender = execution_context.get_current_address()?;
         let coins = Amount::from_raw(raw_coins);
@@ -1328,6 +1545,154 @@ impl Interface for InterfaceImpl {
     /// The byte array of the resulting hash
     fn hash_blake3(&self, bytes: &[u8]) -> Result<[u8; 32]> {
         Ok(blake3::hash(bytes).into())
+    }
+
+    /// Get the number of fees needed to reserve space in the target slot
+    ///
+    /// # Arguments
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * gas_limit: the gas limit for the call
+    ///
+    /// # Returns
+    /// A tuple containing a boolean indicating if the call is possible and the amount of fees needed
+    fn get_deferred_call_quote(
+        &self,
+        target_slot: (u64, u8),
+        gas_limit: u64,
+        params_size: u64,
+    ) -> Result<(bool, u64)> {
+        // write-lock context
+        let context = context_guard!(self);
+        let current_slot = context.slot;
+
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
+
+        let target_slot = Slot::new(target_slot.0, target_slot.1);
+
+        let gas_request =
+            gas_limit.saturating_add(self.config.deferred_calls_config.call_cst_gas_cost);
+
+        match context.deferred_calls_compute_call_fee(
+            target_slot,
+            gas_request,
+            current_slot,
+            params_size,
+        ) {
+            Ok(fee) => Ok((true, fee.to_raw())),
+            Err(_) => Ok((false, 0)),
+        }
+    }
+
+    /// Register deferred call
+    ///
+    /// # Arguments
+    /// * target_addr: string representation of the target address
+    /// * target_func: string representation of the target function
+    /// * target_slot: tuple containing the period and thread of the target slot
+    /// * max_gas: the gas limit for the call
+    /// * coins: the amount of coins to send
+    /// * params: byte array of the parameters
+    ///
+    /// # Returns
+    /// The id of the call
+    fn deferred_call_register(
+        &self,
+        target_addr: &str,
+        target_func: &str,
+        target_slot: (u64, u8),
+        max_gas: u64,
+        params: &[u8],
+        coins: u64,
+    ) -> Result<String> {
+        // This function spends coins + deferred_call_quote(target_slot, max_gas).unwrap() from the caller, fails if the balance is insufficient or if the quote would return None.
+
+        if target_slot.1 >= self.config.thread_count {
+            bail!("target slot thread exceeds the configuration thread count")
+        }
+
+        let target_addr = Address::from_str(target_addr)?;
+
+        // check that the target address is an SC address
+        if !matches!(target_addr, Address::SC(..)) {
+            bail!("target address is not a smart contract address")
+        }
+
+        // Length verifications
+        if target_func.len() > self.config.max_function_length as usize {
+            bail!("Function name is too large");
+        }
+        if params.len() > self.config.max_parameter_length as usize {
+            bail!("Parameter size is too large");
+        }
+
+        // check fee, slot, gas
+        let (available, fee_raw) =
+            self.get_deferred_call_quote(target_slot, max_gas, params.len() as u64)?;
+        if !available {
+            bail!("The Deferred call cannot be registered. Ensure that the target slot is not before/at the current slot nor too far in the future, and that it has at least max_gas available gas.");
+        }
+        let fee = Amount::from_raw(fee_raw);
+        let coins = Amount::from_raw(coins);
+
+        // write-lock context
+        let mut context = context_guard!(self);
+
+        // get caller address
+        let sender_address = context.get_current_address()?;
+
+        // make sender pay coins + fee
+        // coins + cost for booking the deferred call
+        context.transfer_coins(Some(sender_address), None, coins.saturating_add(fee), true)?;
+
+        let call = DeferredCall::new(
+            sender_address,
+            Slot::new(target_slot.0, target_slot.1),
+            target_addr,
+            target_func.to_string(),
+            params.to_vec(),
+            coins,
+            max_gas,
+            fee,
+            false,
+        );
+
+        let call_id = context.deferred_call_register(call)?;
+        Ok(call_id.to_string())
+    }
+
+    /// Check if an deferred call exists
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    ///
+    /// # Returns
+    /// true if the call exists, false otherwise
+    fn deferred_call_exists(&self, id: &str) -> Result<bool> {
+        // write-lock context
+        let context = context_guard!(self);
+
+        let call_id = DeferredCallId::from_str(id)?;
+        Ok(context.deferred_call_exists(&call_id))
+    }
+
+    /// Cancel a deferred call
+    ///
+    /// # Arguments
+    /// * id: the id of the call
+    fn deferred_call_cancel(&self, id: &str) -> Result<()> {
+        // Reimburses coins to the sender but not the deferred call fee to avoid spam. Cancelled items are not removed from storage to avoid manipulation, just ignored when it is their turn to be executed.
+
+        let mut context = context_guard!(self);
+
+        // Can only be called by the creator of the deferred call.
+        let caller = context.get_current_address()?;
+
+        let call_id = DeferredCallId::from_str(id)?;
+
+        context.deferred_call_cancel(&call_id, caller)?;
+        Ok(())
     }
 
     #[allow(unused_variables)]
@@ -1503,11 +1868,18 @@ impl Interface for InterfaceImpl {
 
     fn get_address_category_wasmv1(&self, to_check: &str) -> Result<AddressCategory> {
         let addr = Address::from_str(to_check)?;
-        match addr {
-            Address::User(_) => Ok(AddressCategory::ScAddress),
-            Address::SC(_) => Ok(AddressCategory::UserAddress),
+        let execution_component_version = context_guard!(self).execution_component_version;
+
+        // Fixed behavior for this ABI in https://github.com/massalabs/massa/pull/4728
+        // We keep the previous (bugged) code if the execution component version is 0
+        // to avoid a breaking change
+        match (addr, execution_component_version) {
+            (Address::User(_), 0) => Ok(AddressCategory::ScAddress),
+            (Address::SC(_), 0) => Ok(AddressCategory::UserAddress),
+            (Address::User(_), _) => Ok(AddressCategory::UserAddress),
+            (Address::SC(_), _) => Ok(AddressCategory::ScAddress),
             #[allow(unreachable_patterns)]
-            _ => Ok(AddressCategory::Unspecified),
+            (_, _) => Ok(AddressCategory::Unspecified),
         }
     }
 
@@ -1699,7 +2071,7 @@ mod tests {
     #[test]
     fn test_get_keys() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         interface
             .set_ds_value_wasmv1(b"k1", b"v1", Some(sender_addr.to_string()))
@@ -1728,7 +2100,7 @@ mod tests {
         operation_datastore.insert(b"k2".to_vec(), b"v2".to_vec());
         operation_datastore.insert(b"l3".to_vec(), b"v3".to_vec());
 
-        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore));
+        let interface = InterfaceImpl::new_default(sender_addr, Some(operation_datastore), None);
 
         let op_keys = interface.get_op_keys_wasmv1(b"k").unwrap();
 
@@ -1740,7 +2112,7 @@ mod tests {
     #[test]
     fn test_native_amount() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let amount1 = interface.native_amount_from_str_wasmv1("100").unwrap();
         let amount2 = interface.native_amount_from_str_wasmv1("100").unwrap();
@@ -1818,7 +2190,7 @@ mod tests {
     #[test]
     fn test_base58_check_to_form() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         let data = "helloworld";
         let encoded = interface.bytes_to_base58_check_wasmv1(data.as_bytes());
@@ -1829,7 +2201,7 @@ mod tests {
     #[test]
     fn test_comparison_function() {
         let sender_addr = Address::from_public_key(&KeyPair::generate(0).unwrap().get_public_key());
-        let interface = InterfaceImpl::new_default(sender_addr, None);
+        let interface = InterfaceImpl::new_default(sender_addr, None, None);
 
         // address
         let addr1 =

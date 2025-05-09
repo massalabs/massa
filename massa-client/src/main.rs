@@ -9,6 +9,7 @@ use cmds::Command;
 use console::style;
 use dialoguer::Password;
 use is_terminal::IsTerminal;
+use massa_models::config::handle_disclaimer;
 use massa_sdk::{Client, ClientConfig, HttpConfig};
 use massa_wallet::Wallet;
 use serde::Serialize;
@@ -61,6 +62,8 @@ struct Args {
     #[arg(short = 'p', long = "pwd")]
     /// Wallet password
     password: Option<String>,
+    #[arg(short = 'a', long = "accept-community-charter")]
+    accept_community_charter: bool,
 }
 
 #[derive(Serialize)]
@@ -156,6 +159,11 @@ async fn run(args: Args) -> Result<()> {
         default_panic(info);
         std::process::exit(1);
     }));
+
+    handle_disclaimer(
+        args.accept_community_charter,
+        &SETTINGS.cli.approved_community_charter_file_path,
+    );
 
     // Note: grpc handler requires a mut handler
     let mut client = Client::new(

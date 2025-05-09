@@ -1,6 +1,6 @@
 [package]
 name = "massa_metrics"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 
 [features]
@@ -9,7 +9,8 @@ sandbox = []
 
 [dependencies]
 prometheus = {workspace = true, "features" = ["process"]}
-hyper = {workspace = true, "features" = ["server", "http1"]}   # BOM UPGRADE     Revert to {"version": "0.14.26", "features": ["server", "tcp", "http1"]} if problem
+# hyper = {workspace = true, "features" = ["server", "http1"]}   # BOM UPGRADE     Revert to {"version": "0.14.26", "features": ["server", "tcp", "http1"]} if problem
+hyper = {"version" = "0.14.26", "features" = ["server", "tcp", "http1"]}
 tokio = {workspace = true, "features" = ["full"]}   # BOM UPGRADE     Revert to {"version": "1.28.0", "features": ["full"]} if problem
 lazy_static = {workspace = true}
 tracing = {workspace = true}

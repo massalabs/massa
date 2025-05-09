@@ -9,10 +9,12 @@ use std::{
     sync::Arc,
 };
 
+use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
 use massa_async_pool::AsyncPool;
 use massa_db_exports::{
     DBBatch, MassaIteratorMode, ShareableMassaDBController, METADATA_CF, STATE_CF, STATE_HASH_KEY,
 };
+use massa_deferred_calls::{config::DeferredCallsConfig, DeferredCallRegistry};
 use massa_executed_ops::{ExecutedDenunciations, ExecutedOps};
 use massa_ledger_exports::{LedgerConfig, LedgerController, LedgerEntry, LedgerError};
 use massa_ledger_worker::FinalLedger;
@@ -27,14 +29,13 @@ use massa_versioning::versioning::MipStore;
 use parking_lot::RwLock;
 use tempfile::NamedTempFile;
 
-use crate::{controller_trait::FinalStateController, FinalState, FinalStateConfig};
-
 #[allow(clippy::too_many_arguments)]
 /// Create a `FinalState` from pre-set values
 pub fn create_final_state(
     config: FinalStateConfig,
     ledger: Box<dyn LedgerController>,
     async_pool: AsyncPool,
+    deferred_call_registry: DeferredCallRegistry,
     pos_state: PoSFinalState,
     executed_ops: ExecutedOps,
     executed_denunciations: ExecutedDenunciations,
@@ -45,6 +46,7 @@ pub fn create_final_state(
         config,
         ledger,
         async_pool,
+        deferred_call_registry,
         pos_state,
         executed_ops,
         executed_denunciations,
@@ -74,19 +76,21 @@ pub fn assert_eq_final_state(v1: &FinalState, v2: &FinalState) {
     let db1 = v1.db.read();
     let db2 = v2.db.read();
 
-    let iter_state_db1 = db1.iterator_cf(STATE_CF, MassaIteratorMode::Start);
-    let iter_state_db2 = db2.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db1 = db1.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db2 = db2.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start);
 
-    let iter_metadata_db1 = db1.iterator_cf(METADATA_CF, MassaIteratorMode::Start);
-    let iter_metadata_db2 = db2.iterator_cf(METADATA_CF, MassaIteratorMode::Start);
+    let iter_metadata_db1 =
+        db1.iterator_cf_for_full_db_traversal(METADATA_CF, MassaIteratorMode::Start);
+    let iter_metadata_db2 =
+        db2.iterator_cf_for_full_db_traversal(METADATA_CF, MassaIteratorMode::Start);
 
     let count_1 = iter_state_db1.count();
     let count_2 = iter_state_db2.count();
 
     assert_eq!(count_1, count_2, "state count mismatch");
 
-    let iter_state_db1 = db1.iterator_cf(STATE_CF, MassaIteratorMode::Start);
-    let iter_state_db2 = db2.iterator_cf(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db1 = db1.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start);
+    let iter_state_db2 = db2.iterator_cf_for_full_db_traversal(STATE_CF, MassaIteratorMode::Start);
 
     let mut count = 0;
     for ((key1, value1), (key2, value2)) in iter_state_db1.zip(iter_state_db2) {
@@ -202,6 +206,7 @@ pub fn get_sample_state(
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         ledger_backup_periods_interval: 10,
+        deferred_calls_config: DeferredCallsConfig::default(),
     };
 
     let mut final_state = if last_start_period > 0 {

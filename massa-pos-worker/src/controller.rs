@@ -162,10 +162,13 @@ impl SelectorController for SelectorControllerImpl {
         let mut slot = slot_begin;
         while slot <= slot_end_included {
             let cycle = slot.get_cycle(self.periods_per_cycle);
-            let slot_selection = cache
-                .get(cycle)
-                .and_then(|selections| selections.draws.get(&slot))
-                .ok_or(PosError::CycleUnavailable(cycle))?;
+            let slot_selection = match cache.get(cycle) {
+                Some(selections) => match selections.draws.get(&slot) {
+                    Some(selection) => selection,
+                    None => break,
+                },
+                None => break,
+            };
             if let Some(restrict_to_addrs) = restrict_to_addresses {
                 if restrict_to_addrs.contains(&slot_selection.producer)
                     || slot_selection
