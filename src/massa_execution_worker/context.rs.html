@@ -1590,6 +1590,18 @@
 <a href="#1590" id="1590">1590</a>
 <a href="#1591" id="1591">1591</a>
 <a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module represents the context in which the VM executes bytecode.
@@ -1943,7 +1955,7 @@
             <span class="kw">_ </span>=&gt; <span class="self">self</span>.config.max_event_size_v1,
         };
         <span class="kw">if </span>event.data.len() &gt; max_event_size {
-            event.data.truncate(max_event_size);
+            event.data = truncate_string(event.data, max_event_size);
         }
         <span class="self">self</span>.event_emit(event);
 
@@ -3181,5 +3193,17 @@
     // of decent quality (given the unsafe constraints)
     // but not cryptographically secure (and that's ok because the internal state is exposed anyway)
     </span>Xoshiro256PlusPlus::from_seed(seed)
+}
+
+<span class="doccomment">/// Truncates a string to a maximum byte length, ensuring it remains valid UTF-8 in the process.
+</span><span class="kw">fn </span>truncate_string(string: String, max_byte_len: usize) -&gt; String {
+    <span class="kw">let </span><span class="kw-2">mut </span>truncated_bytes = string.as_bytes().to_vec();
+    truncated_bytes.truncate(max_byte_len);
+    <span class="kw">let </span><span class="kw-2">mut </span>res_str = String::from_utf8_lossy(<span class="kw-2">&amp;</span>truncated_bytes);
+    <span class="kw">while </span>res_str.len() &gt; max_byte_len {
+        truncated_bytes.pop();
+        res_str = String::from_utf8_lossy(<span class="kw-2">&amp;</span>truncated_bytes);
+    }
+    res_str.to_string()
 }
 </code></pre></div></section></main></body></html>
