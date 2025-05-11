@@ -351,7 +351,7 @@ impl ExecutionContext {
             _ => self.config.max_event_size_v1,
         };
         if event.data.len() > max_event_size {
-            event.data.truncate(max_event_size);
+            event.data = truncate_string(event.data, max_event_size);
         }
         self.event_emit(event);
 
@@ -1589,4 +1589,16 @@ fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
     // of decent quality (given the unsafe constraints)
     // but not cryptographically secure (and that's ok because the internal state is exposed anyway)
     Xoshiro256PlusPlus::from_seed(seed)
+}
+
+/// Truncates a string to a maximum byte length, ensuring it remains valid UTF-8 in the process.
+fn truncate_string(string: String, max_byte_len: usize) -> String {
+    let mut truncated_bytes = string.as_bytes().to_vec();
+    truncated_bytes.truncate(max_byte_len);
+    let mut res_str = String::from_utf8_lossy(&truncated_bytes);
+    while res_str.len() > max_byte_len {
+        truncated_bytes.pop();
+        res_str = String::from_utf8_lossy(&truncated_bytes);
+    }
+    res_str.to_string()
 }
