@@ -306,29 +306,6 @@ impl ExecutionState {
         // append generated events to the final event store
         exec_out.events.finalize();
 
-        let ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            exec_out.slot,
-        )
-        .expect("Time overflow");
-
-        let cur_version = self
-            .final_state
-            .read()
-            .get_mip_store()
-            .get_network_version_active_at(ts);
-
-        if cur_version == 0 {
-            // Truncate the events before saving them to the event store
-            // Note: this is only needed during the MIP transition period
-            // When it becomes active, we will refuse such events so no need to truncate them
-            for event in exec_out.events.0.iter_mut() {
-                event.data.truncate(self.config.max_event_size_v1);
-            }
-        }
-
         self.final_events_cache.save_events(exec_out.events.0);
 
         // update the prometheus metrics
