@@ -43,6 +43,7 @@ fn test_active_history_deferred_credits() {
         state_changes: StateChanges {
             ledger_changes: Default::default(),
             async_pool_changes: Default::default(),
+            deferred_call_changes: Default::default(),
             pos_changes: PoSChanges {
                 seed_bits: Default::default(),
                 roll_changes: Default::default(),
@@ -66,7 +67,7 @@ fn test_active_history_deferred_credits() {
     let active_history = ActiveHistory(VecDeque::from([exec_output_1]));
 
     assert_eq!(
-        active_history.get_adress_deferred_credit_for(&addr1, &slot2),
+        active_history.get_address_deferred_credit_for(&addr1, &slot2),
         Some(amount_a1_s2)
     );
 

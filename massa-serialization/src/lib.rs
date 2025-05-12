@@ -252,7 +252,8 @@ macro_rules! gen_varint {
 gen_varint! {
 u16, U16VarIntSerializer, u16_buffer, U16VarIntDeserializer, "`u16`";
 u32, U32VarIntSerializer, u32_buffer, U32VarIntDeserializer, "`u32`";
-u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`"
+u64, U64VarIntSerializer, u64_buffer, U64VarIntDeserializer, "`u64`";
+u128, U128VarIntSerializer, u128_buffer, U128VarIntDeserializer, "`u128`"
 }
 
 #[derive(Clone)]
@@ -480,13 +481,22 @@ where
     }
 }
 
+// Helper function to convert a slice to an array of a given size, if possible,
+// and then returning it with the rest of the slice.
+pub fn buf_to_array_ctr<F: Fn(&[u8; N]) -> V, V, const N: usize>(
+    buf: &[u8],
+    ctr: F,
+) -> Option<(&[u8], V)> {
+    Some((&buf[N..], ctr(&buf.get(..N)?.try_into().ok()?)))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{DeserializeError, Deserializer, Serializer};
     use num::rational::Ratio;
     use paste::paste;
 
-    // This macro creates a suite of tests for all types of numbers declared as parameters. Ths list of the
+    // This macro creates a suite of tests for all types of numbers declared as parameters. This list of the
     // tests for each type :
     // - Test with a normal case that everything works
     // - Test with a normal case but a more bigger number that everything works

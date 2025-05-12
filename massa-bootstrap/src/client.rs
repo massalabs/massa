@@ -402,7 +402,7 @@ pub fn get_state(
     genesis_timestamp: MassaTime,
     end_timestamp: Option<MassaTime>,
     restart_from_snapshot_at_period: Option<u64>,
-    interupted: Arc<(Mutex<bool>, Condvar)>,
+    interrupted: Arc<(Mutex<bool>, Condvar)>,
     massa_metrics: MassaMetrics,
 ) -> Result<GlobalBootstrapState, BootstrapError> {
     massa_trace!("bootstrap.lib.get_state", {});
@@ -490,8 +490,12 @@ pub fn get_state(
 
     let limit = bootstrap_config.rate_limit;
     loop {
-        // check for interuption
-        if *interupted.0.lock().expect("double-lock on interupt-mutex") {
+        // check for interruption
+        if *interrupted
+            .0
+            .lock()
+            .expect("double-lock on interrupt-mutex")
+        {
             return Err(BootstrapError::Interrupted(
                 "Sig INT received while getting state".to_string(),
             ));
@@ -547,11 +551,11 @@ pub fn get_state(
 
             // Before, we would use a simple sleep(...), and that was fine
             // in a cancellable async context: the runtime could
-            // catch the interupt signal, and just cancel this thread:
+            // catch the interrupt signal, and just cancel this thread:
             //
             // let state = tokio::select!{
-            //    /* detect interupt */ => /* return, cancelling the async get_state */
-            //    get_state(...) => well, we got the state, and it didn't have to worry about interupts
+            //    /* detect interrupt */ => /* return, cancelling the async get_state */
+            //    get_state(...) => well, we got the state, and it didn't have to worry about interrupts
             // };
             //
             // Without an external system to preempt this context, we use a condvar to manage the sleep.
@@ -562,14 +566,14 @@ pub fn get_state(
             // The _magic_ happens when, somewhere else, a clone of the Arc<(Mutex<bool>, Condvar)>\
             // calls Condvar::notify_[one | all], which prompts this thread to wake up. Assuming that
             // the mutex-wrapped variable has been set appropriately before the notify, this thread
-            let int_sig = interupted
+            let int_sig = interrupted
                 .0
                 .lock()
-                .expect("double-lock() on interupted signal mutex");
-            let wake = interupted
+                .expect("double-lock() on interrupted signal mutex");
+            let wake = interrupted
                 .1
                 .wait_timeout(int_sig, bootstrap_config.retry_delay.to_duration())
-                .expect("interupt signal mutex poisoned");
+                .expect("interrupt signal mutex poisoned");
             if *wake.0 {
                 return Err(BootstrapError::Interrupted(
                     "Sig INT during bootstrap retry-wait".to_string(),

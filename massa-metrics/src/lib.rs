@@ -30,6 +30,67 @@ lazy_static! {
         register_int_gauge!("blocks_storage_counter", "blocks storage counter len").unwrap();
     static ref ENDORSEMENTS_COUNTER: IntGauge =
         register_int_gauge!("endorsements_storage_counter", "endorsements storage counter len").unwrap();
+
+        static ref DEFERRED_CALL_REGISTERED: IntGauge = register_int_gauge!(
+        "deferred_calls_registered", "number of deferred calls registered" ).unwrap();
+
+        static ref DEFERRED_CALL_CANCELLED: IntGauge = register_int_gauge!(
+            "deferred_calls_cancelled", "number of deferred calls cancelled" ).unwrap();
+
+        static ref DEFERRED_CALL_EXECUTED: IntGauge = register_int_gauge!(
+            "deferred_calls_executed", "number of deferred calls executed" ).unwrap();
+
+        static ref DEFERRED_CALL_FAILED: IntGauge = register_int_gauge!(
+            "deferred_calls_failed", "number of deferred calls failed" ).unwrap();
+
+        static ref DEFERRED_CALLS_TOTAL_GAS: IntGauge = register_int_gauge!(
+            "deferred_calls_total_gas", "total gas used by deferred calls" ).unwrap();
+
+        static ref EVENT_CACHE_VEC: IntGauge = register_int_gauge!(
+            "event_cache_vec_len", "vector len for events" ).unwrap();
+
+}
+
+pub fn inc_deferred_calls_registered() {
+    DEFERRED_CALL_REGISTERED.inc();
+}
+
+pub fn set_event_cache_vec_len(val: usize) {
+    EVENT_CACHE_VEC.set(val as i64);
+}
+
+pub fn set_deferred_calls_total_gas(val: u128) {
+    DEFERRED_CALLS_TOTAL_GAS.set(val as i64);
+}
+
+pub fn inc_deferred_calls_executed_by(val: u64) {
+    DEFERRED_CALL_EXECUTED.set(DEFERRED_CALL_EXECUTED.get().saturating_add(val as i64));
+}
+
+pub fn inc_deferred_calls_failed_by(val: u64) {
+    DEFERRED_CALL_FAILED.set(DEFERRED_CALL_FAILED.get().saturating_add(val as i64));
+}
+
+pub fn dec_deferred_calls_cancelled_by(val: u64) {
+    DEFERRED_CALL_CANCELLED.set(
+        DEFERRED_CALL_CANCELLED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
+}
+
+pub fn dec_deferred_calls_registered_by(val: u64) {
+    DEFERRED_CALL_REGISTERED.set(
+        DEFERRED_CALL_REGISTERED
+            .get()
+            .saturating_sub(val as i64)
+            .max(0),
+    );
+}
+
+pub fn inc_deferred_calls_cancelled() {
+    DEFERRED_CALL_CANCELLED.inc();
 }
 
 pub fn set_blocks_counter(val: usize) {
@@ -171,6 +232,20 @@ pub struct MassaMetrics {
 
     // peer bandwidth (bytes sent, bytes received)
     peers_bandwidth: Arc<RwLock<HashMap<String, (IntCounter, IntCounter)>>>,
+
+    // network versions votes <version, votes>
+    network_versions_votes: Arc<RwLock<HashMap<u32, IntGauge>>>,
+    network_current_version: IntGauge,
+
+    // massa-db
+    db_change_history_size: IntGauge,
+    db_change_versioning_history_size: IntGauge,
+
+    // module cache
+    module_lru_cache_memory_usage: IntGauge,
+
+    // active history
+    active_history_total_event_len: IntGauge,
 
     pub tick_delay: Duration,
 }
@@ -406,6 +481,33 @@ impl MassaMetrics {
         )
         .unwrap();
 
+        let network_current_version =
+            IntGauge::new("network_current_version", "current version of network").unwrap();
+
+        let db_change_history_size = IntGauge::new(
+            "db_change_history_size",
+            "total size of change history in DB",
+        )
+        .unwrap();
+
+        let db_change_versioning_history_size = IntGauge::new(
+            "db_change_versioning_history_size",
+            "total size of change versioning history in DB",
+        )
+        .unwrap();
+
+        let module_lru_cache_memory_usage = IntGauge::new(
+            "module_lru_cache_memory_usage",
+            "total size of the lru module cache in bytes",
+        )
+        .unwrap();
+
+        let active_history_total_event_len = IntGauge::new(
+            "active_history_total_event_len",
+            "total events len currently in the active history (1 event: max 1kB)",
+        )
+        .unwrap();
+
         let mut stopper = MetricsStopper::default();
 
         if enabled {
@@ -458,6 +560,11 @@ impl MassaMetrics {
                 let _ = prometheus::register(Box::new(current_time_period.clone()));
                 let _ = prometheus::register(Box::new(current_time_thread.clone()));
                 let _ = prometheus::register(Box::new(block_slot_delay.clone()));
+                let _ = prometheus::register(Box::new(network_current_version.clone()));
+                let _ = prometheus::register(Box::new(db_change_history_size.clone()));
+                let _ = prometheus::register(Box::new(db_change_versioning_history_size.clone()));
+                let _ = prometheus::register(Box::new(module_lru_cache_memory_usage.clone()));
+                let _ = prometheus::register(Box::new(active_history_total_event_len.clone()));
 
                 stopper = server::bind_metrics(addr);
             }
@@ -513,6 +620,12 @@ impl MassaMetrics {
                 final_cursor_thread,
                 final_cursor_period,
                 peers_bandwidth: Arc::new(RwLock::new(HashMap::new())),
+                network_versions_votes: Arc::new(RwLock::new(HashMap::new())),
+                network_current_version,
+                db_change_history_size,
+                db_change_versioning_history_size,
+                module_lru_cache_memory_usage,
+                active_history_total_event_len,
                 tick_delay,
             },
             stopper,
@@ -700,6 +813,77 @@ impl MassaMetrics {
 
     pub fn set_block_slot_delay(&self, delay: f64) {
         self.block_slot_delay.observe(delay);
+    }
+
+    pub fn set_network_current_version(&self, version: u32) {
+        self.network_current_version.set(version as i64);
+    }
+
+    pub fn set_db_change_history_size(&self, size: usize) {
+        self.db_change_history_size.set(size as i64);
+    }
+
+    pub fn set_db_change_versioning_history_size(&self, size: usize) {
+        self.db_change_versioning_history_size.set(size as i64);
+    }
+
+    pub fn set_module_lru_cache_memory_usage(&self, size: usize) {
+        self.module_lru_cache_memory_usage.set(size as i64);
+    }
+
+    pub fn set_active_history_total_event_len(&self, size: usize) {
+        self.active_history_total_event_len.set(size as i64);
+    }
+
+    // Update the network version vote metrics
+    pub fn update_network_version_vote(&self, data: HashMap<u32, u64>) {
+        if self.enabled {
+            let mut write = self.network_versions_votes.write().unwrap();
+
+            let current_version: u32 = self.network_current_version.get() as u32;
+
+            {
+                let missing_version = write
+                    .keys()
+                    .filter(|key| !data.contains_key(key))
+                    .cloned()
+                    .collect::<Vec<u32>>();
+
+                for key in missing_version {
+                    if let Some(counter) = write.remove(&key) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_{} : {}", key, e);
+                        }
+                    }
+                }
+
+                if current_version > 0 {
+                    // remove metrics for version 0 if we have a current version > 0
+                    // in this case 0 means no vote
+                    if let Some(counter) = write.remove(&0) {
+                        if let Err(e) = prometheus::unregister(Box::new(counter)) {
+                            warn!("Failed to unregister network_version_vote_0 : {}", e);
+                        }
+                    }
+                }
+            }
+
+            for (version, count) in data.into_iter() {
+                if version.eq(&0) && current_version > 0 {
+                    // skip version 0 if we have a current version
+                    continue;
+                }
+                if let Some(actual_counter) = write.get_mut(&version) {
+                    actual_counter.set(count as i64);
+                } else {
+                    let label = format!("network_version_votes_{}", version);
+                    let counter = IntGauge::new(label, "vote counter for network version").unwrap();
+                    counter.set(count as i64);
+                    let _ = prometheus::register(Box::new(counter.clone()));
+                    write.insert(version, counter);
+                }
+            }
+        }
     }
 
     /// Update the bandwidth metrics for all peers

@@ -575,7 +575,7 @@ impl RpcClientV2 {
     /// New produced blocks
     pub async fn subscribe_new_blocks(
         &self,
-    ) -> Result<Subscription<BlockInfo>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<BlockInfo>, jsonrpsee::core::client::Error> {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
@@ -592,7 +592,8 @@ impl RpcClientV2 {
     /// New produced blocks headers
     pub async fn subscribe_new_blocks_headers(
         &self,
-    ) -> Result<Subscription<SecureShare<BlockHeader, BlockId>>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<SecureShare<BlockHeader, BlockId>>, jsonrpsee::core::client::Error>
+    {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
@@ -609,7 +610,7 @@ impl RpcClientV2 {
     /// New produced blocks with operations content.
     pub async fn subscribe_new_filled_blocks(
         &self,
-    ) -> Result<Subscription<FilledBlock>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<FilledBlock>, jsonrpsee::core::client::Error> {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
@@ -626,7 +627,7 @@ impl RpcClientV2 {
     /// New produced operations.
     pub async fn subscribe_new_operations(
         &self,
-    ) -> Result<Subscription<Operation>, jsonrpsee::core::Error> {
+    ) -> Result<Subscription<Operation>, jsonrpsee::core::client::error::Error> {
         if let Some(client) = self.ws_client.as_ref() {
             client
                 .subscribe(
@@ -642,18 +643,22 @@ impl RpcClientV2 {
 }
 
 fn http_client_from_url(url: &str, http_config: &HttpConfig) -> HttpClient<HttpBackend> {
-    let mut builder = HttpClientBuilder::default()
+    let builder = HttpClientBuilder::default()
         .max_request_size(http_config.client_config.max_request_body_size)
         .request_timeout(http_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(http_config.client_config.max_concurrent_requests)
         .id_format(get_id_kind(http_config.client_config.id_kind.as_str()))
         .set_headers(get_headers(&http_config.client_config.headers));
 
+    // Note: use_*_rustls() are not available anymore
+    //       keep the config for compatibility reason but this will be unused
+    /*
     match http_config.client_config.certificate_store.as_str() {
         "Native" => builder = builder.use_native_rustls(),
         "WebPki" => builder = builder.use_webpki_rustls(),
         _ => {}
     }
+    */
 
     builder
         .build(url)
@@ -664,7 +669,7 @@ async fn ws_client_from_url(url: &str, ws_config: &WsConfig) -> WsClient
 where
     WsClient: SubscriptionClientT,
 {
-    let mut builder = WsClientBuilder::default()
+    let builder = WsClientBuilder::default()
         .max_request_size(ws_config.client_config.max_request_body_size)
         .request_timeout(ws_config.client_config.request_timeout.to_duration())
         .max_concurrent_requests(ws_config.client_config.max_concurrent_requests)
@@ -673,11 +678,15 @@ where
         .max_buffer_capacity_per_subscription(ws_config.max_notifs_per_subscription)
         .max_redirections(ws_config.max_redirections);
 
+    // Note: use_*_rustls() are not available anymore
+    //       keep the config for compatibility reason but this will be unused
+    /*
     match ws_config.client_config.certificate_store.as_str() {
         "Native" => builder = builder.use_native_rustls(),
         "WebPki" => builder = builder.use_webpki_rustls(),
         _ => {}
     }
+    */
 
     builder
         .build(url)

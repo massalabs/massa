@@ -3,7 +3,7 @@
 use crate::{MassaRpcServer, Private, RpcServer, StopHandle, Value, API};
 
 use async_trait::async_trait;
-use jsonrpsee::core::{Error as JsonRpseeError, RpcResult};
+use jsonrpsee::core::{client::Error as JsonRpseeError, RpcResult};
 use massa_api_exports::{
     address::{AddressFilter, AddressInfo},
     block::{BlockInfo, BlockSummary},
@@ -11,7 +11,11 @@ use massa_api_exports::{
     datastore::{DatastoreEntryInput, DatastoreEntryOutput},
     endorsement::EndorsementInfo,
     error::ApiError,
-    execution::{ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution, ReadOnlyCall, Transfer},
+    execution::{
+        DeferredCallResponse, DeferredCallsQuoteRequest, DeferredCallsQuoteResponse,
+        DeferredCallsSlotResponse, ExecuteReadOnlyResponse, ReadOnlyBytecodeExecution,
+        ReadOnlyCall, Transfer,
+    },
     node::NodeStatus,
     operation::{OperationInfo, OperationInput},
     page::{PageRequest, PagedVec},
@@ -349,6 +353,26 @@ impl MassaRpcServer for API<Private> {
             ListType::Blacklist,
             ScrudOperation::Delete,
         )
+    }
+
+    async fn get_deferred_call_quote(
+        &self,
+        _req: Vec<DeferredCallsQuoteRequest>,
+    ) -> RpcResult<Vec<DeferredCallsQuoteResponse>> {
+        crate::wrong_api::<Vec<DeferredCallsQuoteResponse>>()
+    }
+    async fn get_deferred_call_info(
+        &self,
+        _arg: Vec<String>,
+    ) -> RpcResult<Vec<DeferredCallResponse>> {
+        crate::wrong_api::<Vec<DeferredCallResponse>>()
+    }
+
+    async fn get_deferred_call_ids_by_slot(
+        &self,
+        _slot: Vec<Slot>,
+    ) -> RpcResult<Vec<DeferredCallsSlotResponse>> {
+        crate::wrong_api::<Vec<DeferredCallsSlotResponse>>()
     }
 
     async fn get_openrpc_spec(&self) -> RpcResult<Value> {

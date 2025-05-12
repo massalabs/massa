@@ -18,6 +18,12 @@ pub struct Settings {
     pub history_file_path: PathBuf,
     pub timeout: MassaTime,
     pub client: ClientSettings,
+    pub cli: CliSettings,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct CliSettings {
+    pub approved_community_charter_file_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Clone)]

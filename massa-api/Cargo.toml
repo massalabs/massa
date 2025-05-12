@@ -1,6 +1,6 @@
 [package]
 name = "massa_api"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 
 [features]
@@ -29,7 +29,6 @@ massa_wallet = { workspace = true }
 
 async-trait = { workspace = true }
 futures = { workspace = true }
-hyper = { workspace = true }
 itertools = { workspace = true }
 jsonrpsee = { workspace = true, "features" = ["server", "macros"] }
 parking_lot = { workspace = true, "features" = ["deadlock_detection"] }
@@ -40,6 +39,7 @@ tokio-stream = { workspace = true, "features" = ["sync"] }
 tower = { workspace = true, "features" = ["full"] }
 tower-http = { workspace = true, "features" = ["cors"] }
 tracing = { workspace = true }
+http = { workspace = true }
 
 [dev-dependencies]
 jsonrpsee = { workspace = true, "features" = ["full"] }

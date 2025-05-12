@@ -12,6 +12,10 @@
   "assembly_script_date_now": 71,
   "assembly_script_delete_data": 196,
   "assembly_script_delete_data_for": 220,
+  "assembly_script_deferred_call_cancel": 833,
+  "assembly_script_deferred_call_exists": 1316,
+  "assembly_script_get_deferred_call_quote": 244,
+  "assembly_script_deferred_call_register": 530,
   "assembly_script_function_exists": 575,
   "assembly_script_generate_event": 172,
   "assembly_script_get_balance": 149,
@@ -125,5 +129,14 @@
   "abi_unsafe_random": 402,
   "abi_verify_signature": 1192,
   "abi_chain_id": 301,
-  "launch_wasmv1": 18641
+  "abi_deferred_call_cancel": 750,
+  "abi_deferred_call_exists": 443,
+  "abi_deferred_call_register": 745,
+  "abi_get_deferred_call_quote": 416,
+  "assembly_script_console_log": 171,
+  "assembly_script_console_info": 171,
+  "assembly_script_console_debug": 171,
+  "assembly_script_console_warn": 171,
+  "assembly_script_console_error": 171,
+  "assembly_script_trace": 171
 }

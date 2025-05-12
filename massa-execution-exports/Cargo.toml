@@ -1,6 +1,6 @@
 [package]
 name = "massa_execution_exports"
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
@@ -12,23 +12,26 @@ dump-block = []
 execution-info = ["execution-trace"]
 
 [dependencies]
-displaydoc = {workspace = true}
-thiserror = {workspace = true}
-num = {workspace = true, "features" = ["serde"]}   # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
-tempfile = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
-tokio = {workspace = true, "features" = ["sync"]}
-mockall = {workspace = true, "optional" = true}   # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
-massa-proto-rs = {workspace = true, "features" = ["tonic"]}
-massa_hash = {workspace = true}
-massa_models = {workspace = true}
-massa_time = {workspace = true}
-massa_storage = {workspace = true}
-massa_final_state = {workspace = true}
-massa_pos_exports = {workspace = true}
-massa_module_cache = {workspace = true}
-massa_versioning = {workspace = true}
-massa-sc-runtime = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
+displaydoc = { workspace = true }
+thiserror = { workspace = true }
+num = { workspace = true, "features" = [
+    "serde",
+] } # BOM UPGRADE     Revert to {"version": "0.4", "features": ["serde"]} if problem
+tempfile = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"version": "3.3", "optional": true} if problem
+tokio = { workspace = true, "features" = ["sync"] }
+mockall = { workspace = true, "optional" = true } # BOM UPGRADE     Revert to {"version": "0.11.4", "optional": true} if problem
+massa_deferred_calls = { workspace = true }
+massa-proto-rs = { workspace = true, "features" = ["tonic"] }
+massa_hash = { workspace = true }
+massa_models = { workspace = true }
+massa_time = { workspace = true }
+massa_storage = { workspace = true }
+massa_final_state = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_module_cache = { workspace = true }
+massa_versioning = { workspace = true }
+massa-sc-runtime = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
 
 [dev-dependencies]
-mockall = {workspace = true}
+mockall = { workspace = true }

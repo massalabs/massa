@@ -1,10 +1,11 @@
 [package]
 name = "massa_db_worker"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2021"
 
 [features]
 test-exports = ["massa_db_exports/test-exports"]
+jemalloc = ["rocksdb/jemalloc"]
 
 [dependencies]
 parking_lot = {workspace = true}
@@ -17,3 +18,4 @@ massa_db_exports = {workspace = true}
 [dev-dependencies]
 tempfile = {workspace = true}
 assert_matches = {workspace = true}
+

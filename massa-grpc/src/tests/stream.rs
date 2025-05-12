@@ -42,14 +42,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {
@@ -69,14 +69,14 @@ async fn transactions_throughput_stream() {
         let mut exec_ctrl = Box::new(MockExecutionController::new());
         exec_ctrl.expect_get_stats().returning(|| {
             let now = MassaTime::now();
-            let futur = MassaTime::from_millis(
+            let future_ = MassaTime::from_millis(
                 now.as_millis()
                     .add(Duration::from_secs(30).as_millis() as u64),
             );
 
             ExecutionStats {
                 time_window_start: now,
-                time_window_end: futur,
+                time_window_end: future_,
                 final_block_count: 10,
                 final_executed_operations_count: 2000,
                 active_cursor: massa_models::slot::Slot {
@@ -208,7 +208,7 @@ async fn new_operations() {
         ),
     };
 
-    // send filter with unknow op id
+    // send filter with unknown op id
     tx_request
         .send(NewOperationsRequest {
             filters: vec![filter],
@@ -219,7 +219,7 @@ async fn new_operations() {
     op_send_signal.send(()).await.unwrap();
 
     // wait for response
-    // should be timed out because of unknow op id
+    // should be timed out because of unknown op id
     let result = tokio::time::timeout(Duration::from_secs(2), resp_stream.next()).await;
     assert!(result.is_err());
 

@@ -13,13 +13,13 @@
 //! Shares an `Arc<RwLock>>` guarded list of white and blacklists with the main worker.
 //! Periodically does a read-only check to see if list needs updating.
 //! Creates an updated list then swaps it out with write-locked list
-//! Assuming no errors in code, this is the only write occurance, and is only a pointer-swap
-//! under the hood, making write contention virtually non-existant.
+//! Assuming no errors in code, this is the only write occurrence, and is only a pointer-swap
+//! under the hood, making write contention virtually non-existent.
 //!
 //! # Worker loop
 //!
 //! 1. Checks if the stopper has been invoked.
-//! 2. Checks if the client is permited under the white/black list rules
+//! 2. Checks if the client is permitted under the white/black list rules
 //! 3. Checks if there are not too many active sessions already
 //! 4. Checks if the client has attempted too recently
 //! 5. All checks have passed: spawn a thread on which to run the bootstrap session
@@ -28,7 +28,7 @@
 use crossbeam::channel::tick;
 use humantime::format_duration;
 use massa_consensus_exports::{bootstrapable_graph::BootstrapableGraph, ConsensusController};
-use massa_db_exports::CHANGE_ID_DESER_ERROR;
+use massa_db_exports::{MassaDBError, CHANGE_ID_DESER_ERROR};
 use massa_final_state::FinalStateController;
 use massa_logging::massa_trace;
 use massa_metrics::MassaMetrics;
@@ -101,7 +101,7 @@ impl BootstrapManager {
     /// stop the bootstrap server
     pub fn stop(self) -> Result<(), BootstrapError> {
         massa_trace!("bootstrap.lib.stop", {});
-        // TODO: Refactor the waker so that its existance is tied to the life of the event-loop
+        // TODO: Refactor the waker so that its existence is tied to the life of the event-loop
         if self.listener_stopper.stop().is_err() {
             warn!("bootstrap server already dropped");
         }
@@ -483,8 +483,6 @@ pub fn stream_bootstrap_information(
         let last_start_period;
         let last_slot_before_downtime;
 
-        let slot_too_old = false;
-
         // Scope of the final state read
         {
             let final_state_read = final_state.read();
@@ -500,13 +498,18 @@ pub fn stream_bootstrap_information(
                 None
             };
 
-            state_part = final_state_read
+            let state_part_res = final_state_read
                 .get_database()
                 .read()
-                .get_batch_to_stream(&last_state_step, last_slot)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))
-                })?;
+                .get_batch_to_stream(&last_state_step, last_slot);
+
+            match state_part_res {
+                    Ok(part) => state_part = part,
+                    Err(MassaDBError::CacheMissError(s)) if s.as_str() == "all our changes are strictly after last_change_id, we can't be sure we did not miss any" => {
+                        return server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
+                    }
+                    Err(e) => return Err(BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))),
+                };
 
             let new_state_step = match (&last_state_step, state_part.is_empty()) {
                 // We already finished streaming the state
@@ -541,16 +544,18 @@ pub fn stream_bootstrap_information(
                 },
             };
 
-            versioning_part = final_state_read
+            let versioning_part_res = final_state_read
                 .get_database()
                 .read()
-                .get_versioning_batch_to_stream(&last_versioning_step, last_slot)
-                .map_err(|e| {
-                    BootstrapError::GeneralError(format!(
-                        "Error get_versioning_batch_to_stream: {}",
-                        e
-                    ))
-                })?;
+                .get_versioning_batch_to_stream(&last_versioning_step, last_slot);
+
+            match versioning_part_res {
+               Ok(part) => versioning_part = part,
+               Err(MassaDBError::CacheMissError(s)) if s.as_str() == "all our changes are strictly after last_change_id, we can't be sure we did not miss any" => {
+                   return server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
+               }
+               Err(e) => return Err(BootstrapError::GeneralError(format!("Error get_batch_to_stream: {}", e))),
+           };
 
             let new_versioning_step = match (&last_versioning_step, versioning_part.is_empty()) {
                 // We already finished streaming the versioning
@@ -607,10 +612,6 @@ pub fn stream_bootstrap_information(
             last_slot = Some(db_slot);
             current_slot = db_slot;
             send_last_start_period = false;
-        }
-
-        if slot_too_old {
-            return server.send_msg(write_timeout, BootstrapServerMessage::SlotTooOld);
         }
 
         // Setup final state global cursor

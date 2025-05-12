@@ -98,7 +98,7 @@ impl ExecutionInputData {
 #[derive(Clone)]
 /// implementation of the execution controller
 pub struct ExecutionControllerImpl {
-    /// input data to process in the VM loop
+    /// input data to process in the Execution controller loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// current execution state (see execution.rs for details)
@@ -132,7 +132,7 @@ impl ExecutionController for ExecutionControllerImpl {
             input_data.new_blockclique = new_blockclique;
         }
 
-        // wake up VM loop
+        // wake up execution controller loop
         self.input_data.0.notify_one();
     }
 
@@ -331,6 +331,35 @@ impl ExecutionController for ExecutionControllerImpl {
                         execution_lock.get_filtered_sc_output_event(filter),
                     ))
                 }
+                ExecutionQueryRequestItem::DeferredCallQuote {
+                    target_slot,
+                    max_gas_request,
+                    params_size,
+                } => {
+                    let result = execution_lock.deferred_call_quote(
+                        target_slot,
+                        max_gas_request,
+                        params_size,
+                    );
+                    Ok(ExecutionQueryResponseItem::DeferredCallQuote(
+                        result.0, result.1, result.2, result.3,
+                    ))
+                }
+                ExecutionQueryRequestItem::DeferredCallInfo(deferred_call_id) => execution_lock
+                    .deferred_call_info(&deferred_call_id)
+                    .ok_or_else(|| {
+                        ExecutionQueryError::NotFound(format!(
+                            "Deferred call id {}",
+                            deferred_call_id
+                        ))
+                    })
+                    .map(|call| {
+                        ExecutionQueryResponseItem::DeferredCallInfo(deferred_call_id, call)
+                    }),
+                ExecutionQueryRequestItem::DeferredCallsBySlot(slot) => {
+                    let res = execution_lock.get_deferred_calls_by_slot(slot);
+                    Ok(ExecutionQueryResponseItem::DeferredCallsBySlot(slot, res))
+                }
             };
             resp.responses.push(resp_item);
         }
@@ -473,6 +502,27 @@ impl ExecutionController for ExecutionControllerImpl {
         self.execution_state.read().get_stats()
     }
 
+    /// Get the memory usage of the module LRU cache
+    fn get_module_lru_cache_memory_usage(&self) -> usize {
+        self.execution_state
+            .read()
+            .module_cache
+            .read()
+            .get_module_lru_cache_memory_usage()
+    }
+
+    /// Get the number of events currently in the active history
+    fn get_active_history_total_event_len(&self) -> usize {
+        self.execution_state
+            .read()
+            .active_history
+            .read()
+            .0
+            .iter()
+            .map(|exec_out| exec_out.events.0.len())
+            .sum()
+    }
+
     #[cfg(feature = "execution-trace")]
     fn get_operation_abi_call_stack(&self, operation_id: OperationId) -> Option<Vec<AbiTrace>> {
         self.execution_state
@@ -525,7 +575,7 @@ impl ExecutionController for ExecutionControllerImpl {
 /// Execution manager
 /// Allows stopping the execution worker
 pub struct ExecutionManagerImpl {
-    /// input data to process in the VM loop
+    /// input data to process in the Execution manager loop
     /// with a wake-up condition variable that needs to be triggered when the data changes
     pub(crate) input_data: Arc<(Condvar, Mutex<ExecutionInputData>)>,
     /// handle used to join the worker thread
@@ -535,7 +585,7 @@ pub struct ExecutionManagerImpl {
 impl ExecutionManager for ExecutionManagerImpl {
     /// stops the worker
     fn stop(&mut self) {
-        info!("stopping Execution controller...");
+        info!("Stopping Execution manager...");
         // notify the worker thread to stop
         {
             let mut input_wlock = self.input_data.1.lock();
@@ -544,8 +594,10 @@ impl ExecutionManager for ExecutionManagerImpl {
         }
         // join the execution thread
         if let Some(join_handle) = self.thread_handle.take() {
-            join_handle.join().expect("VM controller thread panicked");
+            join_handle
+                .join()
+                .expect("Execution manager thread panicked");
         }
-        info!("execution controller stopped");
+        info!("Execution manager stopped");
     }
 }

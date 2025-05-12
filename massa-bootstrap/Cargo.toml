@@ -1,58 +1,68 @@
 [package]
 name = "massa_bootstrap"
-version = "2.4.0"
+version = "2.5.0"
 authors = ["Massa Labs <info@massa.net>"]
 edition = "2021"
 
 [features]
-test-exports = ["massa_final_state/test-exports", "massa_ledger_worker/test-exports", "massa_consensus_exports/test-exports", "massa_async_pool/test-exports"]
-sandbox = ["massa_async_pool/sandbox", "massa_final_state/sandbox", "massa_models/sandbox"]
+test-exports = [
+    "massa_final_state/test-exports",
+    "massa_ledger_worker/test-exports",
+    "massa_consensus_exports/test-exports",
+    "massa_async_pool/test-exports",
+]
+sandbox = [
+    "massa_async_pool/sandbox",
+    "massa_final_state/sandbox",
+    "massa_models/sandbox",
+]
 heavy_testing = []
 
 [dependencies]
-displaydoc = {workspace = true}
-num_enum = {workspace = true}
-nom = {workspace = true}
-rand = {workspace = true}
-serde = {workspace = true, "features" = ["derive"]}
-serde_json = {workspace = true}   # BOM UPGRADE     Revert to "1.0" if problem
-humantime = {workspace = true}
-thiserror = {workspace = true}
-parking_lot = {workspace = true}
-tracing = {workspace = true}
-substruct = {workspace = true}
-socket2 = {workspace = true}
-crossbeam = {workspace = true}   # BOM UPGRADE     Revert to "0.8.2" if problem
-mio = {workspace = true, "features" = ["net", "os-poll"]}
+displaydoc = { workspace = true }
+num_enum = { workspace = true }
+nom = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, "features" = ["derive"] }
+serde_json = { workspace = true }                           # BOM UPGRADE     Revert to "1.0" if problem
+humantime = { workspace = true }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+tracing = { workspace = true }
+substruct = { workspace = true }
+socket2 = { workspace = true }
+crossbeam = { workspace = true }                            # BOM UPGRADE     Revert to "0.8.2" if problem
+mio = { workspace = true, "features" = ["net", "os-poll"] }
 stream_limiter = { workspace = true }
 
-massa_consensus_exports = {workspace = true}
-massa_final_state = {workspace = true}
-massa_hash = {workspace = true}
-massa_logging = {workspace = true}
-massa_models = {workspace = true}
-massa_protocol_exports = {workspace = true}
-massa_serialization = {workspace = true}
-massa_signature = {workspace = true}
-massa_pos_exports = {workspace = true}
-massa_time = {workspace = true}
-massa_db_exports = {workspace = true}
-massa_versioning = {workspace = true}
-massa_metrics = {workspace = true}
+massa_consensus_exports = { workspace = true }
+massa_final_state = { workspace = true }
+massa_hash = { workspace = true }
+massa_logging = { workspace = true }
+massa_models = { workspace = true }
+massa_protocol_exports = { workspace = true }
+massa_serialization = { workspace = true }
+massa_signature = { workspace = true }
+massa_pos_exports = { workspace = true }
+massa_time = { workspace = true }
+massa_db_exports = { workspace = true }
+massa_versioning = { workspace = true }
+massa_metrics = { workspace = true }
 
 [dev-dependencies]
-mockall = {workspace = true}
-bitvec = {workspace = true, "features" = ["serde"]}
-lazy_static = {workspace = true}   # BOM UPGRADE     Revert to "1.4" if problem
-tempfile = {workspace = true}   # BOM UPGRADE     Revert to "3.3" if problem
-serial_test = {workspace = true}   # BOM UPGRADE     Revert to "2.0.0" if problem
-num = {workspace = true}
-massa_final_state = {workspace = true, "features" = ["test-exports"]}
-massa_async_pool = {workspace = true, "features" = ["test-exports"]}
-massa_ledger_exports = {workspace = true}
-massa_ledger_worker = {workspace = true, "features" = ["test-exports"]}
-massa_executed_ops = {workspace = true}
-massa_pos_exports = {workspace = true, "features" = ["test-exports"]}
-massa_consensus_exports = {workspace = true, "features" = ["test-exports"]}
-massa_db_worker = {workspace = true, "features" = ["test-exports"]}
-massa_test_framework = {workspace = true, "features" = ["test-exports"]}
+mockall = { workspace = true }
+bitvec = { workspace = true, "features" = ["serde"] }
+lazy_static = { workspace = true }                                            # BOM UPGRADE     Revert to "1.4" if problem
+tempfile = { workspace = true }                                               # BOM UPGRADE     Revert to "3.3" if problem
+serial_test = { workspace = true }                                            # BOM UPGRADE     Revert to "2.0.0" if problem
+num = { workspace = true }
+massa_final_state = { workspace = true, "features" = ["test-exports"] }
+massa_async_pool = { workspace = true, "features" = ["test-exports"] }
+massa_ledger_exports = { workspace = true }
+massa_ledger_worker = { workspace = true, "features" = ["test-exports"] }
+massa_executed_ops = { workspace = true }
+massa_pos_exports = { workspace = true, "features" = ["test-exports"] }
+massa_consensus_exports = { workspace = true, "features" = ["test-exports"] }
+massa_db_worker = { workspace = true, "features" = ["test-exports"] }
+massa_test_framework = { workspace = true, "features" = ["test-exports"] }
+massa_deferred_calls = { workspace = true }

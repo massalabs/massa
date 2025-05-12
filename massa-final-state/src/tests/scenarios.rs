@@ -5,13 +5,12 @@ use crate::{
     /*test_exports::{assert_eq_final_state, assert_eq_final_state_hash},*/
     FinalState, FinalStateConfig, StateChanges,
 };
-use massa_async_pool::{AsyncMessage, AsyncPoolChanges, AsyncPoolConfig};
+use massa_async_pool::{AsyncPoolChanges, AsyncPoolConfig};
 use massa_db_exports::{DBBatch, MassaDBConfig, MassaDBController};
 use massa_db_worker::MassaDB;
+use massa_deferred_calls::config::DeferredCallsConfig;
 use massa_executed_ops::{ExecutedDenunciationsConfig, ExecutedOpsConfig};
-use massa_ledger_exports::{
-    LedgerChanges, LedgerConfig, LedgerEntryUpdate, SetOrKeep, SetUpdateOrDelete,
-};
+use massa_ledger_exports::{LedgerChanges, LedgerConfig, LedgerEntryUpdate};
 use massa_ledger_worker::FinalLedger;
 use massa_models::address::Address;
 use massa_models::amount::Amount;
@@ -19,10 +18,15 @@ use massa_models::bytecode::Bytecode;
 use massa_models::config::{
     DENUNCIATION_EXPIRE_PERIODS, ENDORSEMENT_COUNT, GENESIS_TIMESTAMP,
     KEEP_EXECUTED_HISTORY_EXTRA_PERIODS, MAX_ASYNC_POOL_LENGTH, MAX_DATASTORE_KEY_LENGTH,
-    MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER, MAX_FUNCTION_NAME_LENGTH,
-    MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH, MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
+    MAX_DATASTORE_VALUE_LENGTH, MAX_DEFERRED_CREDITS_LENGTH, MAX_DENUNCIATIONS_PER_BLOCK_HEADER,
+    MAX_FUNCTION_NAME_LENGTH, MAX_PARAMETERS_SIZE, MAX_PRODUCTION_STATS_LENGTH,
+    MAX_ROLLS_COUNT_LENGTH, POS_SAVED_CYCLES, T0,
 };
-use massa_models::{config::MAX_DATASTORE_VALUE_LENGTH, slot::Slot};
+use massa_models::slot::Slot;
+use massa_models::{
+    async_msg::AsyncMessage,
+    types::{SetOrKeep, SetUpdateOrDelete},
+};
 use massa_pos_exports::{PoSConfig, SelectorConfig};
 use massa_pos_worker::start_selector_worker;
 use parking_lot::RwLock;
@@ -41,6 +45,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         max_versioning_elements_size: 100_000,
         thread_count,
         max_ledger_backups: 10,
+        enable_metrics: false,
     };
     let db = Arc::new(RwLock::new(
         Box::new(MassaDB::new(db_config)) as Box<(dyn MassaDBController + 'static)>
@@ -94,6 +99,7 @@ fn create_final_state(temp_dir: &TempDir, reset_final_state: bool) -> Arc<RwLock
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         ledger_backup_periods_interval: 10,
+        deferred_calls_config: DeferredCallsConfig::default(),
     };
 
     // setup selector local config

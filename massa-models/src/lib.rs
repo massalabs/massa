@@ -12,6 +12,10 @@ pub mod active_block;
 pub mod address;
 /// amount related structures
 pub mod amount;
+/// async message related structures
+pub mod async_msg;
+/// async message id
+pub mod async_msg_id;
 /// block structure
 pub mod block;
 /// block-related structure: block_header
@@ -28,6 +32,8 @@ pub mod composite;
 pub mod config;
 /// datastore serialization / deserialization
 pub mod datastore;
+/// deferred call id
+pub mod deferred_calls;
 /// denunciation
 pub mod denunciation;
 /// endorsements
@@ -62,6 +68,8 @@ pub mod stats;
 pub mod streaming_step;
 /// management of the relation between time and slots
 pub mod timeslots;
+/// types
+pub mod types;
 /// versions
 pub mod version;
 

@@ -9,6 +9,8 @@ use massa_consensus_exports::{
     bootstrapable_graph::BootstrapableGraph, export_active_block::ExportActiveBlock,
 };
 use massa_db_exports::{DBBatch, ShareableMassaDBController, StreamBatch};
+use massa_deferred_calls::config::DeferredCallsConfig;
+use massa_deferred_calls::DeferredCallRegistry;
 use massa_executed_ops::{
     ExecutedDenunciations, ExecutedDenunciationsChanges, ExecutedDenunciationsConfig, ExecutedOps,
     ExecutedOpsConfig,
@@ -16,7 +18,7 @@ use massa_executed_ops::{
 use massa_final_state::test_exports::create_final_state;
 use massa_final_state::{FinalState, FinalStateConfig, FinalStateController};
 use massa_hash::{Hash, HASH_SIZE_BYTES};
-use massa_ledger_exports::{LedgerEntry, SetUpdateOrDelete};
+use massa_ledger_exports::LedgerEntry;
 use massa_ledger_worker::test_exports::create_final_ledger;
 use massa_models::bytecode::Bytecode;
 use massa_models::config::{
@@ -36,6 +38,7 @@ use massa_models::denunciation::DenunciationIndex;
 use massa_models::node::NodeId;
 use massa_models::prehash::{CapacityAllocator, PreHashSet};
 use massa_models::streaming_step::StreamingStep;
+use massa_models::types::SetUpdateOrDelete;
 use massa_models::version::Version;
 use massa_models::{
     address::Address,
@@ -275,6 +278,9 @@ pub fn get_random_final_state_bootstrap(
         .write()
         .write_batch(batch, versioning_batch, None);
 
+    let deferred_call_registry =
+        DeferredCallRegistry::new(db.clone(), DeferredCallsConfig::default());
+
     let executed_ops = get_random_executed_ops(
         r_limit,
         slot,
@@ -304,6 +310,7 @@ pub fn get_random_final_state_bootstrap(
         config,
         Box::new(final_ledger),
         async_pool,
+        deferred_call_registry,
         pos_state,
         executed_ops,
         executed_denunciations,
@@ -783,7 +790,7 @@ impl BootstrapServerMessage {
                     "Error in the code of the test for faulty_part 4"
                 );
             }
-            // No limit on the size of this except the u64 boundery
+            // No limit on the size of this except the u64 boundary
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
             if faulty_part == BootstrapServerMessageFaultyPart::StateChangeIdThreadOverflow {
@@ -830,7 +837,7 @@ impl BootstrapServerMessage {
                 new_elements.insert(key, value);
                 new_elements_size += key_len + value_len;
             }
-            // No limit on the size of this except the u64 boundery
+            // No limit on the size of this except the u64 boundary
             let updates_on_previous_elements = BTreeMap::new();
             let mut change_id = gen_random_slot(rng);
             if faulty_part == BootstrapServerMessageFaultyPart::VersioningChangeIdThreadOverflow {
@@ -1020,7 +1027,7 @@ impl BootstrapServerMessage {
                 },
             ) => {
                 let state_equal = stream_batch_equal(state1, state2);
-                let versionning_equal = stream_batch_equal(v1, v2);
+                let versioning_equal = stream_batch_equal(v1, v2);
                 let mut consensus_equal = true;
                 if c1.final_blocks.len() != c2.final_blocks.len() {
                     return false;
@@ -1034,7 +1041,7 @@ impl BootstrapServerMessage {
                 }
                 (s1 == s2)
                     && state_equal
-                    && versionning_equal
+                    && versioning_equal
                     && consensus_equal
                     && (co1 == co2)
                     && (lp1 == lp2)

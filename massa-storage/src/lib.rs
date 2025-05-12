@@ -1,7 +1,7 @@
 //! Copyright (c) 2022 MASSA LABS <info@massa.net>
 //!
 //! This crate is used to store shared objects (blocks, operations...) across different modules.
-//! The clonable `Storage` structure has thread-safe shared access to the stored objects.
+//! The cloneable `Storage` structure has thread-safe shared access to the stored objects.
 //!
 //! The `Storage` structure also has lists of object references held by the current instance of `Storage`.
 //! When no instance of `Storage` claims a reference to a given object anymore, that object is automatically removed from storage.
@@ -131,7 +131,7 @@ impl Storage {
 
     /// Efficiently extends the current Storage by consuming the refs of another storage.
     pub fn extend(&mut self, mut other: Storage) {
-        // Take ownership ot `other`'s references.
+        // Take ownership of `other`'s references.
         // Objects owned by both require a counter decrement and are handled when `other` is dropped.
         other
             .local_used_ops

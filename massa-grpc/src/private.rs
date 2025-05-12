@@ -305,6 +305,7 @@ pub(crate) fn get_node_status(
         execution_stats: Some(execution_stats.into()),
         config: Some(config.into()),
         chain_id: grpc.grpc_config.chain_id,
+        current_mip_version: grpc.mip_store.get_network_version_current(),
     };
 
     Ok(grpc_api::GetNodeStatusResponse {
