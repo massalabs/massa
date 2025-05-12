@@ -297,8 +297,8 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address ProposalId yes/no/blank", pwd_not_needed = "true"),
-        message = "mip_vote"
+        props(args = "Address ProposalId yes/no/blank"),
+        message = "vote for a proposal"
     )]
     mip_vote,
 
@@ -1299,6 +1299,9 @@ impl Command {
                 std::process::exit(0);
             }
             Command::mip_vote => {
+                if parameters.is_empty() || parameters.len() != 3 {
+                    bail!("wrong number of parameters");
+                }
                 let wallet = wallet_opt.as_mut().unwrap();
 
                 let voting_config = VotingConfig::new(client.chain_id);
