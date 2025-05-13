@@ -297,7 +297,7 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address ProposalId yes/no/blank"),
+        props(args = "Address ProposalId Fee yes/no/blank"),
         message = "vote for a proposal"
     )]
     mip_vote,
@@ -1299,7 +1299,7 @@ impl Command {
                 std::process::exit(0);
             }
             Command::mip_vote => {
-                if parameters.len() != 3 {
+                if parameters.len() != 4 {
                     bail!("wrong number of parameters");
                 }
                 let wallet = wallet_opt.as_mut().unwrap();
@@ -1308,7 +1308,7 @@ impl Command {
                 let addr = parameters[0].parse::<Address>()?;
                 let proposal_id = parameters[1].parse::<u64>()?;
                 let vote_str = parameters[2].parse::<String>()?;
-                let fee = Amount::from_str("0.01")?;
+                let fee = parameters[3].parse::<Amount>()?;
 
                 // check that the address has 1 MASOG
                 let balance_requests: DatastoreEntryInput = DatastoreEntryInput {
