@@ -297,8 +297,8 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
-        props(args = "Address ProposalId Fee yes/no/blank"),
-        message = "vote for a proposal"
+        props(args = "Address ProposalId Coins Fee"),
+        message = "vote for a proposal; Address is address which will vote, Coins cover the storage cost of the vote (1 mas max, extra is reimbursed), ProposalId is the id of the proposal, Fee is the fee for the vote operation"
     )]
     mip_vote,
 
@@ -1307,8 +1307,24 @@ impl Command {
                 let voting_config = VotingConfig::new(client.chain_id);
                 let addr = parameters[0].parse::<Address>()?;
                 let proposal_id = parameters[1].parse::<u64>()?;
-                let fee = parameters[2].parse::<Amount>()?;
-                let vote_str = parameters[3].parse::<String>()?;
+                let coins = parameters[2].parse::<Amount>()?;
+                let fee = parameters[3].parse::<Amount>()?;
+
+                let items = vec!["yes", "no", "blank"];
+                let selection = dialoguer::Select::new()
+                    .with_prompt("Select your vote")
+                    .items(&items)
+                    .interact()
+                    .unwrap();
+
+                println!(
+                    "You chose: {} for proposal {} with {} coins and {} fee",
+                    items[selection],
+                    proposal_id,
+                    coins.to_string(),
+                    fee.to_string()
+                );
+                let vote_str = items[selection].to_string();
 
                 // check that the address has 1 MASOG
                 let balance_requests: DatastoreEntryInput = DatastoreEntryInput {
@@ -1345,7 +1361,7 @@ impl Command {
                     target_func: "vote".to_string(),
                     param: buffer,
                     max_gas: 4894131,
-                    coins: Amount::from_str("1")?,
+                    coins,
                 };
 
                 send_operation(client, wallet, op, fee, addr, json).await
