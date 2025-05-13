@@ -1307,8 +1307,8 @@ impl Command {
                 let voting_config = VotingConfig::new(client.chain_id);
                 let addr = parameters[0].parse::<Address>()?;
                 let proposal_id = parameters[1].parse::<u64>()?;
-                let vote_str = parameters[2].parse::<String>()?;
-                let fee = parameters[3].parse::<Amount>()?;
+                let fee = parameters[2].parse::<Amount>()?;
+                let vote_str = parameters[3].parse::<String>()?;
 
                 // check that the address has 1 MASOG
                 let balance_requests: DatastoreEntryInput = DatastoreEntryInput {
