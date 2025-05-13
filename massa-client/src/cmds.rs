@@ -1299,7 +1299,7 @@ impl Command {
                 std::process::exit(0);
             }
             Command::mip_vote => {
-                if parameters.is_empty() || parameters.len() != 3 {
+                if parameters.len() != 3 {
                     bail!("wrong number of parameters");
                 }
                 let wallet = wallet_opt.as_mut().unwrap();
