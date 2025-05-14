@@ -1443,6 +1443,10 @@ fn convert_args_u256_to_u128(bytes: &[u8]) -> Result<u128, String> {
     if bytes.len() != 32 {
         return Err(String::from("Invalid length for u256 conversion"));
     }
+
+    if bytes[16..] != [0; 16] {
+        return Err(String::from("u256 can't be converted to u128: overflow"));
+    }
     Ok(u128::from_le_bytes(bytes[..16].try_into().unwrap()))
 }
 
