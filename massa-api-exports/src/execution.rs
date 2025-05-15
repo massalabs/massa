@@ -101,7 +101,7 @@ pub enum TransferContext {
     /// Transfer made in an asynchronous call
     ASC(u64),
     #[serde(rename = "deferred_call_id")]
-    /// Transfer made in an asynchronous call
+    /// Transfer made in a deferred call
     DeferredCall(DeferredCallId),
 }
 
