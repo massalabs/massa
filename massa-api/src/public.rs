@@ -169,6 +169,25 @@ impl MassaRpcServer for API<Public> {
                     }
                 }
 
+                for (call_id, deferred_call_call_stack) in abi_calls.deferred_call_stacks {
+                    for abi_trace in deferred_call_call_stack {
+                        let only_transfer = abi_trace.flatten_filter(&transfer_abi_names);
+                        for transfer in only_transfer {
+                            let (t_from, t_to, t_amount) = transfer.parse_transfer();
+                            transfers.push(Transfer {
+                                from: Address::from_str(&t_from).unwrap(),
+                                to: Address::from_str(&t_to).unwrap(),
+                                amount: Amount::from_raw(t_amount),
+                                effective_amount_received: Amount::from_raw(t_amount),
+                                context: TransferContext::DeferredCall(call_id.clone()),
+                                succeed: true,
+                                fee: Amount::from_raw(0),
+                                block_id,
+                            });
+                        }
+                    }
+                }
+
                 for op_call_stack in abi_calls.operation_call_stacks {
                     let op_id = op_call_stack.0;
                     let op_call_stack = op_call_stack.1;

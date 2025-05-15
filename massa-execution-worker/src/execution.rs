@@ -73,6 +73,8 @@ use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
+#[cfg(feature = "execution-info")]
+use std::collections::HashMap;
 
 use massa_execution_exports::execution_info::{
     AsyncMessageExecutionResult, DeferredCallExecutionResult, DenunciationResult,
@@ -1525,7 +1527,7 @@ impl ExecutionState {
             slot: *slot,
             operation_call_stacks: PreHashMap::default(),
             asc_call_stacks: vec![],
-            deferred_call_stacks: vec![],
+            deferred_call_stacks: HashMap::default(),
         };
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
@@ -1570,24 +1572,24 @@ impl ExecutionState {
                     deferred_calls_stats.0 += 1;
                     info!("executed deferred call: {:?}", id);
                     cfg_if::cfg_if! {
-                        if #[cfg(feature = "execution-trace")] {
-                            // Safe to unwrap
-                            slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
-                        } else if #[cfg(feature = "execution-info")] {
-                            slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
-                            exec_info.deferred_calls_messages.push(Ok(_exec));
-                        }
-                    }
-                }
+						if #[cfg(feature = "execution-trace")] {
+							// Safe to unwrap
+							slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
+						} else if #[cfg(feature = "execution-info")] {
+							slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
+							exec_info.deferred_calls_messages.push(Ok(_exec));
+						}
+					}
+				}
                 Err(err) => {
                     deferred_calls_stats.1 += 1;
                     let msg = format!("failed executing deferred call: {}", err);
                     #[cfg(feature = "execution-info")]
                     exec_info.deferred_calls_messages.push(Err(msg.clone()));
                     debug!(msg);
-                }
-            }
-        }
+				}
+			}
+		}
 
         // Block execution
 

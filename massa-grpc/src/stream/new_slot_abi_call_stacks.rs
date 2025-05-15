@@ -70,7 +70,8 @@ pub(crate) async fn new_slot_abi_call_stacks(
                             let mut ret = grpc_api::NewSlotAbiCallStacksResponse {
                                 slot: Some(massa_slot_execution_trace.slot.into()),
                                 asc_call_stacks: vec![],
-                                operation_call_stacks: vec![]
+                                operation_call_stacks: vec![],
+                                deferred_call_stacks: vec![],
                             };
 
                             #[cfg(feature = "execution-trace")]

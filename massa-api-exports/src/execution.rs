@@ -3,8 +3,8 @@
 use massa_deferred_calls::DeferredCall;
 use massa_final_state::StateChanges;
 use massa_models::{
-    address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
-    output_event::SCOutputEvent, slot::Slot,
+    address::Address, amount::Amount, block_id::BlockId, deferred_calls::DeferredCallId,
+    operation::OperationId, output_event::SCOutputEvent, slot::Slot,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::VecDeque, fmt::Display};
@@ -100,6 +100,9 @@ pub enum TransferContext {
     #[serde(rename = "asc_index")]
     /// Transfer made in an asynchronous call
     ASC(u64),
+    #[serde(rename = "deferred_call_id")]
+    /// Transfer made in an asynchronous call
+    DeferredCall(DeferredCallId),
 }
 
 /// Structure defining a transfer

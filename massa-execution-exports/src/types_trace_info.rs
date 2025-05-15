@@ -36,12 +36,15 @@
 //! * Unit tests in massa-execution-worker
 
 #[cfg(feature = "execution-trace")]
-use std::collections::VecDeque;
-
+use massa_models::deferred_calls::DeferredCallId;
 #[cfg(feature = "execution-trace")]
 use massa_models::{
     address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
+#[cfg(feature = "execution-trace")]
+use std::collections::HashMap;
+#[cfg(feature = "execution-trace")]
+use std::collections::VecDeque;
 
 #[cfg(feature = "execution-trace")]
 pub use massa_sc_runtime::{
@@ -61,7 +64,7 @@ pub struct SlotAbiCallStack {
     /// asc call stacks
     pub asc_call_stacks: Vec<Vec<AbiTrace>>,
     /// deferred call stacks
-    pub deferred_call_stacks: Vec<Vec<AbiTrace>>,
+    pub deferred_call_stacks: HashMap<DeferredCallId, Vec<AbiTrace>>,
     /// operation call stacks
     pub operation_call_stacks: PreHashMap<OperationId, Vec<AbiTrace>>,
 }
