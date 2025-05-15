@@ -76,6 +76,8 @@ use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
+#[cfg(feature = "execution-info")]
+use std::collections::HashMap;
 
 /// Used to acquire a lock on the execution context
 macro_rules! context_guard {
@@ -1458,7 +1460,7 @@ impl ExecutionState {
             slot: *slot,
             operation_call_stacks: PreHashMap::default(),
             asc_call_stacks: vec![],
-            deferred_call_stacks: vec![],
+            deferred_call_stacks: HashMap::default(),
         };
         #[cfg(feature = "execution-trace")]
         let mut transfers = vec![];
@@ -1548,9 +1550,9 @@ impl ExecutionState {
                             cfg_if::cfg_if! {
                                 if #[cfg(feature = "execution-trace")] {
                                     // Safe to unwrap
-                                    slot_trace.deferred_call_stacks.push(_exec.traces.unwrap().0);
+                                    slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
                                 } else if #[cfg(feature = "execution-info")] {
-                                    slot_trace.deferred_call_stacks.push(_exec.traces.clone().unwrap().0);
+                                    slot_trace.deferred_call_stacks.insert(id, _exec.traces.unwrap().0);
                                     exec_info.deferred_calls_messages.push(Ok(_exec));
                                 }
                             }
