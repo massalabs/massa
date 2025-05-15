@@ -73,7 +73,7 @@ use massa_models::secure_share::SecureShare;
 use massa_proto_rs::massa::model::v1 as grpc_model;
 #[cfg(feature = "dump-block")]
 use prost::Message;
-#[cfg(feature = "execution-info")]
+#[cfg(feature = "execution-trace")]
 use std::collections::HashMap;
 
 use massa_execution_exports::execution_info::{
