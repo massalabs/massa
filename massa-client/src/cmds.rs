@@ -1,6 +1,7 @@
 // Copyright (c) 2022 MASSA LABS <info@massa.net>
 
 use crate::display::Output;
+use crate::voting::{MasOGBalance, MasOGBalanceResponse, VotingConfig};
 use crate::{client_warning, rpc_error};
 use anyhow::{anyhow, bail, Result};
 use console::style;
@@ -289,6 +290,20 @@ pub enum Command {
 
     #[strum(
         ascii_case_insensitive,
+        props(args = "Address1 Address2 ...", pwd_not_needed = "true"),
+        message = "get the current mas_og balance for given addresses"
+    )]
+    mip_masog_balance,
+
+    #[strum(
+        ascii_case_insensitive,
+        props(args = "Address ProposalId Coins Fee"),
+        message = "vote for a proposal; Address is address which will vote, Coins cover the storage cost of the vote (1 mas max, extra is reimbursed), ProposalId is the id of the proposal, Fee is the fee for the vote operation"
+    )]
+    mip_vote,
+
+    #[strum(
+        ascii_case_insensitive,
         props(pwd_not_needed = "true"),
         message = "tells you when moon"
     )]
@@ -452,7 +467,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::node_unban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
                 match client.private.node_unban_by_ip(ips).await {
@@ -465,7 +479,6 @@ impl Command {
                 };
                 Ok(Box::new(()))
             }
-
             Command::node_unban_by_id => {
                 let ids = parse_vec::<NodeId>(parameters)?;
                 match client.private.node_unban_by_id(ids).await {
@@ -478,7 +491,6 @@ impl Command {
                 };
                 Ok(Box::new(()))
             }
-
             Command::node_ban_by_ip => {
                 let ips = parse_vec::<IpAddr>(parameters)?;
                 match client.private.node_ban_by_ip(ips).await {
@@ -491,7 +503,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::node_ban_by_id => {
                 let ids = parse_vec::<NodeId>(parameters)?;
                 match client.private.node_ban_by_id(ids).await {
@@ -504,7 +515,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::node_stop => {
                 match client.private.stop_node().await {
                     Ok(()) => {
@@ -516,19 +526,16 @@ impl Command {
                 };
                 Ok(Box::new(()))
             }
-
             Command::node_get_staking_addresses => {
                 match client.private.get_staking_addresses().await {
                     Ok(staking_addresses) => Ok(Box::new(staking_addresses)),
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_status => match client.public.get_status().await {
                 Ok(node_status) => Ok(Box::new(node_status)),
                 Err(e) => rpc_error!(e),
             },
-
             Command::get_addresses => {
                 let addresses = parse_vec::<Address>(parameters)?;
                 match client.public.get_addresses(addresses).await {
@@ -536,7 +543,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_datastore_entry => {
                 if parameters.len() != 2 {
                     bail!("invalid number of parameters");
@@ -552,7 +558,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_blocks => {
                 if parameters.is_empty() {
                     bail!("wrong param numbers, expecting at least one block id")
@@ -563,7 +568,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_endorsements => {
                 let endorsements = parse_vec::<EndorsementId>(parameters)?;
                 match client.public.get_endorsements(endorsements).await {
@@ -571,7 +575,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_operations => {
                 let operations = parse_vec::<OperationId>(parameters)?;
                 match client.public.get_operations(operations).await {
@@ -579,7 +582,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::get_filtered_sc_output_event => {
                 let p_list: [&str; 7] = [
                     "start",
@@ -613,7 +615,6 @@ impl Command {
                     Err(e) => rpc_error!(e),
                 }
             }
-
             Command::wallet_info => {
                 let show_keys = parameters.len() == 1 && parameters[0] == "show-all-keys";
 
@@ -638,7 +639,6 @@ impl Command {
                     }, // FIXME
                 }
             }
-
             Command::wallet_get_public_key => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -662,7 +662,6 @@ impl Command {
 
                 Ok(Box::new(addr_public_keys))
             }
-
             Command::wallet_get_secret_key => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -690,7 +689,6 @@ impl Command {
 
                 Ok(Box::new(addr_secret_keys))
             }
-
             Command::node_start_staking => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -718,7 +716,6 @@ impl Command {
                 };
                 Ok(Box::new(()))
             }
-
             Command::node_stop_staking => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -734,7 +731,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::wallet_generate_secret_key => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
@@ -753,12 +749,11 @@ impl Command {
                 } else {
                     println!("Generated {} address and added it to the wallet", ad);
                     println!(
-                        "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
-                    );
+                                "Type `wallet_info` to show wallet info (keys, addresses, balances ...) and/or `node_start_staking <your address>` to start staking.\n"
+                            );
                     Ok(Box::new(()))
                 }
             }
-
             Command::wallet_add_secret_keys => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -777,7 +772,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::wallet_remove_addresses => {
                 if parameters.is_empty() {
                     bail!("wrong number of parameters");
@@ -802,7 +796,6 @@ impl Command {
                 }
                 Ok(Box::new(()))
             }
-
             Command::buy_rolls => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
@@ -858,7 +851,6 @@ impl Command {
                 )
                 .await
             }
-
             Command::sell_rolls => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
@@ -894,7 +886,6 @@ impl Command {
                 )
                 .await
             }
-
             Command::send_transaction => {
                 let wallet = wallet_opt.as_mut().unwrap();
 
@@ -1194,11 +1185,11 @@ impl Command {
                     }
                 } else {
                     let cli_op = match parameters[0].parse::<ListOperation>() {
-                        Ok(op) => op,
-                        Err(_) => bail!(
-                            "failed to parse operation, supported operations are: [add, remove, allow-all]"
-                        ),
-                    };
+                                Ok(op) => op,
+                                Err(_) => bail!(
+                                    "failed to parse operation, supported operations are: [add, remove, allow-all]"
+                                ),
+                            };
                     let args = &parameters[1..];
                     let res: Result<Box<dyn Output>> = match cli_op {
                         ListOperation::Add => {
@@ -1244,8 +1235,8 @@ impl Command {
                                 Ok(()) => {
                                     if !json {
                                         println!(
-                                            "Request of bootstrap whitelisting everyone successfully sent!"
-                                        )
+                                                    "Request of bootstrap whitelisting everyone successfully sent!"
+                                                )
                                     }
                                     Ok(Box::new(()))
                                 }
@@ -1307,8 +1298,156 @@ impl Command {
             Command::exit => {
                 std::process::exit(0);
             }
+            Command::mip_vote => {
+                if parameters.len() != 4 {
+                    bail!("wrong number of parameters");
+                }
+                let wallet = wallet_opt.as_mut().unwrap();
+
+                let voting_config = VotingConfig::new(client.chain_id);
+                let addr = parameters[0].parse::<Address>()?;
+                let proposal_id = parameters[1].parse::<u64>()?;
+                let coins = parameters[2].parse::<Amount>()?;
+                let fee = parameters[3].parse::<Amount>()?;
+
+                let items = vec!["yes", "no", "blank"];
+                let selection = dialoguer::Select::new()
+                    .with_prompt("Select your vote")
+                    .items(&items)
+                    .interact()
+                    .unwrap();
+
+                println!(
+                    "You chose: {} for proposal {} with {} coins and {} fee",
+                    items[selection],
+                    proposal_id,
+                    coins.to_string(),
+                    fee.to_string()
+                );
+                let vote_str = items[selection].to_string();
+
+                // check that the address has 1 MASOG
+                let balance_requests: DatastoreEntryInput = DatastoreEntryInput {
+                    address: voting_config.mas_og_addr,
+                    key: format!("BALANCE{}", addr).as_bytes().to_vec(),
+                };
+                let balance_results = client
+                    .public
+                    .get_datastore_entries(vec![balance_requests])
+                    .await?;
+
+                let balance_bytes = balance_results
+                    .first()
+                    .and_then(|result| result.final_value.as_ref())
+                    .ok_or_else(|| anyhow!("No balance found"))?;
+                let balance_masog = convert_args_u256_to_u128(balance_bytes).unwrap();
+                if balance_masog < 1 {
+                    bail!("Address does not have 1 MASOG");
+                }
+
+                let vote: i32 = match vote_str.as_str() {
+                    "yes" => 1,
+                    "no" => -1,
+                    "blank" => 0,
+                    _ => bail!("Invalid vote"),
+                };
+
+                let mut buffer = vec![];
+                buffer.extend_from_slice(&proposal_id.to_le_bytes());
+                buffer.extend_from_slice(&vote.to_le_bytes());
+
+                let op = OperationType::CallSC {
+                    target_addr: voting_config.governance_sc_addr,
+                    target_func: "vote".to_string(),
+                    param: buffer,
+                    max_gas: 4894131,
+                    coins,
+                };
+
+                send_operation(client, wallet, op, fee, addr, json).await
+            }
+            Command::mip_masog_balance => {
+                let addresses = parse_vec::<Address>(parameters)?;
+                let voting_config = VotingConfig::new(client.chain_id);
+
+                // Get total supply first
+                let total_supply = client
+                    .public
+                    .get_datastore_entries(vec![DatastoreEntryInput {
+                        address: voting_config.mas_og_addr,
+                        key: "TOTAL_SUPPLY".as_bytes().to_vec(),
+                    }])
+                    .await?
+                    .first()
+                    .and_then(|entry| entry.final_value.as_ref())
+                    .map(|value| convert_args_u256_to_u128(value).unwrap())
+                    .unwrap_or(0);
+
+                // Prepare balance requests for all addresses
+                let balance_requests: Vec<DatastoreEntryInput> = addresses
+                    .iter()
+                    .map(|addr| DatastoreEntryInput {
+                        address: voting_config.mas_og_addr,
+                        key: format!("BALANCE{}", addr).as_bytes().to_vec(),
+                    })
+                    .collect();
+
+                // Get all balances in one request
+                let balance_results = client
+                    .public
+                    .get_datastore_entries(balance_requests)
+                    .await?;
+
+                // Process results
+                let balances: Vec<MasOGBalance> = balance_results
+                    .into_iter()
+                    .zip(addresses)
+                    .map(|(entry, address)| {
+                        let (final_bal, candidate_bal) = match entry.final_value {
+                            Some(final_value) => {
+                                let final_bal = convert_args_u256_to_u128(&final_value).unwrap();
+                                let candidate_bal = entry
+                                    .candidate_value
+                                    .map(|cv| convert_args_u256_to_u128(&cv).unwrap())
+                                    .unwrap_or(0);
+                                (final_bal, candidate_bal)
+                            }
+                            None => (0, 0),
+                        };
+
+                        let voting_power = if final_bal > 0 {
+                            (final_bal as f64 / total_supply as f64) * 100.0
+                        } else {
+                            0.0
+                        };
+
+                        MasOGBalance {
+                            final_balance: final_bal,
+                            candidate_balance: candidate_bal,
+                            address,
+                            voting_power,
+                        }
+                    })
+                    .collect();
+
+                Ok(Box::new(MasOGBalanceResponse {
+                    balances,
+                    total_supply,
+                }))
+            }
         }
     }
+}
+
+fn convert_args_u256_to_u128(bytes: &[u8]) -> Result<u128, String> {
+    if bytes.len() != 32 {
+        return Err(String::from("Invalid length for u256 conversion"));
+    }
+
+    if bytes[16..] != [0; 16] {
+        return Err(String::from("u256 can't be converted to u128: overflow"));
+    }
+    Ok(u128::from_le_bytes(bytes[..16].try_into().unwrap()))
 }
 
 /// helper to wrap and send an operation with proper validity period

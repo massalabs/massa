@@ -179,7 +179,7 @@ impl std::fmt::Display for AddressFilter {
 }
 
 /// Datastore keys entry query input structure
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GetAddressDatastoreKeysRequest {
     /// The address for which to get the datastore keys
     pub address: Address,
@@ -200,7 +200,7 @@ pub struct GetAddressDatastoreKeysRequest {
 }
 
 /// Response object for datastore keys query
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GetAddressDatastoreKeysResponse {
     /// The address for which to get the datastore keys
     pub address: Address,
