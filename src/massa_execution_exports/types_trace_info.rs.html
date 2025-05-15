@@ -185,6 +185,9 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="doccomment">//! # General description
 //!
@@ -223,12 +226,15 @@
 //! * Unit tests in massa-execution-worker
 
 </span><span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
-</span><span class="kw">use </span>std::collections::VecDeque;
-
+</span><span class="kw">use </span>massa_models::deferred_calls::DeferredCallId;
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>massa_models::{
     address::Address, amount::Amount, operation::OperationId, prehash::PreHashMap, slot::Slot,
 };
+<span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+</span><span class="kw">use </span>std::collections::HashMap;
+<span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
+</span><span class="kw">use </span>std::collections::VecDeque;
 
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">pub use </span>massa_sc_runtime::{
@@ -248,7 +254,7 @@
     <span class="doccomment">/// asc call stacks
     </span><span class="kw">pub </span>asc_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
     <span class="doccomment">/// deferred call stacks
-    </span><span class="kw">pub </span>deferred_call_stacks: Vec&lt;Vec&lt;AbiTrace&gt;&gt;,
+    </span><span class="kw">pub </span>deferred_call_stacks: HashMap&lt;DeferredCallId, Vec&lt;AbiTrace&gt;&gt;,
     <span class="doccomment">/// operation call stacks
     </span><span class="kw">pub </span>operation_call_stacks: PreHashMap&lt;OperationId, Vec&lt;AbiTrace&gt;&gt;,
 }

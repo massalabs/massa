@@ -164,13 +164,16 @@
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span>massa_deferred_calls::DeferredCall;
 <span class="kw">use </span>massa_final_state::StateChanges;
 <span class="kw">use </span>massa_models::{
-    address::Address, amount::Amount, block_id::BlockId, operation::OperationId,
-    output_event::SCOutputEvent, slot::Slot,
+    address::Address, amount::Amount, block_id::BlockId, deferred_calls::DeferredCallId,
+    operation::OperationId, output_event::SCOutputEvent, slot::Slot,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::{collections::VecDeque, fmt::Display};
@@ -266,6 +269,9 @@
     <span class="attr">#[serde(rename = <span class="string">"asc_index"</span>)]
     </span><span class="doccomment">/// Transfer made in an asynchronous call
     </span>ASC(u64),
+    <span class="attr">#[serde(rename = <span class="string">"deferred_call_id"</span>)]
+    </span><span class="doccomment">/// Transfer made in an asynchronous call
+    </span>DeferredCall(DeferredCallId),
 }
 
 <span class="doccomment">/// Structure defining a transfer
