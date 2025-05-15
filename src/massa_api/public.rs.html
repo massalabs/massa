@@ -1565,6 +1565,18 @@
 <a href="#1565" id="1565">1565</a>
 <a href="#1566" id="1566">1566</a>
 <a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
+<a href="#1573" id="1573">1573</a>
+<a href="#1574" id="1574">1574</a>
+<a href="#1575" id="1575">1575</a>
+<a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 </span><span class="attr">#![allow(clippy::too_many_arguments)]
 
@@ -1720,16 +1732,20 @@
                         <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
                         <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
                             <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
-                                to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::ASC(i <span class="kw">as </span>u64),
-                                succeed: <span class="bool-val">true</span>,
-                                fee: Amount::from_raw(<span class="number">0</span>),
-                                block_id,
-                            });
+                            <span class="kw">if let </span>(<span class="prelude-val">Ok</span>(addr_from), <span class="prelude-val">Ok</span>(addr_to)) =
+                                (Address::from_str(<span class="kw-2">&amp;</span>t_from), Address::from_str(<span class="kw-2">&amp;</span>t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::ASC(i <span class="kw">as </span>u64),
+                                    succeed: <span class="bool-val">true</span>,
+                                    fee: Amount::from_raw(<span class="number">0</span>),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -1739,16 +1755,20 @@
                         <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
                         <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
                             <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
-                                to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::DeferredCall(call_id.clone()),
-                                succeed: <span class="bool-val">true</span>,
-                                fee: Amount::from_raw(<span class="number">0</span>),
-                                block_id,
-                            });
+                            <span class="kw">if let </span>(<span class="prelude-val">Ok</span>(addr_from), <span class="prelude-val">Ok</span>(addr_to)) =
+                                (Address::from_str(<span class="kw-2">&amp;</span>t_from), Address::from_str(<span class="kw-2">&amp;</span>t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::DeferredCall(call_id.clone()),
+                                    succeed: <span class="bool-val">true</span>,
+                                    fee: Amount::from_raw(<span class="number">0</span>),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
@@ -1760,16 +1780,20 @@
                         <span class="kw">let </span>only_transfer = abi_trace.flatten_filter(<span class="kw-2">&amp;</span>transfer_abi_names);
                         <span class="kw">for </span>transfer <span class="kw">in </span>only_transfer {
                             <span class="kw">let </span>(t_from, t_to, t_amount) = transfer.parse_transfer();
-                            transfers.push(Transfer {
-                                from: Address::from_str(<span class="kw-2">&amp;</span>t_from).unwrap(),
-                                to: Address::from_str(<span class="kw-2">&amp;</span>t_to).unwrap(),
-                                amount: Amount::from_raw(t_amount),
-                                effective_amount_received: Amount::from_raw(t_amount),
-                                context: TransferContext::Operation(op_id),
-                                succeed: <span class="bool-val">true</span>,
-                                fee: Amount::from_raw(<span class="number">0</span>),
-                                block_id,
-                            });
+                            <span class="kw">if let </span>(<span class="prelude-val">Ok</span>(addr_from), <span class="prelude-val">Ok</span>(addr_to)) =
+                                (Address::from_str(<span class="kw-2">&amp;</span>t_from), Address::from_str(<span class="kw-2">&amp;</span>t_to))
+                            {
+                                transfers.push(Transfer {
+                                    from: addr_from,
+                                    to: addr_to,
+                                    amount: Amount::from_raw(t_amount),
+                                    effective_amount_received: Amount::from_raw(t_amount),
+                                    context: TransferContext::Operation(op_id),
+                                    succeed: <span class="bool-val">true</span>,
+                                    fee: Amount::from_raw(<span class="number">0</span>),
+                                    block_id,
+                                });
+                            }
                         }
                     }
                 }
