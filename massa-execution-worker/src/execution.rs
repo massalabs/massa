@@ -53,6 +53,8 @@ use std::ops::Bound;
 use std::sync::Arc;
 use tracing::{debug, info, trace, warn};
 
+#[cfg(feature = "execution-info")]
+use crate::execution_info::{ExecutionInfo, ExecutionInfoForSlot, OperationInfo};
 #[cfg(feature = "execution-trace")]
 use crate::trace_history::TraceHistory;
 #[cfg(feature = "execution-trace")]
@@ -307,29 +309,6 @@ impl ExecutionState {
 
         // append generated events to the final event store
         exec_out.events.finalize();
-
-        let ts = get_block_slot_timestamp(
-            self.config.thread_count,
-            self.config.t0,
-            self.config.genesis_timestamp,
-            exec_out.slot,
-        )
-        .expect("Time overflow");
-
-        let cur_version = self
-            .final_state
-            .read()
-            .get_mip_store()
-            .get_network_version_active_at(ts);
-
-        if cur_version == 0 {
-            // Truncate the events before saving them to the event store
-            // Note: this is only needed during the MIP transition period
-            // When it becomes active, we will refuse such events so no need to truncate them
-            for event in exec_out.events.0.iter_mut() {
-                event.data.truncate(self.config.max_event_size_v1);
-            }
-        }
 
         self.final_events_cache.save_events(exec_out.events.0);
 
@@ -1738,7 +1717,10 @@ impl ExecutionState {
             // Block credits count every operation fee, denunciation slash and endorsement reward.
             // We initialize the block credits with the block reward to stimulate block production
             // even in the absence of operations and denunciations.
-            let mut block_credits = self.config.block_reward;
+            let mut block_credits = match execution_version {
+                0 => self.config.block_reward_v0,
+                _ => self.config.block_reward_v1,
+            };
 
             // Try executing the operations of this block in the order in which they appear in the block.
             // Errors are logged but do not interrupt the execution of the slot.

@@ -1409,7 +1409,7 @@ fn cancel_async_message() {
             assert_eq!(
                 changes.ledger_changes.0.get(&sender_addr).unwrap(),
                 &SetUpdateOrDelete::Update(LedgerEntryUpdate {
-                    balance: SetOrKeep::Set(Amount::from_str("90.298635211").unwrap()),
+                    balance: SetOrKeep::Set(Amount::from_str("90.262165227").unwrap()),
                     bytecode: massa_models::types::SetOrKeep::Keep,
                     datastore: BTreeMap::new()
                 })
@@ -1799,7 +1799,7 @@ fn deferred_call_register() {
                 SetUpdateOrDelete::Update(change_sc_update) => {
                     assert_eq!(
                         change_sc_update.balance,
-                        SetOrKeep::Set(Amount::from_str("75.361635312").unwrap())
+                        SetOrKeep::Set(Amount::from_str("75.325165328").unwrap())
                     );
                 }
                 _ => panic!("wrong change type"),
@@ -2764,7 +2764,7 @@ fn send_and_receive_transaction() {
             );
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward
+                .block_reward_v1
                 .saturating_add(Amount::from_str("20").unwrap()); // add 20 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -2874,7 +2874,7 @@ fn roll_buy() {
 
             // address has 100 coins before buying roll
             // -> (100 (balance) - 100 (roll price)) + 1.02 / 17 * 3 (block reward)
-            let total_rewards = exec_cfg.block_reward;
+            let total_rewards = exec_cfg.block_reward_v1;
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
@@ -2984,7 +2984,7 @@ fn roll_sell() {
                 .get_balance_or_else(&address, || None)
                 .unwrap();
             // block rewards computation
-            let total_rewards = exec_cfg.block_reward;
+            let total_rewards = exec_cfg.block_reward_v1;
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: total_rewards checked_div factor is 0")
@@ -3244,7 +3244,7 @@ fn roll_slash() {
 
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward
+                .block_reward_v1
                 .saturating_add(Amount::from_str("150").unwrap()); //reward of the 3 slash (50%)
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -3374,7 +3374,7 @@ fn roll_slash_2() {
                 .unwrap();
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward
+                .block_reward_v1
                 .saturating_add(Amount::from_str("200").unwrap()); //reward of the 4 slash (50%)
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -3681,7 +3681,7 @@ fn datastore_manipulations() {
                 .unwrap();
             // block rewards computation
             let total_rewards = exec_cfg
-                .block_reward
+                .block_reward_v1
                 .saturating_add(Amount::from_str("10").unwrap()); // 10 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -4084,7 +4084,7 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 0)), predicate::always())
         .returning(move |_, changes| {
-            let block_credits = exec_cfg.block_reward;
+            let block_credits = exec_cfg.block_reward_v1;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
@@ -4130,7 +4130,7 @@ fn test_rewards() {
         .times(1)
         .with(predicate::eq(Slot::new(1, 1)), predicate::always())
         .returning(move |_, changes| {
-            let block_credits = exec_cfg.block_reward;
+            let block_credits = exec_cfg.block_reward_v1;
             let block_credit_part = block_credits
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
                 .expect("critical: block_credits checked_div factor is 0");
@@ -4718,7 +4718,7 @@ fn test_dump_block() {
             );
             // 1.02 for the block rewards
             let total_rewards = exec_cfg
-                .block_reward
+                .block_reward_v1
                 .saturating_add(Amount::from_str("10").unwrap()); // add 10 MAS for fees
             let rewards_for_block_creator = total_rewards
                 .checked_div_u64(BLOCK_CREDIT_PART_COUNT)
@@ -4772,7 +4772,7 @@ fn test_dump_block() {
 
     std::thread::sleep(Duration::from_secs(1));
 
-    // if the the storage backend for the dump-block feature is a rocksdb, this
+    // if the storage backend for the dump-block feature is a rocksdb, this
     // is mandatory (the db must be closed before we can reopen it to check the
     // data)
     drop(universe);

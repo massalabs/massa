@@ -6,12 +6,15 @@
 //! See the definition of Interface in the massa-sc-runtime crate for functional details.
 
 use crate::context::ExecutionContext;
+
 use massa_deferred_calls::DeferredCall;
-use massa_execution_exports::execution_info::OriginTransferContext;
+
 use massa_execution_exports::{
-    execution_info::TransferContext, ExecutionConfig, ExecutionStackElement,
+    execution_info::{OriginTransferContext, TransferContext},
+    ExecutionConfig, ExecutionStackElement,
 };
 use massa_models::async_msg::{AsyncMessage, AsyncMessageTrigger};
+
 use massa_models::{
     address::{Address, SCAddress, UserAddress},
     amount::Amount,
@@ -1055,6 +1058,38 @@ impl Interface for InterfaceImpl {
         // see test_evm_verify for an example of its usage
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
             .map_err(|e| e.to_string())?;
+
+        if execution_component_version != 0 {
+            let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
+                .map_err(|e| e.to_string())?
+                .into();
+            // Note: parse_rpc returns p - 27 and allow for 27, 28, 29, 30
+            //       restrict to only 27 & 28 (=> 0 & 1)
+            if recovery_id != 0 && recovery_id != 1 {
+                // Note:
+                // The v value in an EVM signature serves as a recovery ID,
+                // aiding in the recovery of the public key from the signature.
+                // Typically, v should be either 27 or 28
+                // (or sometimes 0 or 1, depending on the implementation).
+                // Ensuring that v is within the expected range is crucial
+                // for correctly recovering the public key.
+                // the Ethereum yellow paper specifies only 27 and 28, requiring additional checks.
+                return Err(
+                    "invalid recovery id value (v = {recovery_id}) in evm_signature_verify".into(),
+                );
+            }
+
+            // Note:
+            // The s value in an EVM signature should be in the lower half of the elliptic curve
+            // in order to prevent malleability attacks.
+            // If s is in the high-order range, it can be converted to its low-order equivalent,
+            // which should be enforced during signature verification.
+            if signature.s.is_high() {
+                return Err(
+                    "High-Order s Value are prohibited in evm_get_pubkey_from_signature".into(),
+                );
+            }
+        }
 
         if execution_component_version != 0 {
             let recovery_id: u8 = libsecp256k1::RecoveryId::parse_rpc(signature_[64])

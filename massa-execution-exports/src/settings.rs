@@ -43,8 +43,10 @@ pub struct ExecutionConfig {
     pub genesis_timestamp: MassaTime,
     /// period duration
     pub t0: MassaTime,
-    /// block creation reward
-    pub block_reward: Amount,
+    /// block creation reward (v0)
+    pub block_reward_v0: Amount,
+    /// block creation reward (v1)
+    pub block_reward_v1: Amount,
     /// operation validity period
     pub operation_validity_period: u64,
     /// endorsement count

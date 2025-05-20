@@ -174,6 +174,7 @@ rand_distr = "=0.4"
 rand_xoshiro = "0.6"
 rayon = "1.7"
 rcgen = "0.11"
+regex = "1.11.1"
 # "rust-rocksdb" instead of "rocksdb" fixes jemalloc feature, see https://github.com/rust-rocksdb/rust-rocksdb/issues/863
 rocksdb = { package = "rust-rocksdb", version = "0.36.0" }
 rust_decimal = { version = "1.32", default-features = false }
