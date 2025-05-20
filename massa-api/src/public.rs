@@ -39,7 +39,7 @@ use massa_models::{
     block_id::BlockId,
     clique::Clique,
     composite::PubkeySig,
-    config::{CompactConfig, BLOCK_REWARD_V1},
+    config::{CompactConfig, BLOCK_REWARD},
     datastore::{cleanup_datastore_key_range_query, DatastoreDeserializer},
     deferred_calls::DeferredCallId,
     endorsement::{EndorsementId, SecureShareEndorsement},
@@ -467,7 +467,7 @@ impl MassaRpcServer for API<Public> {
             .get_network_version_current();
 
         if current_mip_version > 0 {
-            config.block_reward = BLOCK_REWARD_V1;
+            config.block_reward = BLOCK_REWARD;
         }
 
         let last_slot_result = get_latest_block_slot_at_timestamp(

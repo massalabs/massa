@@ -15,7 +15,7 @@ use massa_models::address::Address;
 use massa_models::amount::Amount;
 use massa_models::block::{Block, BlockGraphStatus};
 use massa_models::block_id::BlockId;
-use massa_models::config::{CompactConfig, BLOCK_REWARD_V1};
+use massa_models::config::{CompactConfig, BLOCK_REWARD};
 use massa_models::datastore::DatastoreDeserializer;
 use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 use massa_models::operation::{OperationId, SecureShareOperation};
@@ -949,7 +949,7 @@ pub(crate) fn get_status(
 
     let current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
     if current_mip_version > 0 {
-        config.block_reward = BLOCK_REWARD_V1;
+        config.block_reward = BLOCK_REWARD;
     }
 
     let status = grpc_model::PublicStatus {

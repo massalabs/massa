@@ -651,11 +651,7 @@ impl SpeculativeLedger {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
             // reimburse the storage costs of the entry
-            self.charge_datastore_entry_change_storage(
-                caller_addr,
-                Some((key, &value)),
-                None,
-            )?;
+            self.charge_datastore_entry_change_storage(caller_addr, Some((key, &value)), None)?;
         } else {
             return Err(ExecutionError::RuntimeError(format!(
                 "could not delete data entry {:?} for address {}: entry or address does not exist",
