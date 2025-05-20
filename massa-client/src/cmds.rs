@@ -1319,10 +1319,7 @@ impl Command {
 
                 println!(
                     "You chose: {} for proposal {} with {} coins and {} fee",
-                    items[selection],
-                    proposal_id,
-                    coins.to_string(),
-                    fee.to_string()
+                    items[selection], proposal_id, coins, fee
                 );
                 let vote_str = items[selection].to_string();
 
