@@ -599,9 +599,36 @@
 <a href="#599" id="599">599</a>
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::cmds::ExtendedWallet;
+<span class="kw">use </span><span class="kw">crate</span>::voting::MasOGBalanceResponse;
 <span class="kw">use </span>console::style;
 <span class="kw">use </span>erased_serde::{Serialize, Serializer};
 <span class="kw">use </span>massa_api_exports::{
@@ -1198,6 +1225,31 @@
 <span class="kw">impl </span>Output <span class="kw">for </span>ExecuteReadOnlyResponse {
     <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="macro">println!</span>(<span class="string">"{}"</span>, <span class="self">self</span>);
+    }
+}
+
+<span class="kw">impl </span>Output <span class="kw">for </span>MasOGBalanceResponse {
+    <span class="kw">fn </span>pretty_print(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Separator.style(<span class="string">"========"</span>));
+        <span class="macro">println!</span>(
+            <span class="string">"MASOG Total supply: {}"</span>,
+            Style::Coins.style(<span class="self">self</span>.total_supply)
+        );
+        <span class="kw">for </span>balance <span class="kw">in </span><span class="self">self</span>.balances.iter() {
+            <span class="macro">println!</span>(<span class="string">"{}"</span>, Style::Separator.style(<span class="string">"========"</span>));
+            <span class="macro">println!</span>(<span class="string">"Address {} :"</span>, Style::Wallet.style(balance.address),);
+            <span class="macro">println!</span>(
+                <span class="string">"\tBalance: {}={}, {}={}"</span>,
+                Style::Finished.style(<span class="string">"final"</span>),
+                Style::Coins.style(balance.final_balance),
+                Style::Pending.style(<span class="string">"candidate"</span>),
+                Style::Coins.style(balance.candidate_balance),
+            );
+            <span class="macro">println!</span>(
+                <span class="string">"\tVoting power: {}%"</span>,
+                Style::Protocol.style(<span class="macro">format!</span>(<span class="string">"{:.4}"</span>, balance.voting_power))
+            );
+        }
     }
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_filter","new_endorsements","should_send"],"struct":["Filter"],"type":["NewEndorsementsStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_endorsements","new_endorsements_server"],"type":["NewEndorsementsServerStreamType","NewEndorsementsStreamType"]};

@@ -123,6 +123,8 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! This module provides the structures used to provide configuration parameters to the Execution system
@@ -247,5 +249,7 @@
     </span><span class="kw">pub </span>event_cache_size: usize,
     <span class="doccomment">/// Amount of entries removed when `event_cache_size` is reached
     </span><span class="kw">pub </span>event_snip_amount: usize,
+    <span class="doccomment">/// slot execution info channel capacity
+    </span><span class="kw">pub </span>broadcast_slot_execution_info_channel_capacity: usize,
 }
 </code></pre></div></section></main></body></html>

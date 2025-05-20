@@ -1537,11 +1537,6 @@
 <a href="#1537" id="1537">1537</a>
 <a href="#1538" id="1538">1538</a>
 <a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1581,9 +1576,8 @@
 <span class="attr">#[cfg(feature = <span class="string">"execution-trace"</span>)]
 </span><span class="kw">use </span>massa_proto_rs::massa::api::v1::{
     AbiCallStack, AbiCallStackElement, AbiCallStackElementCall, AbiCallStackElementParent,
-    AscabiCallStack, DeferredCallAbiCallStack, GetOperationAbiCallStacksResponse,
-    GetSlotAbiCallStacksResponse, OperationAbiCallStack, SlotAbiCallStacks, TransferInfo,
-    TransferInfos,
+    AscabiCallStack, GetOperationAbiCallStacksResponse, GetSlotAbiCallStacksResponse,
+    OperationAbiCallStack, SlotAbiCallStacks, TransferInfo, TransferInfos,
 };
 
 <span class="doccomment">/// Execute read only call (function or bytecode)
@@ -2206,19 +2200,10 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>slot_abi_call_stacks = SlotAbiCallStacks {
             asc_call_stacks: <span class="macro">vec!</span>[],
-            deferred_call_stacks: <span class="macro">vec!</span>[],
             operation_call_stacks: <span class="macro">vec!</span>[],
         };
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(call_stack) = call_stack_ {
-            <span class="kw">for </span>(call_id, deferred_call_stack) <span class="kw">in </span>call_stack.deferred_call_stacks {
-                slot_abi_call_stacks
-                    .deferred_call_stacks
-                    .push(DeferredCallAbiCallStack {
-                        deferred_call_id: call_id.to_string(),
-                        call_stack: deferred_call_stack.iter().map(into_element).collect(),
-                    })
-            }
             <span class="kw">for </span>(i, asc_call_stack) <span class="kw">in </span>call_stack.asc_call_stacks.into_iter().enumerate() {
                 slot_abi_call_stacks.asc_call_stacks.push(AscabiCallStack {
                     index: i <span class="kw">as </span>u64,
@@ -2552,24 +2537,29 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     request: tonic::Request&lt;grpc_api::QueryStateRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::QueryStateResponse, GrpcError&gt; {
-    <span class="kw">let </span>current_network_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
-    <span class="kw">let </span>queries = request
-        .into_inner()
-        .queries
-        .into_iter()
-        .map(|q| to_querystate_filter(q, current_network_version))
-        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
-
+    <span class="kw">let </span>queries = request.into_inner().queries;
     <span class="kw">if </span>queries.is_empty() {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(
             <span class="string">"no query items specified"</span>.to_string(),
         ));
     }
-
     <span class="kw">if </span>queries.len() <span class="kw">as </span>u32 &gt; grpc.grpc_config.max_query_items_per_request {
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_query_items_per_request)));
     }
+
+    <span class="kw">let </span>current_version = grpc.keypair_factory.mip_store.get_network_version_current();
+
+    <span class="kw">let </span>queries = queries
+        .into_iter()
+        .map(|q| {
+            to_querystate_filter(
+                q,
+                current_version,
+                grpc.grpc_config.max_datastore_keys_queries,
+                grpc.grpc_config.max_datastore_key_length,
+            )
+        })
+        .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;, <span class="kw">_</span>&gt;&gt;()<span class="question-mark">?</span>;
 
     <span class="kw">let </span>response = grpc
         .execution_controller

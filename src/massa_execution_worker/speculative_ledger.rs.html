@@ -683,16 +683,6 @@
 <a href="#683" id="683">683</a>
 <a href="#684" id="684">684</a>
 <a href="#685" id="685">685</a>
-<a href="#686" id="686">686</a>
-<a href="#687" id="687">687</a>
-<a href="#688" id="688">688</a>
-<a href="#689" id="689">689</a>
-<a href="#690" id="690">690</a>
-<a href="#691" id="691">691</a>
-<a href="#692" id="692">692</a>
-<a href="#693" id="693">693</a>
-<a href="#694" id="694">694</a>
-<a href="#695" id="695">695</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2022 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="doccomment">//! The speculative ledger represents, in a compressed way,
@@ -701,13 +691,16 @@
 //! but keeps track of the changes that were applied to it since its creation.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::active_history::{ActiveHistory, HistorySearchResult};
+<span class="kw">use </span><span class="kw">crate</span>::datastore_scan::scan_datastore;
+<span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
+</span><span class="kw">use </span>massa_execution_exports::execution_info::TransferValue;
+<span class="kw">use </span>massa_execution_exports::execution_info::{TransferContext, TransferInfo};
 <span class="kw">use </span>massa_execution_exports::ExecutionError;
 <span class="kw">use </span>massa_execution_exports::StorageCostsConstants;
 <span class="kw">use </span>massa_final_state::FinalStateController;
 <span class="kw">use </span>massa_ledger_exports::LedgerChanges;
 <span class="kw">use </span>massa_models::bytecode::Bytecode;
-<span class="kw">use </span>massa_models::datastore::get_prefix_bounds;
-<span class="kw">use </span>massa_models::types::{Applicable, SetOrDelete, SetUpdateOrDelete};
+<span class="kw">use </span>massa_models::types::Applicable;
 <span class="kw">use </span>massa_models::{address::Address, amount::Amount};
 <span class="kw">use </span>parking_lot::RwLock;
 <span class="kw">use </span>std::cmp::Ordering;
@@ -743,6 +736,9 @@
 
     <span class="doccomment">/// storage cost constants
     </span>storage_costs_constants: StorageCostsConstants,
+
+    <span class="attr">#[allow(dead_code)]
+    </span>transfers_history: Arc&lt;RwLock&lt;Vec&lt;TransferInfo&gt;&gt;&gt;,
 }
 
 <span class="kw">impl </span>SpeculativeLedger {
@@ -758,6 +754,7 @@
         max_bytecode_size: u64,
         max_datastore_value_size: u64,
         storage_costs_constants: StorageCostsConstants,
+        transfers_history: Arc&lt;RwLock&lt;Vec&lt;TransferInfo&gt;&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         SpeculativeLedger {
             final_state,
@@ -767,6 +764,7 @@
             max_datastore_value_size,
             max_bytecode_size,
             storage_costs_constants,
+            transfers_history,
         }
     }
 
@@ -840,6 +838,7 @@
         to_addr: <span class="prelude-ty">Option</span>&lt;Address&gt;,
         amount: Amount,
         execution_component_version: u32,
+        _context: TransferContext,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), ExecutionError&gt; {
         <span class="comment">// init empty ledger changes
         </span><span class="kw">let </span><span class="kw-2">mut </span>changes = LedgerChanges::default();
@@ -897,6 +896,16 @@
 
         <span class="comment">// apply the simulated changes to the speculative ledger
         </span><span class="self">self</span>.added_changes.apply(changes);
+
+        <span class="attr">#[cfg(feature = <span class="string">"execution-info"</span>)]
+        </span>{
+            <span class="self">self</span>.transfers_history.write().push(TransferInfo::new(
+                TransferValue::Coins(amount),
+                _context,
+                from_addr,
+                to_addr,
+            ));
+        }
 
         <span class="prelude-val">Ok</span>(())
     }
@@ -985,6 +994,7 @@
             <span class="prelude-val">None</span>,
             address_storage_cost,
             execution_component_version,
+            TransferContext::CreateSCStorage,
         )<span class="question-mark">?</span>;
         <span class="self">self</span>.added_changes.create_address(<span class="kw-2">&amp;</span>addr);
         <span class="self">self</span>.added_changes.set_bytecode(addr, bytecode);
@@ -1038,12 +1048,14 @@
                     <span class="prelude-val">None</span>,
                     storage_cost_bytecode,
                     execution_component_version,
+                    TransferContext::SetBytecodeStorage,
                 )<span class="question-mark">?</span>,
                 -<span class="number">1 </span>=&gt; <span class="self">self</span>.transfer_coins(
                     <span class="prelude-val">None</span>,
                     <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
                     storage_cost_bytecode,
                     execution_component_version,
+                    TransferContext::SetBytecodeStorage,
                 )<span class="question-mark">?</span>,
                 <span class="kw">_ </span>=&gt; {}
             };
@@ -1062,6 +1074,7 @@
                 <span class="prelude-val">None</span>,
                 bytecode_storage_cost,
                 execution_component_version,
+                TransferContext::SetBytecodeStorage,
             )<span class="question-mark">?</span>;
         }
         <span class="comment">// set the bytecode of that address
@@ -1074,67 +1087,33 @@
     ///
     /// # Arguments
     /// * `addr`: address to query
-    /// * `prefix`: prefix to filter the keys
+    /// * `prefix`: prefix to filter keys
+    /// * `start_key`: start key of the range
+    /// * `end_key`: end key of the range
+    /// * `count`: maximum number of keys to return
     ///
     /// # Returns
     /// `Some(Vec&lt;Vec&lt;u8&gt;&gt;)` for found keys, `None` if the address does not exist.
-    </span><span class="kw">pub fn </span>get_keys(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>Address, prefix: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
-        <span class="comment">// compute prefix range
-        </span><span class="kw">let </span>prefix_range = get_prefix_bounds(prefix);
-        <span class="kw">let </span>range_ref = (prefix_range.<span class="number">0</span>.as_ref(), prefix_range.<span class="number">1</span>.as_ref());
-
-        <span class="comment">// init keys with final state
-        </span><span class="kw">let </span><span class="kw-2">mut </span>candidate_keys: <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; = <span class="self">self
-            </span>.final_state
-            .read()
-            .get_ledger()
-            .get_datastore_keys(addr, prefix);
-
-        <span class="comment">// here, traverse the history from oldest to newest with added_changes at the end, applying additions and deletions
-        </span><span class="kw">let </span>active_history = <span class="self">self</span>.active_history.read();
-        <span class="kw">let </span>changes_iterator = active_history
-            .<span class="number">0
-            </span>.iter()
-            .map(|item| <span class="kw-2">&amp;</span>item.state_changes.ledger_changes)
-            .chain(std::iter::once(<span class="kw-2">&amp;</span><span class="self">self</span>.added_changes));
-        <span class="kw">for </span>ledger_changes <span class="kw">in </span>changes_iterator {
-            <span class="kw">match </span>ledger_changes.get(addr) {
-                <span class="comment">// address absent from the changes
-                </span><span class="prelude-val">None </span>=&gt; (),
-
-                <span class="comment">// address ledger entry being reset to an absolute new list of keys
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Set(new_ledger_entry)) =&gt; {
-                    candidate_keys = <span class="prelude-val">Some</span>(
-                        new_ledger_entry
-                            .datastore
-                            .range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                            .map(|(k, _v)| k.clone())
-                            .collect(),
-                    );
-                }
-
-                <span class="comment">// address ledger entry being updated
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Update(entry_updates)) =&gt; {
-                    <span class="kw">let </span>c_k = candidate_keys.get_or_insert_with(Default::default);
-                    <span class="kw">for </span>(ds_key, ds_update) <span class="kw">in
-                        </span>entry_updates.datastore.range::&lt;Vec&lt;u8&gt;, <span class="kw">_</span>&gt;(range_ref)
-                    {
-                        <span class="kw">match </span>ds_update {
-                            SetOrDelete::Set(<span class="kw">_</span>) =&gt; c_k.insert(ds_key.clone()),
-                            SetOrDelete::Delete =&gt; c_k.remove(ds_key),
-                        };
-                    }
-                }
-
-                <span class="comment">// address ledger entry being deleted
-                </span><span class="prelude-val">Some</span>(SetUpdateOrDelete::Delete) =&gt; {
-                    candidate_keys = <span class="prelude-val">None</span>;
-                }
-            }
-        }
-
-        candidate_keys
-    }
+    </span><span class="kw">pub fn </span>get_keys(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span>Address,
+        prefix: <span class="kw-2">&amp;</span>[u8],
+        start_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        end_key: std::ops::Bound&lt;Vec&lt;u8&gt;&gt;,
+        count: <span class="prelude-ty">Option</span>&lt;u32&gt;,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;BTreeSet&lt;Vec&lt;u8&gt;&gt;&gt; {
+        scan_datastore(
+            addr,
+            prefix,
+            start_key,
+            end_key,
+            count,
+            <span class="self">self</span>.final_state.clone(),
+            <span class="self">self</span>.active_history.clone(),
+            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.added_changes),
+        )
+        .<span class="number">1
+    </span>}
 
     <span class="doccomment">/// Gets a copy of a datastore value for a given address and datastore key
     ///
@@ -1259,7 +1238,6 @@
             || <span class="prelude-val">Ok</span>(Amount::zero()),
             |(new_key, new_value)| <span class="self">self</span>.get_storage_cost_datastore_entry(new_key, new_value),
         )<span class="question-mark">?</span>;
-
         <span class="comment">// charge the difference
         </span><span class="kw">match </span>new_storage_cost.cmp(<span class="kw-2">&amp;</span>old_storage_cost) {
             Ordering::Greater =&gt; {
@@ -1269,6 +1247,7 @@
                     <span class="prelude-val">None</span>,
                     new_storage_cost.saturating_sub(old_storage_cost),
                     execution_component_version,
+                    TransferContext::DatastoreStorage,
                 )
             }
             Ordering::Less =&gt; {
@@ -1278,6 +1257,7 @@
                     <span class="prelude-val">Some</span>(<span class="kw-2">*</span>caller_addr),
                     old_storage_cost.saturating_sub(new_storage_cost),
                     execution_component_version,
+                    TransferContext::DatastoreStorage,
                 )
             }
             Ordering::Equal =&gt; {

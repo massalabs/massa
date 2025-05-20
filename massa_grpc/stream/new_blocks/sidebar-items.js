@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["get_filter","new_blocks","should_send"],"struct":["Filter"],"type":["NewBlocksStreamType"]};
+window.SIDEBAR_ITEMS = {"fn":["new_blocks","new_blocks_server"],"type":["NewBlocksServerStreamType","NewBlocksStreamType"]};
