@@ -7,17 +7,12 @@ use crate::active_history::ActiveHistory;
 use massa_async_pool::AsyncPoolChanges;
 use massa_final_state::FinalStateController;
 use massa_ledger_exports::LedgerChanges;
-use massa_models::async_msg::{
-    AsyncMessage, AsyncMessageInfo, AsyncMessageTrigger,
-};
+use massa_models::async_msg::{AsyncMessage, AsyncMessageInfo, AsyncMessageTrigger};
 use massa_models::async_msg_id::AsyncMessageId;
-use massa_models::types::{Applicable, SetUpdateOrDelete};
 use massa_models::slot::Slot;
+use massa_models::types::{Applicable, SetUpdateOrDelete};
 use parking_lot::RwLock;
-use std::{
-    collections::BTreeMap,
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 
 pub(crate) struct SpeculativeAsyncPool {
     final_state: Arc<RwLock<dyn FinalStateController>>,
@@ -168,7 +163,6 @@ impl SpeculativeAsyncPool {
         ledger_changes: &LedgerChanges,
         fix_eliminated_msg: bool,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-
         // Update the messages_info: remove messages that should be removed
         // Filter out all messages for which the validity end is expired.
         // Note: that the validity_end bound is included in the validity interval of the message.
@@ -186,10 +180,7 @@ impl SpeculativeAsyncPool {
         let mut eliminated_new_messages = Vec::new();
         self.pool_changes.0.retain(|k, v| match v {
             SetUpdateOrDelete::Set(message) => {
-                if Self::is_message_expired(
-                    slot,
-                    &message.validity_end,
-                ) {
+                if Self::is_message_expired(slot, &message.validity_end) {
                     eliminated_new_messages.push((*k, v.clone()));
                     false
                 } else {
@@ -229,18 +220,15 @@ impl SpeculativeAsyncPool {
         }
 
         // Query triggered messages
-        let triggered_msg = self.fetch_msgs(
-            triggered_info.into_iter().map(|(id, _)| id).collect(),
-        );
+        let triggered_msg = self.fetch_msgs(triggered_info.into_iter().map(|(id, _)| id).collect());
 
         for (msg_id, _msg) in triggered_msg.iter() {
             self.pool_changes.push_activate(*msg_id);
         }
 
         // Query eliminated messages
-        let mut eliminated_msg = self.fetch_msgs(
-            eliminated_infos.into_iter().map(|(id, _)| id).collect(),
-        );
+        let mut eliminated_msg =
+            self.fetch_msgs(eliminated_infos.into_iter().map(|(id, _)| id).collect());
         // Push their deletion in the pool changes
         self.delete_messages(eliminated_msg.iter().map(|(id, _)| *id).collect());
 
@@ -257,7 +245,7 @@ impl SpeculativeAsyncPool {
     /// This version changes two things:
     /// - We ensure the order of the messages is preserved when we fetch them (to avoid a non-deterministic behavior in the execution)
     /// - We simplify the code by working from the final state and applying changes of the active history and the current changes
-    fn fetch_msgs_v1(
+    fn fetch_msgs_opt(
         &mut self,
         wanted_ids: Vec<AsyncMessageId>,
     ) -> Vec<(AsyncMessageId, Option<AsyncMessage>)> {
@@ -304,8 +292,7 @@ impl SpeculativeAsyncPool {
         &mut self,
         wanted_ids: Vec<AsyncMessageId>,
     ) -> Vec<(AsyncMessageId, AsyncMessage)> {
-        self
-            .fetch_msgs_v1(wanted_ids)
+        self.fetch_msgs_opt(wanted_ids)
             .into_iter()
             .filter_map(|(id, msg_opt)| msg_opt.map(|msg| (id, msg)))
             .collect()
@@ -319,10 +306,7 @@ impl SpeculativeAsyncPool {
 
     /// Return true if a message (given its validity end) is expired
     /// Must be consistent with is_message_valid
-    fn is_message_expired(
-        slot: &Slot,
-        message_validity_end: &Slot,
-    ) -> bool {
+    fn is_message_expired(slot: &Slot, message_validity_end: &Slot) -> bool {
         // Note: SecureShareOperation.get_validity_range(...) returns RangeInclusive
         //       (for operation validity) so apply the same rule for message validity
         *slot > *message_validity_end

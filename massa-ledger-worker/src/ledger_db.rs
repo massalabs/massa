@@ -127,11 +127,7 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * batch: the batch to apply the changes to
-    pub fn apply_changes_to_batch(
-        &self,
-        changes: LedgerChanges,
-        batch: &mut DBBatch,
-    ) {
+    pub fn apply_changes_to_batch(&self, changes: LedgerChanges, batch: &mut DBBatch) {
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
@@ -336,12 +332,7 @@ impl LedgerDB {
     /// * `addr`: associated address
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
-    fn put_entry(
-        &self,
-        addr: &Address,
-        ledger_entry: LedgerEntry,
-        batch: &mut DBBatch,
-    ) {
+    fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
         let db = self.db.read();
 
         // Ensures any potential previous entry is fully deleted.
@@ -493,11 +484,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(
-        &self,
-        addr: &Address,
-        batch: &mut DBBatch,
-    ) {
+    fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
         let db = self.db.read();
 
         // version

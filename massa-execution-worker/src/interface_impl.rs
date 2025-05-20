@@ -265,8 +265,7 @@ impl Interface for InterfaceImpl {
 
         context.recursion_counter += 1;
 
-        if context.recursion_counter > self.config.max_recursive_calls_depth
-        {
+        if context.recursion_counter > self.config.max_recursive_calls_depth {
             return Err(InterfaceError::DepthError(
                 "recursion depth limit reached".to_string(),
             ));
@@ -1022,15 +1021,14 @@ impl Interface for InterfaceImpl {
         signature_: &[u8],
         public_key_: &[u8],
     ) -> Result<bool> {
-
         // check the signature length
         if signature_.len() != 65 {
             return Err("invalid signature length in evm_signature_verify".into());
         }
 
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)
-                .map_err(|e| e.to_string())?;
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
 
         // build the message
         let prefix = format!("\x19Ethereum Signed Message:\n{}", message_.len());
@@ -1090,8 +1088,8 @@ impl Interface for InterfaceImpl {
     /// Address is the last 20 bytes of the hash of the public key.
     fn evm_get_address_from_pubkey(&self, public_key_: &[u8]) -> Result<Vec<u8>> {
         // parse the public key
-        let public_key = libsecp256k1::PublicKey::parse_slice(public_key_, None)
-            .map_err(|e| e.to_string())?;
+        let public_key =
+            libsecp256k1::PublicKey::parse_slice(public_key_, None).map_err(|e| e.to_string())?;
         // compute the hash of the public key
         let hash = sha3::Keccak256::digest(&public_key.serialize()[1..]);
 
@@ -1110,8 +1108,7 @@ impl Interface for InterfaceImpl {
         }
 
         // parse the message
-        let message =
-            libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())?;
+        let message = libsecp256k1::Message::parse_slice(hash_).map_err(|e| e.to_string())?;
 
         // parse the signature as being (r, s, v) use only r and s
         let signature = libsecp256k1::Signature::parse_standard_slice(&signature_[..64])
@@ -1126,8 +1123,8 @@ impl Interface for InterfaceImpl {
         }
 
         // parse v as a recovery id
-        let recovery_id = libsecp256k1::RecoveryId::parse_rpc(signature_[64])
-            .map_err(|e| e.to_string())?;
+        let recovery_id =
+            libsecp256k1::RecoveryId::parse_rpc(signature_[64]).map_err(|e| e.to_string())?;
 
         let recovery_id_: u8 = recovery_id.into();
         if recovery_id_ != 0 && recovery_id_ != 1 {
@@ -1135,12 +1132,13 @@ impl Interface for InterfaceImpl {
             // See evm_signature_verify explanation
             return Err(
                 "invalid recovery id value (v = {recovery_id_}) in evm_get_pubkey_from_signature"
-            .into());
+                    .into(),
+            );
         }
 
         // recover the public key
-        let recovered = libsecp256k1::recover(&message, &signature, &recovery_id)
-            .map_err(|e| e.to_string())?;
+        let recovered =
+            libsecp256k1::recover(&message, &signature, &recovery_id).map_err(|e| e.to_string())?;
 
         // return its serialized value
         Ok(recovered.serialize().to_vec())
@@ -1363,7 +1361,7 @@ impl Interface for InterfaceImpl {
         if event_per_op > self.config.max_event_per_operation {
             bail!("Too many event for this operation");
         }
-        
+
         context.event_emit(event);
 
         Ok(())
@@ -1472,8 +1470,7 @@ impl Interface for InterfaceImpl {
         if max_gas < self.config.gas_costs.max_instance_cost {
             bail!("max gas is lower than the minimum instance cost")
         }
-        if Slot::new(validity_end.0, validity_end.1)
-            < Slot::new(validity_start.0, validity_start.1)
+        if Slot::new(validity_end.0, validity_end.1) < Slot::new(validity_start.0, validity_start.1)
         {
             bail!("validity end is earlier than the validity start")
         }

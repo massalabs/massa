@@ -687,12 +687,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-            data,
-        )
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, data)
     }
 
     /// Appends data to a datastore entry for an address in the speculative ledger.
@@ -732,12 +728,8 @@ impl ExecutionContext {
         res_data.extend(data);
 
         // set data entry
-        self.speculative_ledger.set_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-            res_data,
-        )
+        self.speculative_ledger
+            .set_data_entry(&self.get_current_address()?, address, key, res_data)
     }
 
     /// Deletes a datastore entry for an address.
@@ -760,11 +752,8 @@ impl ExecutionContext {
         }
 
         // delete entry
-        self.speculative_ledger.delete_data_entry(
-            &self.get_current_address()?,
-            address,
-            key,
-        )
+        self.speculative_ledger
+            .delete_data_entry(&self.get_current_address()?, address, key)
     }
 
     /// Transfers coins from one address to another.
@@ -784,7 +773,6 @@ impl ExecutionContext {
         check_rights: bool,
         transfer_context: TransferContext,
     ) -> Result<(), ExecutionError> {
-
         if let Some(from_addr) = &from_addr {
             // check access rights
             // ensure we can't spend from an address on which we have no write access
@@ -799,12 +787,8 @@ impl ExecutionContext {
         }
 
         // do the transfer
-        self.speculative_ledger.transfer_coins(
-            from_addr,
-            to_addr,
-            amount,
-            transfer_context,
-        )
+        self.speculative_ledger
+            .transfer_coins(from_addr, to_addr, amount, transfer_context)
     }
 
     /// Add a new asynchronous message to speculative pool
@@ -1027,7 +1011,6 @@ impl ExecutionContext {
     /// This is used to get the output of an execution before discarding the context.
     /// Note that we are not taking self by value to consume it because the context is shared.
     pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
-
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -1131,11 +1114,8 @@ impl ExecutionContext {
         }
 
         // set data entry
-        self.speculative_ledger.set_bytecode(
-            &self.get_current_address()?,
-            address,
-            bytecode,
-        )
+        self.speculative_ledger
+            .set_bytecode(&self.get_current_address()?, address, bytecode)
     }
 
     /// Creates a new event but does not emit it.
