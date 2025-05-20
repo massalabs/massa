@@ -165,12 +165,10 @@ impl LedgerController for FinalLedger {
         &mut self,
         changes: LedgerChanges,
         ledger_batch: &mut DBBatch,
-        final_state_component_version: u32,
     ) {
         self.sorted_ledger.apply_changes_to_batch(
             changes,
             ledger_batch,
-            final_state_component_version,
         );
     }
 

@@ -554,7 +554,7 @@ async fn launch(
         t0: T0,
         genesis_timestamp: *GENESIS_TIMESTAMP,
         block_reward_v0: BLOCK_REWARD_V0,
-        block_reward_v1: BLOCK_REWARD_V1,
+        block_reward: BLOCK_REWARD_V1,
         endorsement_count: ENDORSEMENT_COUNT as u64,
         operation_validity_period: OPERATION_VALIDITY_PERIODS,
         periods_per_cycle: PERIODS_PER_CYCLE,
@@ -579,7 +579,7 @@ async fn launch(
             .execution
             .broadcast_slot_execution_output_channel_capacity,
         max_event_size_v0: MAX_EVENT_DATA_SIZE_V0,
-        max_event_size_v1: MAX_EVENT_DATA_SIZE_V1,
+        max_event_size: MAX_EVENT_DATA_SIZE_V1,
         max_function_length: MAX_FUNCTION_NAME_LENGTH,
         max_parameter_length: MAX_PARAMETERS_SIZE,
         chain_id: *CHAINID,

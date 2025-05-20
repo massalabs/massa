@@ -177,7 +177,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "as-ffi-bindings"
 version = "0.2.5"
-source = "git+https://github.com/massalabs/as-ffi-bindings.git?branch=feature/update_wasmer_4_3_4#c0afa48488418a66d872a8c51bc7fa30fe4f8a11"
+source = "git+https://github.com/massalabs/as-ffi-bindings.git?tag=v0.5.6#ba6583eb2877065090e28985e370feac427641a1"
 dependencies = [
  "anyhow",
  "wasmer",
@@ -2939,7 +2939,7 @@ dependencies = [
 [[package]]
 name = "massa-sc-runtime"
 version = "0.10.0"
-source = "git+https://github.com/massalabs/massa-sc-runtime?branch=mainnet_2_6#425f6dc3cb1a6aabd46ab91ecde1e41633048211"
+source = "git+https://github.com/massalabs/massa-sc-runtime?branch=remove_versioning_of_mip-0001#0344862d84f3657890c35cc2bdb33c886a542093"
 dependencies = [
  "anyhow",
  "as-ffi-bindings",
@@ -3287,7 +3287,6 @@ dependencies = [
 name = "massa_execution_worker"
 version = "2.6.0"
 dependencies = [
- "assert_matches",
  "blake3",
  "bs58",
  "cfg-if",

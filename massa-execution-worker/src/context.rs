@@ -54,7 +54,7 @@ use massa_pos_exports::PoSChanges;
 use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
-use massa_versioning::versioning::{MipComponent, MipStore};
+use massa_versioning::versioning::MipStore;
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -212,9 +212,6 @@ pub struct ExecutionContext {
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
 
-    /// The version of the execution component
-    pub execution_component_version: u32,
-
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
 
@@ -257,13 +254,6 @@ impl ExecutionContext {
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
         let slot = Slot::new(0, 0);
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
 
         let transfers_history = Arc::new(RwLock::new(Vec::new()));
 
@@ -318,8 +308,6 @@ impl ExecutionContext {
             },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
@@ -369,10 +357,7 @@ impl ExecutionContext {
             serde_json::json!({ "massa_execution_error": format!("{}", error) }).to_string(),
             true,
         );
-        let max_event_size = match self.execution_component_version {
-            0 => self.config.max_event_size_v0,
-            _ => self.config.max_event_size_v1,
-        };
+        let max_event_size = self.config.max_event_size;
         if event.data.len() > max_event_size {
             event.data = truncate_string(event.data, max_event_size);
         }
@@ -440,21 +425,11 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
-
         // return readonly context
         ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -466,28 +441,7 @@ impl ExecutionContext {
         }
     }
 
-    /// This function takes a batch of asynchronous operations to execute, removing them from the speculative pool.
-    ///
-    /// # Arguments
-    /// * `max_gas`: maximal amount of asynchronous gas available
-    ///
-    /// # Returns
-    /// A vector of `(Option<Bytecode>, AsyncMessage)` pairs where:
-    /// * `Option<Bytecode>` is the bytecode to execute (or `None` if not found)
-    /// * `AsyncMessage` is the asynchronous message to execute
-    pub(crate) fn take_async_batch_v0(
-        &mut self,
-        max_gas: u64,
-        async_msg_cst_gas_cost: u64,
-    ) -> Vec<(Option<Bytecode>, AsyncMessage)> {
-        self.speculative_async_pool
-            .take_batch_to_execute(self.slot, max_gas, async_msg_cst_gas_cost)
-            .into_iter()
-            .map(|(_id, msg)| (self.get_bytecode(&msg.destination), msg))
-            .collect()
-    }
-
-    pub(crate) fn take_async_batch_v1(
+    pub(crate) fn take_async_batch(
         &mut self,
         max_gas: u64,
         async_msg_cst_gas_cost: u64,
@@ -532,20 +486,10 @@ impl ExecutionContext {
             false,
         );
 
-        let ts = get_block_slot_timestamp(
-            config.thread_count,
-            config.t0,
-            config.genesis_timestamp,
-            slot,
-        )
-        .expect("Time overflow when getting block slot timestamp for MIP");
-
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
-            execution_component_version: mip_store
-                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -649,7 +593,6 @@ impl ExecutionContext {
             self.get_current_address()?,
             address,
             bytecode,
-            self.execution_component_version,
         )?;
 
         // add the address to owned addresses
@@ -749,7 +692,6 @@ impl ExecutionContext {
             address,
             key,
             data,
-            self.execution_component_version,
         )
     }
 
@@ -795,7 +737,6 @@ impl ExecutionContext {
             address,
             key,
             res_data,
-            self.execution_component_version,
         )
     }
 
@@ -823,7 +764,6 @@ impl ExecutionContext {
             &self.get_current_address()?,
             address,
             key,
-            self.execution_component_version,
         )
     }
 
@@ -844,44 +784,17 @@ impl ExecutionContext {
         check_rights: bool,
         transfer_context: TransferContext,
     ) -> Result<(), ExecutionError> {
-        let execution_component_version = self.execution_component_version;
 
         if let Some(from_addr) = &from_addr {
             // check access rights
             // ensure we can't spend from an address on which we have no write access
             // If execution component version is 0, we need to disallow sending to SC addresses
 
-            match execution_component_version {
-                0 => {
-                    if check_rights {
-                        if !self.has_write_rights_on(from_addr) {
-                            return Err(ExecutionError::RuntimeError(format!(
-                                "spending from address {} is not allowed in this context",
-                                from_addr
-                            )));
-                        }
-
-                        // ensure we can't transfer towards SC addresses on which we have no write access
-                        if let Some(to_addr) = &to_addr {
-                            if matches!(to_addr, Address::SC(..))
-                                && !self.has_write_rights_on(to_addr)
-                            {
-                                return Err(ExecutionError::RuntimeError(format!(
-                                    "crediting SC address {} is not allowed without write access to it",
-                                    to_addr
-                                )));
-                            }
-                        }
-                    }
-                }
-                _ => {
-                    if check_rights && !self.has_write_rights_on(from_addr) {
-                        return Err(ExecutionError::RuntimeError(format!(
-                            "spending from address {} is not allowed in this context",
-                            from_addr
-                        )));
-                    }
-                }
+            if check_rights && !self.has_write_rights_on(from_addr) {
+                return Err(ExecutionError::RuntimeError(format!(
+                    "spending from address {} is not allowed in this context",
+                    from_addr
+                )));
             }
         }
 
@@ -890,7 +803,6 @@ impl ExecutionContext {
             from_addr,
             to_addr,
             amount,
-            execution_component_version,
             transfer_context,
         )
     }
@@ -980,82 +892,6 @@ impl ExecutionContext {
     /// * `denounced_addr`: address to sell the rolls from
     /// * `roll_count`: number of rolls to slash
     pub fn try_slash_rolls(
-        &mut self,
-        denounced_addr: &Address,
-        roll_count: u64,
-        denunciation_idx: &DenunciationIndex,
-    ) -> Result<Amount, ExecutionError> {
-        let execution_component_version = self.execution_component_version;
-
-        match execution_component_version {
-            0 => self.try_slash_rolls_v0(denounced_addr, roll_count, denunciation_idx),
-            _ => self.try_slash_rolls_v1(denounced_addr, roll_count, denunciation_idx),
-        }
-    }
-
-    pub fn try_slash_rolls_v0(
-        &mut self,
-        denounced_addr: &Address,
-        roll_count: u64,
-        denunciation_idx: &DenunciationIndex,
-    ) -> Result<Amount, ExecutionError> {
-        // try to slash as many roll as available
-        let slashed_rolls = self
-            .speculative_roll_state
-            .try_slash_rolls(denounced_addr, roll_count);
-        // convert slashed rolls to coins (as deferred credits => coins)
-        let mut slashed_coins = self
-            .config
-            .roll_price
-            .checked_mul_u64(slashed_rolls.unwrap_or_default())
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!(
-                    "Cannot multiply roll price by {}",
-                    roll_count
-                ))
-            })?;
-
-        // what remains to slash (then will try to slash as many deferred credits as avail/what remains to be slashed)
-        let amount_remaining_to_slash = self
-            .config
-            .roll_price
-            .checked_mul_u64(roll_count)
-            .ok_or_else(|| {
-                ExecutionError::RuntimeError(format!(
-                    "Cannot multiply roll price by {}",
-                    roll_count
-                ))
-            })?
-            .saturating_sub(slashed_coins);
-
-        if amount_remaining_to_slash > Amount::zero() {
-            // There is still an amount to slash for this denunciation so we need to slash
-            // in deferred credits
-            let slashed_coins_in_deferred_credits =
-                self.speculative_roll_state.try_slash_deferred_credits(
-                    &self.slot,
-                    denounced_addr,
-                    &amount_remaining_to_slash,
-                    denunciation_idx,
-                );
-
-            slashed_coins = slashed_coins.saturating_add(slashed_coins_in_deferred_credits);
-
-            let amount_remaining_to_slash_2 =
-                slashed_coins.saturating_sub(slashed_coins_in_deferred_credits);
-            if amount_remaining_to_slash_2 > Amount::zero() {
-                // Use saturating_mul_u64 to avoid an error (for just a warn!(..))
-                warn!("Slashed {} coins (by selling rolls) and {} coins from deferred credits of address: {} but cumulative amount is lower than expected: {} coins",
-                    slashed_coins, slashed_coins_in_deferred_credits, denounced_addr,
-                    self.config.roll_price.saturating_mul_u64(roll_count)
-                );
-            }
-        }
-
-        Ok(slashed_coins)
-    }
-
-    pub fn try_slash_rolls_v1(
         &mut self,
         denounced_addr: &Address,
         roll_count: u64,
@@ -1183,83 +1019,15 @@ impl ExecutionContext {
         result
     }
 
-    fn settle_slot_v0(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
-        let slot = self.slot;
-        // execute the deferred credits coming from roll sells
-        let deferred_credits_transfers = self.execute_deferred_credits(&slot);
+    /// Finishes a slot and generates the execution output.
+    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
+    /// Moves the output of the execution out of the context,
+    /// resetting some context fields in the process.
+    ///
+    /// This is used to get the output of an execution before discarding the context.
+    /// Note that we are not taking self by value to consume it because the context is shared.
+    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
 
-        // take the ledger changes first as they are needed for async messages and cache
-        let ledger_changes = self.speculative_ledger.take();
-
-        // settle emitted async messages and reimburse the senders of deleted messages
-        let deleted_messages =
-            self.speculative_async_pool
-                .settle_slot(&slot, &ledger_changes, false);
-
-        let mut cancel_async_message_transfers = vec![];
-        for (_msg_id, msg) in deleted_messages {
-            if let Some(t) = self.cancel_async_message(&msg) {
-                cancel_async_message_transfers.push(t)
-            }
-        }
-
-        // update module cache
-        let bc_updates = ledger_changes.get_bytecode_updates();
-
-        {
-            let mut cache_write_lock = self.module_cache.write();
-            for bytecode in bc_updates {
-                cache_write_lock.save_module(&bytecode.0, CondomLimits::default());
-            }
-        }
-        // if the current slot is last in cycle check the production stats and act accordingly
-        let auto_sell_rolls = if self
-            .slot
-            .is_last_of_cycle(self.config.periods_per_cycle, self.config.thread_count)
-        {
-            self.speculative_roll_state.settle_production_stats(
-                &slot,
-                self.config.periods_per_cycle,
-                self.config.thread_count,
-                self.config.roll_price,
-                self.config.max_miss_ratio,
-            )
-        } else {
-            vec![]
-        };
-
-        // generate the execution output
-        let state_changes = StateChanges {
-            ledger_changes,
-            async_pool_changes: self.speculative_async_pool.take(),
-            pos_changes: self.speculative_roll_state.take(),
-            executed_ops_changes: self.speculative_executed_ops.take(),
-            executed_denunciations_changes: self.speculative_executed_denunciations.take(),
-            execution_trail_hash_change: SetOrKeep::Set(self.execution_trail_hash),
-            deferred_call_changes: self.speculative_deferred_calls.take(),
-        };
-        std::mem::take(&mut self.opt_block_id);
-        let transfers_history = std::mem::take(&mut *self.transfers_history.write());
-        ExecutionOutput {
-            slot,
-            block_info,
-            state_changes,
-            events: std::mem::take(&mut self.events),
-            #[cfg(feature = "execution-trace")]
-            slot_trace: None,
-            #[cfg(feature = "dump-block")]
-            storage: None,
-            deferred_credits_execution: deferred_credits_transfers,
-            cancel_async_message_execution: cancel_async_message_transfers,
-            auto_sell_execution: auto_sell_rolls,
-            transfers_history,
-        }
-    }
-
-    fn settle_slot_with_fixed_ledger_change_handling(
-        &mut self,
-        block_info: Option<ExecutedBlockInfo>,
-    ) -> ExecutionOutput {
         let slot = self.slot;
 
         // execute the deferred credits coming from roll sells
@@ -1334,20 +1102,6 @@ impl ExecutionContext {
         }
     }
 
-    /// Finishes a slot and generates the execution output.
-    /// Settles emitted asynchronous messages, reimburse the senders of deleted messages.
-    /// Moves the output of the execution out of the context,
-    /// resetting some context fields in the process.
-    ///
-    /// This is used to get the output of an execution before discarding the context.
-    /// Note that we are not taking self by value to consume it because the context is shared.
-    pub fn settle_slot(&mut self, block_info: Option<ExecutedBlockInfo>) -> ExecutionOutput {
-        match self.execution_component_version {
-            0 => self.settle_slot_v0(block_info),
-            _ => self.settle_slot_with_fixed_ledger_change_handling(block_info),
-        }
-    }
-
     /// Sets a bytecode for an address in the speculative ledger.
     /// Fail if the address is absent from the ledger.
     ///
@@ -1381,7 +1135,6 @@ impl ExecutionContext {
             &self.get_current_address()?,
             address,
             bytecode,
-            self.execution_component_version,
         )
     }
 
@@ -1649,10 +1402,7 @@ impl ExecutionContext {
 
     /// Get the condom limits to pass to the VM depending on the current execution component version
     pub fn get_condom_limits(&self) -> CondomLimits {
-        match self.execution_component_version {
-            0 => Default::default(),
-            _ => self.config.condom_limits.clone(),
-        }
+        self.config.condom_limits.clone()
     }
 }
 
@@ -1701,7 +1451,7 @@ fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
 }
 
 /// Truncates a string to a maximum byte length, ensuring it remains valid UTF-8 in the process.
-fn truncate_string(string: String, max_byte_len: usize) -> String {
+pub fn truncate_string(string: String, max_byte_len: usize) -> String {
     let mut truncated_bytes = string.as_bytes().to_vec();
     truncated_bytes.truncate(max_byte_len);
     let mut res_str = String::from_utf8_lossy(&truncated_bytes);

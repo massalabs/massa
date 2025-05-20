@@ -152,7 +152,6 @@ impl SpeculativeLedger {
         from_addr: Option<Address>,
         to_addr: Option<Address>,
         amount: Amount,
-        execution_component_version: u32,
         _context: TransferContext,
     ) -> Result<(), ExecutionError> {
         // init empty ledger changes
@@ -187,7 +186,7 @@ impl SpeculativeLedger {
                     ))
                 })?;
                 changes.set_balance(to_addr, new_balance);
-            } else if execution_component_version > 0 && matches!(to_addr, Address::SC(..)) {
+            } else if matches!(to_addr, Address::SC(..)) {
                 return Err(ExecutionError::RuntimeError(format!(
                     "cannot transfer coins to non-existing smart contract address {}",
                     to_addr
@@ -256,7 +255,6 @@ impl SpeculativeLedger {
         creator_address: Address,
         addr: Address,
         bytecode: Bytecode,
-        execution_component_version: u32,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(&creator_address) {
@@ -308,7 +306,6 @@ impl SpeculativeLedger {
             Some(creator_address),
             None,
             address_storage_cost,
-            execution_component_version,
             TransferContext::CreateSCStorage,
         )?;
         self.added_changes.create_address(&addr);
@@ -328,7 +325,6 @@ impl SpeculativeLedger {
         caller_addr: &Address,
         addr: &Address,
         bytecode: Bytecode,
-        execution_component_version: u32,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
@@ -362,14 +358,12 @@ impl SpeculativeLedger {
                     Some(*caller_addr),
                     None,
                     storage_cost_bytecode,
-                    execution_component_version,
                     TransferContext::SetBytecodeStorage,
                 )?,
                 -1 => self.transfer_coins(
                     None,
                     Some(*caller_addr),
                     storage_cost_bytecode,
-                    execution_component_version,
                     TransferContext::SetBytecodeStorage,
                 )?,
                 _ => {}
@@ -388,7 +382,6 @@ impl SpeculativeLedger {
                 Some(*caller_addr),
                 None,
                 bytecode_storage_cost,
-                execution_component_version,
                 TransferContext::SetBytecodeStorage,
             )?;
         }
@@ -540,7 +533,6 @@ impl SpeculativeLedger {
         caller_addr: &Address,
         old_key_value: Option<(&[u8], &[u8])>,
         new_key_value: Option<(&[u8], &[u8])>,
-        execution_component_version: u32,
     ) -> Result<(), ExecutionError> {
         // compute the old storage cost of the entry
         let old_storage_cost = old_key_value.map_or_else(
@@ -561,7 +553,6 @@ impl SpeculativeLedger {
                     Some(*caller_addr),
                     None,
                     new_storage_cost.saturating_sub(old_storage_cost),
-                    execution_component_version,
                     TransferContext::DatastoreStorage,
                 )
             }
@@ -571,7 +562,6 @@ impl SpeculativeLedger {
                     None,
                     Some(*caller_addr),
                     old_storage_cost.saturating_sub(new_storage_cost),
-                    execution_component_version,
                     TransferContext::DatastoreStorage,
                 )
             }
@@ -603,7 +593,6 @@ impl SpeculativeLedger {
         addr: &Address,
         key: Vec<u8>,
         value: Vec<u8>,
-        execution_component_version: u32,
     ) -> Result<(), ExecutionError> {
         // check for address existence
         if !self.entry_exists(addr) {
@@ -637,7 +626,6 @@ impl SpeculativeLedger {
                 caller_addr,
                 prev_value.as_ref().map(|v| (&key[..], &v[..])),
                 Some((&key, &value)),
-                execution_component_version,
             )?;
         }
 
@@ -659,7 +647,6 @@ impl SpeculativeLedger {
         caller_addr: &Address,
         addr: &Address,
         key: &[u8],
-        execution_component_version: u32,
     ) -> Result<(), ExecutionError> {
         // check if the entry exists
         if let Some(value) = self.get_data_entry(addr, key) {
@@ -668,7 +655,6 @@ impl SpeculativeLedger {
                 caller_addr,
                 Some((key, &value)),
                 None,
-                execution_component_version,
             )?;
         } else {
             return Err(ExecutionError::RuntimeError(format!(

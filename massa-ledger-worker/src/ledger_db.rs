@@ -112,7 +112,7 @@ impl LedgerDB {
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
-            self.put_entry(&address, entry, &mut batch, 0);
+            self.put_entry(&address, entry, &mut batch);
         }
 
         self.db.write().write_batch(
@@ -131,7 +131,6 @@ impl LedgerDB {
         &self,
         changes: LedgerChanges,
         batch: &mut DBBatch,
-        final_state_component_version: u32,
     ) {
         // for all incoming changes
         for (addr, change) in changes.0 {
@@ -139,7 +138,7 @@ impl LedgerDB {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.put_entry(&addr, new_entry, batch, final_state_component_version);
+                    self.put_entry(&addr, new_entry, batch);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
@@ -150,7 +149,7 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, batch, final_state_component_version);
+                    self.delete_entry(&addr, batch);
                 }
             }
         }
@@ -342,14 +341,11 @@ impl LedgerDB {
         addr: &Address,
         ledger_entry: LedgerEntry,
         batch: &mut DBBatch,
-        final_state_component_version: u32,
     ) {
         let db = self.db.read();
 
-        if final_state_component_version > 0 {
-            // Ensures any potential previous entry is fully deleted.
-            delete_datastore_entries(addr, &db, batch, final_state_component_version);
-        }
+        // Ensures any potential previous entry is fully deleted.
+        delete_datastore_entries(addr, &db, batch);
 
         // Version
         //TODO: Get version number from parameters
@@ -501,7 +497,6 @@ impl LedgerDB {
         &self,
         addr: &Address,
         batch: &mut DBBatch,
-        final_state_component_version: u32,
     ) {
         let db = self.db.read();
 
@@ -526,7 +521,7 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        delete_datastore_entries(addr, &db, batch, final_state_component_version);
+        delete_datastore_entries(addr, &db, batch);
     }
 }
 
@@ -537,7 +532,6 @@ fn delete_datastore_entries(
     addr: &Address,
     db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
     batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
-    final_state_component_version: u32,
 ) {
     // datastore
     let key_prefix = datastore_prefix_from_address(addr, &[]);
@@ -546,10 +540,7 @@ fn delete_datastore_entries(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
-        .take_while(|(key, _)| match final_state_component_version {
-            0 => key <= &end_prefix(&key_prefix).unwrap(),
-            _ => key < &end_prefix(&key_prefix).unwrap(),
-        })
+        .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
     {
         db.delete_key(batch, serialized_key.to_vec());
     }
@@ -730,7 +721,7 @@ mod tests {
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
 
-        ledger_db.put_entry(&addr, entry, &mut batch, 0);
+        ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
         // ledger_db
         //     .db
@@ -782,7 +773,7 @@ mod tests {
 
         // delete entry
         let mut batch = DBBatch::new();
-        ledger_db.delete_entry(&addr, &mut batch, 1);
+        ledger_db.delete_entry(&addr, &mut batch);
         ledger_db
             .db
             .write()
@@ -865,7 +856,7 @@ mod tests {
 
         let mut batch = DBBatch::new();
         let guard = ledger_db.db.read();
-        delete_datastore_entries(&addr, &guard, &mut batch, 1);
+        delete_datastore_entries(&addr, &guard, &mut batch);
         drop(guard);
 
         let mut guard = ledger_db.db.write();
@@ -966,7 +957,7 @@ mod tests {
         let (_, addr) = addr_deser
             .deserialize::<DeserializeError>(&serialized_addr)
             .unwrap();
-        ledger_db.put_entry(&addr, LedgerEntry::default(), &mut batch, 0);
+        ledger_db.put_entry(&addr, LedgerEntry::default(), &mut batch);
         ledger_db.update_entry(&addr, LedgerEntryUpdate::default(), &mut batch);
 
         ledger_db

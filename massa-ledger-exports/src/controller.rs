@@ -62,7 +62,6 @@ pub trait LedgerController: Send + Sync {
         &mut self,
         changes: LedgerChanges,
         ledger_batch: &mut DBBatch,
-        final_state_component_version: u32,
     );
 
     /// Deserializes the key and value, useful after bootstrap
