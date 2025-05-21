@@ -1584,7 +1584,7 @@ impl ExecutionState {
                     let msg = format!("failed executing deferred call: {}", err);
                     #[cfg(feature = "execution-info")]
                     exec_info.deferred_calls_messages.push(Err(msg.clone()));
-                    dbg!(msg);
+                    debug!(msg);
                 }
             }
         }
