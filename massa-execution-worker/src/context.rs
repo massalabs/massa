@@ -54,7 +54,7 @@ use massa_pos_exports::PoSChanges;
 use massa_sc_runtime::CondomLimits;
 use massa_serialization::Serializer;
 use massa_versioning::address_factory::{AddressArgs, AddressFactory};
-use massa_versioning::versioning::MipStore;
+use massa_versioning::versioning::{MipComponent, MipStore};
 use massa_versioning::versioning_factory::{FactoryStrategy, VersioningFactory};
 use parking_lot::RwLock;
 use rand::SeedableRng;
@@ -212,6 +212,10 @@ pub struct ExecutionContext {
     /// so *excluding* the gas used by the last sc call.
     pub gas_remaining_before_subexecution: Option<u64>,
 
+    #[allow(unused)]
+    /// The version of the execution component
+    pub execution_component_version: u32,
+
     /// recursion counter, incremented for each new nested call
     pub recursion_counter: u16,
 
@@ -254,6 +258,13 @@ impl ExecutionContext {
         execution_trail_hash: massa_hash::Hash,
     ) -> Self {
         let slot = Slot::new(0, 0);
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot,
+        )
+        .expect("Time overflow when getting block slot timestamp for MIP");
 
         let transfers_history = Arc::new(RwLock::new(Vec::new()));
 
@@ -308,6 +319,8 @@ impl ExecutionContext {
             },
             execution_trail_hash,
             gas_remaining_before_subexecution: None,
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
             recursion_counter: 0,
             user_event_count_in_current_exec: 0,
             transfers_history,
@@ -425,11 +438,21 @@ impl ExecutionContext {
         let execution_trail_hash =
             generate_execution_trail_hash(&prev_execution_trail_hash, &slot, None, true);
 
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot,
+        )
+        .expect("Time overflow when getting block slot timestamp for MIP");
+
         // return readonly context
         ExecutionContext {
             slot,
             stack: call_stack,
             read_only: true,
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
@@ -486,10 +509,20 @@ impl ExecutionContext {
             false,
         );
 
+        let ts = get_block_slot_timestamp(
+            config.thread_count,
+            config.t0,
+            config.genesis_timestamp,
+            slot,
+        )
+        .expect("Time overflow when getting block slot timestamp for MIP");
+
         // return active slot execution context
         ExecutionContext {
             slot,
             opt_block_id,
+            execution_component_version: mip_store
+                .get_latest_component_version_at(&MipComponent::Execution, ts),
             ..ExecutionContext::new(
                 config,
                 final_state,
