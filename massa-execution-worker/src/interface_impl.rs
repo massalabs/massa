@@ -257,7 +257,7 @@ impl Interface for InterfaceImpl {
     }
 
     fn get_interface_version(&self) -> Result<u32> {
-        Ok(1)
+        bail!("get_interface_version has been called but no versioning is in progress")
     }
 
     fn increment_recursion_counter(&self) -> Result<()> {
