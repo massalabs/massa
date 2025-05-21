@@ -1005,14 +1005,11 @@ pub(crate) fn query_state(
         return Err(GrpcError::InvalidArgument(format!("too many query items received. Only a maximum of {} operations are accepted per request", grpc.grpc_config.max_query_items_per_request)));
     }
 
-    let current_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
     let queries = queries
         .into_iter()
         .map(|q| {
             to_querystate_filter(
                 q,
-                current_version,
                 grpc.grpc_config.max_datastore_keys_queries,
                 grpc.grpc_config.max_datastore_key_length,
             )
