@@ -1531,12 +1531,6 @@
 <a href="#1531" id="1531">1531</a>
 <a href="#1532" id="1532">1532</a>
 <a href="#1533" id="1533">1533</a>
-<a href="#1534" id="1534">1534</a>
-<a href="#1535" id="1535">1535</a>
-<a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
 </pre></div><pre class="rust"><code><span class="comment">// Copyright (c) 2023 MASSA LABS &lt;info@massa.net&gt;
 
 </span><span class="kw">use </span><span class="kw">crate</span>::error::GrpcError;
@@ -1554,7 +1548,7 @@
 <span class="kw">use </span>massa_models::amount::Amount;
 <span class="kw">use </span>massa_models::block::{Block, BlockGraphStatus};
 <span class="kw">use </span>massa_models::block_id::BlockId;
-<span class="kw">use </span>massa_models::config::{CompactConfig, BLOCK_REWARD_V1};
+<span class="kw">use </span>massa_models::config::CompactConfig;
 <span class="kw">use </span>massa_models::datastore::DatastoreDeserializer;
 <span class="kw">use </span>massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
 <span class="kw">use </span>massa_models::operation::{OperationId, SecureShareOperation};
@@ -2454,7 +2448,7 @@
     grpc: <span class="kw-2">&amp;</span>MassaPublicGrpc,
     _request: tonic::Request&lt;grpc_api::GetStatusRequest&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;grpc_api::GetStatusResponse, GrpcError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>config = CompactConfig::default();
+    <span class="kw">let </span>config = CompactConfig::default();
     <span class="kw">let </span>now = MassaTime::now();
     <span class="kw">let </span>last_slot = get_latest_block_slot_at_timestamp(
         grpc.grpc_config.thread_count,
@@ -2487,9 +2481,6 @@
     <span class="kw">let </span>state = grpc.execution_controller.query_state(empty_request);
 
     <span class="kw">let </span>current_mip_version = grpc.keypair_factory.mip_store.get_network_version_current();
-    <span class="kw">if </span>current_mip_version &gt; <span class="number">0 </span>{
-        config.block_reward = BLOCK_REWARD_V1;
-    }
 
     <span class="kw">let </span>status = grpc_model::PublicStatus {
         node_id: grpc.node_id.to_string(),
@@ -2547,14 +2538,11 @@
         <span class="kw">return </span><span class="prelude-val">Err</span>(GrpcError::InvalidArgument(<span class="macro">format!</span>(<span class="string">"too many query items received. Only a maximum of {} operations are accepted per request"</span>, grpc.grpc_config.max_query_items_per_request)));
     }
 
-    <span class="kw">let </span>current_version = grpc.keypair_factory.mip_store.get_network_version_current();
-
     <span class="kw">let </span>queries = queries
         .into_iter()
         .map(|q| {
             to_querystate_filter(
                 q,
-                current_version,
                 grpc.grpc_config.max_datastore_keys_queries,
                 grpc.grpc_config.max_datastore_key_length,
             )

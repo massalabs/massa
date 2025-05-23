@@ -2848,7 +2848,7 @@
     <span class="kw">use </span>tempfile::TempDir;
     <span class="comment">// internal
     </span><span class="kw">use </span>massa_models::config::{
-        MAX_EVENT_DATA_SIZE_V1, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
+        MAX_EVENT_DATA_SIZE, MAX_EVENT_PER_OPERATION, MAX_OPERATIONS_PER_BLOCK,
         MAX_RECURSIVE_CALLS_DEPTH, THREAD_COUNT,
     };
     <span class="kw">use </span>massa_models::operation::OperationId;
@@ -2863,7 +2863,7 @@
             <span class="number">300</span>,
             THREAD_COUNT,
             MAX_RECURSIVE_CALLS_DEPTH,
-            MAX_EVENT_DATA_SIZE_V1 <span class="kw">as </span>u64,
+            MAX_EVENT_DATA_SIZE <span class="kw">as </span>u64,
             MAX_EVENT_PER_OPERATION <span class="kw">as </span>u64,
             MAX_OPERATIONS_PER_BLOCK <span class="kw">as </span>u64,
             <span class="number">5000</span>, <span class="comment">// MAX_EVENTS_PER_QUERY,
