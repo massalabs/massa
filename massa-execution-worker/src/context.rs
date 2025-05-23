@@ -1464,7 +1464,7 @@ fn init_prng(execution_trail_hash: &massa_hash::Hash) -> Xoshiro256PlusPlus {
 }
 
 /// Truncates a string to a maximum byte length, ensuring it remains valid UTF-8 in the process.
-pub fn truncate_string(string: String, max_byte_len: usize) -> String {
+pub(crate) fn truncate_string(string: String, max_byte_len: usize) -> String {
     let mut truncated_bytes = string.as_bytes().to_vec();
     truncated_bytes.truncate(max_byte_len);
     let mut res_str = String::from_utf8_lossy(&truncated_bytes);
