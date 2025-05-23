@@ -73,9 +73,9 @@ lazy_static::lazy_static! {
     /// node version
     pub static ref VERSION: Version = {
         if cfg!(feature = "sandbox") {
-            "SAND.2.5"
+            "SAND.3.0"
         } else {
-            "MAIN.2.5"
+            "MAIN.3.0"
         }
         .parse()
         .unwrap()
@@ -132,9 +132,7 @@ pub fn get_period_from_args() -> u64 {
 /// Price of a roll in the network
 pub const ROLL_PRICE: Amount = Amount::const_init(100, 0);
 /// Block reward is given for each block creation
-pub const BLOCK_REWARD_V0: Amount = Amount::const_init(102, 2);
-/// Block reward is given for each block creation
-pub const BLOCK_REWARD_V1: Amount = Amount::const_init(40001, 5);
+pub const BLOCK_REWARD: Amount = Amount::const_init(40001, 5);
 /// Cost to store one byte in the ledger
 pub const LEDGER_COST_PER_BYTE: Amount = Amount::const_init(1, 4);
 /// Cost for a base entry default 0.01 MASSA
@@ -326,7 +324,7 @@ pub const BASE_OPERATION_GAS_COST: u64 = 800_000; // approx MAX_GAS_PER_BLOCK / 
 /// Maximum event size in bytes
 pub const MAX_EVENT_DATA_SIZE_V0: usize = 50_000;
 /// Maximum event size in bytes
-pub const MAX_EVENT_DATA_SIZE_V1: usize = 1024;
+pub const MAX_EVENT_DATA_SIZE: usize = 1024;
 /// Maximum event number that can be emitted for an operation
 pub const MAX_EVENT_PER_OPERATION: usize = 25;
 /// Maximum number of recursion for calls

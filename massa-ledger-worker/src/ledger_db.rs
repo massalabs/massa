@@ -9,7 +9,7 @@ use massa_db_exports::{
 use massa_ledger_exports::*;
 use massa_models::amount::AmountDeserializer;
 use massa_models::bytecode::BytecodeDeserializer;
-use massa_models::datastore::get_prefix_bounds;
+use massa_models::datastore::{get_prefix_bounds, range_intersection};
 use massa_models::types::{SetOrDelete, SetOrKeep, SetUpdateOrDelete};
 use massa_models::{
     address::Address, amount::AmountSerializer, bytecode::BytecodeSerializer, slot::Slot,
@@ -112,7 +112,7 @@ impl LedgerDB {
         let mut batch = DBBatch::new();
 
         for (address, entry) in initial_ledger {
-            self.put_entry(&address, entry, &mut batch, 0);
+            self.put_entry(&address, entry, &mut batch);
         }
 
         self.db.write().write_batch(
@@ -127,19 +127,14 @@ impl LedgerDB {
     /// # Arguments
     /// * changes: ledger changes to be applied
     /// * batch: the batch to apply the changes to
-    pub fn apply_changes_to_batch(
-        &self,
-        changes: LedgerChanges,
-        batch: &mut DBBatch,
-        final_state_component_version: u32,
-    ) {
+    pub fn apply_changes_to_batch(&self, changes: LedgerChanges, batch: &mut DBBatch) {
         // for all incoming changes
         for (addr, change) in changes.0 {
             match change {
                 // the incoming change sets a ledger entry to a new one
                 SetUpdateOrDelete::Set(new_entry) => {
                     // inserts/overwrites the entry with the incoming one
-                    self.put_entry(&addr, new_entry, batch, final_state_component_version);
+                    self.put_entry(&addr, new_entry, batch);
                 }
                 // the incoming change updates an existing ledger entry
                 SetUpdateOrDelete::Update(entry_update) => {
@@ -150,7 +145,7 @@ impl LedgerDB {
                 // the incoming change deletes a ledger entry
                 SetUpdateOrDelete::Delete => {
                     // delete the entry, if it exists
-                    self.delete_entry(&addr, batch, final_state_component_version);
+                    self.delete_entry(&addr, batch);
                 }
             }
         }
@@ -178,7 +173,14 @@ impl LedgerDB {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    pub fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
+    pub fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
         let db = self.db.read();
 
         // check if address exists, return None if it does not
@@ -191,30 +193,70 @@ impl LedgerDB {
             db.get_cf(STATE_CF, serialized_key).expect(CRUD_ERROR)?;
         }
 
-        // collect keys starting with prefix
-        let start_prefix = datastore_prefix_from_address(addr, prefix);
-        let end_prefix = end_prefix(&start_prefix);
-        Some(
-            db.iterator_cf(
-                STATE_CF,
-                MassaIteratorMode::From(&start_prefix, MassaDirection::Forward),
-            )
-            .take_while(|(key, _)| match &end_prefix {
-                Some(end) => key < end,
-                None => true,
-            })
-            .filter_map(|(key, _)| {
-                let (_rest, key) = self
-                    .key_deserializer_db
-                    .deserialize::<DeserializeError>(&key)
-                    .expect("could not deserialize datastore key from state db");
-                match key.key_type {
-                    KeyType::DATASTORE(datastore_vec) => Some(datastore_vec),
-                    _ => None,
+        // deduce datastore key iteration range
+        let Some((start_bound, end_bound)) =
+            range_intersection(get_prefix_bounds(prefix), (start_key, end_key))
+        else {
+            // empty range: no keys
+            return Some(Default::default());
+        };
+        // translate the range bounds in terms of database keys
+        let start_key = match start_bound {
+            std::ops::Bound::Unbounded => datastore_prefix_from_address(addr, &[]),
+            std::ops::Bound::Included(k) => datastore_prefix_from_address(addr, &k),
+            std::ops::Bound::Excluded(k) => {
+                let mut v = datastore_prefix_from_address(addr, &k);
+                v.push(0); // get the next key, lexicographically speaking
+                v
+            }
+        };
+        let end_bound = match end_bound {
+            std::ops::Bound::Unbounded => {
+                get_prefix_bounds(&datastore_prefix_from_address(addr, &[])).1
+            }
+
+            std::ops::Bound::Excluded(k) => {
+                std::ops::Bound::Excluded(datastore_prefix_from_address(addr, &k))
+            }
+            std::ops::Bound::Included(k) => {
+                std::ops::Bound::Included(datastore_prefix_from_address(addr, &k))
+            }
+        };
+
+        // collect the keys
+        let mut res = BTreeSet::new();
+        for (key, _) in db.iterator_cf(
+            STATE_CF,
+            MassaIteratorMode::From(&start_key, MassaDirection::Forward),
+        ) {
+            // check count
+            if let Some(cnt) = count.as_ref() {
+                if res.len() >= *cnt as usize {
+                    break;
                 }
-            })
-            .collect(),
-        )
+            }
+
+            // check range
+            let do_continue = match &end_bound {
+                std::ops::Bound::Unbounded => true,
+                std::ops::Bound::Included(ub) => &key <= ub,
+                std::ops::Bound::Excluded(ub) => &key < ub,
+            };
+            if !do_continue {
+                break;
+            }
+
+            // deserialize key and check type
+            let (_rest, key) = self
+                .key_deserializer_db
+                .deserialize::<DeserializeError>(&key)
+                .expect("could not deserialize datastore key from state db");
+            if let KeyType::DATASTORE(key) = key.key_type {
+                res.insert(key);
+            }
+        }
+
+        Some(res)
     }
 
     pub fn reset(&self) {
@@ -290,19 +332,11 @@ impl LedgerDB {
     /// * `addr`: associated address
     /// * `ledger_entry`: complete entry to be added
     /// * `batch`: the given operation batch to update
-    fn put_entry(
-        &self,
-        addr: &Address,
-        ledger_entry: LedgerEntry,
-        batch: &mut DBBatch,
-        final_state_component_version: u32,
-    ) {
+    fn put_entry(&self, addr: &Address, ledger_entry: LedgerEntry, batch: &mut DBBatch) {
         let db = self.db.read();
 
-        if final_state_component_version > 0 {
-            // Ensures any potential previous entry is fully deleted.
-            delete_datastore_entries(addr, &db, batch, final_state_component_version);
-        }
+        // Ensures any potential previous entry is fully deleted.
+        delete_datastore_entries(addr, &db, batch);
 
         // Version
         //TODO: Get version number from parameters
@@ -450,12 +484,7 @@ impl LedgerDB {
     ///
     /// # Arguments
     /// * batch: the given operation batch to update
-    fn delete_entry(
-        &self,
-        addr: &Address,
-        batch: &mut DBBatch,
-        final_state_component_version: u32,
-    ) {
+    fn delete_entry(&self, addr: &Address, batch: &mut DBBatch) {
         let db = self.db.read();
 
         // version
@@ -479,7 +508,7 @@ impl LedgerDB {
             .expect(KEY_SER_ERROR);
         db.delete_key(batch, serialized_key);
 
-        delete_datastore_entries(addr, &db, batch, final_state_component_version);
+        delete_datastore_entries(addr, &db, batch);
     }
 }
 
@@ -490,7 +519,6 @@ fn delete_datastore_entries(
     addr: &Address,
     db: &RwLockReadGuard<RawRwLock, Box<dyn MassaDBController>>,
     batch: &mut std::collections::BTreeMap<Vec<u8>, Option<Vec<u8>>>,
-    final_state_component_version: u32,
 ) {
     // datastore
     let key_prefix = datastore_prefix_from_address(addr, &[]);
@@ -499,10 +527,7 @@ fn delete_datastore_entries(
             STATE_CF,
             MassaIteratorMode::From(&key_prefix, MassaDirection::Forward),
         )
-        .take_while(|(key, _)| match final_state_component_version {
-            0 => key <= &end_prefix(&key_prefix).unwrap(),
-            _ => key < &end_prefix(&key_prefix).unwrap(),
-        })
+        .take_while(|(key, _)| key < &end_prefix(&key_prefix).unwrap())
     {
         db.delete_key(batch, serialized_key.to_vec());
     }
@@ -640,8 +665,17 @@ mod tests {
         // init data
 
         let mut data = BTreeMap::new();
+        data.insert(b"1".to_vec(), b"a".to_vec());
+        data.insert(b"11".to_vec(), b"a".to_vec());
+        data.insert(b"111".to_vec(), b"a".to_vec());
+        data.insert(b"12".to_vec(), b"a".to_vec());
+        data.insert(b"13".to_vec(), b"a".to_vec());
+
         data.insert(b"2".to_vec(), b"b".to_vec());
+        data.insert(b"21".to_vec(), b"a".to_vec());
+
         data.insert(b"3".to_vec(), b"c".to_vec());
+        data.insert(b"34".to_vec(), b"c".to_vec());
 
         let entry = LedgerEntry {
             balance: Amount::from_str("42").unwrap(),
@@ -674,7 +708,7 @@ mod tests {
         let ledger_db = LedgerDB::new(db.clone(), 32, 255, 1000);
         let mut batch = DBBatch::new();
 
-        ledger_db.put_entry(&addr, entry, &mut batch, 0);
+        ledger_db.put_entry(&addr, entry, &mut batch);
         ledger_db.update_entry(&addr, entry_update, &mut batch);
         // ledger_db
         //     .db
@@ -726,7 +760,7 @@ mod tests {
 
         // delete entry
         let mut batch = DBBatch::new();
-        ledger_db.delete_entry(&addr, &mut batch, 1);
+        ledger_db.delete_entry(&addr, &mut batch);
         ledger_db
             .db
             .write()
@@ -747,6 +781,30 @@ mod tests {
     fn test_end_prefix() {
         assert_eq!(end_prefix(&[5, 6, 7]), Some(vec![5, 6, 8]));
         assert_eq!(end_prefix(&[5, 6, 255]), Some(vec![5, 7]));
+
+        // test end prefix for address with all bytes set to 255
+        {
+            use massa_serialization::Deserializer;
+            let addr_deser = massa_models::address::AddressDeserializer::new();
+            let serialized_addr = vec![
+                0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                255,
+            ];
+            let (_, addr): (_, Address) = addr_deser
+                .deserialize::<massa_serialization::DeserializeError>(&serialized_addr)
+                .unwrap();
+            let prefix = end_prefix(&datastore_prefix_from_address(&addr, &[]));
+            assert!(prefix.is_some());
+            assert_eq!(
+                prefix,
+                Some(vec![
+                    108, 101, 100, 103, 101, 114, 47, 0, 0, 0, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+                    255, 255, 255, 255, 255, 255, 255, 255, 255, 4,
+                ])
+            );
+        }
     }
 
     #[test]
@@ -785,7 +843,7 @@ mod tests {
 
         let mut batch = DBBatch::new();
         let guard = ledger_db.db.read();
-        delete_datastore_entries(&addr, &guard, &mut batch, 1);
+        delete_datastore_entries(&addr, &guard, &mut batch);
         drop(guard);
 
         let mut guard = ledger_db.db.write();
@@ -796,5 +854,102 @@ mod tests {
         // println!("datastore: {:?}", datastore);
         assert_eq!(datastore.len(), 1);
         assert!(datastore.contains_key(&datastore_key));
+    }
+
+    #[test]
+    fn get_datastore_keys() {
+        let keypair = KeyPair::generate(0).unwrap();
+        let addr = Address::from_public_key(&keypair.get_public_key());
+        let (ledger_db, batch, _d) = setup_test_ledger(addr);
+
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
+
+        add_noise_to_ledger(&ledger_db);
+
+        let keys = ledger_db
+            .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, None)
+            .unwrap();
+
+        assert_eq!(keys.len(), 9);
+
+        let keys = ledger_db
+            .get_datastore_keys(&addr, &[], Bound::Unbounded, Bound::Unbounded, Some(4))
+            .unwrap();
+
+        assert_eq!(keys.len(), 4);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Unbounded,
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"3".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"34".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Included(b"2".to_vec()),
+                Bound::Excluded(b"3".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"2".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"21".to_vec());
+        assert_eq!(keys.pop_first(), None);
+
+        let mut keys = ledger_db
+            .get_datastore_keys(
+                &addr,
+                &[],
+                Bound::Excluded(b"1".to_vec()),
+                Bound::Included(b"12".to_vec()),
+                None,
+            )
+            .unwrap();
+
+        assert_eq!(keys.pop_first().unwrap(), b"11".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"111".to_vec());
+        assert_eq!(keys.pop_first().unwrap(), b"12".to_vec());
+        assert_eq!(keys.pop_first(), None);
+    }
+
+    fn add_noise_to_ledger(ledger_db: &LedgerDB) {
+        // add a bit of garbage data into the db to ensure bounds are respected
+        let mut batch = DBBatch::new();
+        // should at the beginning of the db
+        batch.insert(b"Agarbage".to_vec(), Some(b"garbage".to_vec()));
+        // should at the end of the db
+        batch.insert(b"zgarbage".to_vec(), Some(b"garbage".to_vec()));
+
+        // create an address with all bytes set to 255
+        let addr_deser = massa_models::address::AddressDeserializer::new();
+        let serialized_addr = vec![
+            0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+            255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        ];
+        let (_, addr) = addr_deser
+            .deserialize::<DeserializeError>(&serialized_addr)
+            .unwrap();
+        ledger_db.put_entry(&addr, LedgerEntry::default(), &mut batch);
+        ledger_db.update_entry(&addr, LedgerEntryUpdate::default(), &mut batch);
+
+        ledger_db
+            .db
+            .write()
+            .write_batch(batch, Default::default(), None);
     }
 }

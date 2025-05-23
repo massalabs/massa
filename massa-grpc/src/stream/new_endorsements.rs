@@ -1,20 +1,17 @@
 // Copyright (c) 2023 MASSA LABS <info@massa.net>
 
-use crate::config::GrpcConfig;
 use crate::error::{match_for_io_error, GrpcError};
 use crate::server::MassaPublicGrpc;
 use futures_util::StreamExt;
-use massa_models::address::Address;
-use massa_models::block_id::BlockId;
-use massa_models::endorsement::{EndorsementId, SecureShareEndorsement};
-use massa_proto_rs::massa::api::v1::{self as grpc_api, NewEndorsementsRequest};
-use std::collections::HashSet;
+use massa_proto_rs::massa::api::v1::{self as grpc_api};
 use std::io::ErrorKind;
 use std::pin::Pin;
-use std::str::FromStr;
-use tokio::select;
+use std::time::Duration;
+use tokio::{select, time};
 use tonic::{Request, Streaming};
 use tracing::{error, warn};
+
+use super::trait_filters_impl::{FilterGrpc, NewEndorsementsFilter};
 
 /// Type declaration for NewEndorsements
 pub type NewEndorsementsStreamType = Pin<
@@ -25,16 +22,15 @@ pub type NewEndorsementsStreamType = Pin<
     >,
 >;
 
-// Type declaration for NewEndorsementsFilter
-#[derive(Debug)]
-struct Filter {
-    // Endorsement ids to filter
-    endorsement_ids: Option<HashSet<EndorsementId>>,
-    // Addresses to filter
-    addresses: Option<HashSet<Address>>,
-    // Block ids to filter
-    block_ids: Option<HashSet<BlockId>>,
-}
+/// Type declaration for NewEndorsementsServer
+pub type NewEndorsementsServerStreamType = Pin<
+    Box<
+        dyn futures_util::Stream<
+                Item = Result<grpc_api::NewEndorsementsServerResponse, tonic::Status>,
+            > + Send
+            + 'static,
+    >,
+>;
 
 /// Creates a new stream of new produced and received endorsements
 pub(crate) async fn new_endorsements(
@@ -52,17 +48,18 @@ pub(crate) async fn new_endorsements(
 
     tokio::spawn(async move {
         if let Some(Ok(request)) = in_stream.next().await {
-            let mut filters = match get_filter(request, &grpc_config) {
-                Ok(filter) => filter,
-                Err(err) => {
-                    error!("failed to get filter: {}", err);
-                    // Send the error response back to the client
-                    if let Err(e) = tx.send(Err(err.into())).await {
-                        error!("failed to send back new_operations error response: {}", e);
+            let mut filter =
+                match NewEndorsementsFilter::build_from_request(request.filters, &grpc_config) {
+                    Ok(filter) => filter,
+                    Err(err) => {
+                        error!("failed to get filter: {}", err);
+                        // Send the error response back to the client
+                        if let Err(e) = tx.send(Err(err.into())).await {
+                            error!("failed to send back NewEndorsements error response: {}", e);
+                        }
+                        return;
                     }
-                    return;
-                }
-            };
+                };
 
             loop {
                 select! {
@@ -71,16 +68,14 @@ pub(crate) async fn new_endorsements(
                         match event {
                             Ok(massa_endorsement) => {
                                 // Check if the endorsement should be sent
-                                if !should_send(&massa_endorsement, &filters) {
-                                    continue;
-                                }
-
-                                // Send the new endorsement through the channel
-                                if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsResponse {
-                                        signed_endorsement: Some(massa_endorsement.into())
-                                })).await {
-                                    error!("failed to send new endorsement : {}", e);
-                                    break;
+                                if let Some(data) = filter.filter_output(massa_endorsement, &grpc_config) {
+                                    // Send the new endorsement through the channel
+                                    if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsResponse {
+                                        signed_endorsement: Some(data.into())
+                                    })).await {
+                                        error!("failed to send new endorsement : {}", e);
+                                        break;
+                                    }
                                 }
                             },
                             Err(e) => error!("error on receive new endorsement : {}", e)
@@ -93,7 +88,7 @@ pub(crate) async fn new_endorsements(
                                 match res {
                                     Ok(message) => {
                                         // Update current filter
-                                        filters = match get_filter(message, &grpc_config) {
+                                        filter = match NewEndorsementsFilter::build_from_request(message.filters, &grpc_config) {
                                             Ok(filter) => filter,
                                             Err(err) => {
                                                 error!("failed to get filter: {}", err);
@@ -142,100 +137,72 @@ pub(crate) async fn new_endorsements(
     Ok(Box::pin(out_stream) as NewEndorsementsStreamType)
 }
 
-// This function returns a filter from the request
-fn get_filter(
-    request: NewEndorsementsRequest,
-    grpc_config: &GrpcConfig,
-) -> Result<Filter, GrpcError> {
-    if request.filters.len() as u32 > grpc_config.max_filters_per_request {
-        return Err(GrpcError::InvalidArgument(format!(
-            "too many filters received. Only a maximum of {} filters are accepted per request",
-            grpc_config.max_filters_per_request
-        )));
-    }
+/// Creates a new unidirectional stream of new produced and received endorsements
+pub(crate) async fn new_endorsements_server(
+    grpc: &MassaPublicGrpc,
+    request: Request<grpc_api::NewEndorsementsServerRequest>,
+) -> Result<NewEndorsementsServerStreamType, GrpcError> {
+    // Create a channel to handle communication with the client
+    let (tx, rx) = tokio::sync::mpsc::channel(grpc.grpc_config.max_channel_size);
+    // Get the inner request
+    let request = request.into_inner();
+    // Subscribe to the new endorsements channel
+    let mut subscriber = grpc.pool_broadcasts.endorsement_sender.subscribe();
+    // Clone grpc to be able to use it in the spawned task
+    let grpc_config = grpc.grpc_config.clone();
 
-    let mut endorsement_ids_filter: Option<HashSet<EndorsementId>> = None;
-    let mut addresses_filter: Option<HashSet<Address>> = None;
-    let mut block_ids_filter: Option<HashSet<BlockId>> = None;
+    tokio::spawn(async move {
+        let filter = match NewEndorsementsFilter::build_from_request(request.filters, &grpc_config)
+        {
+            Ok(filter) => filter,
+            Err(err) => {
+                error!("failed to get filter: {}", err);
+                // Send the error response back to the client
+                if let Err(e) = tx.send(Err(err.into())).await {
+                    error!("failed to send back new endorsement error response: {}", e);
+                }
+                return;
+            }
+        };
 
-    // Get params filter from the request.
-    for query in request.filters.into_iter() {
-        if let Some(filter) = query.filter {
-            match filter {
-                grpc_api::new_endorsements_filter::Filter::EndorsementIds(ids) => {
-                    if ids.endorsement_ids.len() as u32
-                        > grpc_config.max_endorsement_ids_per_request
-                    {
-                        return Err(GrpcError::InvalidArgument(format!(
-                            "too many endorsement ids received. Only a maximum of {} endorsement ids are accepted per request",
-                         grpc_config.max_block_ids_per_request
-                        )));
+        // Create a timer that ticks every 10 seconds to check if the client is still connected
+        let mut interval = time::interval(Duration::from_secs(
+            grpc_config.unidirectional_stream_interval_check,
+        ));
+
+        loop {
+            select! {
+                // Receive a new endorsement from the subscriber
+                event = subscriber.recv() => {
+                    match event {
+                        Ok(massa_endorsement) => {
+                            // Check if the endorsement should be sent
+                            if let Some(data) = filter.filter_output(massa_endorsement, &grpc_config) {
+                                // Send the new endorsement through the channel
+                                if let Err(e) = tx.send(Ok(grpc_api::NewEndorsementsServerResponse {
+                                    signed_endorsement: Some(data.into())
+                                })).await {
+                                    error!("failed to send new endorsement : {}", e);
+                                    break;
+                                }
+                            }
+                        },
+                        Err(e) => error!("error on receive new endorsement : {}", e)
                     }
-                    let endorsement_ids = endorsement_ids_filter.get_or_insert_with(HashSet::new);
-                    for id in ids.endorsement_ids {
-                        endorsement_ids.insert(EndorsementId::from_str(&id).map_err(|_| {
-                            GrpcError::InvalidArgument(format!("invalid endorsement id: {}", id))
-                        })?);
-                    }
-                }
-                grpc_api::new_endorsements_filter::Filter::Addresses(addrs) => {
-                    if addrs.addresses.len() as u32 > grpc_config.max_addresses_per_request {
-                        return Err(GrpcError::InvalidArgument(format!(
-                            "too many addresses received. Only a maximum of {} addresses are accepted per request",
-                         grpc_config.max_addresses_per_request
-                        )));
-                    }
-                    let addresses = addresses_filter.get_or_insert_with(HashSet::new);
-                    for address in addrs.addresses {
-                        addresses.insert(Address::from_str(&address).map_err(|_| {
-                            GrpcError::InvalidArgument(format!("invalid address: {}", address))
-                        })?);
-                    }
-                }
-                grpc_api::new_endorsements_filter::Filter::BlockIds(ids) => {
-                    if ids.block_ids.len() as u32 > grpc_config.max_block_ids_per_request {
-                        return Err(GrpcError::InvalidArgument(format!(
-                            "too many block ids received. Only a maximum of {} block ids are accepted per request",
-                            grpc_config.max_block_ids_per_request
-                        )));
-                    }
-                    let block_ids = block_ids_filter.get_or_insert_with(HashSet::new);
-                    for block_id in ids.block_ids {
-                        block_ids.insert(BlockId::from_str(&block_id).map_err(|_| {
-                            GrpcError::InvalidArgument(format!("invalid block id: {}", block_id))
-                        })?);
+                },
+                _ = interval.tick() => {
+                    if tx.is_closed() {
+                        // Client disconnected
+                        break;
                     }
                 }
             }
         }
-    }
+    });
 
-    Ok(Filter {
-        endorsement_ids: endorsement_ids_filter,
-        addresses: addresses_filter,
-        block_ids: block_ids_filter,
-    })
-}
+    // Create a new stream from the received channel
+    let out_stream = tokio_stream::wrappers::ReceiverStream::new(rx);
 
-// This function checks if the endorsement should be sent
-fn should_send(signed_endorsement: &SecureShareEndorsement, filters: &Filter) -> bool {
-    if let Some(endorsement_ids) = &filters.endorsement_ids {
-        if !endorsement_ids.contains(&signed_endorsement.id) {
-            return false;
-        }
-    }
-
-    if let Some(addresses) = &filters.addresses {
-        if !addresses.contains(&signed_endorsement.content_creator_address) {
-            return false;
-        }
-    }
-
-    if let Some(block_ids) = &filters.block_ids {
-        if !block_ids.contains(&signed_endorsement.content.endorsed_block) {
-            return false;
-        }
-    }
-
-    true
+    // Return the new stream of endorsements
+    Ok(Box::pin(out_stream) as NewEndorsementsServerStreamType)
 }

@@ -13,8 +13,11 @@ use massa_models::{
     bytecode::{Bytecode, BytecodeDeserializer},
 };
 use massa_serialization::{DeserializeError, Deserializer};
-use std::collections::{BTreeSet, HashMap};
 use std::ops::Bound::Included;
+use std::{
+    collections::{BTreeSet, HashMap},
+    ops::Bound,
+};
 
 /// Represents a final ledger associating addresses to their balances, bytecode and data.
 /// The final ledger is part of the final state which is attached to a final slot, can be bootstrapped and allows others to bootstrap.
@@ -138,8 +141,16 @@ impl LedgerController for FinalLedger {
     ///
     /// # Returns
     /// A `BTreeSet` of the datastore keys
-    fn get_datastore_keys(&self, addr: &Address, prefix: &[u8]) -> Option<BTreeSet<Vec<u8>>> {
-        self.sorted_ledger.get_datastore_keys(addr, prefix)
+    fn get_datastore_keys(
+        &self,
+        addr: &Address,
+        prefix: &[u8],
+        start_key: Bound<Vec<u8>>,
+        end_key: Bound<Vec<u8>>,
+        count: Option<u32>,
+    ) -> Option<BTreeSet<Vec<u8>>> {
+        self.sorted_ledger
+            .get_datastore_keys(addr, prefix, start_key, end_key, count)
     }
 
     /// Reset the disk ledger.
@@ -150,17 +161,9 @@ impl LedgerController for FinalLedger {
     }
 
     /// Allows applying `LedgerChanges` to the final ledger
-    fn apply_changes_to_batch(
-        &mut self,
-        changes: LedgerChanges,
-        ledger_batch: &mut DBBatch,
-        final_state_component_version: u32,
-    ) {
-        self.sorted_ledger.apply_changes_to_batch(
-            changes,
-            ledger_batch,
-            final_state_component_version,
-        );
+    fn apply_changes_to_batch(&mut self, changes: LedgerChanges, ledger_batch: &mut DBBatch) {
+        self.sorted_ledger
+            .apply_changes_to_batch(changes, ledger_batch);
     }
 
     /// Deserializes the key and value, useful after bootstrap
